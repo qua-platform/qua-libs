@@ -8,6 +8,8 @@ import xarray as xr
 from qualibrate.core import QualibrationNode
 from qualibration_libs.data import add_amplitude_and_phase
 
+from calibration_utils.common_utils.helpers import fmt_hz
+
 
 @dataclass
 class FitParameters:
@@ -46,8 +48,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         if result["success"]:
             msg = (
                 f"[{sensor_name}] SUCCESS | "
-                f"resonator_frequency = {1e-9 * result['resonator_frequency']:.6f} GHz | "
-                f"frequency_shift = {1e-6 * result['frequency_shift']:.2f} MHz | "
+                f"resonator_frequency = {fmt_hz(result['resonator_frequency'])} | "
+                f"frequency_shift = {fmt_hz(result['frequency_shift'])} | "
                 f"optimal_detuning = {result['optimal_detuning']:.4f} V | "
                 f"peak_pca_signal = {result['peak_pca_signal']:.3e}"
             )
