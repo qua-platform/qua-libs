@@ -1,0 +1,4 @@
+{
+  "host": "YOUR_CLUSTER_IP",
+  "cluster_name": "YOUR_CLUSTER_NAME"
+}
