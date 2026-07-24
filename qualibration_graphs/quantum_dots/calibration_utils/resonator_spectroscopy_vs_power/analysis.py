@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Dict, Optional, Tuple
+
 import numpy as np
 import xarray as xr
 
@@ -27,6 +28,9 @@ class FitParameters:
     optimal_power: float
     """Readout power just below the onset of frequency splitting, in dBm."""
 
+    failure_reason: Optional[str] = None
+    """Human-readable explanation when ``success`` is False."""
+
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
     """Log fitted results for all sensors.
@@ -50,7 +54,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
                 f"optimal_power = {result['optimal_power']:.2f} dBm"
             )
         else:
-            msg = f"[{sensor_name}] FAIL | fit did not pass sanity checks"
+            reason = result.get("failure_reason") or "fit did not pass sanity checks"
+            msg = f"[{sensor_name}] FAIL | {reason}"
         log_callable(msg)
 
 
@@ -86,11 +91,47 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     xr.Dataset
         Processed dataset with optimal-power summary coordinates added.
     """
+    optimal_power = np.full(len(ds.sensor), np.nan, dtype=float)
+    frequency_shift = np.full(len(ds.sensor), np.nan, dtype=float)
+    failure_reasons: list[Optional[str]] = [None] * len(ds.sensor)
 
-    ds_fit = ds
+    for i, sensor in enumerate(node.namespace["sensors"]):
+        sensor_data = ds.sel(sensor=sensor.name)
+        opt_power, find_reason = _find_optimal_power(sensor_data.IQ_abs_norm, node)
+        if find_reason is not None:
+            failure_reasons[i] = find_reason
+            continue
 
-    rr_min_response = ds.IQ_abs_norm.idxmin(dim="frequency_detuning")
+        optimal_power[i] = opt_power
+        shift, fit_reason = _fit_frequency_shift_at_power(sensor_data, opt_power)
+        frequency_shift[i] = shift
+        if fit_reason is not None:
+            failure_reasons[i] = fit_reason
+            optimal_power[i] = np.nan
+
+    ds_fit = ds.assign_coords(
+        {
+            "optimal_power": ("sensor", optimal_power),
+            "frequency_shift": ("sensor", frequency_shift),
+        }
+    )
+    ds_fit.frequency_shift.attrs = {"long_name": "readout frequency offset from IF", "units": "Hz"}
+
+    fit_dataset, fit_results = _extract_relevant_fit_parameters(ds_fit, node, failure_reasons)
+    return fit_dataset, fit_results
+
+
+def _find_optimal_power(iq_abs_norm: xr.DataArray, node: QualibrationNode) -> Tuple[float, Optional[str]]:
+    """Track the resonance dip vs power and locate the optimal-power crossing."""
+    min_power_points = node.parameters.moving_average_filter_window_num_points
+    if iq_abs_norm.sizes.get("power", 0) < min_power_points:
+        return np.nan, "insufficient power points for analysis"
+
+    rr_min_response = iq_abs_norm.idxmin(dim="frequency_detuning")
     rr_min_response_diff = rr_min_response.differentiate(coord="power").dropna("power")
+    if rr_min_response_diff.sizes.get("power", 0) == 0:
+        return np.nan, "no resonator dip track vs power (flat noise or missing resonance)"
+
     rr_min_response_filtered = rr_min_response.where(np.abs(rr_min_response_diff) < 1e6)
     rr_min_response_avg = (
         rr_min_response_filtered.rolling(
@@ -100,54 +141,82 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         .mean()
         .dropna("power")
     )
+    if rr_min_response_avg.sizes.get("power", 0) < min_power_points:
+        return np.nan, "no resonator dip track vs power after smoothing (noise-only data?)"
+
     rr_min_response_avg = rr_min_response_avg.copy(deep=True)
-    for j in range(node.parameters.moving_average_filter_window_num_points):
-        rr_min_response_avg.isel(power=j).data /= node.parameters.moving_average_filter_window_num_points - j
+    n_power = rr_min_response_avg.sizes["power"]
+    for j in range(min(min_power_points, n_power)):
+        rr_min_response_avg.data[j] /= min_power_points - j
+
     below_threshold = rr_min_response_avg < node.parameters.derivative_crossing_threshold_in_hz_per_dbm
-    optimal_power = below_threshold.idxmax(dim="power")
-    optimal_power = optimal_power - node.parameters.buffer_from_crossing_threshold_in_dbm
-    ds_fit = ds_fit.assign_coords({"optimal_power": (["sensor"], optimal_power.data)})
+    if not bool(below_threshold.any()):
+        return np.nan, "no power-splitting crossing found (resonator dip not resolved vs power)"
 
-    def _select_optimal_power(ds, sensor):
-        return peaks_dips(
-            ds.sel(power=ds["optimal_power"].sel(sensor=sensor).data, method="nearest").sel(sensor=sensor).IQ_abs,
-            "frequency_detuning",
-        )
+    crossing_power = float(below_threshold.idxmax(dim="power").values)
+    optimal_power = crossing_power - node.parameters.buffer_from_crossing_threshold_in_dbm
+    if not np.isfinite(optimal_power):
+        return np.nan, "optimal readout power could not be determined"
 
-    frequency_shift = []
-    for q in node.namespace["sensors"]:
-        fit_at_power = _select_optimal_power(ds_fit, q.name)
-        frequency_shift.append(float(fit_at_power.position.data))
-    ds_fit = ds_fit.assign_coords({"frequency_shift": (["sensor"], frequency_shift)})
-    ds_fit.frequency_shift.attrs = {"long_name": "readout frequency offset from IF", "units": "Hz"}
-
-    # Extract the relevant fitted parameters
-    fit_dataset, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
-    return fit_dataset, fit_results
+    return optimal_power, None
 
 
-def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
+def _fit_frequency_shift_at_power(
+    sensor_data: xr.Dataset,
+    optimal_power: float,
+) -> Tuple[float, Optional[str]]:
+    """Fit the resonator dip at the chosen readout power."""
+    try:
+        iq_at_power = sensor_data.sel(power=optimal_power, method="nearest").IQ_abs
+        if iq_at_power.sizes.get("frequency_detuning", 0) < 3:
+            return np.nan, "insufficient frequency points at optimal power"
+        fit_at_power = peaks_dips(iq_at_power, "frequency_detuning")
+        shift = float(fit_at_power.position.data)
+        if not np.isfinite(shift):
+            return np.nan, "no resonator dip found at optimal power"
+        return shift, None
+    except (ValueError, KeyError, IndexError):
+        return np.nan, "no resonator dip found at optimal power"
+
+
+def _extract_relevant_fit_parameters(
+    fit: xr.Dataset,
+    node: QualibrationNode,
+    failure_reasons: list[Optional[str]],
+):
     """Add metadata to the fit dataset and fit result dictionary."""
-
-    # Get the fitted resonator frequency
     full_freq = np.array([s.readout_resonator.intermediate_frequency for s in node.namespace["sensors"]])
     res_freq = fit.frequency_shift + full_freq
     fit = fit.assign_coords(res_freq=("sensor", res_freq.data))
     fit.res_freq.attrs = {"long_name": "resonator frequency", "units": "Hz"}
-    # Assess whether the fit was successful or not
-    freq_success = np.abs(fit.frequency_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
-    nan_success = np.isnan(fit.frequency_shift.data) | np.isnan(fit.optimal_power.data)
-    success_criteria = freq_success & ~nan_success
+
+    span_hz = node.parameters.frequency_span_in_mhz * 1e6
+    freq_success = np.abs(fit.frequency_shift.data) < span_hz
+    finite_success = np.isfinite(fit.frequency_shift.data) & np.isfinite(fit.optimal_power.data)
+    success_criteria = freq_success & finite_success
     fit = fit.assign_coords(success=("sensor", success_criteria))
 
-    fit_results = {
-        s: FitParameters(
-            success=fit.sel(sensor=s).success.values.__bool__(),
-            resonator_frequency=float(fit.res_freq.sel(sensor=s).values),
-            frequency_shift=float(fit.frequency_shift.sel(sensor=s).data),
-            optimal_power=float(fit.optimal_power.sel(sensor=s).data),
+    fit_results = {}
+    for i, sensor_name in enumerate(fit.sensor.values):
+        sensor_success = bool(fit.sel(sensor=sensor_name).success.values)
+        reason = failure_reasons[i]
+        if sensor_success:
+            resolved_reason = None
+        elif reason is not None:
+            resolved_reason = reason
+        elif not finite_success[i]:
+            resolved_reason = "optimal power or frequency shift is NaN"
+        elif not freq_success[i]:
+            resolved_reason = "frequency shift outside sweep span"
+        else:
+            resolved_reason = "fit did not pass sanity checks"
+
+        fit_results[sensor_name] = FitParameters(
+            success=sensor_success,
+            resonator_frequency=float(fit.res_freq.sel(sensor=sensor_name).values),
+            frequency_shift=float(fit.frequency_shift.sel(sensor=sensor_name).data),
+            optimal_power=float(fit.optimal_power.sel(sensor=sensor_name).data),
+            failure_reason=resolved_reason,
         )
-        for s in fit.sensor.values
-    }
 
     return fit, fit_results
