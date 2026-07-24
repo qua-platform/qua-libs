@@ -11,11 +11,16 @@ from qualibration_libs.analysis import peaks_dips
 
 @dataclass
 class FitParameters:
-    """Stores the relevant resonator spectroscopy experiment fit parameters for a single sensor"""
+    """Fitted resonator spectroscopy results for a single sensor."""
 
     frequency: float
+    """Absolute readout frequency at the resonance dip, in Hz."""
+
     fwhm: float
+    """Lorentzian linewidth (FWHM of the |I + iQ| dip), in Hz."""
+
     success: bool
+    """True if the fit is within the sweep span and safe to use for the state update."""
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):

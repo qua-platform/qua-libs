@@ -38,18 +38,15 @@ simultaneously. This is done across various readout frequencies and amplitudes.
 Based on the results, one can then adjust the readout amplitude, choosing a
 readout amplitude value just before the observed frequency splitting.
 
-for each shot (1 … num_shots):
-    for each frequency offset df:
-        for each sensor:
-            tune readout tone to IF + df
-            for each amplitude scale a (→ readout power):
-                readout at power ∝ a²
-                save I, Q
-→ OPX returns a 2D map: frequency × power per sensor
-
 Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
     - Having instantiated a starting readout amplitude.
+
+Results (``node.results["fit_results"][<sensor>]``):
+    - ``optimal_power`` [dBm]: readout power just below the onset of frequency splitting.
+    - ``resonator_frequency`` [Hz]: absolute readout frequency at ``optimal_power``.
+    - ``frequency_shift`` [Hz]: fitted frequency offset at ``optimal_power`` (added to IF).
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
 
 State update:
     - The readout power: sensor.readout_resonator.set_output_power()

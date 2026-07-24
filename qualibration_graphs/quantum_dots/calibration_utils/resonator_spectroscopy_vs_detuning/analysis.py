@@ -11,13 +11,22 @@ from qualibration_libs.data import add_amplitude_and_phase
 
 @dataclass
 class FitParameters:
-    """Relevant fit outputs for resonator spectroscopy vs detuning."""
+    """Fitted resonator spectroscopy vs detuning results for a single sensor."""
 
     success: bool
+    """True if the fit is within the sweep span and safe to use for the state update."""
+
     resonator_frequency: float
+    """Absolute readout frequency at the PCA signal peak, in Hz."""
+
     frequency_shift: float
+    """Fitted readout frequency offset at the PCA peak, in Hz."""
+
     optimal_detuning: float
+    """QD pair gate voltage at the PCA signal peak, in V."""
+
     peak_pca_signal: float
+    """PCA signal amplitude at the peak (arbitrary units)."""
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):

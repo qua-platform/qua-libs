@@ -35,22 +35,20 @@ simultaneously. This is done across various readout frequencies and detuning val
 Based on the results, one can then adjust the readout frequency, choosing a
 readout frequency value which shows the strongest signal.
 
-for each shot (1 … num_shots):
-    for each readout frequency offset df:
-        tune all sensor readout tones to IF + df
-        for each QD detuning voltage det:
-            set gate voltages → det
-            readout all sensors → save I, Q
-        ramp gates back to 0 V
-→ OPX averages over shots and returns a 2D map: (frequency × detuning) per sensor
-
 Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
     - Having calibrated the resonator power (node 02b_resonator_spectroscopy_vs_power.py).
     - Having identified a suitable detuning transition.
 
+Results (``node.results["fit_results"][<sensor>]``):
+    - ``resonator_frequency`` [Hz]: absolute readout frequency at the PCA signal peak.
+    - ``frequency_shift`` [Hz]: fitted readout frequency offset at the peak (added to IF).
+    - ``optimal_detuning`` [V]: QD pair gate voltage at the PCA signal peak.
+    - ``peak_pca_signal``: PCA signal amplitude at the peak (arb. units).
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+
 State update:
-    - The readout frequency which maximises the PCA sigal.
+    - The readout frequency which maximises the PCA signal.
 """
 
 

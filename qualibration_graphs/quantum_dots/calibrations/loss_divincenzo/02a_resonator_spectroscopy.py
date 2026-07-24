@@ -34,18 +34,14 @@ This sequence involves measuring the resonator by sending a readout pulse and de
 The data is then post-processed to determine the resonator resonance frequency.
 This frequency is used to update the readout frequency in the state.
 
-for each shot (1 … num_shots):
-    for each frequency offset df:
-        for each sensor in batch:
-            tune readout tone to IF + df
-            send readout pulse → measure I, Q
-            wait for resonator to deplete
-            save I, Q
-→ OPX averages over shots and returns a 1D spectroscopy trace per sensor
-
 Prerequisites:
     - Having calibrated the time of flight, offsets, and gains (node 01a_time_of_flight.py).
     - Having initialized the QUAM state parameters for the readout pulse amplitude and duration.
+
+Results (``node.results["fit_results"][<sensor>]``):
+    - ``frequency`` [Hz]: absolute readout frequency at the resonance dip (IF + fitted offset).
+    - ``fwhm`` [Hz]: Lorentzian linewidth (full width at half maximum of the |I + iQ| dip).
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
 
 State update:
     - The readout frequency: sensor.readout_resonator.intermediate_frequency

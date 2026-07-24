@@ -11,12 +11,19 @@ from qualibration_libs.analysis import peaks_dips
 
 @dataclass
 class FitParameters:
-    """Stores the relevant node-specific fitted parameters used to update the state at the end of the node."""
+    """Fitted resonator spectroscopy vs power results for a single sensor."""
 
     success: bool
+    """True if the fit is within the sweep span and safe to use for the state update."""
+
     resonator_frequency: float
+    """Absolute readout frequency at the optimal power, in Hz."""
+
     frequency_shift: float
+    """Fitted readout frequency offset at the optimal power, in Hz."""
+
     optimal_power: float
+    """Readout power just below the onset of frequency splitting, in dBm."""
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
