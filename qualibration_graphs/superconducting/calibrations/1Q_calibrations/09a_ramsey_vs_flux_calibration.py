@@ -29,14 +29,15 @@ from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
-        RAMSEY WITH VIRTUAL Z ROTATIONS
-This program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement)
-for different idle times. Instead of detuning the qubit gates, the frame of the second
-x90 pulse is rotated (de-phased) to mimic an accumulated phase acquired for a given
-detuning after the idle time. This method has the advantage of playing resonant gates.
+        RAMSEY VERSUS FLUX CALIBRATION
+This program sweeps qubit flux bias during Ramsey idle time to characterize the qubit
+frequency dependence on flux. A Ramsey sequence (x90 - idle_time_with_flux_sweep - x90 - measurement)
+is played for different idle times and flux points. Frame rotations (virtual Z-rotations) on the
+second x90 pulse implement frequency detuning to observe Ramsey oscillations.
 
-From the results, one can fit the Ramsey oscillations and precisely measure the qubit
-resonance frequency and T2*.
+From the results, one fits the Ramsey oscillations to extract the frequency vs flux parabola,
+finding the flux sweet spot (flux_offset), frequency offset at the sweet spot, and the
+quadratic coefficient (frequency sensitivity to flux).
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under
@@ -47,7 +48,10 @@ Prerequisites:
       duration_optimization IQ_blobs) for better SNR.
 
 Next steps before going to the next node:
-    - Update the qubits frequency (f_01) in the state.
+    - Update the qubit flux offset (z.independent_offset or z.joint_offset) to the
+      calibrated sweet spot.
+    - Update the qubit frequency (f_01 and RF_frequency) with the fitted offset.
+    - Store freq_vs_flux_01_quad_term for use in flux-tuning applications.
     - Save the current state by calling machine.save()
 """
 
