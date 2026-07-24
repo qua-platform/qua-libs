@@ -1,7 +1,6 @@
 from typing import List, Literal, Optional
 
 from qualibrate.core import QualibrationNode
-from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.core import BatchableList
 from qualibration_libs.parameters.experiment import _make_batchable_list_from_multiplexed, BaseExperimentNodeParameters
 
@@ -12,7 +11,6 @@ from quam_builder.architecture.quantum_dots.operations.names import SingleQubitM
 
 __all__ = [
     "QuantumDotExperimentNodeParameters",
-    "VideoModeCommonParameters",
     "get_dots",
     "get_sensors",
     "get_xy_reference_pulse_name",
@@ -23,18 +21,6 @@ __all__ = [
 class QuantumDotExperimentNodeParameters(BaseExperimentNodeParameters):
     quantum_dots: Optional[List[str]] = None
     """The virtualised names of the QuantumDots in your VirtualGateSet."""
-
-
-class VideoModeCommonParameters(RunnableParameters):
-    run_in_video_mode: bool = True
-    """Optionally open Video Mode with the qualibration node."""
-    virtual_gate_set_id: Optional[str] = None
-    """Name of the associated VirtualGateSet in your QPU. """
-    video_mode_port: int = 8002
-    """Localhost port to open VideoMode with"""
-    dc_control: bool = False
-    """If an associated external DC offset exists."""
-    result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
 
 
 def _get_dots(machine: BaseQuamQD, node_parameters: QuantumDotExperimentNodeParameters):
