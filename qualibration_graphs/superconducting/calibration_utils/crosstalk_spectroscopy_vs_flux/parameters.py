@@ -79,11 +79,11 @@ def build_crosstalk_pairs(
 
     for target_name in node.parameters.target_qubits or []:
         if node.parameters.measure_self:
+            # Panel 0 = Step 1 self; Step 2 panels follow aggressor_qubits order (skipping T==A saves).
             pair_names = [target_name] + [name for name in aggressor_names if name != target_name]
-        elif node.parameters.multiplexed:
-            pair_names = list(aggressor_names)
         else:
-            pair_names = [name for name in aggressor_names if name != target_name]
+            # One panel per aggressor loop, same order for every target (includes T==A when listed).
+            pair_names = list(aggressor_names)
         pairs_by_target[target_name] = pair_names
         pairs_by_target_objs[target_name] = [node.machine.qubits[name] for name in pair_names]
 

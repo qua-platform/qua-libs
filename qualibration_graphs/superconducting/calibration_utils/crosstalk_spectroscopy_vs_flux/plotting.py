@@ -84,6 +84,8 @@ def plot_analysis(
     for i, target_qubit in enumerate(target_qubits):
         for j in range(n_pairs):
             aggressor_qubit = ds.aggressor.sel(qubit=target_qubit, pair=j).item()
+            if not aggressor_qubit or aggressor_qubit not in fit_results[target_qubit]:
+                continue
             fit_result = fit_results[target_qubit][aggressor_qubit]
             peak_result = peak_results.sel(qubit=target_qubit, aggressor=aggressor_qubit)
             panel = _select_pair_panel(ds, target_qubit, j)

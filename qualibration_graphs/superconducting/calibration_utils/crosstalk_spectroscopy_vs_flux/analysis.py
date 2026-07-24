@@ -127,8 +127,11 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     ds = convert_IQ_to_V(ds, target_qubits)
     ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
 
-    n_pairs = len(pairs_by_target[target_qubits[0].name])
-    aggressor_names = np.array([pairs_by_target[target_qubit.name] for target_qubit in target_qubits])
+    n_pairs = max(len(pairs_by_target[target_qubit.name]) for target_qubit in target_qubits)
+    aggressor_names = np.full((len(target_qubits), n_pairs), "", dtype=object)
+    for i, target_qubit in enumerate(target_qubits):
+        pair_names = pairs_by_target[target_qubit.name]
+        aggressor_names[i, : len(pair_names)] = pair_names
 
     full_freq = []
     flux_bias_sweep = []
@@ -138,7 +141,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
         flux_row = []
         det_row = []
         for aggressor_name in pairs_by_target[target_qubit.name]:
-            if target_qubit.name == aggressor_name:
+            if node.parameters.measure_self and target_qubit.name == aggressor_name:
                 detunings = self_sweep_grids["detuning"]
                 fluxes = self_sweep_grids["flux_bias"]
             else:
@@ -170,6 +173,8 @@ def fit_lorentzian_peaks(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
     for target_qubit in target_qubits:
         for pair_idx, aggressor_name in enumerate(pairs_by_target[target_qubit.name]):
+            if not aggressor_name:
+                continue
             panel = ds.sel(qubit=target_qubit.name, pair=pair_idx)
             da = panel.I.assign_coords(
                 flux_bias=("flux_bias", panel.flux_bias_sweep.values),
