@@ -137,9 +137,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Dimensionless scale factors applied in QUA to the max-amplitude pulse.
     # Geometric spacing: equal steps in log(power) from min_power to max_power.
     # amp_min corresponds to min_power_dbm; 1.0 corresponds to max_power_dbm.
-    amp_min = calculate_voltage_scaling_factor(
-        node.parameters.max_power_dbm, node.parameters.min_power_dbm
-    )
+    amp_min = calculate_voltage_scaling_factor(node.parameters.max_power_dbm, node.parameters.min_power_dbm)
     amps = np.geomspace(amp_min, 1, node.parameters.num_power_points)
 
     # Readout-frequency axis: offsets relative to calibrated IF [Hz] (same as 02a)
@@ -164,8 +162,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   I, Q, I_st, Q_st, n, n_st — same role as in 02a
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
 
-        a = declare(fixed)   # current amplitude scale factor (0…1 relative to max power)
-        df = declare(int)    # current readout frequency offset [Hz]
+        a = declare(fixed)  # current amplitude scale factor (0…1 relative to max power)
+        df = declare(int)  # current readout frequency offset [Hz]
 
         for multiplexed_sensors in sensors.batch():
             align()

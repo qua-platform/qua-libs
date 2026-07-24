@@ -71,9 +71,7 @@ def plot_individual_raw_data_with_fit(
 ):
     """Plot IQ_abs_norm vs readout frequency × power with MHz readout (bottom) and detuning (top) x-axes."""
     if_hz = _readout_if_hz(sensor_data)
-    sensor_data.assign_coords(
-        readout_frequency_MHz=sensor_data.full_freq / u.MHz
-    ).IQ_abs_norm.plot(
+    sensor_data.assign_coords(readout_frequency_MHz=sensor_data.full_freq / u.MHz).IQ_abs_norm.plot(
         ax=ax,
         add_colorbar=True,
         x="readout_frequency_MHz",

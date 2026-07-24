@@ -61,10 +61,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     ds = add_amplitude_and_phase(ds, "frequency_detuning", subtract_slope_flag=True)
     # Add the RF frequency as a coordinate of the raw dataset
     full_freq = np.array(
-        [
-            ds.frequency_detuning + s.readout_resonator.intermediate_frequency
-            for s in node.namespace["sensors"]
-        ]
+        [ds.frequency_detuning + s.readout_resonator.intermediate_frequency for s in node.namespace["sensors"]]
     )
     ds = ds.assign_coords(full_freq=(["sensor", "frequency_detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}

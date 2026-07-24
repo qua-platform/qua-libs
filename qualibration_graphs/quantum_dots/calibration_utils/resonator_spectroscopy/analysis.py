@@ -58,10 +58,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     """Process raw dataset to add amplitude and phase information."""
     ds = add_amplitude_and_phase(ds, "frequency_detuning", subtract_slope_flag=True)
     full_freq = np.array(
-        [
-            ds.frequency_detuning + q.readout_resonator.intermediate_frequency
-            for q in node.namespace["sensors"]
-        ]
+        [ds.frequency_detuning + q.readout_resonator.intermediate_frequency for q in node.namespace["sensors"]]
     )
     ds = ds.assign_coords(full_freq=(["sensor", "frequency_detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
