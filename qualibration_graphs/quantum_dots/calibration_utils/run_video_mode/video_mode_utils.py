@@ -98,9 +98,9 @@ def launch_video_mode(
         }
 
     qmm = machine.connect()
-    try: 
+    try:
         machine.create_virtual_dc_set(virtual_gate_id)
-    except: 
+    except:
         print("Was unable to create virtual DC set. Moving on without DC control. ")
     dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
 
@@ -117,7 +117,6 @@ def launch_video_mode(
 
         voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
 
-    
     virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
     data_acquirer = OPXDataAcquirer(
         qmm=qmm,
