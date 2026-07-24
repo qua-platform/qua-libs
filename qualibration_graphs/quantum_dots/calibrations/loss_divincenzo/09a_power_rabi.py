@@ -88,46 +88,60 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the 1D amplitude sweep and the QUA pulse sequence."""
+    # ── Experiment parameters (Python side) ──────────────────────────────
+
     node.namespace["qubits"] = qubits = get_qubits(node)
 
-    n_avg = node.parameters.num_shots  # The number of averages
-    # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+    n_avg = node.parameters.num_shots  # repetitions averaged at each amplitude point
+    operation = node.parameters.operation  # qubit gate played during manipulation (x180 or x90)
+
+    # Amplitude axis: dimensionless prefactor applied to the calibrated gate amplitude.
+    # Must stay within [-2, 2) for QUA fixed-point arithmetic.
     amps = np.arange(
         node.parameters.min_amp_factor,
         node.parameters.max_amp_factor,
         node.parameters.amp_factor_step,
     )
 
-    # Register the sweep axes to be added to the dataset when fetching data
+    # Metadata for data fetching: labels joint-outcome streams when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "amp_prefactor": xr.DataArray(
             amps, attrs={"long_name": "pulse amplitude prefactor"}
         ),
     }
-    operation = node.parameters.operation
 
-
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
-        # Declare QUA variables
-        a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
+
+        # Real-time variables:
+        # a  : current amplitude prefactor for the manipulation gate
+        # n  : shot counter
+        # p2 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
+        # p1 : pre-manipulation measurement outcome (only used when parity_measurement=True)
+        a = declare(fixed)
         n = declare(int)
 
         p2, p1, parity_streams = declare_streams(node, qubits, stream_fn=declare_output_stream)
+        n_st = declare_output_stream()  # exposes shot index "n" to the PC (progress bar)
 
-        n_st = declare_output_stream()
-
-        # Main experiment loop
+        # One qubit at a time (sequential voltage sequencing on the dot gates)
         for qubit in qubits:
+
+            # ── OUTER LOOP: average over shots ───────────────────────────
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
+                # ── INNER LOOP: sweep amplitude prefactor ────────────────
                 with for_(*from_array(a, amps)):
+
+                    # Optional pre-measurement at the empty bias point (parity readout)
                     if node.parameters.parity_measurement:
                         qubit.empty()
                         a1 = qubit.measure()
 
+                    # Heralded initialization to the target spin state at the manipulation bias
                     qubit.initialize(
                         target_state=node.parameters.target_state,
                         max_loops=node.parameters.max_loops,
@@ -135,30 +149,35 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     )
 
                     align()
+                    # Play the selected gate at the current amplitude prefactor
                     getattr(qubit, operation)(amplitude_scale=a)
                     align()
 
+                    # Post-measurement: did the manipulation flip the spin?
                     a2 = qubit.measure()
-                    
-                    qubit.voltage_sequence.ramp_to_zero()
 
-                    # Important align() - otherwise next qubit pulse seems to play way too early
-                    align()
+                    # Return gate voltages to zero before the next shot
+                    qubit.voltage_sequence.ramp_to_zero()
+                    align()  # sync before the next iteration (avoids pulses playing too early)
 
                     assign(p2, Cast.to_int(a2))
-
                     if node.parameters.parity_measurement:
                         assign(p1, Cast.to_int(a1))
 
+                    # Route outcome to joint-outcome streams (p0_p0, p1_p0, … or p)
                     save_measurement(node, qubit.name, p1, p2, parity_streams)
 
-        # Stream processing
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
 
             n_amps = len(amps)
 
             for qubit in qubits:
+                # Each save() is one amplitude point.
+                # .buffer(n_amps) : group points along the amplitude axis
+                # .average()      : average over all shots (n_avg repetitions)
+                # Result: 1D joint-outcome counts vs amp_prefactor per qubit
                 buffer_streams(node, qubit.name, parity_streams, n_amps)
 
 

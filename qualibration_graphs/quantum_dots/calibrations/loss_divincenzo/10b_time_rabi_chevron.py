@@ -99,26 +99,29 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the 2D detuning × duration chevron sweep and the QUA pulse sequence."""
     u = unit(coerce_to_integer=True)
 
-    node.namespace["qubits"] = qubits = get_qubits(node)
-    num_qubits = len(qubits)
+    # ── Experiment parameters (Python side) ──────────────────────────────
 
-    n_avg = node.parameters.num_shots  # The number of averages
-    # state_discrimination = node.parameters.use_state_discrimination
-    # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+    node.namespace["qubits"] = qubits = get_qubits(node)
+
+    n_avg = node.parameters.num_shots  # repetitions averaged at each (detuning, duration) point
+    operation = node.parameters.operation  # qubit gate whose duration is swept (x180 or x90)
+
+    # Duration axis [ns]: sweep around the expected π-pulse length (quantised to 4 ns on the OPX)
     pulse_durations = np.arange(
         node.parameters.min_wait_time_in_ns,
         node.parameters.max_wait_time_in_ns,
         node.parameters.time_step_in_ns,
     )
-    # Qubit detuning sweep with respect to their resonance frequencies
+
+    # Frequency axis: offsets relative to each qubit's current XY intermediate frequency [Hz]
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span // 2, +span // 2, step)
 
-    # Register the sweep axes to be added to the dataset when fetching data
+    # Metadata for data fetching: labels joint-outcome streams when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "detuning": xr.DataArray(
@@ -128,28 +131,40 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}
         ),
     }
-    operation = node.parameters.operation
 
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
-        # Declare QUA variables using machine's method
+
+        # Real-time variables:
+        # t  : current manipulation pulse duration [ns]
+        # df : current XY drive frequency offset [Hz]
+        # n  : shot counter
+        # p2 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
+        # p1 : pre-manipulation measurement outcome (only used when parity_measurement=True)
         t = declare(int)
         df = declare(int)
         n = declare(int)
 
-        # Post measurement (and optional pre measurement); int for stream averaging
         p2, p1, parity_streams = declare_streams(node, qubits)
-
         n_st = declare_output_stream()
 
-        # Main experiment loop (outer: detuning df, inner: pulse duration t)
         for qubit in qubits:
+            # Remember calibrated IF so we can restore it after the detuning sweep
             intermediate_frequency = qubit.xy.intermediate_frequency
+
+            # ── OUTERMOST LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
+                # ── MIDDLE LOOP: sweep drive detuning ────────────────────
                 with for_(*from_array(df, dfs)):
+
+                    # ── INNER LOOP: sweep pulse duration ─────────────────
                     with for_(*from_array(t, pulse_durations)):
+
+                        # Retune the XY drive to (calibrated IF + df)
                         qubit.xy.update_frequency(intermediate_frequency + df)
+
                         if node.parameters.parity_measurement:
                             qubit.empty()
                             a1 = qubit.measure()
@@ -161,25 +176,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         )
 
                         align()
+                        # Play the selected gate at the current duration (chevron / time-Rabi)
                         getattr(qubit, operation)(duration=t)
                         align()
 
                         a2 = qubit.measure()
 
                         qubit.voltage_sequence.ramp_to_zero()
-
                         align()
 
                         assign(p2, Cast.to_int(a2))
-
                         if node.parameters.parity_measurement:
                             assign(p1, Cast.to_int(a1))
 
                         save_measurement(node, qubit.name, p1, p2, parity_streams)
 
+            # Restore the qubit's calibrated drive frequency after the sweep
             qubit.xy.update_frequency(intermediate_frequency)
 
-        # Stream processing
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
 
@@ -187,6 +202,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_freqs = len(dfs)
 
             for qubit in qubits:
+                # Save order per stream: for each detuning, sweep all duration values.
+                # .buffer(n_durations) → inner axis = pulse_duration
+                # .buffer(n_freqs)    → outer axis = detuning
+                # .average()           → average over shots
+                # Result: 2D joint-outcome counts vs (detuning, pulse_duration) per qubit
                 buffer_streams(node, qubit.name, parity_streams, n_freqs, n_durations)
 
 

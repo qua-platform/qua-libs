@@ -90,41 +90,52 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the 1D pulse-duration sweep and the QUA pulse sequence."""
+    # ── Experiment parameters (Python side) ──────────────────────────────
+
     node.namespace["qubits"] = qubits = get_qubits(node)
 
-    n_avg = node.parameters.num_shots  # The number of averages
-    # Pulse duration sweep in nanoseconds
+    n_avg = node.parameters.num_shots  # repetitions averaged at each duration point
+    operation = node.parameters.operation  # qubit gate whose duration is swept (x180 or x90)
+
+    # Duration axis [ns]: sweep around the expected π-pulse length (quantised to 4 ns on the OPX)
     pulse_durations = np.arange(
         node.parameters.min_wait_time_in_ns,
         node.parameters.max_wait_time_in_ns,
         node.parameters.time_step_in_ns,
     )
 
-    # Register the sweep axes to be added to the dataset when fetching data
+    # Metadata for data fetching: labels joint-outcome streams when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "pulse_duration": xr.DataArray(
             pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}
         ),
     }
-    operation = node.parameters.operation
 
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
-        # Declare QUA variables
+
+        # Real-time variables:
+        # t  : current manipulation pulse duration [ns]
+        # n  : shot counter
+        # p2 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
+        # p1 : pre-manipulation measurement outcome (only used when parity_measurement=True)
         t = declare(int)
         n = declare(int)
 
-        # Post measurement (and optional pre measurement); int for stream averaging
         p2, p1, parity_streams = declare_streams(node, qubits)
-
         n_st = declare_output_stream()
 
-        # Main experiment loop
         for qubit in qubits:
+
+            # ── OUTER LOOP: average over shots ───────────────────────────
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
+
+                # ── INNER LOOP: sweep pulse duration ─────────────────────
                 with for_(*from_array(t, pulse_durations)):
+
                     if node.parameters.parity_measurement:
                         qubit.empty()
                         a1 = qubit.measure()
@@ -136,29 +147,32 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     )
 
                     align()
+                    # Play the selected gate at the current duration (time-Rabi)
                     getattr(qubit, operation)(duration=t)
                     align()
 
                     a2 = qubit.measure()
 
                     qubit.voltage_sequence.ramp_to_zero()
-
                     align()
 
                     assign(p2, Cast.to_int(a2))
-
                     if node.parameters.parity_measurement:
                         assign(p1, Cast.to_int(a1))
 
                     save_measurement(node, qubit.name, p1, p2, parity_streams)
 
-        # Stream processing
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
 
             n_durations = len(pulse_durations)
 
             for qubit in qubits:
+                # Each save() is one duration point.
+                # .buffer(n_durations) : group points along the duration axis
+                # .average()           : average over all shots (n_avg repetitions)
+                # Result: 1D joint-outcome counts vs pulse_duration per qubit
                 buffer_streams(node, qubit.name, parity_streams, n_durations)
 
 
