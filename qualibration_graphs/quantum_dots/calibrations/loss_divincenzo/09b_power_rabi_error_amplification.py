@@ -11,22 +11,23 @@ from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from qualibration_libs.parameters.experiment import get_qubits
+
 from calibration_utils.measurement_utils import (
+    buffer_streams,
     declare_streams,
     save_measurement,
-    buffer_streams,
 )
 from calibration_utils.power_rabi_error_amplification import (
     Parameters,
-    process_raw_dataset,
     fit_raw_data,
+    generate_simulated_dataset,
     log_fitted_results,
     plot_all,
-    generate_simulated_dataset,
+    process_raw_dataset,
 )
-from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters.experiment import get_qubits
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
@@ -72,20 +73,19 @@ node = QualibrationNode[Parameters, Quam](
     parameters=Parameters(),
 )
 
-
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    node.parameters.qubits = ["q1", "q2"]
-    node.parameters.use_simulated_data = True  # run analysis without hardware
+    # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.qubits = ["q1", "q2"]
+    # node.parameters.use_simulated_data = True
     pass
 
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
-
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)

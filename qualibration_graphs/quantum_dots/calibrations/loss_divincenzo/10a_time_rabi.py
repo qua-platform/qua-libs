@@ -5,29 +5,29 @@ import xarray as xr
 
 from qm.qua import *
 
+from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.loops import from_array
-from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.time_rabi import (
-    Parameters,
-    process_raw_dataset,
-    fit_raw_data,
-    log_fitted_results,
-    plot_all,
-    generate_simulated_dataset,
-)
-from qualibration_libs.parameters.experiment import get_qubits
+
 from calibration_utils.measurement_utils import (
+    buffer_streams,
     declare_streams,
     save_measurement,
-    buffer_streams,
 )
-from qualibration_libs.runtime import simulate_and_plot
+from calibration_utils.time_rabi import (
+    Parameters,
+    fit_raw_data,
+    generate_simulated_dataset,
+    log_fitted_results,
+    plot_all,
+    process_raw_dataset,
+)
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters.experiment import get_qubits
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
@@ -70,19 +70,23 @@ State update:
 """
 
 
+# Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="10a_time_rabi", description=description, parameters=Parameters()
+    name="10a_time_rabi",
+    description=description,
+    parameters=Parameters(),
 )
-
 
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["q1", "q2"]
-    node.parameters.use_simulated_data = True  # run analysis without hardware
+    # node.parameters.qubits = ["q1", "q2"]
+    # node.parameters.use_simulated_data = True
     pass
+
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
