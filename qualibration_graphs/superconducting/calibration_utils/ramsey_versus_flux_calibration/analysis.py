@@ -230,7 +230,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     decay.attrs = {"long_name": "decay", "units": "nSec"}
 
     tau = 1 / fit_data.sel(fit_vals="decay")
-    tau.attrs = {"long_name": "T2*", "units": "uSec"}
+    tau.attrs = {"long_name": "T2*", "units": "nSec"}
 
     frequency = frequency_unfolded.where(frequency_unfolded > 0, drop=True)
 
