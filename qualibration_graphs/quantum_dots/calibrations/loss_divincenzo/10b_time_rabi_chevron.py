@@ -133,7 +133,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(*from_array(df, dfs)):
                     with for_(*from_array(t, pulse_durations)):
                         qubit.xy.update_frequency(intermediate_frequency + df)
-                        if node.parameters.parity_pre_measurement:
+                        if node.parameters.parity_measurement:
                             qubit.empty()
                             a1 = qubit.measure()
 
@@ -155,7 +155,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         assign(p2, Cast.to_int(a2))
 
-                        if node.parameters.parity_pre_measurement:
+                        if node.parameters.parity_measurement:
                             assign(p1, Cast.to_int(a1))
 
                         save_measurement(node, qubit.name, p1, p2, parity_streams)
@@ -242,7 +242,7 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = process_streams(
         node.results["ds_raw"],
         [q.name for q in node.namespace["qubits"]],
-        parity_pre_measurement=node.parameters.parity_pre_measurement,
+        parity_measurement=node.parameters.parity_measurement,
         sweep_dims=("detuning", "pulse_duration"),
     )
 
@@ -256,6 +256,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = fit_results
     log_fitted_results(fit_results, log_callable=node.log)
+    node.outcomes = {
+        qname: ("successful" if r["success"] else "failed")
+        for qname, r in fit_results.items()
+    }
 
 
 # %% {Plot_data}

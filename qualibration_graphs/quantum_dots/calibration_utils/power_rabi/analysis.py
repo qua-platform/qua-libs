@@ -342,7 +342,7 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit optimal amplitude per qubit from power-Rabi data."""
     qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
     qubit_names = _power_rabi_qubit_names(ds, analysis_signal, qubits)
 
     amps = np.asarray(ds.amp_prefactor.values, dtype=float)

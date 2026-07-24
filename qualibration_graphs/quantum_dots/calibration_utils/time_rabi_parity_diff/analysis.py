@@ -300,7 +300,7 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit t_π per qubit from 1D time-Rabi data.  Returns ``(ds_fit, fit_results)``."""
     qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
     qubit_names = get_parity_item_names(
         ds,
         analysis_signal,

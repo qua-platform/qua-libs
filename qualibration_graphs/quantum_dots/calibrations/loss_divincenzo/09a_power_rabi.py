@@ -57,7 +57,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.parity_pre_measurement = True
+    node.parameters.parity_measurement = True
     node.parameters.simulate = True
     pass
 
@@ -106,7 +106,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
 
                 with for_(*from_array(a, amps)):
-                    if node.parameters.parity_pre_measurement:
+                    if node.parameters.parity_measurement:
                         qubit.empty()
                         a1 = qubit.measure()
 
@@ -130,7 +130,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     assign(p2, Cast.to_int(a2))
 
-                    if node.parameters.parity_pre_measurement:
+                    if node.parameters.parity_measurement:
                         assign(p1, Cast.to_int(a1))
 
                     save_measurement(node, qubit.name, p1, p2, parity_streams)
@@ -214,7 +214,7 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = process_streams(
         node.results["ds_raw"],
         [q.name for q in node.namespace["qubits"]],
-        parity_pre_measurement=node.parameters.parity_pre_measurement,
+        parity_measurement=node.parameters.parity_measurement,
         sweep_dims=("amp_prefactor",),
     )
 
@@ -258,7 +258,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
-            q.x.update(pi_amplitude=opt_prefactor * q.x.pi_pulse.amplitude)
+            getattr(q, node.parameters.operation).update(amplitude_scale=opt_prefactor)
 
 
 # %% {Save_results}

@@ -13,7 +13,7 @@ from calibration_utils.power_rabi.analysis import FFT_FREQ_MIN, FFT_FREQ_MAX
 
 def _get_qubit_names_from_ds(
     ds: xr.Dataset,
-    analysis_signal: str = "E_p2_given_p1_0",
+    analysis_signal: str = "E_p1_given_p0_0",
 ) -> List[str]:
     signal_prefix = f"{analysis_signal}_"
     signal_vars = [
@@ -122,8 +122,8 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p2_given_p1_0",
-    parity_pre_measurement: bool | None = None,
+    analysis_signal: str = "E_p1_given_p0_0",
+    parity_measurement: bool | None = None,
 ) -> "plt.Figure":
     """Plot power-Rabi trace and FFT for each qubit.
 
@@ -136,8 +136,8 @@ def plot_raw_data_with_fit(
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
 
-    if parity_pre_measurement is None:
-        parity_pre_measurement = any(
+    if parity_measurement is None:
+        parity_measurement = any(
             v.startswith(f"{analysis_signal}_") or v.startswith("p0_p0_")
             for v in ds.data_vars
         )
@@ -184,7 +184,7 @@ def plot_raw_data_with_fit(
 
     fig.suptitle(
         f"Power Rabi ({analysis_signal})"
-        if parity_pre_measurement
+        if parity_measurement
         else "Power Rabi (single measurement)"
     )
     fig.tight_layout()

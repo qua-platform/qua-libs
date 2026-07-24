@@ -382,7 +382,7 @@ def fit_raw_data_error_amplified(
     (ds_fit, fit_results) : tuple
     """
     qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
     qubit_names = _error_amp_qubit_names(ds, analysis_signal, qubits)
 
     amps = np.asarray(ds.amp_prefactor.values, dtype=float)
