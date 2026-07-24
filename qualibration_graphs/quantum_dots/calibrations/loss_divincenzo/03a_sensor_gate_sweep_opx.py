@@ -14,14 +14,14 @@ from qualang_tools.loops import from_array
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.sensor_gate_sweep import Parameters
-from calibration_utils.sensor_gate_sweep import (
+from calibration_utils.sensor_dot import Parameters
+from calibration_utils.sensor_dot import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
     generate_simulated_dataset,
 )
-from calibration_utils.sensor_gate_sweep import plot_raw_phase, plot_amplitude_with_fit
+from calibration_utils.sensor_dot import plot_raw_phase, plot_amplitude_with_fit
 # from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
