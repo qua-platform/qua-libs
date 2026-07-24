@@ -287,9 +287,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
-    fig_raw_fit = plot_raw_data_with_fit(
-        node.results["ds_fit"], node.namespace["sensors"], node.results["ds_fit"]
-    )
+    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_fit"], node.namespace["sensors"])
     plt.show()
     node.results["figures"] = {"amplitude": fig_raw_fit}
 

@@ -1,39 +1,68 @@
 from typing import List
+
+import matplotlib.pyplot as plt
 import xarray as xr
 from matplotlib.axes import Axes
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 
-from quam_builder.architecture.quantum_dots.components import SensorDot
+from calibration_utils.common_utils.plot_style import apply_sensor_outcome_style, sensor_success
+
+PCA_PEAK_LEGEND = [
+    Line2D(
+        [0],
+        [0],
+        marker="x",
+        color="cyan",
+        markeredgecolor="black",
+        linestyle="None",
+        markersize=8,
+        label="PCA peak",
+    ),
+]
 
 
-def plot_raw_data_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds_fit: xr.Dataset, sensors: List) -> Figure:
     """Plot PCA signal maps and extracted optimal points for all sensors."""
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
+    fig, axes = plt.subplots(1, num_sensors, figsize=(max(5 * num_sensors, 8), 5), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensor=sensor.name)
-        fit_data = fits.sel(sensor=sensor.name) if fits is not None else None
-
-        plot_individual_raw_data_with_fit(ax, sensor_data, sensor.name, fit_data)
+        sensor_data = ds_fit.sel(sensor=sensor.name)
+        fit_data = ds_fit.sel(sensor=sensor.name)
+        plot_individual_raw_data_with_fit(
+            ax,
+            sensor_data,
+            sensor.name,
+            fit_data,
+            sensor_success(ds_fit, sensor.name),
+        )
 
     fig.suptitle("Resonator spectroscopy vs detuning (PCA signal)")
-    fig.set_size_inches(15, 9)
     fig.tight_layout()
     return fig
 
 
-def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None):
-    """Plot a single sensor PCA signal map with optional optimal-point marker."""
+def plot_individual_raw_data_with_fit(
+    ax: Axes,
+    sensor_data: xr.Dataset,
+    sensor_id: str,
+    fit: xr.Dataset,
+    success: bool | None,
+):
+    """Plot IQ background with PCA signal overlay and optional peak marker."""
     sensor_data.assign_coords(freq_GHz=sensor_data.full_freq / 1e9).IQ_abs.plot(
-        ax=ax, add_colorbar=False, x="freq_GHz", y="detuning", linewidth=0.5
+        ax=ax,
+        add_colorbar=False,
+        x="freq_GHz",
+        y="detuning",
+        linewidth=0.5,
     )
     ax.set_xlabel("Readout frequency [GHz]")
     ax.set_ylabel("Detuning [V]")
-    ax.set_title(sensor_id)
 
-    if fit is not None:
+    if "pca_signal_abs" in fit:
         sensor_data.assign_coords(freq_GHz=sensor_data.full_freq / 1e9).assign(
             {"pca_signal": fit.pca_signal_abs}
         ).pca_signal.plot(
@@ -44,16 +73,16 @@ def plot_individual_raw_data_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_
             cmap="magma",
             alpha=0.7,
         )
-        try:
-            if bool(fit.success):
-                ax.scatter(
-                    float(fit.res_freq) / 1e9,
-                    float(fit.optimal_detuning),
-                    color="cyan",
-                    edgecolors="black",
-                    s=80,
-                    marker="x",
-                    zorder=10,
-                )
-        except Exception:
-            pass
+
+    if success and "res_freq" in fit.coords and "optimal_detuning" in fit.coords:
+        ax.scatter(
+            float(fit.res_freq) / 1e9,
+            float(fit.optimal_detuning),
+            color="cyan",
+            s=80,
+            marker="x",
+            zorder=10,
+        )
+        ax.legend(handles=PCA_PEAK_LEGEND, loc="upper right", fontsize=8)
+
+    apply_sensor_outcome_style(ax, sensor_id, success)

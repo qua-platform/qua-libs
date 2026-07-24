@@ -245,7 +245,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
     fig_raw_phase = plot_raw_phase(node.results["ds_fit"], node.namespace["sensors"])
     fig_fit_amplitude = plot_raw_amplitude_with_fit(
-        node.results["ds_fit"], node.namespace["sensors"], node.results["ds_fit"]
+        node.results["ds_fit"], node.namespace["sensors"]
     )
     plt.show()
     # Store the generated figures
