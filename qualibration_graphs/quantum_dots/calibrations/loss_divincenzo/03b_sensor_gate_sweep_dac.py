@@ -66,10 +66,10 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.num_shots = 2
     node.parameters.offset_min = -0.2
     node.parameters.offset_max = 0.2
-    node.parameters.offset_step = 0.001
+    node.parameters.offset_step = 0.01
     # node.parameters.simulate = True
-    node.parameters.duration_after_step = 1000
-    node.parameters.dac_settling_time_s = 0.5
+    node.parameters.duration_after_step = 16
+    node.parameters.dac_settling_time_s = 0.001
     # node.parameters.simulate = False
     node.parameters.use_simulated_data = True
     node.parameters.peak_fit_side = "right"
@@ -94,21 +94,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     num_sensors = len(sensors)
-
-    # Collect sensor gate set IDs and ensure that the GateSets have a corresponding VirtualDCSet
-    for s_name in node.parameters.sensor_names: 
-        s = node.machine.sensor_dots[s_name]
-        node.namespace["gate_set_id"] = gate_set_id = s.voltage_sequence.gate_set.name
-
-        # Look for the corresponding VirtualDCSet
-        virtual_dc_set = node.machine.dc_sets.get(gate_set_id, None)
-
-        # Try to create a VirtualDCSet with the same gate set ID if not found
-        if virtual_dc_set is None: 
-            # Throw an error if the VirtualDCSet cannot be created
-            node.machine.create_virtual_dc_set(
-                gate_set_id, 
-            )
     
     # Extract the sweep parameters and axes from the node parameters
     n_avg = node.parameters.num_shots
@@ -128,7 +113,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             bias_offsets, attrs={"long_name": "Sensor bias offset", "units": "V"}
         ),
     }
-    dot_pair = [node.machine.get_component(qp).quantum_dot_pair for qp in node.parameters.qubit_pair_to_step][0]
+    if node.parameters.qubit_pair_to_step is not None:
+        dot_pair = [node.machine.get_component(qp).quantum_dot_pair for qp in node.parameters.qubit_pair_to_step][0]
 
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
@@ -138,16 +124,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         )
 
         sensor_idx = declare(int)
-        with for_(sensor_idx, 0, sensor_idx < len(bias_offsets), sensor_idx + 1): 
+        for multiplexed_sensors in sensors.batch():
             sequences_in_batch = {
                 sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence
                 for sensor in multiplexed_sensors.values()
             }
-            pause()
-            # During pause, will step the DAC
 
-            wait(node.parameters.duration_after_step)
-            for multiplexed_sensors in sensors.batch():
+            with for_(sensor_idx, 0, sensor_idx < len(bias_offsets), sensor_idx + 1): 
+                pause()
+                # During pause, will step the DAC
+
+                wait(node.parameters.duration_after_step)
+
                 align()
                 with for_(n, 0, n < n_avg, n + 1):
                     save(n, n_st)
@@ -155,10 +143,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     if node.parameters.qubit_pair_to_step is not None: 
                         dot_pair.voltage_sequence.step_to_point(f"{dot_pair.name}_measure")
 
-                    # Track the sticky duration through the maximum readout pulse in the multiplexed batch
-                    dot_pair.voltage_sequence.track_sticky_duration(
-                        int(max(k.readout_resonator.operations["readout"].length for k in multiplexed_sensors.values()))
-                    )
+                        # Track the sticky duration through the maximum readout pulse in the multiplexed batch
+                        dot_pair.voltage_sequence.track_sticky_duration(
+                            int(max(k.readout_resonator.operations["readout"].length for k in multiplexed_sensors.values()))
+                        )
 
                     for i, sensor in multiplexed_sensors.items():
                         align()
@@ -216,34 +204,40 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Connect to the QOP
     qmm = node.machine.connect()
 
-
     # Get the config from the machine
     config = node.machine.generate_config()
 
-    y_name = node.parameters.dac_sensor_name
-    gate = getattr(gates, y_name)
-    # Query DAC offset
-    node.namespace["dac_offset"] = dac_offset = gate.get_voltage()
+    for s in node.parameters.sensor_names:  
+        gate_set_id = node.machine.sensor_dots[s].voltage_sequence.gate_set.name
+        node.namespace[f"{s}_dac_offset"] = node.machine.virtual_dc_sets[gate_set_id].get_voltage(s, requery = True)
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
 
     import time
     qm = qmm.open_qm(config)
     node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
     try:
-        for i, y_value in enumerate(node.namespace["sensor_axis_values"]):
-            while not job.is_paused(): 
-                time.sleep(0.1)
+        for multiplexed_sensors in node.namespace["sensors"].batch(): 
             
-            dac_value_to_play = dac_offset + y_value
+            for i, y_value in enumerate(node.namespace["sensor_axis_values"]):
+                while not job.is_paused(): 
+                    time.sleep(0.1)
+                
+                voltages_by_gate_set = {}
+                for sensor_idx, s in multiplexed_sensors.items(): 
+                    gate_set_id = node.machine.sensor_dots[s.name].voltage_sequence.gate_set.name
+                    value_to_play = node.namespace[f"{s.name}_dac_offset"] + y_value
+                    voltages_by_gate_set.setdefault(gate_set_id, {})[s.name] = value_to_play
 
-            print(f"Applying {dac_value_to_play: .4f} to the DAC ({100*i/len(node.namespace["sensor_axis_values"]): .1f} %)")
-            gate.set_voltage(dac_value_to_play)
-            # Wait time after setting
-            time.sleep(node.parameters.dac_settling_time_s)
+                    print(f"Applying {value_to_play: .4f} to the channel {s.name}: ({100*i/len(node.namespace["sensor_axis_values"]): .1f} %)")
+                for gate_set_id, voltages_dict in voltages_by_gate_set.items():
+                    node.machine.virtual_dc_sets[gate_set_id].set_voltages(voltages_dict)
 
-            print(f"Voltage set to {gate.get_voltage()}")
+                # Wait time after setting
+                time.sleep(node.parameters.dac_settling_time_s)
 
-            job.resume()
+                #print(f"Voltage set to {node.machine.virtual_dc_sets[gate_set_id].get_voltage(s.name, requery = True)}")
+
+                job.resume()
 
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
@@ -252,18 +246,17 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node
             )
         # Display the execution report to expose possible runtime errors
         print(job.execution_report())
         # Register the raw dataset, reordering if the scan mode requires it (e.g. spiral)
         node.results["ds_raw"] = dataset
     finally: 
-        print(f"Applying initial offset of {dac_offset}V")
-        gate.set_voltage(dac_offset)
-        print(f"Applied. Measuring {gate.get_voltage()}V")
-        close_dacs(dac1, dac2)
-
+        print(f"Re-applying initial offsets.")
+        for s in node.parameters.sensor_names:  
+            gate_set_id = node.machine.sensor_dots[s].voltage_sequence.gate_set.name
+            node.machine.virtual_dc_sets[gate_set_id].set_voltages({s: node.namespace[f"{s}_dac_offset"]})
+        
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):

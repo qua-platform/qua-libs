@@ -66,7 +66,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     node.parameters.offset_max = 0.4
     node.parameters.offset_step = 0.001
     # node.parameters.simulate = True
-    node.parameters.use_simulated_data = True
+    node.parameters.use_simulated_data = False
     node.parameters.peak_fit_side = "left"
     # node.parameters.duration_after_step = 5000
     # node.parameters.simulate = True
@@ -208,7 +208,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
