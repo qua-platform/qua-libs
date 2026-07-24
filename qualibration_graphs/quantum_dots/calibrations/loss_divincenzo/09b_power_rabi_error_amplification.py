@@ -15,14 +15,15 @@ from calibration_utils.measurement_utils import (
     declare_streams,
     save_measurement,
     buffer_streams,
-    process_streams,
 )
 from calibration_utils.power_rabi import (
     ErrorAmplifiedParameters as Parameters,
     fit_raw_data_error_amplified,
     log_fitted_results_error_amplified,
     plot_raw_data_error_amplified,
+    generate_simulated_dataset_error_amplified as generate_simulated_dataset,
 )
+from calibration_utils.power_rabi.error_amplification_analysis import process_raw_dataset
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -57,7 +58,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # node.parameters.qubits = ["Q1", "Q2"]
+    node.parameters.qubits = ["q1", "q2"]
+    node.parameters.use_simulated_data = True  # run analysis without hardware
     pass
 
 
@@ -66,7 +68,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     node.namespace["qubits"] = qubits = get_qubits(node)
@@ -145,7 +147,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Simulate}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
@@ -163,7 +167,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -192,24 +198,20 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Compute conditional expectations from joint-outcome streams."""
-    node.results["ds_raw"] = process_streams(
-        node.results["ds_raw"],
-        [q.name for q in node.namespace["qubits"]],
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("n_pulses", "amp_prefactor"),
-    )
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated error-amplified power-Rabi data so the full analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the "fit_results" dictionary."""
-    ds_fit, fit_results = fit_raw_data_error_amplified(node.results["ds_raw"], node)
-    node.results["ds_fit"] = ds_fit
+    """Process joint-outcome streams, fit error-amplified power-Rabi data, and store results."""
+    ds_processed = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data_error_amplified(ds_processed, node)
     node.results["fit_results"] = fit_results
     log_fitted_results_error_amplified(fit_results, log_callable=node.log)
     node.outcomes = {
@@ -221,9 +223,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot the processed and fitted data."""
     fig = plot_raw_data_error_amplified(
-        node.results["ds_raw"],
+        node.results["ds_fit"],
         node.results.get("ds_fit"),
         node.namespace["qubits"],
         node.results.get("fit_results", {}),

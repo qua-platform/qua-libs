@@ -185,7 +185,7 @@ def _analyse_single_qubit(
     Returns
     -------
     dict with ``opt_amp``, ``rabi_frequency``, ``decay_rate``,
-    ``gauss_decay_rate``, ``n_eff``, ``success``, and ``_diag``.
+    ``gauss_decay_rate``, ``n_eff``, and ``success``.
     """
     n_np = signal_2d.shape[0]
 
@@ -311,6 +311,19 @@ def _analyse_single_qubit(
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
+    from calibration_utils.measurement_utils.measurement_streams import process_streams
+
+    qubits = node.namespace["qubits"]
+    return process_streams(
+        ds,
+        [q.name for q in qubits],
+        parity_measurement=node.parameters.parity_measurement,
+        sweep_dims=("n_pulses", "amp_prefactor"),
+    )
+
+
 def _error_amp_qubit_names(
     ds: xr.Dataset,
     analysis_signal: str,
@@ -333,7 +346,7 @@ def _as_n_pulses_amp_signal(da: xr.DataArray, qname: str) -> np.ndarray:
         else:
             raise ValueError(
                 f"{da.name!r} for {qname!r} still has a non-singleton qubit "
-                f"dimension. Run process_raw_data before fit_raw_data_error_amplified."
+                f"dimension. Run process_raw_dataset before fit_raw_data_error_amplified."
             )
 
     expected_dims = ("n_pulses", "amp_prefactor")
@@ -389,6 +402,7 @@ def fit_raw_data_error_amplified(
     n_pulses_array = np.asarray(ds.n_pulses.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
+    fit_arrays: Dict[str, tuple] = {}
 
     for qname in qubit_names:
         signal_var = f"{analysis_signal}_{qname}"
@@ -418,9 +432,22 @@ def fit_raw_data_error_amplified(
             success=result["success"],
         )
         fit_results[qname] = asdict(fp)
-        fit_results[qname]["_diag"] = result.get("_diag")
 
-    ds_fit = ds.copy()
+        diag = result.get("_diag", {})
+        mean_signal = diag.get("mean_signal")
+        mean_signal_fit = diag.get("mean_signal_fit")
+        if mean_signal is not None:
+            fit_arrays[f"{signal_var}_mean"] = (
+                ["amp_prefactor"],
+                np.asarray(mean_signal, dtype=float),
+            )
+        if mean_signal_fit is not None:
+            fit_arrays[f"{signal_var}_mean_fit"] = (
+                ["amp_prefactor"],
+                np.asarray(mean_signal_fit, dtype=float),
+            )
+
+    ds_fit = ds.assign(**fit_arrays) if fit_arrays else ds.copy()
     return ds_fit, fit_results
 
 

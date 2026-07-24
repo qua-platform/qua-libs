@@ -18,6 +18,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Name of the qubit operation to perform. Default is 'x180'."""
     parity_measurement: bool = False
     """Whether or not to perform parity measurement."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 class Parameters(
     NodeParameters,

@@ -76,16 +76,14 @@ def _plot_resonance_ax(
     amps: np.ndarray,
     qubit_name: str,
     fit_result: dict | None = None,
+    mean_signal: np.ndarray | None = None,
+    mean_signal_fit: np.ndarray | None = None,
 ) -> None:
     """Plot mean signal vs amplitude with analytic model fit."""
-    diag = (fit_result or {}).get("_diag")
-    if diag is None:
+    if mean_signal is None:
         ax.text(0.5, 0.5, "No diagnostics", transform=ax.transAxes, ha="center")
         ax.set_title(f"{qubit_name} — Resonance")
         return
-
-    mean_signal = diag["mean_signal"]
-    mean_signal_fit = diag.get("mean_signal_fit")
 
     ax.plot(amps, mean_signal, "bo-", ms=3, lw=1, label="Mean signal")
     if mean_signal_fit is not None:
@@ -127,16 +125,11 @@ def plot_raw_data_error_amplified(
 ) -> "plt.Figure":
     """Plot error-amplified power Rabi for each qubit.
 
-    Layout (per qubit row):
-    * Column 1 — Raw 2-D heatmap with optimal-amplitude marker.
-    * Column 2 — Mean signal vs amplitude with model fit.
-
-    Parameters
-    ----------
-    analysis_signal
-        Data-variable prefix for the plotted 2-D trace.
+    ``ds`` should be the processed dataset (``ds_fit``) containing
+    ``{analysis_signal}_{qubit}`` variables.
     """
-    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    plot_ds = ds_fit if ds_fit is not None else ds
+    qubit_names = _get_qubit_names_from_ds(plot_ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -149,10 +142,10 @@ def plot_raw_data_error_amplified(
         signal_var = f"{analysis_signal}_{qname}"
         fr = fit_results.get(qname, {})
 
-        amps = np.asarray(ds.amp_prefactor.values, dtype=float)
-        n_pulses = np.asarray(ds.n_pulses.values, dtype=float)
+        amps = np.asarray(plot_ds.amp_prefactor.values, dtype=float)
+        n_pulses = np.asarray(plot_ds.n_pulses.values, dtype=float)
 
-        if signal_var not in ds.data_vars:
+        if signal_var not in plot_ds.data_vars:
             for j in range(ncol):
                 axes[i, j].text(
                     0.5,
@@ -163,10 +156,29 @@ def plot_raw_data_error_amplified(
                 )
             continue
 
-        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
+        signal_2d = np.asarray(plot_ds[signal_var].values, dtype=float)
+        mean_var = f"{signal_var}_mean"
+        mean_fit_var = f"{signal_var}_mean_fit"
+        mean_signal = (
+            np.asarray(plot_ds[mean_var].values, dtype=float)
+            if mean_var in plot_ds.data_vars
+            else None
+        )
+        mean_signal_fit = (
+            np.asarray(plot_ds[mean_fit_var].values, dtype=float)
+            if mean_fit_var in plot_ds.data_vars
+            else None
+        )
 
         _plot_heatmap_ax(axes[i, 0], signal_2d, amps, n_pulses, qname, fr)
-        _plot_resonance_ax(axes[i, 1], amps, qname, fr)
+        _plot_resonance_ax(
+            axes[i, 1],
+            amps,
+            qname,
+            fr,
+            mean_signal=mean_signal,
+            mean_signal_fit=mean_signal_fit,
+        )
 
     fig.suptitle(f"Error-amplified Power Rabi ({analysis_signal})")
     fig.tight_layout()

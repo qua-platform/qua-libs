@@ -235,7 +235,8 @@ def plot_raw_data_with_fit(
     * Column 3 — FFT at resonance (top) + t_π vs detuning (bottom)
       with Rabi fit.
     """
-    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    plot_ds = ds_fit if ds_fit is not None else ds
+    qubit_names = _get_qubit_names_from_ds(plot_ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -260,16 +261,16 @@ def plot_raw_data_with_fit(
             or (qubits[0] if qubits else None)
         )
         freq_hz = (
-            _get_freq_axis_hz(ds, qubit)
+            _get_freq_axis_hz(plot_ds, qubit)
             if qubit
-            else np.asarray(ds.detuning.values, dtype=float)
+            else np.asarray(plot_ds.detuning.values, dtype=float)
         )
-        durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
+        durations_ns = np.asarray(plot_ds.pulse_duration.values, dtype=float)
         fr = fit_results.get(qname, {})
         f_res = fr.get("optimal_frequency") if fr.get("success") else None
 
         # Column 1: raw data chevron
-        if signal_var not in ds.data_vars:
+        if signal_var not in plot_ds.data_vars:
             ax_data.text(
                 0.5,
                 0.5,
@@ -279,7 +280,7 @@ def plot_raw_data_with_fit(
             )
             ax_data.set_title(f"{qname} — data")
         else:
-            signal_2d = np.asarray(ds[signal_var].values)
+            signal_2d = np.asarray(plot_ds[signal_var].values)
             _plot_chevron_ax(
                 ax_data,
                 signal_2d,
@@ -292,8 +293,8 @@ def plot_raw_data_with_fit(
                 analysis_signal=analysis_signal,
             )
 
-        if signal_var in ds.data_vars:
-            signal_2d = np.asarray(ds[signal_var].values)
+        if signal_var in plot_ds.data_vars:
+            signal_2d = np.asarray(plot_ds[signal_var].values)
 
             # Column 2: 2D FFT heatmap (returns diag dict for reuse)
             diag = _plot_fft_2d_ax(

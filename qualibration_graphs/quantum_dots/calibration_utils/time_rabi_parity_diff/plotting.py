@@ -8,7 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from calibration_utils.time_rabi_parity_diff.analysis import FFT_FREQ_MIN, FFT_FREQ_MAX
+from calibration_utils.time_rabi_parity_diff.analysis import (
+    FFT_FREQ_MIN,
+    FFT_FREQ_MAX,
+    compute_fft_diagnostic,
+)
 from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 
@@ -31,6 +35,7 @@ def _plot_rabi_trace_ax(
     qubit_name: str,
     analysis_signal: str,
     fit_result: dict | None = None,
+    fitted_curve: np.ndarray | None = None,
 ) -> None:
     """Plot raw analysis trace vs pulse duration on the given axes."""
     ax.plot(duration_ns, pdiff, "b-", lw=1, alpha=0.8)
@@ -43,14 +48,10 @@ def _plot_rabi_trace_ax(
     if fit_result and fit_result.get("success"):
         t_pi = fit_result.get("optimal_duration", 0)
 
-        # Overlay damped-sinusoid fit curve if available
-        sinusoid = (fit_result or {}).get("_sinusoid_fit")
-        if sinusoid is not None:
-            t_shifted = sinusoid["t_shifted"]
-            t_plot = t_shifted + duration_ns[0]  # shift back to original time axis
+        if fitted_curve is not None:
             ax.plot(
-                t_plot,
-                sinusoid["fitted_curve"],
+                duration_ns,
+                fitted_curve,
                 "r-",
                 lw=1.5,
                 alpha=0.9,
@@ -66,15 +67,12 @@ def _plot_rabi_trace_ax(
 def _plot_fft_ax(
     ax: "plt.Axes",
     qubit_name: str,
+    trace: np.ndarray,
+    duration_ns: np.ndarray,
     fit_result: dict | None = None,
 ) -> None:
     """Plot FFT magnitude spectrum with peak fit on the given axes."""
-    diag = (fit_result or {}).get("_fft_diag")
-    if diag is None:
-        ax.text(0.5, 0.5, "No FFT data", transform=ax.transAxes, ha="center")
-        ax.set_title(f"{qubit_name} — FFT")
-        return
-
+    diag = compute_fft_diagnostic(trace, duration_ns)
     freqs_fft = diag["fft_freqs"]
     magnitude = diag["fft_magnitude"]
     peak_curve = diag.get("peak_curve")
@@ -115,11 +113,11 @@ def plot_raw_data_with_fit(
 ) -> "plt.Figure":
     """Plot Rabi trace and FFT for each qubit.
 
-    Layout (per qubit row):
-    * Column 1 — Raw analysis trace vs pulse duration with t_π marker.
-    * Column 2 — FFT magnitude spectrum with peak fit overlay.
+    ``ds`` should be the processed dataset (``ds_fit``) containing
+    ``{analysis_signal}_{qubit}`` variables.
     """
-    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    plot_ds = ds_fit if ds_fit is not None else ds
+    qubit_names = _get_qubit_names_from_ds(plot_ds, qubits, analysis_signal)
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -133,9 +131,9 @@ def plot_raw_data_with_fit(
         signal_var = f"{analysis_signal}_{qname}"
         fr = fit_results.get(qname, {})
 
-        durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
+        durations_ns = np.asarray(plot_ds.pulse_duration.values, dtype=float)
 
-        if signal_var not in ds.data_vars:
+        if signal_var not in plot_ds.data_vars:
             ax_trace.text(
                 0.5,
                 0.5,
@@ -152,12 +150,22 @@ def plot_raw_data_with_fit(
             )
             continue
 
-        trace = np.asarray(ds[signal_var].values, dtype=float)
+        trace = np.asarray(plot_ds[signal_var].values, dtype=float)
+        fit_var = f"{signal_var}_fit"
+        fitted_curve = None
+        if plot_ds is not None and fit_var in plot_ds.data_vars:
+            fitted_curve = np.asarray(plot_ds[fit_var].values, dtype=float)
 
         _plot_rabi_trace_ax(
-            ax_trace, trace, durations_ns, qname, analysis_signal, fit_result=fr
+            ax_trace,
+            trace,
+            durations_ns,
+            qname,
+            analysis_signal,
+            fit_result=fr,
+            fitted_curve=fitted_curve,
         )
-        _plot_fft_ax(ax_fft, qname, fit_result=fr)
+        _plot_fft_ax(ax_fft, qname, trace, durations_ns, fit_result=fr)
 
     fig.suptitle(f"Time Rabi ({analysis_signal})")
     fig.tight_layout()

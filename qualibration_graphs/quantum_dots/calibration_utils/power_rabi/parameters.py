@@ -9,18 +9,20 @@ from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 class BaseRabiSpecificParameters(RunnableParameters):
     """Parameters shared by nodes 09a (Power Rabi), 09b (Error Amplified Power Rabi), and 08c (Error Amplified Power Rabi Overtime)."""
 
-    num_shots: int = 300
+    num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    min_amp_factor: float = 0.75
+    min_amp_factor: float = 0.001
     """Minimum amplitude factor for the operation. Default is 0.001."""
-    max_amp_factor: float = 1.25
+    max_amp_factor: float = 1.99
     """Maximum amplitude factor for the operation. Default is 1.99."""
-    amp_factor_step: float = 0.005
-    """Step size for the amplitude factor. Default is 0.005."""
+    amp_factor_step: float = 0.01
+    """Step size for the amplitude factor. Default is 0.01."""
     operation: Literal["x180", "x90", "y90"] = "x180"
     """The operation to perform to drive the qubit."""
     parity_measurement: bool = False
     """Whether or not to perform parity measurement."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 class ErrorAmplifiedSpecificParameters(BaseRabiSpecificParameters):
     max_n_pulses: int = 40

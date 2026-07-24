@@ -12,18 +12,19 @@ from qualang_tools.results import progress_counter
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 
+from calibration_utils.power_rabi import (
+    Parameters,
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+    generate_simulated_dataset,
+)
 from qualibration_libs.parameters.experiment import get_qubits
 from calibration_utils.measurement_utils import (
     declare_streams,
     save_measurement,
     buffer_streams,
-    process_streams,
-)
-from calibration_utils.power_rabi import (
-    Parameters,
-    fit_raw_data,
-    log_fitted_results,
-    plot_raw_data_with_fit,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -57,8 +58,8 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.parity_measurement = True
-    node.parameters.simulate = True
+    node.parameters.qubits = ["q1"]
+    node.parameters.use_simulated_data = True
     pass
 
 
@@ -66,7 +67,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 node.machine = Quam.load()
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     node.namespace["qubits"] = qubits = get_qubits(node)
@@ -100,8 +101,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # Main experiment loop
         for qubit in qubits:
-            # amplitude_set = qubit.x180.pi_pulse.amplitude
-            # qubit.x180.update(pi_amplitude=node.parameters.amp_default if node.parameters.amp_default is not None else amplitude_set)
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
@@ -134,7 +133,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         assign(p1, Cast.to_int(a1))
 
                     save_measurement(node, qubit.name, p1, p2, parity_streams)
-            # qubit.x180.update(pi_amplitude = amplitude_set)
+
         # Stream processing
         with stream_processing():
             n_st.save("n")
@@ -147,7 +146,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Simulate}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
@@ -169,7 +170,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -207,23 +210,20 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Compute conditional expectations from joint-outcome streams."""
-    node.results["ds_raw"] = process_streams(
-        node.results["ds_raw"],
-        [q.name for q in node.namespace["qubits"]],
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("amp_prefactor",),
-    )
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated power-Rabi data so the full analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
+
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["ds_fit"] = ds_fit
+    """Process joint-outcome streams, fit power-Rabi data, and store results."""
+    ds_processed = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = fit_results
     log_fitted_results(fit_results, log_callable=node.log)
     node.outcomes = {
@@ -235,9 +235,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot the processed and fitted data."""
     fig = plot_raw_data_with_fit(
-        node.results["ds_raw"],
+        node.results["ds_fit"],
         node.results.get("ds_fit"),
         node.namespace["qubits"],
         node.results.get("fit_results", {}),
@@ -259,7 +259,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
             getattr(q, node.parameters.operation).update(amplitude_scale=opt_prefactor)
-
+            if node.parameters.operation == "x180":
+                getattr(q, "x90").update(amplitude_scale=opt_prefactor / 2)
 
 # %% {Save_results}
 @node.run_action()

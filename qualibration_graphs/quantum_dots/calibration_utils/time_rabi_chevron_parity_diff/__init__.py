@@ -13,11 +13,15 @@ from calibration_utils.time_rabi_chevron_parity_diff.analysis import (
 from calibration_utils.time_rabi_chevron_parity_diff.plotting import (
     plot_raw_data_with_fit,
 )
+from calibration_utils.time_rabi_chevron_parity_diff.simulated_data_generator import (
+    generate_simulated_dataset,
+)
 
 __all__ = [
     "Parameters",
     "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",
+    "generate_simulated_dataset",
     "plot_raw_data_with_fit",
 ]

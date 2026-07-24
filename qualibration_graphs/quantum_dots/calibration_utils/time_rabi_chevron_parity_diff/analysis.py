@@ -92,8 +92,16 @@ def _fft_analyse_single_qubit(
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Add full_freq coord (nominal + detuning) from first qubit for plotting."""
+    """Build conditional expectations and plotting coords from joint-outcome streams."""
+    from calibration_utils.measurement_utils.measurement_streams import process_streams
+
     qubits = node.namespace["qubits"]
+    ds = process_streams(
+        ds,
+        [q.name for q in qubits],
+        parity_measurement=node.parameters.parity_measurement,
+        sweep_dims=("detuning", "pulse_duration"),
+    )
     if qubits:
         f = _get_drive_frequencies_hz(ds, qubits[0])
         ds = ds.assign_coords(full_freq=(["detuning"], f))
