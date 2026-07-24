@@ -38,9 +38,12 @@ Purpose:
     - Verify and refine flux bias settings to isolate control channels.
 
 Measurement schedule:
-    1. Optional: serial (T, T) self-calibration per target when measure_self=True.
-    2. Cross-talk: for each aggressor, 2D spectroscopy vs aggressor flux on all targets
-       (parallel if multiplexed=True, serial if multiplexed=False).
+    1. Optional Step 1: serial (T, T) self per target when measure_self=True (target sweep grids).
+    2. Step 2: cross (T, A) only — for each aggressor A != T, spectroscopy vs A flux
+       (parallel if multiplexed=True). Diagonal (T, T) is never acquired in Step 2.
+
+Same list in target_qubits and aggressor_qubits gives an off-diagonal N×N matrix.
+Use measure_self=True for measured self slopes; measure_self=False uses 09a model normalization.
 
 Prerequisites:
     - XY vs. Z channel delay correctly calibrated.
@@ -70,7 +73,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
     node.parameters.target_qubits = ["qA2",]
-    node.parameters.aggressor_qubits = ["qA1"]
+    node.parameters.aggressor_qubits = ["qA1", "qA2"]
     node.parameters.measure_self = False
     node.parameters.operation_amplitude_factor = 1.0
     node.parameters.frequency_num_points = 51
@@ -97,8 +100,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
     pairs_by_target = node.namespace["pairs_by_target"]
     n_pairs_by_target = {name: len(pairs) for name, pairs in pairs_by_target.items()}
     node.namespace["n_pairs_by_target"] = n_pairs_by_target
-    if not node.parameters.measure_self and len(set(n_pairs_by_target.values())) > 1:
-        raise ValueError("All targets must have the same number of measurement pairs.")
 
     node.namespace["qubits"] = targets = get_qubits(node)
     num_target_qubits = len(targets)
@@ -251,10 +252,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
 
                             for i, qubit in multiplexed_qubits.items():
                                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                                if not (
-                                    node.parameters.measure_self
-                                    and qubit.name == aggressor_qubit.name
-                                ):
+                                # Step 2 is cross-only; (T, T) is Step 1 when measure_self=True.
+                                if qubit.name != aggressor_qubit.name:
                                     save(I[i], I_st[i])
                                     save(Q[i], Q_st[i])
                             align()

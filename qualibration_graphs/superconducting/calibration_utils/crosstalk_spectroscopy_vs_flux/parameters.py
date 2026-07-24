@@ -17,8 +17,9 @@ class NodeSpecificParameters(RunnableParameters):
     aggressor_qubits: Optional[List[str]] = ["q2"]
     """Neighbor qubit(s) or coupler(s) whose flux bias is swept. Default is ['q2']."""
     measure_self: bool = True
-    """Serial (T, T) self-calibration before cross-talk sweeps, using target sweep grids.
-    If False, normalize using freq_vs_flux_01_quad_term from state instead. Default is True."""
+    """Run Step 1 serial (T, T) self-cal on target sweep grids before cross panels.
+    Step 2 never records (T, T); self appears only here when True.
+    If False, normalize cross-talk using freq_vs_flux_01_quad_term from state. Default is True."""
     self_slope_tolerance: float = 0.2
     """Log a warning when |self_slope_measured / self_slope_model - 1| exceeds this value. Default is 0.2."""
     num_shots: int = 50
@@ -69,22 +70,37 @@ class Parameters(
     """Combined parameters for the crosstalk spectroscopy vs flux calibration node."""
 
 
+def _cross_aggressors_for_target(target_name: str, aggressor_names: List[str]) -> List[str]:
+    """Aggressor names for Step 2, preserving list order and excluding self (T, T)."""
+    return [name for name in aggressor_names if name != target_name]
+
+
 def build_crosstalk_pairs(
     node: QualibrationNode,
 ) -> Tuple[Dict[str, List[str]], Dict[str, list]]:
-    """Build ordered (target, aggressor) pairs per target, matching stream panel order."""
+    """Build ordered (target, aggressor) panels per target, matching stream save order.
+
+    Step 1 (optional): one self panel per target when measure_self=True.
+    Step 2: one panel per cross aggressor (T != A), in aggressor_qubits list order.
+    """
     aggressor_names = list(node.parameters.aggressor_qubits or [])
     pairs_by_target: Dict[str, List[str]] = {}
     pairs_by_target_objs: Dict[str, list] = {}
 
     for target_name in node.parameters.target_qubits or []:
+        cross_aggressors = _cross_aggressors_for_target(target_name, aggressor_names)
         if node.parameters.measure_self:
-            # Panel 0 = Step 1 self; Step 2 panels follow aggressor_qubits order (skipping T==A saves).
-            pair_names = [target_name] + [name for name in aggressor_names if name != target_name]
+            pair_names = [target_name] + cross_aggressors
         else:
-            # One panel per aggressor loop, same order for every target (includes T==A when listed).
-            pair_names = list(aggressor_names)
+            pair_names = cross_aggressors
         pairs_by_target[target_name] = pair_names
         pairs_by_target_objs[target_name] = [node.machine.qubits[name] for name in pair_names]
+
+    empty_targets = [name for name, pairs in pairs_by_target.items() if not pairs]
+    if empty_targets:
+        raise ValueError(
+            f"No measurement pairs for target(s) {empty_targets}. "
+            "Each target needs at least one cross aggressor (A != T), or set measure_self=True."
+        )
 
     return pairs_by_target, pairs_by_target_objs
