@@ -117,7 +117,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         if (
             not x_external
-        ):  # This means that the sweep itself for the x axis will be from the OPX, but the user wants dc_control, meaning that the offset centre comes from the QDAC
+        ):  # This means that the sweep itself for the x axis will be from the OPX, but the user wants dc_control, meaning that the offset center comes from the QDAC
             dc_set.set_voltages({node.parameters.x_axis_name: node.parameters.x_center})
         if (
             not y_external

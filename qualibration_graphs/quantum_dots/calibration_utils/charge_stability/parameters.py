@@ -74,7 +74,7 @@ class OPXQDACParameters(
     y_from_qdac: bool = False
     "Sweep the y axis of the 2D map using the QDAC instead of the OPX. Default is False."
     post_trigger_wait_ns: int = 10000
-    """The pause in the QUA programme to allow the QDAC to get to the correct level. Default is 10000ns."""
+    """The pause in the QUA program to allow the QDAC to get to the correct level. Default is 10000ns."""
     qdac_dwell_time_us: float = 200
     """The dwell time in microseconds for the QDAC. Default is 200us."""
 

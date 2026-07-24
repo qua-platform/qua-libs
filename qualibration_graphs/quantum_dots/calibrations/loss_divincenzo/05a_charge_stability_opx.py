@@ -88,7 +88,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["voltage_points"] = x_obj.voltage_sequence.gate_set.get_macros()
     x_volts, y_volts = get_voltage_arrays(
         node
-    )  # This sets the centres of x_volts and y_volts automatically to zero.
+    )  # This sets the centers of x_volts and y_volts automatically to zero.
     x_offset, y_offset = node.parameters.x_center, node.parameters.y_center
 
     if node.parameters.dc_control:
