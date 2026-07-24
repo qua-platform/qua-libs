@@ -241,8 +241,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     flux_offset = {}
     freq_offset = {}
     t2_star = {}
+    success = {}
 
     qubits = ds.qubit.values
+    flux_min, flux_max = flux.min().values, flux.max().values
 
     for q in qubits:
         a[q] = float(-1e6 * fitvals.sel(qubit=q, degree=2).polyfit_coefficients.values)
@@ -260,6 +262,14 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         )
         t2_star[q] = tau.sel(qubit=q).values
 
+        # Success criterion: fit parameters are finite and flux offset is within swept range
+        success[q] = (
+            np.isfinite(a[q])
+            and np.isfinite(flux_offset[q])
+            and np.isfinite(freq_offset[q])
+            and flux_min <= flux_offset[q] <= flux_max
+        )
+
     ds_fit = ds.merge(fit_data.rename("fit_results"))
 
     # Add a, flux_offset, and freq_offset as data variables in the dataset
@@ -275,7 +285,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 
     fit_results = {
         q: FitParameters(
-            success=True,
+            success=success[q],
             quad_term=a[q],
             flux_offset=flux_offset[q],
             freq_offset=freq_offset[q],
