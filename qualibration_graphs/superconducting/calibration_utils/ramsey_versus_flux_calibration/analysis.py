@@ -18,7 +18,6 @@ class FitParameters:
     quad_term: float
     flux_offset: float
     freq_offset: float
-    flux_offset: float
     t2_star: np.ndarray
 
 
