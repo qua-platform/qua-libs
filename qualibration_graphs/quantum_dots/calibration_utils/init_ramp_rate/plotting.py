@@ -8,6 +8,27 @@ from scipy.stats import gaussian_kde
 import xarray as xr
 
 
+def plot_all(
+    ds_fit: xr.Dataset,
+    qubit_pair_names: list[str],
+    *,
+    fit_results: Optional[Dict] = None,
+) -> dict[str, plt.Figure]:
+    """Standard node plotting API returning a figure dict."""
+    figures: dict[str, plt.Figure] = {}
+    figures["avg_state_vs_ramp_duration"] = plot_avg_state_vs_ramp_duration(
+        ds_fit, qubit_pair_names, fit_results=fit_results
+    )
+    figures["iq_vs_ramp_duration"] = plot_iq_vs_ramp_duration(ds_fit, qubit_pair_names)
+    figures["q_density_vs_ramp_duration"] = plot_q_density_vs_ramp_duration(
+        ds_fit, qubit_pair_names
+    )
+    figures["i_density_vs_ramp_duration"] = plot_i_density_vs_ramp_duration(
+        ds_fit, qubit_pair_names
+    )
+    return figures
+
+
 def plot_avg_state_vs_ramp_duration(
     ds_raw: xr.Dataset,
     qubit_pair_names: list[str],

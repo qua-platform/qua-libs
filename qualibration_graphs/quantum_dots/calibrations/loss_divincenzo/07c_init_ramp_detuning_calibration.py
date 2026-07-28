@@ -2,22 +2,27 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from dataclasses import asdict
 
 from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
+from qualibration_libs.parameters import get_qubit_pairs
 from quam_config import Quam
 
 from calibration_utils.init_ramp_detuning import (
     Parameters,
-    plot_2d_summary,
+    FitParameters,
+    analyse_init_ramp_detuning,
+    log_fitted_results,
+    plot_all,
     generate_simulated_dataset,
 )
-from calibration_utils.common_utils.annotation import annotate_node_figures
+
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -72,25 +77,15 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
-
-def _resolve_qubit_pairs(node: QualibrationNode[Parameters, Quam]):
-    """Resolve qubit pairs from parameters or default to all machine pairs."""
-    if node.parameters.qubit_pairs not in (None, ""):
-        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
-    return list(node.machine.qubit_pairs.values())
-
-
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Build the 2D sweep axes and the QUA pulse sequence (ramp duration × detuning)."""
 
     # ── Experiment parameters (Python side) ──────────────────────────────
-    qubit_pairs = _resolve_qubit_pairs(node)
-    dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
+    qubit_pairs = get_qubit_pairs(node)
 
     node.namespace["qubit_pairs"] = qubit_pairs
-    node.namespace["dot_pairs"] = dot_pair_objects
 
     # Sweep axis 1: ramp duration (ns). QUA timing is 4 ns clock cycles.
     ramp_min = int(node.parameters.ramp_duration_min)
@@ -236,7 +231,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar while streaming data back
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
@@ -263,7 +258,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     load_data_id = node.parameters.load_data_id
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    node.namespace["qubit_pairs"] = _resolve_qubit_pairs(node)
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
 # %% {Analyse_data}
@@ -272,41 +267,19 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Find the optimal (ramp_duration, detuning) from the 2D state map."""
     qubit_pairs = node.namespace["qubit_pairs"]
 
-    fit_results = {}
-    for qp in qubit_pairs:
-        # ds_raw contains 2D maps indexed by (ramp_duration, detuning)
-        avg_state = node.results["ds_raw"][f"state_{qp.name}"].values
-        ramp_durations = node.results["ds_raw"]["ramp_duration"].values
-        detunings = node.results["ds_raw"]["detuning"].values
-
-        if node.parameters.find_minimum:
-            opt_flat = int(np.argmin(avg_state))
-        else:
-            opt_flat = int(np.argmax(avg_state))
-
-        opt_ramp_idx, opt_detuning_idx = np.unravel_index(opt_flat, avg_state.shape)
-
-        fit_results[qp.name] = {
-            "success": True,
-            "optimal_ramp_duration": int(ramp_durations[opt_ramp_idx]),
-            "optimal_detuning": float(detunings[opt_detuning_idx]),
-            "optimal_avg_state": float(avg_state[opt_ramp_idx, opt_detuning_idx]),
-            "find_minimum": node.parameters.find_minimum,
-        }
-
-    node.results["fit_results"] = fit_results
-
-    extremum = "minimum" if node.parameters.find_minimum else "maximum"
-    for qp_name, r in fit_results.items():
-        node.log(
-            f"  {qp_name}: optimal ramp={r['optimal_ramp_duration']} ns, "
-            f"detuning={r['optimal_detuning']:.4f} V "
-            f"({extremum} avg state = {r['optimal_avg_state']:.4f})"
-        )
+    qp_names = [qp.name for qp in qubit_pairs]
+    ds_fit, fit_results = analyse_init_ramp_detuning(
+        node.results["ds_raw"],
+        qp_names,
+        find_minimum=node.parameters.find_minimum,
+    )
+    node.results["ds_fit"] = ds_fit
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
     node.outcomes = {
         qp_name: ("successful" if r["success"] else "failed")
-        for qp_name, r in fit_results.items()
+        for qp_name, r in node.results["fit_results"].items()
     }
 
 
@@ -317,18 +290,12 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
     qp_names = [qp.name for qp in qubit_pairs]
 
-    # Plot a 4-panel summary per qubit pair (state + I maps and FFTs along detuning axis)
-    fig_summary = plot_2d_summary(
-        node.results["ds_raw"],
+    node.results["figures"] = plot_all(
+        node.results.get("ds_fit", node.results["ds_raw"]),
         qp_names,
         fit_results=node.results.get("fit_results"),
     )
-
-    node.results["figure"] = fig_summary
-    node.results["figures"] = {
-        "summary_2d": fig_summary,
-    }
-    annotate_node_figures(node)
+    node.results["figure"] = node.results["figures"]["summary_2d"]
     if not node.modes.external:
         plt.show()
 
@@ -337,24 +304,22 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the initialisation macro ramp_duration on each qubit pair."""
-    # with node.record_state_updates():
-    #     for qp in node.namespace["qubit_pairs"]:
-    #         fit_result = node.results["fit_results"].get(qp.name, {})
-    #         if not fit_result.get("success", False):
-    #             continue
-    #
-    #         dot_pair = qp.quantum_dot_pair
-    #         optimal_ramp = fit_result["optimal_ramp_duration"]
-    #
-    #         init_macro = dot_pair.macros.get("initialize")
-    #         if init_macro is not None and hasattr(init_macro, "update"):
-    #             init_macro.update(ramp_duration=optimal_ramp)
-    #         else:
-    #             node.log(
-    #                 f"  {qp.name}: no updatable initialise macro found on "
-    #                 f"{dot_pair.name}"
-    #             )
-    pass
+    with node.record_state_updates():
+        for qp in node.namespace["qubit_pairs"]:
+            if node.outcomes.get(qp.name) != "successful":
+                continue
+    
+            dot_pair = qp.quantum_dot_pair
+            optimal_ramp = node.results["fit_results"][qp.name]["optimal_ramp_duration"]
+    
+            init_macro = dot_pair.macros.get("initialize")
+            if init_macro is not None and hasattr(init_macro, "update"):
+                init_macro.update(ramp_duration=optimal_ramp)
+            else:
+                node.log(
+                    f"  {qp.name}: no updatable initialise macro found on "
+                    f"{dot_pair.name}"
+                )
 
 
 # %% {Save_results}

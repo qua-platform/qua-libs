@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from dataclasses import asdict
 
 from qm.qua import *
 
@@ -16,10 +17,7 @@ from calibration_utils.init_ramp_rate import (
     Parameters,
     analyse_ramp_rate,
     log_fitted_results,
-    plot_avg_state_vs_ramp_duration,
-    plot_iq_vs_ramp_duration,
-    plot_q_density_vs_ramp_duration,
-    plot_i_density_vs_ramp_duration,
+    plot_all,
     generate_simulated_dataset,
 )
 
@@ -31,9 +29,9 @@ from qualibration_libs.data import XarrayDataFetcher
 description = """
         INITIALISATION RAMP RATE CALIBRATION
 This sequence calibrates the ramp duration of the initialisation macro by sweeping the ramp rate
-and measuring how mixed the resultant state is.
+and measuring the consistency of initialising into either state. 
 
-For each ramp duration the sequence empties the dots, initialises with the given ramp duration,
+For each ramp duration the sequence optionally empties the dots, initialises with the given ramp duration,
 then performs a state measurement using the balanced measurement macro.  The boolean state
 assignment (0 or 1) is averaged over many shots to produce the mean state occupation for each
 ramp duration.
@@ -73,8 +71,8 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.use_simulated_data = True
     pass
 
 
@@ -107,6 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
         )
 
+    # If log is preferred, extract the desired resolution and generate a log scale. Else use a normal arange
     if node.parameters.ramp_log_scale:
         n_ramp_pts = int((ramp_max - ramp_min) // ramp_step)
         ramp_duration_array = np.logspace(
@@ -278,18 +277,18 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
     qp_names = [qp.name for qp in qubit_pairs]
 
-    ds_raw, fit_results = analyse_ramp_rate(
+    ds_fit, fit_results = analyse_ramp_rate(
         node.results["ds_raw"],
         qp_names,
         find_minimum=node.parameters.find_minimum,
     )
-    node.results["ds_raw"] = ds_raw
-    node.results["fit_results"] = fit_results
+    node.results["ds_fit"] = ds_fit
+    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     # Log the relevant information extracted from the analysis
-    log_fitted_results(fit_results, log_callable=node.log)
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
         qp_name: ("successful" if r["success"] else "failed")
-        for qp_name, r in fit_results.items()
+        for qp_name, r in node.results["fit_results"].items()
     }
 
 
@@ -300,22 +299,12 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
     qp_names = [qp.name for qp in qubit_pairs]
 
-    fig_state = plot_avg_state_vs_ramp_duration(
-        node.results["ds_raw"],
+    node.results["figures"] = plot_all(
+        node.results.get("ds_fit", node.results["ds_raw"]),
         qp_names,
         fit_results=node.results.get("fit_results"),
     )
-    fig_iq = plot_iq_vs_ramp_duration(node.results["ds_raw"], qp_names)
-    fig_q_density = plot_q_density_vs_ramp_duration(node.results["ds_raw"], qp_names)
-    fig_i_density = plot_i_density_vs_ramp_duration(node.results["ds_raw"], qp_names)
-
-    node.results["figure"] = fig_state
-    node.results["figures"] = {
-        "avg_state_vs_ramp_duration": fig_state,
-        "iq_vs_ramp_duration": fig_iq,
-        "q_density_vs_ramp_duration": fig_q_density,
-        "i_density_vs_ramp_duration": fig_i_density,
-    }
+    node.results["figure"] = node.results["figures"]["avg_state_vs_ramp_duration"]
 
     if not node.modes.external:
         plt.show()
@@ -327,12 +316,11 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the initialisation macro ramp_duration on each qubit pair."""
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
-            fit_result = node.results["fit_results"].get(qp.name, {})
-            if not fit_result.get("success", False):
+            if node.outcomes.get(qp.name) != "successful":
                 continue
 
             dot_pair = qp.quantum_dot_pair
-            optimal_ramp = fit_result["optimal_ramp_duration"]
+            optimal_ramp = node.results["fit_results"][qp.name]["optimal_ramp_duration"]
 
             # Update the initialise macro if it supports state updates
             init_macro = dot_pair.macros.get("initialize")
