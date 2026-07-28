@@ -36,8 +36,9 @@ This node measures the spin-spin relaxation time T2 using the Hahn echo (spin ec
 Unlike Ramsey (T2*), the Hahn echo refocuses static dephasing and yields the intrinsic T2 coherence
 time, which is always >= T2*.
 
-The sequence is x90 - tau - y180 - tau - x90. The echo amplitude decays as
-exp(-2*tau/T2_echo). The sweep axis is the per-arm idle time tau.
+The sequence is x90 - tau - y180 - tau - x90. The swept parameter tau is the duration
+of each of the two idle gaps (after the first pi/2 and after the refocusing pi pulse).
+Total free evolution is 2*tau. The echo amplitude decays as exp(-2*tau/T2_echo).
 
 Prerequisites:
     - Ramsey node (qubit frequency and T2*) and its prerequisites.
@@ -59,8 +60,8 @@ Results (``node.results["fit_results"][<qubit>]``):
     - ``decay_rate`` [1/ns]: effective rate 2 / T2_echo.
 
 Figures (``node.results["figures"]``):
-    - ``"decay"``: horizontal subplots of conditional readout vs tau with exponential fit
-      overlay for each qubit.
+    - ``"decay"``: horizontal subplots of conditional readout vs idle delay tau
+      (each pi/2-pi segment; 2 tau total evolution) with exponential fit overlay.
 
 State update:
     - ``qubit.T2echo`` from fitted ``T2_echo`` (successful qubits only).
@@ -105,7 +106,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "tau": xr.DataArray(tau_values, attrs={"long_name": "per-arm idle time", "units": "ns"}),
+        "tau": xr.DataArray(
+            tau_values,
+            attrs={
+                "long_name": "Hahn echo idle delay τ (each π/2–π segment)",
+                "units": "ns",
+            },
+        ),
     }
 
     with program() as node.namespace["qua_program"]:

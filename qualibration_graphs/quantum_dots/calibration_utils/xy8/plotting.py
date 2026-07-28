@@ -21,6 +21,9 @@ _SIGNAL_LABELS = {
 }
 
 
+_TAU_XLABEL = "CPMG half-spacing τ (bookend τ, inter-pulse 2τ; 16τ total idle) [{unit}]"
+
+
 def _tau_axis(tau_ns: np.ndarray) -> tuple[np.ndarray, str]:
     tau_plot = tau_ns.astype(float)
     if float(tau_plot.max()) > 5_000.0:
@@ -90,7 +93,7 @@ def plot_all(
                     label="Exponential fit",
                 )
 
-        ax.set_xlabel(f"Half inter-pulse spacing τ ({time_unit})")
+        ax.set_xlabel(_TAU_XLABEL.format(unit=time_unit))
         ax.set_ylabel(y_label)
         ax.set_ylim(-0.05, 1.05)
         apply_node_outcome_style(ax, qname, success)

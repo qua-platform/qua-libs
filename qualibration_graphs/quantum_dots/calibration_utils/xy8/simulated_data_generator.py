@@ -49,7 +49,10 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         node.parameters.tau_max,
         node.parameters.tau_step,
     )
-    tau_attrs = {"long_name": "half inter-pulse spacing", "units": "ns"}
+    tau_attrs = {
+        "long_name": "XY8 CPMG half-spacing τ (bookend τ, inter-pulse 2τ)",
+        "units": "ns",
+    }
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
