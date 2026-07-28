@@ -14,7 +14,6 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import (
     get_dots,
     _make_batchable_list_from_multiplexed,
@@ -397,7 +396,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "snr_vs_integration_time": fig_snr,
         "projected_histogram": fig_proj,
     }
-    annotate_node_figures(node)
 
 
 # %% {Update_state}

@@ -31,7 +31,6 @@ from calibration_utils.run_video_mode.qdac_video_mode import create_video_mode
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import (
     get_dots,
     get_sensors,
@@ -574,7 +573,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             if fit_params.get("segments"):
                 fig_lines = plot_line_fit_overlays(sensor_data, fit_params, sensor.id)
                 node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
-    annotate_node_figures(node)
 
 
 # %%
