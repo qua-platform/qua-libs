@@ -30,7 +30,7 @@ from scipy.optimize import differential_evolution
 
 import xarray as xr
 from qualibrate.core import QualibrationNode
-from calibration_utils.common_utils.parity_streams import get_parity_item_names
+from calibration_utils.measurement_utils import get_parity_item_names
 
 logger = logging.getLogger(__name__)
 
