@@ -21,7 +21,7 @@ _SIGNAL_LABELS = {
 }
 
 
-_TAU_XLABEL = "CPMG half-spacing τ (bookend τ, inter-pulse 2τ; 16τ total idle) [{unit}]"
+_TAU_XLABEL = "CPMG half-spacing τ [{unit}]"
 
 
 def _tau_axis(tau_ns: np.ndarray) -> tuple[np.ndarray, str]:
