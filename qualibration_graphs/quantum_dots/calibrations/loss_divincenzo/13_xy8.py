@@ -94,7 +94,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program for the XY8 sequence.
 
     Sweeps half inter-pulse spacing τ. Pulse sequence per sweep point:
-
         empty → measure(p1) → initialise → x90 → [τ-X-2τ-Y-2τ-X-2τ-Y-2τ-Y-2τ-X-2τ-Y-2τ-X-τ] → x90 → measure(p2)
     """
     node.namespace["qubits"] = qubits = get_qubits(node)
@@ -133,6 +132,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ── INNER LOOP: sweep half inter-pulse spacing tau ───────────
                 with for_(*from_array(t, tau_clock_cycles)):
                     reset_frame(qubit.xy.name)
+                    align()
 
                     if node.parameters.parity_measurement:
                         qubit.empty()
@@ -143,73 +143,57 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         max_loops=node.parameters.max_loops,
                         conditional_drive=True,
                     )
-
                     align()
 
                     with strict_timing_():
                         # Opening pi/2
                         qubit.x90()
-
                         # First half-interval (τ)
                         wait(t, qubit.xy.name)
-
                         # Pulse 1: X
                         qubit.x180()
                         # Full interval (2τ)
                         wait(2 * t, qubit.xy.name)
-
                         # Pulse 2: Y
                         qubit.y180()
                         # Full interval (2τ)
                         wait(2 * t, qubit.xy.name)
-
                         # Pulse 3: X
                         qubit.x180()
                         # Full interval (2τ)
                         wait(2 * t, qubit.xy.name)
-
                         # Pulse 4: Y
                         qubit.y180()
                         # Full interval (2τ)
                         wait(2 * t, qubit.xy.name)
-
                         # Pulse 5: Y
                         qubit.y180()
                         # Full interval (2τ)
                         wait(2 * t, qubit.xy.name)
-
                         # Pulse 6: X
                         qubit.x180()
                         # Full interval (2τ)
                         wait(2 * t, qubit.xy.name)
-
                         # Pulse 7: Y
                         qubit.y180()
                         # Full interval (2τ)
                         wait(2 * t, qubit.xy.name)
-
                         # Pulse 8: X
                         qubit.x180()
-
                         # Last half-interval (τ)
                         wait(t, qubit.xy.name)
-
                         # Closing pi/2
                         qubit.x90()
 
                     align()
-
                     a2 = qubit.measure()
-
+                    align()
                     qubit.voltage_sequence.ramp_to_zero()
-
                     align()
 
                     assign(p2, Cast.to_int(a2))
-
                     if node.parameters.parity_measurement:
                         assign(p1, Cast.to_int(a1))
-
                     save_measurement(node, qubit.name, p1, p2, parity_streams)
 
         with stream_processing():
