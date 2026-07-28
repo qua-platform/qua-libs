@@ -10,8 +10,8 @@ import xarray as xr
 from matplotlib.figure import Figure
 
 from calibration_utils.plot_style import (
-    apply_sensor_outcome_style,
-    sensor_success,
+    apply_node_outcome_style,
+    node_success,
 )
 from calibration_utils.measurement_utils import get_parity_item_names
 
@@ -70,7 +70,7 @@ def plot_all(
         ax = axes[0, i]
         signal_var = f"{analysis_signal}_{qname}"
         fit_var = f"{analysis_signal}_fit_{qname}"
-        success = sensor_success(ds_fit, qname)
+        success = node_success(ds_fit, qname)
 
         if signal_var in ds_fit:
             y = np.asarray(ds_fit[signal_var].values, dtype=float)
@@ -93,7 +93,7 @@ def plot_all(
         ax.set_xlabel(f"Half inter-pulse spacing τ ({time_unit})")
         ax.set_ylabel(y_label)
         ax.set_ylim(-0.05, 1.05)
-        apply_sensor_outcome_style(ax, qname, success)
+        apply_node_outcome_style(ax, qname, success)
 
         if success is not False and "T2_xy8" in ds_fit and qname in ds_fit.qubit.values:
             t2 = float(ds_fit["T2_xy8"].sel(qubit=qname).values)
