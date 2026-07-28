@@ -173,11 +173,10 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Run the Hahn echo exponential-decay fit for every qubit.
 
-    Expects joint-outcome streams processed by
-    :func:`~calibration_utils.common_utils.parity_streams.process_joint_streams`,
-    so the analysis uses ``{analysis_signal}_{qubit}`` (default
-    ``E_p2_given_p1_0_<qubit>``) of shape ``(n_tau,)`` with coordinate
-    ``tau`` (idle time in ns).
+    Expects data processed by :func:`process_raw_dataset`, which adds
+    ``{analysis_signal}_{qubit}`` variables (default
+    ``E_p1_given_p0_0_<qubit>``) of shape ``(n_tau,)`` with coordinate
+    ``tau`` (per-arm idle time in ns).
 
     Parameters
     ----------
@@ -196,7 +195,7 @@ def fit_raw_data(
     qubits = node.namespace["qubits"]
     tau_ns = np.asarray(ds.tau.values, dtype=float)
 
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = node.parameters.analysis_signal
     qubit_names = get_parity_item_names(
         ds,
         analysis_signal,
