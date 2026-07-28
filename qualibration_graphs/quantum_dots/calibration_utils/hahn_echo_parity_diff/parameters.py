@@ -18,8 +18,10 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for the per-arm idle time sweep in nanoseconds. Default is 16 ns."""
     operation: str = "x180"
     """Name of the qubit pi-pulse operation. Default is 'x180'."""
-    parity_measurement: bool = False
-    """Whether or not to perform parity measurement."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX."""
+    sim_noise_std: float = 0.03
+    """Gaussian noise std dev on simulated traces before clipping to [0, 1]."""
 
 class Parameters(
     NodeParameters,

@@ -190,8 +190,8 @@ def fit_raw_data(
     (ds_fit, fit_results) : tuple
         *ds_fit* contains processed streams, per-qubit fitted curves
         (``{analysis_signal}_fit_{qubit}``), and summary scalars on a
-        ``qubit`` coordinate.  *fit_results* maps qubit name → dict of
-        :class:`FitParameters` fields plus ``_diag`` for plotting.
+        ``qubit`` coordinate.  *fit_results* maps qubit name →
+        :class:`FitParameters` fields as plain dicts.
     """
     qubits = node.namespace["qubits"]
     tau_ns = np.asarray(ds.tau.values, dtype=float)
@@ -254,7 +254,6 @@ def fit_raw_data(
             success=result["success"],
         )
         fit_results[qname] = asdict(fp)
-        fit_results[qname]["_diag"] = result
         fit_curve_vars[f"{analysis_signal}_fit_{qname}"] = (
             ["tau"],
             np.asarray(result["fitted_curve"], dtype=float),
