@@ -1,15 +1,19 @@
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import (
-    HeraldedInitializeParameters,
-    QubitPairExperimentNodeParameters,
-)
+from qualibration_libs.parameters import QubitPairExperimentNodeParameters
+from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of shots per ramp-duration point. Default is 100."""
+    use_simulated_data: bool = False
+    """If True, bypass hardware execution and generate a synthetic ``ds_raw``.
+
+    This is intended to validate the analysis and plotting pipeline for this node
+    (dims/coords/variable names), not to replace QUA simulation.
+    """
     ramp_duration_min: int = 16
     """Minimum ramp duration in ns (must be multiple of 4). Default is 16."""
     ramp_duration_max: int = 2000

@@ -7,22 +7,22 @@ from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from qualibrate.core.models.outcome import Outcome
 from quam_config import Quam
 
 from calibration_utils.init_2d import (
     Parameters,
     plot_2d_summary,
+    generate_simulated_dataset,
 )
 from calibration_utils.common_utils.annotation import annotate_node_figures
+
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-
-# %% {Description}
+# %% {Node initialisation}
 description = """
         INITIALISATION 2D CALIBRATION (RAMP DURATION × WAIT DURATION)
 This sequence extends the ramp-rate calibration by adding a second sweep axis: the wait
@@ -41,23 +41,36 @@ Prerequisites:
     - Having calibrated the PSB measurement point (06a-06c).
     - Having the balanced measurement macro configured with a valid threshold.
 
+Datasets:
+    - ``ds_raw``: 2D arrays averaged on the OPX (never modified after acquisition).
+      Per-qubit-pair variables: ``state_<pair>``, ``I_<pair>``, ``Q_<pair>`` indexed by
+      ``(ramp_duration, wait_duration)``.
+    - ``fit_results``: compact per-qubit-pair dict with the optimal coordinates.
+
+Figures (``node.results["figures"]``):
+    - ``"summary_2d"``: 4-panel summary (state + I heatmaps and their FFTs along wait axis).
+
 State update:
     - The initialisation macro ``ramp_duration`` on each qubit pair.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="07a_init_2d_calibration",
+    name="07b_init_2d_calibration",
     description=description,
     parameters=Parameters(),
 )
 
 
+# Any parameters that should change for debugging purposes only should go in here
+# These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes."""
+    node.parameters.use_simulated_data = True
     pass
 
 
+# Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
 
@@ -69,15 +82,18 @@ def _resolve_qubit_pairs(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program with a 2D sweep over ramp duration and wait duration."""
+    """Build the 2D sweep axes and the QUA pulse sequence (ramp duration × wait duration)."""
+
+    # ── Experiment parameters (Python side) ──────────────────────────────
     qubit_pairs = _resolve_qubit_pairs(node)
     dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
 
     node.namespace["qubit_pairs"] = qubit_pairs
     node.namespace["dot_pairs"] = dot_pair_objects
 
+    # Sweep axis 1: ramp duration (ns). QUA timing is 4 ns clock cycles.
     ramp_min = int(node.parameters.ramp_duration_min)
     ramp_max = int(node.parameters.ramp_duration_max)
     ramp_step = int(node.parameters.ramp_duration_step)
@@ -87,6 +103,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
         )
 
+    # Sweep axis 2: wait duration between init and measurement (ns)
     wait_min = int(node.parameters.wait_duration_min)
     wait_max = int(node.parameters.wait_duration_max)
     wait_step = int(node.parameters.wait_duration_step)
@@ -102,8 +119,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
     wait_ns_array = np.arange(wait_min, wait_max, wait_step, dtype=int)
+    # Convert wait times from ns to clock-cycles for the QUA `wait()` instruction
     wait_cc_array = (wait_ns_array // 4).astype(int)
 
+    # Metadata for data fetching: labels the saved arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([qp.name for qp in qubit_pairs]),
         "ramp_duration": xr.DataArray(
@@ -116,7 +135,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         ),
     }
 
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
+        # Allocate real-time variables on the OPX:
+        #   n / n_st          : shot counter + stream for progress reporting
+        #   ramp_dur / wait_dur: loop variables (ramp in ns, wait in clock cycles)
+        #   state_int/state_st : boolean state assignment (0/1) and its stream
+        #   i_st/q_st          : demodulated I/Q streams
         n = declare(int)
         n_st = declare_output_stream()
         ramp_dur = declare(int)
@@ -128,12 +153,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         i_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
         q_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
 
+        # ── OUTER LOOP: repeat the full 2D sweep num_shots times ─────────
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
-            save(n, n_st)
+            save(n, n_st)  # tell the PC which shot we are on
 
             for qubit_pair in qubit_pairs:
                 dot_pair = qubit_pair.quantum_dot_pair
 
+                # ── INNER LOOPS: sweep ramp duration and wait duration ───
                 with for_(*from_array(ramp_dur, ramp_duration_array)):
                     with for_(*from_array(wait_dur, wait_cc_array)):
 
@@ -141,9 +168,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             ramp_duration=ramp_dur,
                             target_state=node.parameters.target_state,
                             max_loops=node.parameters.max_loops,
-                            conditional_drive=True,
                         )
+                        
+                        # Wait between init and measurement
                         wait(wait_dur)
+
+                        # The measure macro implicitly aligns the gate-set to the readout resonator
                         (i, q, state) = dot_pair.measure(return_iq=True)
 
                         assign(
@@ -154,14 +184,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
                         dot_pair.voltage_sequence.ramp_to_zero()
 
+                        # Append this point's data to the stream buffers
                         save(state_int[qubit_pair.name], state_st[qubit_pair.name])
                         save(i, i_st[qubit_pair.name])
                         save(q, q_st[qubit_pair.name])
 
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n")
+            n_st.save("n")  # expose shot counter as "n" in the fetched dataset
             for qp in qubit_pairs:
-                # inner buffer = wait (innermost loop), outer buffer = ramp
+                # Each save() above is one (ramp_duration, wait_duration) point.
+                # .buffer(len(wait_cc_array))        : group points along wait axis (innermost loop)
+                # .buffer(len(ramp_duration_array))  : group points along ramp axis (outer loop)
+                # .average()                         : average over all shots on the OPX
                 state_st[qp.name].buffer(len(wait_cc_array)).buffer(
                     len(ramp_duration_array)
                 ).average().save(f"state_{qp.name}")
@@ -176,14 +211,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Simulate}
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
+    # Connect to the QOP
     qmm = node.machine.connect()
+    # Get the config from the machine
     config = node.machine.generate_config()
+    # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(
         qmm, config, node.namespace["qua_program"], node.parameters
     )
+    # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -194,23 +234,39 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Execute}
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data."""
+    # Connect to the QOP
     qmm = node.machine.connect()
+    # Get the config from the machine
     config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused by the fetcher
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Display the progress bar while streaming data back
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
                 node=node
             )
+        # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
+    # Register the raw dataset
     node.results["ds_raw"] = dataset
+
+
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated data so the full analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
 
 
 # %% {Load_historical_data}
@@ -231,6 +287,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
     fit_results = {}
     for qp in qubit_pairs:
+        # ds_raw contains 2D maps indexed by (ramp_duration, wait_duration)
         avg_state = node.results["ds_raw"][f"state_{qp.name}"].values
         ramp_durations = node.results["ds_raw"]["ramp_duration"].values
         wait_durations = node.results["ds_raw"]["wait_duration"].values
@@ -261,7 +318,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         )
 
     node.outcomes = {
-        qp_name: (Outcome.SUCCESSFUL if r["success"] else Outcome.FAILED)
+        qp_name: ("successful" if r["success"] else "failed")
         for qp_name, r in fit_results.items()
     }
 
@@ -273,6 +330,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
     qp_names = [qp.name for qp in qubit_pairs]
 
+    # Plot a 4-panel summary per qubit pair (state + I maps and FFTs along wait axis)
     fig_summary = plot_2d_summary(
         node.results["ds_raw"],
         qp_names,
@@ -284,7 +342,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "summary_2d": fig_summary,
     }
     annotate_node_figures(node)
-    plt.show()
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
