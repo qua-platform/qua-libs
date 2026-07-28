@@ -27,23 +27,39 @@ from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Node initialisation}
 description = """
-        CHARGE SENSOR GATE SWEEP with the OPX
-This sequence involves sweeping the voltage biasing the sensor gate using the OPX connected to the AC line of the bias-tee 
-connected to the sensor gate plunger. A sticky element is used in order to maintain the voltage level and avoid fast voltage 
-drops. It is recommended to use an external DAC to maintain a voltage offset, while doing fast operation with the OPX. The OPX 
-measures the response of the sensor dot via RF reflectometry, recording the I and Q quadratures of the demodulated signal.
-
-The measurement performs a voltage sweep across a specified range with configurable step size. At each voltage point,
-a readout pulse is sent to the resonator coupled to the sensor dot, and the reflected signal is demodulated and recorded.
-A global average is performed (averaging on the most outer loop) and the data is extracted to display the sensor dot peak.
+        SENSOR DOT GATE SWEEP (OPX)
+This sequence sweeps the sensor-dot gate bias using the OPX (AC line of a bias-tee) and measures the sensor response via
+RF reflectometry. At each bias offset, a readout pulse is sent to the sensor resonator and the reflected signal is
+demodulated into the 'I' and 'Q' quadratures. The sweep is averaged to improve SNR and post-processed to extract the
+recommended operating point (maximum-sensitivity bias).
 
 Prerequisites:
     - Connect the AC line of the bias-tee connected to the sensor dot to one OPX channel.
-    - Having initialized the Quam (quam_config/populate_quam_state_*.py).
-    - Having calibrated the resonators coupled to the SensorDot components.
+    - QUAM initialised (e.g. ``quam_config/populate_quam_state_*.py``).
+    - SensorDot readout resonators calibrated (time-of-flight/offsets/gains + readout frequency, amplitude, duration).
+    - (Recommended) Use an external DAC to hold a DC offset while the OPX performs fast sweeps.
+
+Datasets:
+    - ``ds_raw``: untouched I/Q fetched from the OPX (never modified after acquisition).
+    - ``ds_processed``: ``ds_raw`` plus derived amplitude/phase (used by fitting and plotting).
+    - ``ds_fit``: processed sweeps plus analysis outputs (derived fields and per-sensor summary coordinates). Used by
+      ``plot_data``.
+    - ``fit_results``: compact per-sensor calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][<sensor>]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``optimal_bias`` [V]: recommended operating bias (Lorentzian inflection point; side set by ``peak_fit_side``).
+    - ``peak_position`` [V]: detected Coulomb-peak position (feature detection).
+    - ``lorentzian_gamma`` [V]: Lorentzian FWHM (linewidth) of the fitted peak.
+    - ``max_gradient_bias`` [V]: bias at maximum slope (closest sampled point to ``optimal_bias``).
+
+Figures (``node.results["figures"]``):
+    - ``"phase"``: phase vs bias offset for each sensor.
+    - ``"amplitude_gradient"``: amplitude with Lorentzian fit overlay and a marker at the max-gradient point.
 
 State update:
-    - Update the optimal voltage bias of each sensor dot.
+    - Adds/updates the SensorDot ``MEASURE`` voltage point using ``optimal_bias`` for each successful sensor.
 """
 
 
