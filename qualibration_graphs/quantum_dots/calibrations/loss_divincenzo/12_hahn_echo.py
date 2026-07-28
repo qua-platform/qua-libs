@@ -239,11 +239,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit an exponential decay to the Hahn echo data for each qubit.
 
-    Stores ``fit_results`` dict and a fitted xarray Dataset ``ds_fit``.
+    Processes raw streams, fits each qubit, and stores ``ds_fit`` (with fitted
+    curves and summary scalars) and ``fit_results``.
     """
     ds_processed = process_raw_dataset(node.results["ds_raw"], node)
-    ds_fit, fit_results = fit_raw_data(ds_processed, node)
-    node.results["ds_fit"] = ds_fit
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = fit_results
     log_fitted_results(fit_results, log_callable=node.log)
     node.outcomes = {
