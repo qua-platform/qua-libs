@@ -12,7 +12,7 @@ from qualang_tools.results import progress_counter
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 
-from calibration_utils.hahn_echo_parity_diff import (
+from calibration_utils.hahn_echo import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
