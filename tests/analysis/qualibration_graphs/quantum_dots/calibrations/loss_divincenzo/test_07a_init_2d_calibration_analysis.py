@@ -50,9 +50,7 @@ def _synthetic_avg_state_2d(
     rng = np.random.default_rng(seed)
     ramp_2d, wait_2d = np.meshgrid(ramp_durations, wait_durations, indexing="ij")
     signal = (
-        base
-        + curvature_ramp * (ramp_2d - optimal_ramp_ns) ** 2
-        + curvature_wait * (wait_2d - optimal_wait_ns) ** 2
+        base + curvature_ramp * (ramp_2d - optimal_ramp_ns) ** 2 + curvature_wait * (wait_2d - optimal_wait_ns) ** 2
     )
     signal += rng.normal(0, noise_std, size=signal.shape)
     return np.clip(signal, 0.0, 1.0)
@@ -71,12 +69,8 @@ def _synthetic_iq_2d(
     Returns shape ``(n_ramp, n_wait)``.
     """
     rng = np.random.default_rng(seed)
-    t_ramp = (ramp_durations - ramp_durations[0]) / max(
-        ramp_durations[-1] - ramp_durations[0], 1
-    )
-    t_wait = (wait_durations - wait_durations[0]) / max(
-        wait_durations[-1] - wait_durations[0], 1
-    )
+    t_ramp = (ramp_durations - ramp_durations[0]) / max(ramp_durations[-1] - ramp_durations[0], 1)
+    t_wait = (wait_durations - wait_durations[0]) / max(wait_durations[-1] - wait_durations[0], 1)
     ramp_2d, wait_2d = np.meshgrid(t_ramp, t_wait, indexing="ij")
     I = (
         i_offset
@@ -109,15 +103,9 @@ def _build_ds_raw_2d(
             optimal_wait_ns=optimal_wait_ns[i],
             seed=seed_base + i,
         )
-        I = _synthetic_iq_2d(
-            ramp_durations, wait_durations, seed=seed_base + i + 100
-        )
-        data_vars[f"state_{pname}"] = xr.DataArray(
-            avg_state, dims=["ramp_duration", "wait_duration"]
-        )
-        data_vars[f"I_{pname}"] = xr.DataArray(
-            I, dims=["ramp_duration", "wait_duration"]
-        )
+        I = _synthetic_iq_2d(ramp_durations, wait_durations, seed=seed_base + i + 100)
+        data_vars[f"state_{pname}"] = xr.DataArray(avg_state, dims=["ramp_duration", "wait_duration"])
+        data_vars[f"I_{pname}"] = xr.DataArray(I, dims=["ramp_duration", "wait_duration"])
 
     return xr.Dataset(
         data_vars,
@@ -172,9 +160,7 @@ def _run_07a_analysis(
     apply_param_overrides(node, {"simulate": False, **param_overrides})
 
     if node.parameters.qubit_pairs not in (None, ""):
-        node.namespace["qubit_pairs"] = [
-            machine.qubit_pairs[name] for name in node.parameters.qubit_pairs
-        ]
+        node.namespace["qubit_pairs"] = [machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
     else:
         node.namespace["qubit_pairs"] = list(machine.qubit_pairs.values())
 
@@ -248,8 +234,7 @@ def test_07a_init_2d_find_minimum(minimal_quam_factory):
     """Find the minimum average state in a 2D (ramp, wait) sweep."""
     machine = minimal_quam_factory()
     assert PAIR_NAME in machine.qubit_pairs, (
-        f"Test factory missing expected pair '{PAIR_NAME}'; "
-        f"got {list(machine.qubit_pairs)}"
+        f"Test factory missing expected pair '{PAIR_NAME}'; " f"got {list(machine.qubit_pairs)}"
     )
     pair_names = [PAIR_NAME]
 
@@ -292,23 +277,21 @@ def test_07a_init_2d_find_minimum(minimal_quam_factory):
 
     found_ramp = fit["optimal_ramp_duration"]
     found_wait = fit["optimal_wait_duration"]
-    assert abs(found_ramp - optimal_ramp_ns) <= ramp_step * 3, (
-        f"Optimal ramp should be near {optimal_ramp_ns} ns, got {found_ramp} ns"
-    )
-    assert abs(found_wait - optimal_wait_ns) <= wait_step * 3, (
-        f"Optimal wait should be near {optimal_wait_ns} ns, got {found_wait} ns"
-    )
-    assert 0.0 <= fit["optimal_avg_state"] <= 0.3, (
-        f"Minimum avg state should be low, got {fit['optimal_avg_state']:.4f}"
-    )
+    assert (
+        abs(found_ramp - optimal_ramp_ns) <= ramp_step * 3
+    ), f"Optimal ramp should be near {optimal_ramp_ns} ns, got {found_ramp} ns"
+    assert (
+        abs(found_wait - optimal_wait_ns) <= wait_step * 3
+    ), f"Optimal wait should be near {optimal_wait_ns} ns, got {found_wait} ns"
+    assert (
+        0.0 <= fit["optimal_avg_state"] <= 0.3
+    ), f"Minimum avg state should be low, got {fit['optimal_avg_state']:.4f}"
 
     assert "figure" in node.results
     fig = node.results["figure"]
     # 2x2 grid per pair: 4 main axes + 4 colorbars = 8 total axes
     all_axes = fig.axes
-    assert len(all_axes) >= 4 * len(pair_names), (
-        f"Expected at least 4 subplot axes per pair, got {len(all_axes)}"
-    )
+    assert len(all_axes) >= 4 * len(pair_names), f"Expected at least 4 subplot axes per pair, got {len(all_axes)}"
 
     figs = node.results.get("figures", {})
     assert "summary_2d" in figs, "Expected figure 'summary_2d' not produced"
@@ -317,9 +300,7 @@ def test_07a_init_2d_find_minimum(minimal_quam_factory):
     artifacts_dir = ARTIFACTS_BASE / NODE_NAME
     assert (artifacts_dir / "README.md").exists()
     assert (artifacts_dir / "simulation.png").exists()
-    assert (artifacts_dir / "summary_2d.png").exists(), (
-        "summary_2d.png not written to artifacts"
-    )
+    assert (artifacts_dir / "summary_2d.png").exists(), "summary_2d.png not written to artifacts"
 
 
 @pytest.mark.analysis
@@ -337,11 +318,7 @@ def test_07a_init_2d_find_maximum(minimal_quam_factory):
     optimal_ramp_ns = 800
     optimal_wait_ns = 600
     ramp_2d, wait_2d = np.meshgrid(ramp_durations, wait_durations, indexing="ij")
-    signal = (
-        0.9
-        - 1.5e-6 * (ramp_2d - optimal_ramp_ns) ** 2
-        - 1.5e-6 * (wait_2d - optimal_wait_ns) ** 2
-    )
+    signal = 0.9 - 1.5e-6 * (ramp_2d - optimal_ramp_ns) ** 2 - 1.5e-6 * (wait_2d - optimal_wait_ns) ** 2
     signal += rng.normal(0, 0.02, size=signal.shape)
     signal = np.clip(signal, 0.0, 1.0)
 
@@ -384,12 +361,10 @@ def test_07a_init_2d_find_maximum(minimal_quam_factory):
 
     found_ramp = fit["optimal_ramp_duration"]
     found_wait = fit["optimal_wait_duration"]
-    assert abs(found_ramp - optimal_ramp_ns) <= ramp_step * 3, (
-        f"Optimal ramp should be near {optimal_ramp_ns} ns, got {found_ramp} ns"
-    )
-    assert abs(found_wait - optimal_wait_ns) <= wait_step * 3, (
-        f"Optimal wait should be near {optimal_wait_ns} ns, got {found_wait} ns"
-    )
-    assert fit["optimal_avg_state"] >= 0.7, (
-        f"Maximum avg state should be high, got {fit['optimal_avg_state']:.4f}"
-    )
+    assert (
+        abs(found_ramp - optimal_ramp_ns) <= ramp_step * 3
+    ), f"Optimal ramp should be near {optimal_ramp_ns} ns, got {found_ramp} ns"
+    assert (
+        abs(found_wait - optimal_wait_ns) <= wait_step * 3
+    ), f"Optimal wait should be near {optimal_wait_ns} ns, got {found_wait} ns"
+    assert fit["optimal_avg_state"] >= 0.7, f"Maximum avg state should be high, got {fit['optimal_avg_state']:.4f}"

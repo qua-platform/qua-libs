@@ -144,9 +144,7 @@ def _run_07_analysis(
     apply_param_overrides(node, {"simulate": False, **param_overrides})
 
     if node.parameters.qubit_pairs not in (None, ""):
-        node.namespace["qubit_pairs"] = [
-            machine.qubit_pairs[name] for name in node.parameters.qubit_pairs
-        ]
+        node.namespace["qubit_pairs"] = [machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
     else:
         node.namespace["qubit_pairs"] = list(machine.qubit_pairs.values())
 
@@ -219,8 +217,7 @@ def test_07_init_ramp_rate_find_minimum(minimal_quam_factory):
     """Find the minimum average state (default behaviour)."""
     machine = minimal_quam_factory()
     assert PAIR_NAME in machine.qubit_pairs, (
-        f"Test factory missing expected pair '{PAIR_NAME}'; "
-        f"got {list(machine.qubit_pairs)}"
+        f"Test factory missing expected pair '{PAIR_NAME}'; " f"got {list(machine.qubit_pairs)}"
     )
     pair_names = [PAIR_NAME]
 
@@ -256,12 +253,12 @@ def test_07_init_ramp_rate_find_minimum(minimal_quam_factory):
     assert fit["find_minimum"] is True
 
     found_ramp = fit["optimal_ramp_duration"]
-    assert abs(found_ramp - optimal_ramp_ns) <= ramp_step * 3, (
-        f"Optimal ramp should be near {optimal_ramp_ns} ns, got {found_ramp} ns"
-    )
-    assert 0.0 <= fit["optimal_avg_state"] <= 0.3, (
-        f"Minimum avg state should be low, got {fit['optimal_avg_state']:.4f}"
-    )
+    assert (
+        abs(found_ramp - optimal_ramp_ns) <= ramp_step * 3
+    ), f"Optimal ramp should be near {optimal_ramp_ns} ns, got {found_ramp} ns"
+    assert (
+        0.0 <= fit["optimal_avg_state"] <= 0.3
+    ), f"Minimum avg state should be low, got {fit['optimal_avg_state']:.4f}"
 
     assert "figure" in node.results
     fig = node.results["figure"]
@@ -279,9 +276,7 @@ def test_07_init_ramp_rate_find_minimum(minimal_quam_factory):
     artifacts_dir = ARTIFACTS_BASE / NODE_NAME
     assert (artifacts_dir / "README.md").exists()
     assert (artifacts_dir / "simulation.png").exists()
-    assert (artifacts_dir / "iq_vs_ramp_duration.png").exists(), (
-        "iq_vs_ramp_duration.png not written to artifacts"
-    )
+    assert (artifacts_dir / "iq_vs_ramp_duration.png").exists(), "iq_vs_ramp_duration.png not written to artifacts"
 
 
 @pytest.mark.analysis
@@ -329,9 +324,7 @@ def test_07_init_ramp_rate_find_maximum(minimal_quam_factory):
     assert fit["find_minimum"] is False
 
     found_ramp = fit["optimal_ramp_duration"]
-    assert abs(found_ramp - optimal_ramp_ns) <= ramp_step * 3, (
-        f"Optimal ramp should be near {optimal_ramp_ns} ns, got {found_ramp} ns"
-    )
-    assert fit["optimal_avg_state"] >= 0.7, (
-        f"Maximum avg state should be high, got {fit['optimal_avg_state']:.4f}"
-    )
+    assert (
+        abs(found_ramp - optimal_ramp_ns) <= ramp_step * 3
+    ), f"Optimal ramp should be near {optimal_ramp_ns} ns, got {found_ramp} ns"
+    assert fit["optimal_avg_state"] >= 0.7, f"Maximum avg state should be high, got {fit['optimal_avg_state']:.4f}"
