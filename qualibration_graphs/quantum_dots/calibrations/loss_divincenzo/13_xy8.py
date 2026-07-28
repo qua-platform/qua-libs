@@ -5,11 +5,13 @@ import xarray as xr
 
 from qm.qua import *
 
-from qualang_tools.multi_user import qm_session
 from qualang_tools.loops import from_array
+from qualang_tools.multi_user import qm_session
+from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
+
 from calibration_utils.xy8_parity_diff import (
     Parameters,
     process_raw_dataset,
@@ -18,51 +20,47 @@ from calibration_utils.xy8_parity_diff import (
     plot_all,
     generate_simulated_dataset,
 )
-from qualang_tools.results import progress_counter
-from qualibration_libs.parameters.experiment import get_qubits
 from calibration_utils.measurement_utils.measurement_streams import (
     declare_streams,
     save_measurement,
     buffer_streams,
 )
-from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters.experiment import get_qubits
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
-        XY8 DYNAMICAL DECOUPLING T2 MEASUREMENT - using standard QUA (pulse > 16ns and 4ns granularity)
-The goal of this script is to measure the qubit coherence time under XY8 dynamical decoupling.
-The XY8 sequence applies 8 refocusing pi pulses with alternating X and Y rotation axes,
-using CPMG timing (half-intervals at bookends, full intervals between pulses).
-
-Unlike the Hahn echo (single pi pulse), XY8 filters higher-frequency noise components
-and cancels pulse imperfections to first order through the XYXY·YXYX alternation pattern.
-The resulting T2_XY8 is typically longer than T2_echo (Hahn echo) and reflects the
-coherence limit set by noise at the DD filter frequency 1/(2τ).
-
-The QUA program is divided into three sections:
-    1) step between the initialization point and the operation point using sticky elements.
-    2) apply the XY8 pulse sequence with CPMG timing:
-       pi/2 - τ - X - 2τ - Y - 2τ - X - 2τ - Y - 2τ - Y - 2τ - X - 2τ - Y - 2τ - X - τ - pi/2
-    3) measure the state of the qubit using RF reflectometry via parity readout.
-
-Total idle time per sweep point: 16τ (2 half-intervals + 7 full intervals).
-
-The measurement sweeps the half inter-pulse spacing τ (joint-outcome streams).
-The fitting uses profiled differential evolution: a 1-D global search over T2_xy8 with
-the linear parameters (offset, amplitude) solved analytically at each step via least-squares.
+        XY8 DYNAMICAL DECOUPLING T2 MEASUREMENT
+This node measures qubit coherence under XY8 dynamical decoupling. Eight refocusing pi pulses
+with alternating X/Y axes and CPMG timing filter higher-frequency noise. Total idle time
+per sweep point is 16*tau, and the signal decays as exp(-16*tau/T2_xy8).
 
 Prerequisites:
-    - Having run the Hahn echo node (12) and its prerequisites.
-    - Having calibrated pi and pi/2 pulse parameters from Rabi measurements.
-    - Having calibrated y180 pulse (same amplitude as x180, axis_angle=pi/2).
+    - Hahn echo node (12) and its prerequisites.
+    - Calibrated pi, pi/2, and y180 pulses from Rabi measurements.
 
-Before proceeding to the next node:
-    - Compare T2_XY8 to T2_echo to assess the benefit of dynamical decoupling.
-    - Consider whether the coherence is pulse-error limited or decoherence limited.
+Datasets:
+    - ``ds_raw``: raw parity streams from the OPX (``p_{qubit}`` or joint-outcome streams).
+      Never modified after acquisition.
+    - ``ds_fit``: processed conditional expectations, fitted decay curves, and per-qubit
+      summary scalars on the ``qubit`` coordinate. Used by ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with
+      ``asdict``). Used by logging and ``node.outcomes``.
+
+Results (``node.results["fit_results"][<qubit>]``):
+    - ``success``: whether the exponential fit converged to a physical result.
+    - ``T2_xy8`` [ns]: XY8 coherence time.
+    - ``amplitude``: dynamical-decoupling contrast.
+    - ``offset``: baseline level.
+    - ``decay_rate`` [1/ns]: effective rate 16 / T2_xy8.
+
+Figures (``node.results["figures"]``):
+    - ``"decay"``: horizontal subplots of conditional readout vs tau with exponential fit
+      overlay for each qubit.
 
 State update:
-    - None (diagnostic measurement)
+    - None (diagnostic measurement; inspect ``fit_results`` and ``ds_fit``).
 """
 
 
@@ -71,11 +69,14 @@ node = QualibrationNode[Parameters, Quam](
 )
 
 
+# Any parameters that should change for debugging purposes only should go in here
+# These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow local parameter overrides for debugging (ignored in the GUI / graph)."""
     # node.parameters.qubits = ["q1"]
     # node.parameters.num_shots = 10
-    node.parameters.use_simulated_data = True
+    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -101,7 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.tau_max,
         node.parameters.tau_step,
     )
-    tau_clock_cycles = tau_values // 4
+    tau_clock_cycles = tau_values // 4  # QUA wait() uses 4 ns clock cycles
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -111,17 +112,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        t = declare(int)
-        n = declare(int)
+        t = declare(int)  # half inter-pulse spacing tau in clock cycles
+        n = declare(int)  # shot counter
 
         p2, p1, parity_streams = declare_streams(node, qubits)
-
         n_st = declare_output_stream()
 
         for qubit in qubits:
+            # ── OUTER LOOP: average n_avg shots per tau point ────────────────
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
+                # ── INNER LOOP: sweep half inter-pulse spacing tau ───────────
                 with for_(*from_array(t, tau_clock_cycles)):
                     reset_frame(qubit.xy.name)
 
@@ -205,9 +207,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
-
             n_tau = len(tau_values)
             for qubit in qubits:
+                # Buffer tau sweep; average over shots -> 1D trace per qubit
                 buffer_streams(node, qubit.name, parity_streams, n_tau)
 
 
@@ -293,7 +295,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the XY8 decay and fit for each qubit."""
+    """Plot decay traces and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
         node.results["ds_fit"],
         node.namespace["qubits"],
@@ -316,4 +318,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist node results and parameters."""
     node.save()
