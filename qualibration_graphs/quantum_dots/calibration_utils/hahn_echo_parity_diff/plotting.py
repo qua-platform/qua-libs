@@ -36,7 +36,7 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p2_given_p1_0",
+    analysis_signal: str = "E_p1_given_p0_0",
 ) -> plt.Figure:
     """Create a multi-panel Hahn echo figure (one row per qubit).
 
