@@ -84,8 +84,8 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q2"]
-    # node.parameters.use_simulated_data = True
+    node.parameters.qubits = ["q1", "q2"]
+    node.parameters.use_simulated_data = True
     pass
 
 
@@ -152,7 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     align()
                     # Play the selected gate at the current duration (time-Rabi)
-                    getattr(qubit, operation)(duration=t)
+                    qubit.macros[operation].apply(duration=t)
                     align()
 
                     a2 = qubit.measure()
@@ -231,6 +231,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated time-Rabi data so the full analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
+
+
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
@@ -241,14 +249,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
-
-
-# %% {Generate_simulated_data}
-@node.run_action(skip_if=not node.parameters.use_simulated_data)
-def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
-    """Generate simulated time-Rabi data so the full analysis pipeline can run without hardware."""
-    node.results["ds_raw"] = generate_simulated_dataset(node)
-    node.log("[sim] Simulated dataset generated successfully.")
 
 
 # %% {Analyse_data}
@@ -279,15 +279,14 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit pair data analysis was successful."""
-
+    """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for qubit in node.namespace["qubits"]:
-            if not node.results["fit_results"][qubit.name]["success"]:
+            if node.outcomes[qubit.name] == "failed":
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]
-            getattr(qubit, node.parameters.operation).update(duration=fit_result["optimal_duration"])
+            qubit.macros[node.parameters.operation].update(duration=fit_result["optimal_duration"])
 
 
 # %% {Save_results}

@@ -157,6 +157,7 @@ def plot_rabi_traces(
 
 def plot_fft_spectra(
     ds_fit: xr.Dataset,
+    qubits: List[Any],
     fit_results: dict,
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
@@ -198,5 +199,5 @@ def plot_all(
     fit_results = fit_results or {}
     return {
         "rabi": plot_rabi_traces(ds_fit, qubits, fit_results, analysis_signal),
-        "fft": plot_fft_spectra(ds_fit, fit_results, analysis_signal),
+        "fft": plot_fft_spectra(ds_fit, qubits, fit_results, analysis_signal),
     }

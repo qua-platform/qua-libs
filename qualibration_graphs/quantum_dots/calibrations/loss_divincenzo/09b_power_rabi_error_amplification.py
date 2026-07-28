@@ -159,7 +159,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
                         # Repeat the gate n_rabi times; small amplitude errors accumulate
                         with for_(m, 0, m < n_rabi, m + 1):
-                            getattr(qubit, operation)(amplitude_scale=a)
+                            qubit.macros[operation].apply(amplitude_scale=a)
                         align()
 
                         a2 = qubit.measure()
@@ -228,6 +228,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
 
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated error-amplified power-Rabi data so the full analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
+
+
 # %% {Load_historical_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
@@ -236,14 +244,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     node.namespace["qubits"] = get_qubits(node)
-
-
-# %% {Generate_simulated_data}
-@node.run_action(skip_if=not node.parameters.use_simulated_data)
-def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
-    """Generate simulated error-amplified power-Rabi data so the full analysis pipeline can run without hardware."""
-    node.results["ds_raw"] = generate_simulated_dataset(node)
-    node.log("[sim] Simulated dataset generated successfully.")
 
 
 # %% {Analyse_data}
@@ -281,9 +281,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
-            getattr(q, node.parameters.operation).update(amplitude_scale=opt_prefactor)
+            q.macros[node.parameters.operation].update(amplitude_scale=opt_prefactor)
             if node.parameters.operation == "x180":
-                getattr(q, "x90").update(amplitude_scale=opt_prefactor / 2)
+                q.macros["x90"].update(amplitude_scale=opt_prefactor / 2)
 
 
 # %% {Save_results}
