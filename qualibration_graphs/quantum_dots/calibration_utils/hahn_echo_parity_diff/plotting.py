@@ -1,12 +1,4 @@
-"""Plotting utilities for the Hahn echo T₂ measurement.
-
-Generates a single-panel figure per qubit showing:
-  - Raw conditional readout vs per-arm idle time τ.
-  - Fitted exponential decay  P(τ) = offset + A·exp(−2τ / T₂_echo).
-  - Annotated T₂_echo, amplitude, and offset in the panel title.
-
-Time axes are displayed in µs when the sweep range exceeds 5 µs.
-"""
+"""Plotting utilities for the Hahn echo T₂ measurement."""
 
 from __future__ import annotations
 
@@ -15,101 +7,116 @@ from typing import Any, List
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from matplotlib.figure import Figure
 
+from calibration_utils.plot_style import (
+    apply_sensor_outcome_style,
+    sensor_success,
+)
 from calibration_utils.measurement_utils import get_parity_item_names
 
+_SIGNAL_LABELS = {
+    "E_p1_given_p0_0": "P(1 | empty dot)",
+    "E_p1_given_p0_1": "P(1 | loaded dot)",
+}
 
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
+
+def _tau_axis(tau_ns: np.ndarray) -> tuple[np.ndarray, str]:
+    tau_plot = tau_ns.astype(float)
+    if float(tau_plot.max()) > 5_000.0:
+        return tau_plot / 1e3, "µs"
+    return tau_plot, "ns"
+
+
+def plot_all(
+    ds_fit: xr.Dataset,
     qubits: List[Any],
-    analysis_signal: str,
-) -> List[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
-
-def plot_raw_data_with_fit(
-    ds: xr.Dataset,
-    ds_fit: xr.Dataset | None,
-    qubits: List[Any],
-    fit_results: dict,
+    *,
     analysis_signal: str = "E_p1_given_p0_0",
-) -> plt.Figure:
-    """Create a multi-panel Hahn echo figure (one row per qubit).
+) -> dict[str, Figure]:
+    """Create a multi-panel Hahn-echo figure (one column per qubit).
 
     Parameters
     ----------
-    ds : xr.Dataset
-        Raw dataset with ``tau`` (ns) and joint-stream / analysis vars.
-    ds_fit : xr.Dataset or None
-        Unused — kept for API consistency with other parity-diff nodes.
+    ds_fit : xr.Dataset
+        Fitted dataset with data, fit curves, and summary scalars.
     qubits : list
-        Qubit objects (used for layout; qubit names are taken from the dataset).
-    fit_results : dict
-        Output of :func:`~.analysis.fit_raw_data`.
+        Qubit objects (names resolved from the dataset when possible).
     analysis_signal : str
-        Which conditional expectation to plot (must match processing).
+        Which conditional expectation to plot.
 
     Returns
     -------
-    matplotlib.figure.Figure
+    dict[str, Figure]
+        ``{"decay": figure}`` with all qubits as horizontal subplots.
     """
-    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    qubit_names = get_parity_item_names(
+        ds_fit,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
-        return fig
+        return {"decay": fig}
 
-    tau_ns = np.asarray(ds.tau.values, dtype=float)
+    tau_ns = np.asarray(ds_fit.tau.values, dtype=float)
+    x_plot, time_unit = _tau_axis(tau_ns)
+    y_label = _SIGNAL_LABELS.get(analysis_signal, analysis_signal)
 
     n = len(qubit_names)
-    fig, axes = plt.subplots(n, 1, figsize=(8, 3.5 * n), squeeze=False)
+    fig, axes = plt.subplots(1, n, figsize=(4 * n, 4), squeeze=False)
 
     for i, qname in enumerate(qubit_names):
-        ax = axes[i, 0]
-        fr = fit_results.get(qname, {})
-        diag = fr.get("_diag", {})
+        ax = axes[0, i]
+        signal_var = f"{analysis_signal}_{qname}"
+        fit_var = f"{analysis_signal}_fit_{qname}"
+        success = sensor_success(ds_fit, qname)
 
-        y = diag.get("signal")
-        fitted = diag.get("fitted_curve")
+        if signal_var in ds_fit:
+            y = np.asarray(ds_fit[signal_var].values, dtype=float)
+            ax.scatter(x_plot, y, c="C0", s=12, alpha=0.6, zorder=3, label="Data")
+            ax.plot(x_plot, y, color="C0", lw=0.8, alpha=0.5)
 
-        tau_plot = tau_ns.astype(float)
-        use_us = float(tau_plot.max()) > 5_000.0
-        x_plot = tau_plot / 1e3 if use_us else tau_plot
-        time_unit = "µs" if use_us else "ns"
-
-        if y is not None:
-            ax.plot(x_plot, y, "b-", lw=0.8, alpha=0.7)
-            ax.scatter(x_plot, y, c="b", s=8, alpha=0.5, zorder=3, label="Data")
-
-            if fitted is not None and len(fitted) == len(y):
+        if success is not False and fit_var in ds_fit:
+            fitted = np.asarray(ds_fit[fit_var].values, dtype=float)
+            if np.any(np.isfinite(fitted)):
                 ax.plot(
-                    x_plot, fitted, "-", lw=2, color="C1", alpha=0.9, label="Exp. fit"
+                    x_plot,
+                    fitted,
+                    "-",
+                    lw=2,
+                    color="C1",
+                    alpha=0.9,
+                    label="Exponential fit",
                 )
-        else:
-            ax.text(0.5, 0.5, "No fit data", transform=ax.transAxes, ha="center")
 
         ax.set_xlabel(f"Per-arm idle time τ ({time_unit})")
-        ax.set_ylabel(analysis_signal)
+        ax.set_ylabel(y_label)
         ax.set_ylim(-0.05, 1.05)
-        ax.legend(loc="best", fontsize=8)
+        apply_sensor_outcome_style(ax, qname, success)
 
-        t2 = fr.get("T2_echo", float("nan"))
-        amp = fr.get("amplitude", float("nan"))
-        off = fr.get("offset", float("nan"))
-        status = "OK" if fr.get("success") else "FAIL"
+        if success is not False and "T2_echo" in ds_fit and qname in ds_fit.qubit.values:
+            t2 = float(ds_fit["T2_echo"].sel(qubit=qname).values)
+            amp = float(ds_fit["amplitude"].sel(qubit=qname).values)
+            off = float(ds_fit["offset"].sel(qubit=qname).values)
+            if time_unit == "µs" and np.isfinite(t2):
+                t2_str = f"T₂_echo = {t2 / 1e3:.2f} µs"
+            else:
+                t2_str = f"T₂_echo = {t2:.1f} ns"
+            ax.text(
+                0.02,
+                0.98,
+                f"{t2_str}\nA = {amp:.4f},  offset = {off:.4f}",
+                transform=ax.transAxes,
+                va="top",
+                ha="left",
+                fontsize=9,
+                bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "alpha": 0.8},
+            )
+            ax.legend(loc="lower right", fontsize=8)
+        elif success is not False:
+            ax.legend(loc="lower right", fontsize=8)
 
-        if use_us and np.isfinite(t2):
-            t2_str = f"T₂_echo = {t2 / 1e3:.2f} µs"
-        else:
-            t2_str = f"T₂_echo = {t2:.1f} ns"
-
-        ax.set_title(
-            f"{qname}\n[{status}] {t2_str},  A = {amp:.4f},  offset = {off:.4f}"
-        )
-
-    fig.suptitle(f"Hahn Echo T₂ ({analysis_signal})", fontsize=13, fontweight="bold")
+    fig.suptitle("Hahn echo T₂", fontsize=13, fontweight="bold")
     fig.tight_layout()
-    return fig
+    return {"decay": fig}

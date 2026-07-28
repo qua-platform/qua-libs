@@ -1,4 +1,5 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -14,7 +15,8 @@ from calibration_utils.xy8_parity_diff import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_all,
+    generate_simulated_dataset,
 )
 from qualang_tools.results import progress_counter
 from qualibration_libs.parameters.experiment import get_qubits
@@ -73,6 +75,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubits = ["q1"]
     # node.parameters.num_shots = 10
+    node.parameters.use_simulated_data = True
     pass
 
 
@@ -80,7 +83,9 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data
+)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program for the XY8 sequence.
 
@@ -208,7 +213,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Simulate}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
@@ -226,7 +233,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -243,6 +252,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         node.log(job.execution_report())
     node.results["ds_raw"] = dataset
+
+
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate synthetic XY8 data so the analysis pipeline runs without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
 
 
 # %% {Load_historical_data}
@@ -276,15 +293,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted XY8 data."""
-    fig = plot_raw_data_with_fit(
+    """Plot the XY8 decay and fit for each qubit."""
+    node.results["figures"] = plot_all(
         node.results["ds_fit"],
-        node.results.get("ds_fit"),
         node.namespace["qubits"],
-        node.results.get("fit_results", {}),
         analysis_signal=node.parameters.analysis_signal,
     )
-    node.results["figure"] = fig
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
