@@ -70,23 +70,27 @@ node.machine = Quam.load()
     or node.parameters.use_simulated_data
 )
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the 1D sensor sweep and the QUA pulse sequence."""
+
+    # ── Experiment parameters (Python side) ──────────────────────────────
+
     # Get the relevant sensor dots from the node
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
 
     # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots
-    ramp_duration = node.parameters.ramp_duration
+    n_avg = node.parameters.num_shots # number of repetitions averaged at each sensor plunger voltage
+    ramp_duration = node.parameters.ramp_duration # duration of the ramp to the next plunger voltage
 
-    # The voltage offset sweep
+    # The voltage bias offset - set of voltages to apply on the sensor's plunger gate
+    # E.g. offset_min=0 & offset_max=0.1 → sweep from Vg=0V to Vg=+0.1V
     bias_offsets = np.arange(
         node.parameters.offset_min,
         node.parameters.offset_max,
         node.parameters.offset_step,
     )
 
-    # Register the sweep axes to be added to the dataset when fetching data
+    # Metadata for data fetching: labels the saved I/Q arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
         "bias_offsets": xr.DataArray(
@@ -94,53 +98,75 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         ),
     }
 
-    # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
 
+        # Allocate real-time variables on the OPX:
+        #   I[i], Q[i]   : demodulated quadratures for sensor i
+        #   I_st[i], Q_st[i] : buffers collecting I/Q before transfer to PC
+        #   n            : shot counter
+        #   n_st         : stream reporting shot index to PC (progress bar)
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
             num_IQ_pairs=num_sensors
         )
-        offset = declare(fixed)  # QUA variable for the readout frequency
+        # Real-time variable holding the plunger gate voltage
+        offset = declare(fixed) 
 
-        # No qubits yet at this point in the experiment - we only have sensors, batched by multiplexing. Simultaneous operation no problem
+        # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
+            align() # sync all channels in this batch before starting
+
             # Extract the VoltageSequence objects in this batch
             sequences_in_batch = {
                 sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence
                 for sensor in multiplexed_sensors.values()
             }
-            align()
-            with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)
 
+            # ── OUTER LOOP: repeat the full frequency sweep n_avg times ──
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st) # tell the PC which shot we are on
+                
+                # ── INNER LOOP: sweep sensor plunger gate voltage ──────────
                 with for_(*from_array(offset, bias_offsets)):
                     for i, sensor in multiplexed_sensors.items():
-                        # Sweep the sensor bias voltage
+                        # Extract the readout length so that the plunger voltage is maintained during readout
                         readout_len = sensor.readout_resonator.operations[
                             "readout"
                         ].length
 
                         align()
+
+                        # Ramp the plunger gate voltage to the correct coordinate and hold the voltage (duration) to include the readout time
                         sensor.ramp_to_voltages(
                             {sensor.name: offset},
                             duration = readout_len + node.parameters.duration_after_step,
                             ramp_duration = ramp_duration
                         )
+
+                        # While the ramp & any optional duration_after_step, the resonator is idle
                         sensor.readout_resonator.wait((ramp_duration + node.parameters.duration_after_step) // 4)
+
+                        # Play the "readout" pulse and integrate I/Q into I[i], Q[i]
                         sensor.readout_resonator.measure(
                             "readout", qua_vars=(I[i], Q[i])
                         )
-                        # save data
+                        # Append this voltage point's I/Q to the stream buffer
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
                     align()
 
+                # At the end of each 1D sweep, play a compensation pulse to account for any charge build-up in the bias tee
                 for seq in sequences_in_batch.values():
                     seq.apply_compensation_pulse(max_voltage = node.parameters.max_compensation_voltage, go_to_zero = True, return_to_zero = True)
 
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n")
+            n_st.save("n") # expose shot counter as "n" in the fetched dataset
             for i in range(num_sensors):
+                # Each save() above is one voltage point.
+                # .buffer(len(bias_offsets)) : group points along the plunger gate voltage axis
+                # .average()        : average over all shots (n_avg repetitions)
+                # Result: 1D trace I(bias_offsets), Q(bias_offsets) per sensor
                 I_st[i].buffer(len(bias_offsets)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(len(bias_offsets)).average().save(f"Q{i + 1}")
 
