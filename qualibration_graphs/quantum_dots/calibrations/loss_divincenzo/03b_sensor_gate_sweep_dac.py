@@ -207,10 +207,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
 
+
+    # Time to step the external DAC. This will execute when the program is paused. 
     for s in node.parameters.sensor_names:  
         gate_set_id = node.machine.sensor_dots[s].voltage_sequence.gate_set.name
         node.namespace[f"{s}_dac_offset"] = node.machine.virtual_dc_sets[gate_set_id].get_voltage(s, requery = True)
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
 
     import time
     qm = qmm.open_qm(config)
@@ -235,7 +236,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Wait time after setting
                 time.sleep(node.parameters.dac_settling_time_s)
 
-                #print(f"Voltage set to {node.machine.virtual_dc_sets[gate_set_id].get_voltage(s.name, requery = True)}")
+                # # Un-comment this in-case you would like to re-measure and verify at each point whether the applied voltage is correct. 
+                # print(f"Voltage set to {node.machine.virtual_dc_sets[gate_set_id].get_voltage(s.name, requery = True)}")
 
                 job.resume()
 
@@ -321,11 +323,12 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             optimal_offset = node.results["fit_results"][sensor.name]["optimal_bias"]
+            dac_optimal_value = optimal_offset + node.namespace[f"{sensor.name}_dac_offset"]
 
-            raise NotImplementedError("Please implement update_state to update the DAC voltage to be 'optimal_offset + node.namespace['dac_offset']'")
+            print(f"Optimal offset is {dac_optimal_value}. Setting this now.")
 
-            print(f"Optimal offset is {optimal_offset + node.namespace["dac_offset"] }")
-
+            gate_set_id = node.machine.sensor_dots[sensor.name].voltage_sequence.gate_set.name
+            node.machine.virtual_dc_sets[gate_set_id].set_voltages({sensor.name: dac_optimal_value})
 
 # %% {Save_results}
 @node.run_action()
