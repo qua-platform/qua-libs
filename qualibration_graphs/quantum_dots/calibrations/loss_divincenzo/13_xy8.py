@@ -64,9 +64,7 @@ State update:
 """
 
 
-node = QualibrationNode[Parameters, Quam](
-    name="13_xy8", description=description, parameters=Parameters()
-)
+node = QualibrationNode[Parameters, Quam](name="13_xy8", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -84,9 +82,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program for the XY8 sequence.
 
@@ -106,9 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "tau": xr.DataArray(
-            tau_values, attrs={"long_name": "half inter-pulse spacing", "units": "ns"}
-        ),
+        "tau": xr.DataArray(tau_values, attrs={"long_name": "half inter-pulse spacing", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -223,9 +217,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -235,9 +227,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -247,11 +237,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start
-            )
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         node.log(job.execution_report())
     node.results["ds_raw"] = dataset
 
@@ -286,10 +272,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = fit_results
     log_fitted_results(fit_results, log_callable=node.log)
-    node.outcomes = {
-        qname: ("successful" if r["success"] else "failed")
-        for qname, r in fit_results.items()
-    }
+    node.outcomes = {qname: ("successful" if r["success"] else "failed") for qname, r in fit_results.items()}
 
 
 # %% {Plot_data}

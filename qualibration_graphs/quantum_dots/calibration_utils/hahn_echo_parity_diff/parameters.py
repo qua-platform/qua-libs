@@ -23,6 +23,7 @@ class NodeSpecificParameters(RunnableParameters):
     sim_noise_std: float = 0.03
     """Gaussian noise std dev on simulated traces before clipping to [0, 1]."""
 
+
 class Parameters(
     NodeParameters,
     CommonNodeParameters,

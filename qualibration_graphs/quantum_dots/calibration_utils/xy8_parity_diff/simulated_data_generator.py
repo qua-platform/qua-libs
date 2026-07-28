@@ -79,7 +79,6 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
     tau_coord = xr.DataArray(tau_values, dims="tau", attrs=tau_attrs)
     data_arrays = {
-        name: xr.DataArray(values, dims=dims, coords={"tau": tau_coord})
-        for name, (dims, values) in data_vars.items()
+        name: xr.DataArray(values, dims=dims, coords={"tau": tau_coord}) for name, (dims, values) in data_vars.items()
     }
     return xr.Dataset(data_arrays)
