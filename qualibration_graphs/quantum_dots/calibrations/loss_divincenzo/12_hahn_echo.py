@@ -5,12 +5,13 @@ import xarray as xr
 
 from qm.qua import *
 
+from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.loops import from_array
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
+
 from calibration_utils.hahn_echo_parity_diff import (
     Parameters,
     process_raw_dataset,
@@ -19,53 +20,50 @@ from calibration_utils.hahn_echo_parity_diff import (
     plot_all,
     generate_simulated_dataset,
 )
-from qualibration_libs.parameters.experiment import get_qubits
 from calibration_utils.measurement_utils.measurement_streams import (
     declare_streams,
     save_measurement,
     buffer_streams,
 )
-from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters.experiment import get_qubits
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
-        HAHN ECHO (SPIN ECHO) T2 MEASUREMENT - using standard QUA (pulse > 16ns and 4ns granularity)
-The goal of this script is to measure the spin-spin relaxation time T2 using the Hahn echo (spin echo) technique.
-Unlike the Ramsey experiment which measures T2* (sensitive to low-frequency noise and inhomogeneous broadening),
-the Hahn echo refocuses static dephasing, yielding the intrinsic T2 coherence time which is always >= T2*.
+        HAHN ECHO (SPIN ECHO) T2 MEASUREMENT
+This node measures the spin-spin relaxation time T2 using the Hahn echo (spin echo) technique.
+Unlike Ramsey (T2*), the Hahn echo refocuses static dephasing and yields the intrinsic T2 coherence
+time, which is always >= T2*.
 
-The QUA program is divided into three sections:
-    1) step between the initialization point and the operation point using sticky elements.
-    2) apply the Hahn echo pulse sequence: pi/2 - tau - pi - tau - pi/2.
-    3) measure the state of the qubit using RF reflectometry via parity readout.
-
-The Hahn echo sequence works by:
-    - First pi/2 pulse (x90): Creates superposition, placing qubit on Bloch sphere equator.
-    - First wait period (tau): Qubit dephases due to noise and field inhomogeneities.
-    - Pi pulse (x180): Flips the qubit state, reversing the accumulated phase.
-    - Second wait period (tau): Previously accumulated phase is undone (refocused).
-    - Final pi/2 pulse (x90): Projects the refocused state for measurement.
-
-The echo amplitude decays as exp(-2*tau/T2), where T2 reflects irreversible dephasing from
-high-frequency noise that cannot be refocused. This is the simplest dynamical decoupling sequence
-and forms the basis for more advanced sequences (CPMG, XY-n) that extend coherence further.
-
-The measurement sweeps per-arm idle time τ (joint-outcome streams).
-The fitting uses profiled differential evolution: a 1-D global search over T2_echo with
-the linear parameters (offset, amplitude) solved analytically at each step via least-squares.
+The sequence is x90 - tau - y180 - tau - x90. The echo amplitude decays as
+exp(-2*tau/T2_echo). The sweep axis is the per-arm idle time tau.
 
 Prerequisites:
-    - Having run the Ramsey node to calibrate the qubit frequency and T2*, and the corresponding prerequisites.
-    - Having calibrated pi and pi/2 pulse parameters from Rabi measurements.
+    - Ramsey node (qubit frequency and T2*) and its prerequisites.
+    - Calibrated pi and pi/2 pulses from Rabi measurements.
 
-Before proceeding to the next node:
-    - Extract T2 from exponential fit of the echo decay curve.
-    - Compare T2 to T2* to assess the contribution of low-frequency noise.
-    - Consider dynamical decoupling sequences if longer coherence is needed.
+Datasets:
+    - ``ds_raw``: raw parity streams from the OPX (``p_{qubit}`` or joint-outcome streams).
+      Never modified after acquisition.
+    - ``ds_fit``: processed conditional expectations, fitted decay curves, and per-qubit
+      summary scalars on the ``qubit`` coordinate. Used by ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with
+      ``asdict``). Used by logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][<qubit>]``):
+    - ``success``: whether the exponential fit converged to a physical result.
+    - ``T2_echo`` [ns]: Hahn echo coherence time.
+    - ``amplitude``: echo contrast.
+    - ``offset``: baseline level.
+    - ``decay_rate`` [1/ns]: effective rate 2 / T2_echo.
+
+Figures (``node.results["figures"]``):
+    - ``"decay"``: horizontal subplots of conditional readout vs tau with exponential fit
+      overlay for each qubit.
 
 State update:
-    - T2echo
+    - ``qubit.T2echo`` from fitted ``T2_echo`` (successful qubits only).
 """
 
 
@@ -78,9 +76,9 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow local parameter overrides for debugging (ignored in the GUI / graph)."""
     # node.parameters.qubits = ["q1"]
-    node.parameters.use_simulated_data = True
-
+    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -107,7 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.tau_max,
         node.parameters.tau_step,
     )
-    tau_clock_cycles = tau_values // 4
+    tau_clock_cycles = tau_values // 4  # QUA wait() is in unit of 4 ns
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -117,20 +115,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        t = declare(int)
-        n = declare(int)
+        t = declare(int)  # per-arm idle time tau in clock cycles
+        n = declare(int)  # shot counter
 
         p2, p1, parity_streams = declare_streams(node, qubits)
-
         n_st = declare_output_stream()
 
         for qubit in qubits:
+            # ── OUTER LOOP: average n_avg shots per tau point ────────────────
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
+                # ── INNER LOOP: sweep per-arm idle time tau ────────────────────
                 with for_(*from_array(t, tau_clock_cycles)):
                     reset_frame(qubit.xy.name)
-
                     align()
 
                     if node.parameters.parity_measurement:
@@ -142,10 +140,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         max_loops=node.parameters.max_loops,
                         conditional_drive=True,
                     )
-
                     align()
 
                     with strict_timing_():
+                        # Hahn echo: x90 - tau - y180 - tau - x90
                         qubit.x90()
                         wait(t, qubit.xy.name)
                         qubit.y180()
@@ -153,27 +151,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.x90()
 
                     align()
-
                     a2 = qubit.measure()
-
                     align()
-
                     qubit.voltage_sequence.ramp_to_zero()
-
                     align()
 
                     assign(p2, Cast.to_int(a2))
-
                     if node.parameters.parity_measurement:
                         assign(p1, Cast.to_int(a1))
-
                     save_measurement(node, qubit.name, p1, p2, parity_streams)
 
         with stream_processing():
             n_st.save("n")
-
             n_tau = len(tau_values)
             for qubit in qubits:
+                # Buffer tau sweep; average over shots -> 1D trace per qubit
                 buffer_streams(node, qubit.name, parity_streams, n_tau)
 
 
@@ -272,7 +264,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the Hahn echo decay and fit for each qubit."""
+    """Plot decay traces and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
         node.results["ds_fit"],
         node.namespace["qubits"],
@@ -285,17 +277,19 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit data analysis was successful."""
+    """Write fitted T2_echo to ``qubit.T2echo`` for successful qubits."""
 
     with node.record_state_updates():
-        for qubit in node.namespace["qubits"]:
-            if not node.results["fit_results"][qubit.name]["success"]:
+        for q in node.namespace["qubits"]:
+            if node.outcomes[q.name] == "failed":
                 continue
-            fit_result = node.results["fit_results"][qubit.name]
-            qubit.T2echo = fit_result["T2_echo"]
+                
+            fit_result = node.results["fit_results"][q.name]
+            q.T2echo = fit_result["T2_echo"]
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist node results and parameters."""
     node.save()
