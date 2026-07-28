@@ -28,6 +28,7 @@ __all__ = [
     "fit_lorentzian",
 ]
 
+
 class LorentzianFitResult(NamedTuple):
     """Container for the fitted Lorentzian parameters."""
 
@@ -38,9 +39,7 @@ class LorentzianFitResult(NamedTuple):
     optimal_voltage: float
 
 
-def lorentzian(
-    x: np.ndarray, x0: float, gamma: float, amplitude: float, offset: float
-) -> np.ndarray:
+def lorentzian(x: np.ndarray, x0: float, gamma: float, amplitude: float, offset: float) -> np.ndarray:
     """Lorentzian peak with free amplitude and offset.
 
     L(x) = amplitude * (γ/2)² / ((x − x0)² + (γ/2)²) + offset
@@ -162,9 +161,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     for q in fit_results.keys():
         s_sensor = f"Results for sensor {q}: "
         s_peak = f"\tPeak position: {fit_results[q]['peak_position']:.4f} V | "
-        s_gamma = (
-            f"Lorentzian FWHM (gamma): {fit_results[q]['lorentzian_gamma']:.4e} V | "
-        )
+        s_gamma = f"Lorentzian FWHM (gamma): {fit_results[q]['lorentzian_gamma']:.4e} V | "
         s_grad = f"Max gradient bias: {fit_results[q]['max_gradient_bias']:.4f} V | "
         s_grad_val = f"Max gradient: {fit_results[q]['max_gradient']:.4e}"
         if fit_results[q]["success"]:
@@ -200,9 +197,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Find the sensor response peak/dip via peaks_dips, fit a Lorentzian, and
     locate the bias point of maximum gradient from the analytical inflection point.
@@ -223,28 +218,20 @@ def fit_raw_data(
     peak_results = peaks_dips(ds.amplitude, "bias_offsets")
 
     side = getattr(node.parameters, "peak_fit_side", "left")
-    ds_fit, fit_results = _extract_relevant_fit_parameters(
-        peak_results, ds, node, side=side
-    )
+    ds_fit, fit_results = _extract_relevant_fit_parameters(peak_results, ds, node, side=side)
     return ds_fit, fit_results
 
 
-def _lorentzian_gradient(
-    x: np.ndarray, x0: float, gamma: float, amplitude: float
-) -> np.ndarray:
+def _lorentzian_gradient(x: np.ndarray, x0: float, gamma: float, amplitude: float) -> np.ndarray:
     """Analytical derivative of the Lorentzian peak.
 
     dL/dx = -amplitude * (γ/2)² * 2(x - x0) / ((x - x0)² + (γ/2)²)²
     """
     half_gamma_sq = (gamma / 2) ** 2
-    return (
-        -amplitude * half_gamma_sq * 2 * (x - x0) / ((x - x0) ** 2 + half_gamma_sq) ** 2
-    )
+    return -amplitude * half_gamma_sq * 2 * (x - x0) / ((x - x0) ** 2 + half_gamma_sq) ** 2
 
 
-def _extract_relevant_fit_parameters(
-    peak_ds: xr.Dataset, ds: xr.Dataset, node: QualibrationNode, side: str = "left"
-):
+def _extract_relevant_fit_parameters(peak_ds: xr.Dataset, ds: xr.Dataset, node: QualibrationNode, side: str = "left"):
     """Use peaks_dips results for validation, fit a Lorentzian per sensor, and
     derive the max-gradient point analytically.
 
@@ -311,8 +298,7 @@ def _extract_relevant_fit_parameters(
                     raise ValueError("Non-finite Lorentzian fit parameters.")
                 if not in_span:
                     raise ValueError(
-                        "Optimal bias outside scanned range "
-                        f"[{bias_offsets.min():.4g}, {bias_offsets.max():.4g}] V."
+                        "Optimal bias outside scanned range " f"[{bias_offsets.min():.4g}, {bias_offsets.max():.4g}] V."
                     )
 
                 fitted = lorentzian(
@@ -322,12 +308,8 @@ def _extract_relevant_fit_parameters(
                     lor_result.amplitude,
                     lor_result.offset,
                 )
-                grad = _lorentzian_gradient(
-                    bias_offsets, lor_result.x0, lor_result.gamma, lor_result.amplitude
-                )
-                max_grad_idx = int(
-                    np.argmin(np.abs(bias_offsets - lor_result.optimal_voltage))
-                )
+                grad = _lorentzian_gradient(bias_offsets, lor_result.x0, lor_result.gamma, lor_result.amplitude)
+                max_grad_idx = int(np.argmin(np.abs(bias_offsets - lor_result.optimal_voltage)))
 
                 lor_x0_list.append(lor_result.x0)
                 lor_gamma_list.append(lor_result.gamma)
@@ -391,9 +373,7 @@ def _extract_relevant_fit_parameters(
         coords={"sensors": ds.sensors, "bias_offsets": ds.bias_offsets},
         attrs={"long_name": "dL/d(bias)", "units": "V/V"},
     )
-    fit = xr.merge(
-        [fit, fitted_da.rename("fitted_curve"), gradient_da.rename("gradient")]
-    )
+    fit = xr.merge([fit, fitted_da.rename("fitted_curve"), gradient_da.rename("gradient")])
     if "amplitude" in ds and "phase" in ds:
         fit = xr.merge([fit, ds[["amplitude", "phase"]]])
 

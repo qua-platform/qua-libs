@@ -60,12 +60,8 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
         phase = np.pi / 6 + 0.3 * i
         noise = 2e-5
-        I_data.append(
-            signal * np.cos(phase) + rng.normal(0, noise, size=len(bias_offsets))
-        )
-        Q_data.append(
-            signal * np.sin(phase) + rng.normal(0, noise, size=len(bias_offsets))
-        )
+        I_data.append(signal * np.cos(phase) + rng.normal(0, noise, size=len(bias_offsets)))
+        Q_data.append(signal * np.sin(phase) + rng.normal(0, noise, size=len(bias_offsets)))
 
     sensor_names = sensors.get_names()
     coords = {"sensors": sensor_names, "bias_offsets": bias_offsets}
