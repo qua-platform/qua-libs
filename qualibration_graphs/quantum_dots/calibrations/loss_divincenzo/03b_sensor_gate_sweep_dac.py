@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from dataclasses import asdict
+import time
 
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-# from calibration_utils.common_utils.experiment import progress_counter_with_log
 from qualang_tools.loops import from_array
 
 from qualibrate.core import QualibrationNode
@@ -21,7 +21,6 @@ from calibration_utils.sensor_dot import (
     generate_simulated_dataset,
     plot_all,
 )
-# from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -59,16 +58,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # Examples (keep commented for safety; edit locally when debugging):
-    # node.parameters.sensor_names = ["virtual_sensor_1", "virtual_sensor_2"]
-    # node.parameters.num_shots = 2
-    # node.parameters.offset_min = -0.2
-    # node.parameters.offset_max = 0.2
-    # node.parameters.offset_step = 0.01
-    # node.parameters.duration_after_step = 16
-    # node.parameters.dac_settling_time_s = 0.001
-    # node.parameters.use_simulated_data = True
-    # node.parameters.peak_fit_side = "right"
     pass
 
 
@@ -209,55 +198,59 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             gate_set_id
         ].get_voltage(s, requery=True)
 
-    import time
-    qm = qmm.open_qm(config)
-    node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
     try:
-        for multiplexed_sensors in node.namespace["sensors"].batch(): 
-            
-            axis_values = node.namespace["sensor_axis_values"]
-            for i, y_value in enumerate(axis_values):
-                while not job.is_paused(): 
-                    time.sleep(0.1)
-                
-                voltages_by_gate_set = {}
-                for sensor_idx, s in multiplexed_sensors.items(): 
-                    gate_set_id = node.machine.sensor_dots[s.name].voltage_sequence.gate_set.name
-                    value_to_play = node.namespace[f"{s.name}_dac_offset"] + y_value
-                    voltages_by_gate_set.setdefault(gate_set_id, {})[s.name] = value_to_play
+        with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+            node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
 
-                    pct = 100 * i / len(axis_values)
-                    node.log(
-                        f"Applying {value_to_play: .4f} to the channel {s.name}: ({pct: .1f} %)"
-                    )
-                for gate_set_id, voltages_dict in voltages_by_gate_set.items():
-                    node.machine.virtual_dc_sets[gate_set_id].set_voltages(voltages_dict)
+            for multiplexed_sensors in node.namespace["sensors"].batch():
+                axis_values = node.namespace["sensor_axis_values"]
+                for i, y_value in enumerate(axis_values):
+                    while not job.is_paused():
+                        time.sleep(0.1)
 
-                # Wait time after setting
-                time.sleep(node.parameters.dac_settling_time_s)
+                    voltages_by_gate_set = {}
+                    for _sensor_idx, sensor in multiplexed_sensors.items():
+                        gate_set_id = (
+                            node.machine.sensor_dots[sensor.name]
+                            .voltage_sequence.gate_set.name
+                        )
+                        value_to_play = node.namespace[
+                            f"{sensor.name}_dac_offset"
+                        ] + y_value
+                        voltages_by_gate_set.setdefault(gate_set_id, {})[
+                            sensor.name
+                        ] = value_to_play
 
-                # # Un-comment this in-case you would like to re-measure and verify at each point whether the applied voltage is correct. 
-                # print(f"Voltage set to {node.machine.virtual_dc_sets[gate_set_id].get_voltage(s.name, requery = True)}")
+                        pct = 100 * i / len(axis_values)
+                        node.log(
+                            f"Applying {value_to_play: .4f} to the channel {sensor.name}: ({pct: .1f} %)"
+                        )
 
-                job.resume()
+                    for gate_set_id, voltages_dict in voltages_by_gate_set.items():
+                        node.machine.virtual_dc_sets[gate_set_id].set_voltages(
+                            voltages_dict
+                        )
 
-        # Display the progress bar
-        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-        for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-            )
-        # Display the execution report to expose possible runtime errors
-        node.log(job.execution_report())
-        # Register the raw dataset, reordering if the scan mode requires it (e.g. spiral)
-        node.results["ds_raw"] = dataset
-    finally: 
+                    time.sleep(node.parameters.dac_settling_time_s)
+                    job.resume()
+
+            data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+            for dataset in data_fetcher:
+                progress_counter(
+                    data_fetcher.get("n", 0),
+                    node.parameters.num_shots,
+                    start_time=data_fetcher.t_start,
+                )
+
+            node.log(job.execution_report())
+            node.results["ds_raw"] = dataset
+    finally:
         node.log("Re-applying initial offsets.")
         for s in sensor_names:
             gate_set_id = node.machine.sensor_dots[s].voltage_sequence.gate_set.name
-            node.machine.virtual_dc_sets[gate_set_id].set_voltages({s: node.namespace[f"{s}_dac_offset"]})
+            node.machine.virtual_dc_sets[gate_set_id].set_voltages(
+                {s: node.namespace[f"{s}_dac_offset"]}
+            )
         
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
@@ -278,12 +271,21 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Get the active sensors from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
 
+#
+# %% {Process_raw_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def process_raw_data(node: QualibrationNode[Parameters, Quam]):
+    """Process the raw dataset into derived signals for analysis and plotting."""
+    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
+
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    ds_processed = process_raw_dataset(node.results["ds_raw"], node)
+    ds_processed = node.results.get("ds_processed")
+    if ds_processed is None:
+        ds_processed = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
@@ -314,7 +316,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     with node.record_state_updates():
         for sensor in node.namespace["sensors"]:
-            if not node.results["fit_results"][sensor.name]["success"]:
+            if node.outcomes.get(sensor.name) != "successful":
                 continue
 
             optimal_offset = node.results["fit_results"][sensor.name]["optimal_bias"]

@@ -21,7 +21,6 @@ from calibration_utils.sensor_dot import (
     generate_simulated_dataset,
     plot_all,
 )
-# from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -58,15 +57,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # Examples (keep commented for safety; edit locally when debugging):
-    # node.parameters.sensor_names = ["virtual_sensor_1", "virtual_sensor_2"]
-    # node.parameters.num_shots = 2
-    # node.parameters.offset_min = -0.4
-    # node.parameters.offset_max = 0.4
-    # node.parameters.offset_step = 0.001
-    # node.parameters.use_simulated_data = True
-    # node.parameters.peak_fit_side = "left"
-    # node.parameters.duration_after_step = 5000
     pass
 
 
@@ -228,12 +218,21 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Get the active sensors from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
 
+#
+# %% {Process_raw_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def process_raw_data(node: QualibrationNode[Parameters, Quam]):
+    """Process the raw dataset into derived signals for analysis and plotting."""
+    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
+
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    ds_processed = process_raw_dataset(node.results["ds_raw"], node)
+    ds_processed = node.results.get("ds_processed")
+    if ds_processed is None:
+        ds_processed = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
@@ -265,7 +264,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     with node.record_state_updates():
         for sensor in node.namespace["sensors"]:
-            if not node.results["fit_results"][sensor.name]["success"]:
+            if node.outcomes.get(sensor.name) != "successful":
                 continue
 
             optimal_offset = node.results["fit_results"][sensor.name]["optimal_bias"]
