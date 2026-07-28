@@ -7,20 +7,31 @@ import numpy as np
 import xarray as xr
 
 
+def plot_all(
+    ds_fit: xr.Dataset,
+    qubit_pair_names: list[str],
+    *,
+    fit_results: Optional[Dict] = None,
+) -> dict[str, plt.Figure]:
+    """Standard node plotting API returning a figure dict."""
+    return {
+        "summary_2d": plot_2d_summary(ds_fit, qubit_pair_names, fit_results=fit_results),
+    }
+
+
 def _compute_fft_2d(
     data_2d: np.ndarray,
     detunings: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """FFT each row (wait-duration slice) and return (frequencies_MHz, magnitudes).
+    """FFT each row and return (spatial_frequencies_1_per_V, magnitudes).
 
     Returns
     -------
-    freqs : (n_freq,) — positive frequencies in MHz, excluding DC.
+    freqs : (n_freq,) — positive frequencies in 1/V, excluding DC.
     fft_mag : (n_ramp, n_freq)
     """
-    dt_ns = float(detunings[1] - detunings[0]) if len(detunings) > 1 else 1.0
-    dt_us = dt_ns * 1e-3
-    freqs = np.fft.rfftfreq(len(detunings), d=dt_us)[1:]  # MHz, no DC
+    dV = float(detunings[1] - detunings[0]) if len(detunings) > 1 else 1.0
+    freqs = np.fft.rfftfreq(len(detunings), d=dV)[1:]  # 1/V, no DC
 
     fft_mag = np.zeros((data_2d.shape[0], len(freqs)))
     for r_idx in range(data_2d.shape[0]):
@@ -39,8 +50,8 @@ def plot_2d_summary(
     """4-panel summary per qubit pair.
 
     Layout (2 rows × 2 columns per qubit pair):
-        (1) Avg state vs (wait, ramp)        | (2) FFT of state along wait axis
-        (3) Avg I vs (wait, ramp)            | (4) FFT of I along wait axis
+        (1) Avg state vs (detuning, ramp)        | (2) FFT of state along detuning axis
+        (3) Avg I vs (detuning, ramp)            | (4) FFT of I along detuning axis
 
     Multiple qubit pairs are tiled as extra column groups.
     """
@@ -81,7 +92,7 @@ def plot_2d_summary(
                         markeredgecolor="white", markeredgewidth=1.0,
                         label=(
                             f"opt ramp={r['optimal_ramp_duration']} ns, "
-                            f"detunig={r['optimal_detuning']} ns"
+                    f"detuning={r['optimal_detuning']:.4g} V"
                         ),
                     )
                     ax_state.legend(fontsize=7)
@@ -93,14 +104,14 @@ def plot_2d_summary(
                 shading="nearest", cmap="inferno",
             )
             fig.colorbar(im_fft, ax=ax_state_fft, label="|FFT|")
-            ax_state_fft.set_xlabel("Frequency (MHz)")
+            ax_state_fft.set_xlabel("Spatial frequency (1/V)")
             ax_state_fft.set_ylabel("Ramp duration (ns)")
             ax_state_fft.set_title(f"{qp_name} — FFT(state)")
         else:
             ax_state.set_title(f"{qp_name} (no state data)")
             ax_state_fft.set_title(f"{qp_name} (no state data)")
 
-        ax_state.set_xlabel("Detuning duration (ns)")
+        ax_state.set_xlabel("Detuning (V)")
         ax_state.set_ylabel("Ramp duration (ns)")
         ax_state.set_title(f"{qp_name} — Avg state")
 
@@ -121,14 +132,14 @@ def plot_2d_summary(
                 shading="nearest", cmap="inferno",
             )
             fig.colorbar(im_fft_i, ax=ax_iq_fft, label="|FFT|")
-            ax_iq_fft.set_xlabel("Frequency (MHz)")
+            ax_iq_fft.set_xlabel("Spatial frequency (1/V)")
             ax_iq_fft.set_ylabel("Ramp duration (ns)")
             ax_iq_fft.set_title(f"{qp_name} — FFT(I)")
         else:
             ax_iq.set_title(f"{qp_name} (no I data)")
             ax_iq_fft.set_title(f"{qp_name} (no I data)")
 
-        ax_iq.set_xlabel("Detuning")
+        ax_iq.set_xlabel("Detuning (V)")
         ax_iq.set_ylabel("Ramp duration (ns)")
         ax_iq.set_title(f"{qp_name} — Avg I")
 

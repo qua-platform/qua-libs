@@ -7,6 +7,18 @@ import numpy as np
 import xarray as xr
 
 
+def plot_all(
+    ds_fit: xr.Dataset,
+    qubit_pair_names: list[str],
+    *,
+    fit_results: Optional[Dict] = None,
+) -> dict[str, plt.Figure]:
+    """Standard node plotting API returning a figure dict."""
+    return {
+        "summary_2d": plot_2d_summary(ds_fit, qubit_pair_names, fit_results=fit_results),
+    }
+
+
 def _compute_fft_2d(
     data_2d: np.ndarray,
     wait_durations: np.ndarray,
