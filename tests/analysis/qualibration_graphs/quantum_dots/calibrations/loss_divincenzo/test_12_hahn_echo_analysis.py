@@ -3,10 +3,10 @@
 Uses virtual_qpu to simulate a Hahn echo (spin echo) decay for a
 Loss-DiVincenzo spin qubit.  The echo sequence is
 
-    π/2 – τ – π – τ – π/2
+    x90 – τ – y180 – τ – x90
 
 and the parity-difference signal decays as  P(τ) = offset + A·exp(−2τ/T₂).
-The π/2 pulse amplitude is pre-calibrated via a quick power-Rabi sweep
+The x90 pulse amplitude is pre-calibrated via a quick power-Rabi sweep
 (``calibrated_pi_half_amp`` fixture in conftest).
 
 Two qubits are tested:
@@ -64,7 +64,7 @@ def test_12_hahn_echo_analysis(ld_device, calibrated_pi_half_amp, analysis_runne
     def _build_hahn_schedule(tau):
         """Build (but do not resolve) a Hahn echo Schedule for a given τ."""
         sched = Schedule()
-        # First π/2 pulse
+        # First x90 pulse
         sched.play(
             GaussianIQPulse(
                 duration=PI_HALF_DUR,
@@ -79,7 +79,7 @@ def test_12_hahn_echo_analysis(ld_device, calibrated_pi_half_amp, analysis_runne
             SquarePulse(duration=tau, amplitude=0.0, frequency=0.0),
             channel="drive_q0",
         )
-        # Refocusing π pulse
+        # Refocusing y180 pulse (π rotation about Y)
         sched.play(
             GaussianIQPulse(
                 duration=PI_HALF_DUR,
@@ -94,7 +94,7 @@ def test_12_hahn_echo_analysis(ld_device, calibrated_pi_half_amp, analysis_runne
             SquarePulse(duration=tau, amplitude=0.0, frequency=0.0),
             channel="drive_q0",
         )
-        # Final π/2 pulse
+        # Final x90 pulse
         sched.play(
             GaussianIQPulse(
                 duration=PI_HALF_DUR,

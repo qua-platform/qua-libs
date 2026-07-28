@@ -20,7 +20,7 @@ from calibration_utils.hahn_echo import (
     plot_all,
     generate_simulated_dataset,
 )
-from calibration_utils.measurement_utils.measurement_streams import (
+from calibration_utils.measurement_utils import (
     declare_streams,
     save_measurement,
     buffer_streams,
@@ -37,12 +37,12 @@ Unlike Ramsey (T2*), the Hahn echo refocuses static dephasing and yields the int
 time, which is always >= T2*.
 
 The sequence is x90 - tau - y180 - tau - x90. The swept parameter tau is the duration
-of each of the two idle gaps (after the first pi/2 and after the refocusing pi pulse).
+of each of the two idle gaps (after the first x90 and after the y180 refocusing pulse).
 Total free evolution is 2*tau. The echo amplitude decays as exp(-2*tau/T2_echo).
 
 Prerequisites:
     - Ramsey node (qubit frequency and T2*) and its prerequisites.
-    - Calibrated pi and pi/2 pulses from Rabi measurements.
+    - Calibrated x90 and y180 pulses from Rabi measurements.
 
 Datasets:
     - ``ds_raw``: raw parity streams from the OPX (``p_{qubit}`` or joint-outcome streams).
@@ -90,9 +90,9 @@ node.machine = Quam.load()
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program for the Hahn echo sequence.
 
-    Sweeps per-arm idle time τ. Pulse sequence per sweep point:
+    Sweeps idle delay τ (each x90–y180 segment; total evolution 2τ). Pulse sequence per sweep point:
 
-        empty → measure(p1) → initialise → x90 → idle(τ) → x180 → idle(τ) → x90 → measure(p2)
+        empty → measure(p1) → initialise → x90 → idle(τ) → y180 → idle(τ) → x90 → measure(p2)
     """
     node.namespace["qubits"] = qubits = get_qubits(node)
 
@@ -102,21 +102,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.tau_max,
         node.parameters.tau_step,
     )
-    tau_clock_cycles = tau_values // 4  # QUA wait() is in unit of 4 ns
+    tau_clock_cycles = tau_values // 4  # ns → QUA clock cycles (1 cycle = 4 ns)
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "tau": xr.DataArray(
             tau_values,
             attrs={
-                "long_name": "Hahn echo idle delay τ (each π/2–π segment)",
+                "long_name": "Hahn echo idle delay τ (each x90–y180 segment)",
                 "units": "ns",
             },
         ),
     }
 
     with program() as node.namespace["qua_program"]:
-        t = declare(int)  # per-arm idle time tau in clock cycles
+        t = declare(int)  # swept τ in QUA clock cycles (1 cycle = 4 ns)
         n = declare(int)  # shot counter
 
         p2, p1, parity_streams = declare_streams(node, qubits)

@@ -1,7 +1,7 @@
 """Simulation test for 12_hahn_echo.
 
 Verifies that the QUA program for the Hahn echo sequence
-(π/2 – τ – π – τ – π/2) compiles and simulates correctly,
+(x90 – τ – y180 – τ – x90) compiles and simulates correctly,
 and that all analog channels return to zero (balanced waveforms).
 """
 

@@ -2,7 +2,7 @@
 
 The XY8 sequence uses CPMG timing with 8 alternating X/Y refocusing pi pulses:
 
-    π/2 – τ – X – 2τ – Y – 2τ – X – 2τ – Y – 2τ – Y – 2τ – X – 2τ – Y – 2τ – X – τ – π/2
+    X/2 – τ – X – 2τ – Y – 2τ – X – 2τ – Y – 2τ – Y – 2τ – X – 2τ – Y – 2τ – X – τ – X/2
 
 where τ is the half inter-pulse spacing.  Total idle time = 16τ.
 The signal decays as
@@ -64,7 +64,7 @@ def _fit_single_qubit(
     Parameters
     ----------
     tau_ns : 1-D array
-        Half inter-pulse spacings in nanoseconds.
+        CPMG half-spacing τ values in nanoseconds (bookend τ, inter-pulse 2τ).
     y_signal : 1-D array
         Conditional readout signal (same length as *tau_ns*).
 
@@ -165,7 +165,7 @@ def fit_raw_data(
     Expects data processed by :func:`process_raw_dataset`, which adds
     ``{analysis_signal}_{qubit}`` variables (default
     ``E_p1_given_p0_0_<qubit>``) of shape ``(n_tau,)`` with coordinate
-    ``tau`` (half inter-pulse spacing in ns).
+    ``tau`` (CPMG half-spacing τ in ns; total idle 16τ).
 
     Parameters
     ----------
@@ -274,6 +274,13 @@ def fit_raw_data(
     return ds_fit, fit_results
 
 
+def _format_t2_ns(value: float) -> str:
+    """Format T₂ for logging; use µs when value exceeds 5000 ns."""
+    if np.isfinite(value) and value > 5000:
+        return f"{value / 1000:.2f} µs"
+    return f"{value:.1f} ns"
+
+
 def log_fitted_results(
     fit_results: dict[str, dict[str, Any]],
     log_callable: Any | None = None,
@@ -291,7 +298,7 @@ def log_fitted_results(
     for qname, r in sorted(fit_results.items()):
         status = "OK" if r["success"] else "FAILED"
         msg = (
-            f"  {qname}: [{status}] T2_xy8={r['T2_xy8']:.1f} ns, "
+            f"  {qname}: [{status}] T2_xy8={_format_t2_ns(r['T2_xy8'])}, "
             f"A={r['amplitude']:.4f}, γ={r['decay_rate']:.6f} 1/ns"
         )
         _log(msg)

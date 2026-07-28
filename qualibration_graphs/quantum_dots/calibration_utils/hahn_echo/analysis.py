@@ -1,14 +1,13 @@
 """Hahn echo (spin echo) T₂ analysis — profiled differential evolution.
 
-The Hahn echo sequence is  π/2 – τ – π – τ – π/2,  where τ is the per-arm
-idle time.  The echo amplitude decays as
+The Hahn echo sequence is  x90 – τ – y180 – τ – x90,  where τ is the idle delay
+in each of the two gaps (total free evolution 2τ).  The echo amplitude decays as
 
     P(τ) = offset + A · exp(−2τ / T₂_echo)
 
-The factor of 2 accounts for the total evolution time 2τ.  Unlike T₂* from a
-Ramsey experiment, T₂_echo is insensitive to static (low-frequency) dephasing
-because the π pulse refocuses it.  T₂_echo therefore measures irreversible
-decoherence from high-frequency noise sources.
+Unlike T₂* from a Ramsey experiment, T₂_echo is insensitive to static (low-frequency) dephasing
+along the refocused axis because the y180 pulse refocuses it.  T₂_echo therefore measures
+irreversible decoherence from high-frequency noise sources.
 
 **Fitting strategy — profiled differential evolution (DE)**
 
@@ -70,7 +69,7 @@ def _fit_single_qubit(
     Parameters
     ----------
     tau_ns : 1-D array
-        Per-arm idle times in nanoseconds.
+        Hahn echo idle delays τ in nanoseconds (each x90–y180 segment).
     y_signal : 1-D array
         Conditional readout signal (same length as *tau_ns*).
 
@@ -176,7 +175,7 @@ def fit_raw_data(
     Expects data processed by :func:`process_raw_dataset`, which adds
     ``{analysis_signal}_{qubit}`` variables (default
     ``E_p1_given_p0_0_<qubit>``) of shape ``(n_tau,)`` with coordinate
-    ``tau`` (per-arm idle time in ns).
+    ``tau`` (Hahn echo idle delay τ in ns, each x90–y180 segment).
 
     Parameters
     ----------
@@ -285,6 +284,13 @@ def fit_raw_data(
     return ds_fit, fit_results
 
 
+def _format_t2_ns(value: float) -> str:
+    """Format T₂ for logging; use µs when value exceeds 5000 ns."""
+    if np.isfinite(value) and value > 5000:
+        return f"{value / 1000:.2f} µs"
+    return f"{value:.1f} ns"
+
+
 def log_fitted_results(
     fit_results: dict[str, dict[str, Any]],
     log_callable: Any | None = None,
@@ -302,7 +308,7 @@ def log_fitted_results(
     for qname, r in sorted(fit_results.items()):
         status = "OK" if r["success"] else "FAILED"
         msg = (
-            f"  {qname}: [{status}] T2_echo={r['T2_echo']:.1f} ns, "
+            f"  {qname}: [{status}] T2_echo={_format_t2_ns(r['T2_echo'])}, "
             f"A={r['amplitude']:.4f}, γ={r['decay_rate']:.6f} 1/ns"
         )
         _log(msg)

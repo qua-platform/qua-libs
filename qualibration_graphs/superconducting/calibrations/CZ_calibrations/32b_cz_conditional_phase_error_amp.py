@@ -39,7 +39,7 @@ Protocol
 Same as node 32a, with these additions:
 1. Apply ``macros[operation]`` repeatedly (``number_of_operations`` sweep).
 2. Compensate the tomography frame for odd repetition counts when the moving qubit starts
-   excited (π/2 frame shift before the final x90 on the stationary qubit).
+   excited (x90 frame shift before the final x90 on the stationary qubit).
 3. Fit the stationary-qubit |e⟩-state oscillation vs. frame at each amplitude and repetition
    count.
 

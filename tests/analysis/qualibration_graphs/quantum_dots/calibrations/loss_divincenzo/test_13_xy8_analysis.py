@@ -7,7 +7,7 @@ collapse operators — no synthetic data.
 
 The XY8 sequence with CPMG timing is:
 
-    π/2 – τ – X – 2τ – Y – 2τ – X – 2τ – Y – 2τ – Y – 2τ – X – 2τ – Y – 2τ – X – τ – π/2
+    X/2 – τ – X – 2τ – Y – 2τ – X – 2τ – Y – 2τ – Y – 2τ – X – 2τ – Y – 2τ – X – τ – X/2
 
 Total idle time = 16τ.  The decay is fitted as P(τ) = offset + A·exp(−16τ/T₂_XY8).
 
