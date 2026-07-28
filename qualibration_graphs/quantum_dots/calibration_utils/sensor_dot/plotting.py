@@ -9,6 +9,7 @@ from qualang_tools.units import unit
 
 u = unit(coerce_to_integer=True)
 
+
 def plot_all(ds_fit: xr.Dataset, sensors: List) -> dict[str, Figure]:
     """Standard node plotting API.
 
@@ -48,9 +49,7 @@ def plot_raw_amplitude(ds: xr.Dataset, sensors: List) -> Figure:
     """
     num_sensors = len(sensors)
 
-    fig, axes = plt.subplots(
-        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
-    )
+    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -80,9 +79,7 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
     """
     num_sensors = len(sensors)
 
-    fig, axes = plt.subplots(
-        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
-    )
+    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -99,9 +96,7 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
     return fig
 
 
-def plot_amplitude_with_fit(
-    ds: xr.Dataset, sensors: List, fits: xr.Dataset = None
-) -> Figure:
+def plot_amplitude_with_fit(ds: xr.Dataset, sensors: List, fits: xr.Dataset = None) -> Figure:
     """
     Plots the sensor gate sweep amplitude with Lorentzian fit and max-gradient point.
 
@@ -120,9 +115,7 @@ def plot_amplitude_with_fit(
         The matplotlib figure object containing the plots.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(
-        1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False
-    )
+    fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
@@ -162,9 +155,7 @@ def plot_individual_raw_amplitude(ax: Axes, sensor_data: xr.Dataset, sensor_id: 
     ax.grid(True, alpha=0.3)
 
 
-def plot_individual_amplitude_with_fit(
-    ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None
-):
+def plot_individual_amplitude_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None):
     """
     Plots individual sensor amplitude data with peak/dip markers on a given axis.
 

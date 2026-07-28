@@ -62,25 +62,22 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 
 
 # Instantiate the QUAM class from the state file
-node.machine = Quam.load()
+node.machine = Quam.load("/Users/kalidu_laptop/merge_libs/quam_state")
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Build the 1D sensor sweep and the QUA pulse sequence."""
 
-     # ── Experiment parameters (Python side) ──────────────────────────────
+    # ── Experiment parameters (Python side) ──────────────────────────────
 
     # Get the relevant sensor dots rom the node
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
-    
+
     # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots # number of repetitions averaged at each sensor plunger voltage
+    n_avg = node.parameters.num_shots  # number of repetitions averaged at each sensor plunger voltage
 
     # The voltage bias offset - set of voltages to apply on the sensor's plunger gate
     # E.g. offset_min=0 & offset_max=0.1 → sweep from Vg=0V to Vg=+0.1V
@@ -95,12 +92,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Metadata for data fetching: labels the saved I/Q arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
-        "bias_offsets": xr.DataArray(
-            bias_offsets, attrs={"long_name": "Sensor bias offset", "units": "V"}
-        ),
+        "bias_offsets": xr.DataArray(bias_offsets, attrs={"long_name": "Sensor bias offset", "units": "V"}),
     }
 
-    # In-case you want to step along the detuning axis at each sensor dot point. 
+    # In-case you want to step along the detuning axis at each sensor dot point.
     # This is useful if you want to calibrate the sensor dot peak relative to the actual measure point
     if node.parameters.qubit_pair_to_step is not None:
         dot_pair = [node.machine.get_component(qp).quantum_dot_pair for qp in node.parameters.qubit_pair_to_step][0]
@@ -113,25 +108,22 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   I_st[i], Q_st[i] : buffers collecting I/Q before transfer to PC
         #   n            : shot counter
         #   n_st         : stream reporting shot index to PC (progress bar)
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-            num_IQ_pairs=num_sensors
-        )
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
 
         # Real-time variable to indicate the index along the sensor bias array
         sensor_idx = declare(int)
 
         # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
-            align() # sync all channels in this batch before starting
+            align()  # sync all channels in this batch before starting
 
             # Extract the VoltageSequence objects in this batch
             sequences_in_batch = {
-                sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence
-                for sensor in multiplexed_sensors.values()
+                sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence for sensor in multiplexed_sensors.values()
             }
 
             # ── OUTER LOOP: PAUSE the QUA program, and set the DAC voltage ──
-            with for_(sensor_idx, 0, sensor_idx < len(bias_offsets), sensor_idx + 1): 
+            with for_(sensor_idx, 0, sensor_idx < len(bias_offsets), sensor_idx + 1):
                 pause()
                 # During pause, will step the DAC
 
@@ -141,25 +133,28 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # ── INNER LOOP: repeat the measurement n_avg times ──────────
                 with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st) # tell the PC which shot we are on
+                    save(n, n_st)  # tell the PC which shot we are on
                     align()
 
-                    # Optionally step a particular qubit pair to the readout point. 
-                    if node.parameters.qubit_pair_to_step is not None: 
+                    # Optionally step a particular qubit pair to the readout point.
+                    if node.parameters.qubit_pair_to_step is not None:
                         dot_pair.voltage_sequence.step_to_point(f"{dot_pair.name}_measure")
 
                         # TODO: Verify this logic
                         # Track the sticky duration through the maximum readout pulse in the multiplexed batch
                         dot_pair.voltage_sequence.track_sticky_duration(
-                            int(max(k.readout_resonator.operations["readout"].length for k in multiplexed_sensors.values()))
+                            int(
+                                max(
+                                    k.readout_resonator.operations["readout"].length
+                                    for k in multiplexed_sensors.values()
+                                )
+                            )
                         )
 
                     for i, sensor in multiplexed_sensors.items():
                         align()
                         # Play the "readout" pulse and integrate I/Q into I[i], Q[i]
-                        sensor.readout_resonator.measure(
-                            "readout", qua_vars=(I[i], Q[i])
-                        )
+                        sensor.readout_resonator.measure("readout", qua_vars=(I[i], Q[i]))
                         # Append this voltage point's I/Q to the stream buffer
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
@@ -167,13 +162,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # At the end of each 1D sweep, play a compensation pulse to account for any charge build-up in the bias tee
                     # This is only necessary in this program if a qubit pair was stepped. Otherwise, skip
-                    if node.parameters.qubit_pair_to_step is not None: 
+                    if node.parameters.qubit_pair_to_step is not None:
                         for seq in sequences_in_batch.values():
-                            seq.apply_compensation_pulse(max_voltage = node.parameters.max_compensation_voltage, go_to_zero = True, return_to_zero = True)
+                            seq.apply_compensation_pulse(
+                                max_voltage=node.parameters.max_compensation_voltage,
+                                go_to_zero=True,
+                                return_to_zero=True,
+                            )
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n") # expose shot counter as "n" in the fetched dataset
+            n_st.save("n")  # expose shot counter as "n" in the fetched dataset
             for i in range(num_sensors):
                 # Each save() above is one voltage point.
                 # .buffer(len(bias_offsets)) : group points along the plunger gate voltage axis
@@ -196,9 +195,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -209,9 +206,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -229,9 +224,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Extract the gate set IDs for each sensor, and measure their current voltage to store their original offsets
     for s in sensor_names:
         gate_set_id = node.machine.sensor_dots[s].voltage_sequence.gate_set.name
-        node.namespace[f"{s}_dac_offset"] = node.machine.virtual_dc_sets[
-            gate_set_id
-        ].get_voltage(s, requery=True)
+        node.namespace[f"{s}_dac_offset"] = node.machine.virtual_dc_sets[gate_set_id].get_voltage(s, requery=True)
 
     try:
         # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
@@ -255,32 +248,21 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Batch the voltages that are necessary to apply
                     voltages_by_gate_set = {}
                     for _sensor_idx, sensor in multiplexed_sensors.items():
-                        gate_set_id = (
-                            node.machine.sensor_dots[sensor.name]
-                            .voltage_sequence.gate_set.name
-                        )
+                        gate_set_id = node.machine.sensor_dots[sensor.name].voltage_sequence.gate_set.name
 
                         # The value to apply is the current DAC offset + the sweep value
-                        value_to_play = node.namespace[
-                            f"{sensor.name}_dac_offset"
-                        ] + y_value
+                        value_to_play = node.namespace[f"{sensor.name}_dac_offset"] + y_value
 
                         # Batch the voltage by gate set name. This is so that sensors can be stepped simultaneously
-                        voltages_by_gate_set.setdefault(gate_set_id, {})[
-                            sensor.name
-                        ] = value_to_play
+                        voltages_by_gate_set.setdefault(gate_set_id, {})[sensor.name] = value_to_play
 
                         # Log the percentage of this innermost loop
                         pct = 100 * i / len(axis_values)
-                        node.log(
-                            f"Applying {value_to_play: .4f} to the channel {sensor.name}: ({pct: .1f} %)"
-                        )
+                        node.log(f"Applying {value_to_play: .4f} to the channel {sensor.name}: ({pct: .1f} %)")
 
-                    # Finally, set the voltages batched together. 
+                    # Finally, set the voltages batched together.
                     for gate_set_id, voltages_dict in voltages_by_gate_set.items():
-                        node.machine.virtual_dc_sets[gate_set_id].set_voltages(
-                            voltages_dict
-                        )
+                        node.machine.virtual_dc_sets[gate_set_id].set_voltages(voltages_dict)
 
                     time.sleep(node.parameters.dac_settling_time_s)
 
@@ -299,14 +281,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Register the raw dataset
         node.results["ds_raw"] = dataset
     finally:
-        # At the end of all the loops, re-apply the original DAC offsets.
+        # At the end of all the loops, re-apply the original DAC offsets.
         node.log("Re-applying initial offsets.")
         for s in sensor_names:
             gate_set_id = node.machine.sensor_dots[s].voltage_sequence.gate_set.name
-            node.machine.virtual_dc_sets[gate_set_id].set_voltages(
-                {s: node.namespace[f"{s}_dac_offset"]}
-            )
-        
+            node.machine.virtual_dc_sets[gate_set_id].set_voltages({s: node.namespace[f"{s}_dac_offset"]})
+
+
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
@@ -325,6 +306,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     # Get the active sensors from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
+
 
 #
 # %% {Process_raw_data}
@@ -356,13 +338,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
-    node.results["figures"] = plot_all(
-        node.results["ds_fit"], node.namespace["sensors"]
-    )
+    node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
     if not node.modes.external:
         plt.show()
     # ### Annotations can come later, once calibration_utils is done
     # annotate_node_figures(node)
+
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -381,6 +362,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             gate_set_id = node.machine.sensor_dots[sensor.name].voltage_sequence.gate_set.name
             node.machine.virtual_dc_sets[gate_set_id].set_voltages({sensor.name: dac_optimal_value})
+
 
 # %% {Save_results}
 @node.run_action()

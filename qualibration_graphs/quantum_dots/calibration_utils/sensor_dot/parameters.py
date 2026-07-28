@@ -36,9 +36,8 @@ class Parameters(
 ):
     pass
 
-class VirtualDCSetParameters(
-    Parameters
-): 
+
+class VirtualDCSetParameters(Parameters):
     qubit_pair_to_step: List[str] | None = None
     """Qubit pair to step to the measure point for OPX, during readout. Default to None, which will not step anything."""
     dac_settling_time_s: float = 0.5
@@ -47,7 +46,7 @@ class VirtualDCSetParameters(
 
 class ExternalDacSweepParameters(
     Parameters,
-): 
+):
     qubit_pair_to_step: List[str] | None = None
     """Qubit pair to step to the measure point for OPX, during readout. Default to None, which will not step anything."""
     dac_settling_time_s: float = 1

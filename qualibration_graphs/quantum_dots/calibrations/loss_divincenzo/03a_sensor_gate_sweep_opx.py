@@ -65,10 +65,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Build the 1D sensor sweep and the QUA pulse sequence."""
 
@@ -79,8 +76,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_sensors = len(sensors)
 
     # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots # number of repetitions averaged at each sensor plunger voltage
-    ramp_duration = node.parameters.ramp_duration # duration of the ramp to the next plunger voltage
+    n_avg = node.parameters.num_shots  # number of repetitions averaged at each sensor plunger voltage
+    ramp_duration = node.parameters.ramp_duration  # duration of the ramp to the next plunger voltage
 
     # The voltage bias offset - set of voltages to apply on the sensor's plunger gate
     # E.g. offset_min=0 & offset_max=0.1 → sweep from Vg=0V to Vg=+0.1V
@@ -93,9 +90,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Metadata for data fetching: labels the saved I/Q arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
-        "bias_offsets": xr.DataArray(
-            bias_offsets, attrs={"long_name": "Sensor bias offset", "units": "V"}
-        ),
+        "bias_offsets": xr.DataArray(bias_offsets, attrs={"long_name": "Sensor bias offset", "units": "V"}),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -106,50 +101,43 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   I_st[i], Q_st[i] : buffers collecting I/Q before transfer to PC
         #   n            : shot counter
         #   n_st         : stream reporting shot index to PC (progress bar)
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-            num_IQ_pairs=num_sensors
-        )
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
         # Real-time variable holding the plunger gate voltage
-        offset = declare(fixed) 
+        offset = declare(fixed)
 
         # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
-            align() # sync all channels in this batch before starting
+            align()  # sync all channels in this batch before starting
 
             # Extract the VoltageSequence objects in this batch
             sequences_in_batch = {
-                sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence
-                for sensor in multiplexed_sensors.values()
+                sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence for sensor in multiplexed_sensors.values()
             }
 
             # ── OUTER LOOP: repeat the full frequency sweep n_avg times ──
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st) # tell the PC which shot we are on
-                
+                save(n, n_st)  # tell the PC which shot we are on
+
                 # ── INNER LOOP: sweep sensor plunger gate voltage ──────────
                 with for_(*from_array(offset, bias_offsets)):
                     for i, sensor in multiplexed_sensors.items():
                         # Extract the readout length so that the plunger voltage is maintained during readout
-                        readout_len = sensor.readout_resonator.operations[
-                            "readout"
-                        ].length
+                        readout_len = sensor.readout_resonator.operations["readout"].length
 
                         align()
 
                         # Ramp the plunger gate voltage to the correct coordinate and hold the voltage (duration) to include the readout time
                         sensor.ramp_to_voltages(
                             {sensor.name: offset},
-                            duration = readout_len + node.parameters.duration_after_step,
-                            ramp_duration = ramp_duration
+                            duration=readout_len + node.parameters.duration_after_step,
+                            ramp_duration=ramp_duration,
                         )
 
                         # While the ramp & any optional duration_after_step, the resonator is idle
                         sensor.readout_resonator.wait((ramp_duration + node.parameters.duration_after_step) // 4)
 
                         # Play the "readout" pulse and integrate I/Q into I[i], Q[i]
-                        sensor.readout_resonator.measure(
-                            "readout", qua_vars=(I[i], Q[i])
-                        )
+                        sensor.readout_resonator.measure("readout", qua_vars=(I[i], Q[i]))
                         # Append this voltage point's I/Q to the stream buffer
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
@@ -157,11 +145,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # At the end of each 1D sweep, play a compensation pulse to account for any charge build-up in the bias tee
                 for seq in sequences_in_batch.values():
-                    seq.apply_compensation_pulse(max_voltage = node.parameters.max_compensation_voltage, go_to_zero = True, return_to_zero = True)
+                    seq.apply_compensation_pulse(
+                        max_voltage=node.parameters.max_compensation_voltage, go_to_zero=True, return_to_zero=True
+                    )
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n") # expose shot counter as "n" in the fetched dataset
+            n_st.save("n")  # expose shot counter as "n" in the fetched dataset
             for i in range(num_sensors):
                 # Each save() above is one voltage point.
                 # .buffer(len(bias_offsets)) : group points along the plunger gate voltage axis
@@ -184,9 +174,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -197,9 +185,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -244,6 +230,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Get the active sensors from the loaded node parameters
     node.namespace["sensors"] = get_sensors(node)
 
+
 #
 # %% {Process_raw_data}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -274,9 +261,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
-    node.results["figures"] = plot_all(
-        node.results["ds_fit"], node.namespace["sensors"]
-    )
+    node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
     if not node.modes.external:
         plt.show()
     # ### Annotations can come later, once calibration_utils is done
@@ -296,7 +281,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             optimal_offset = node.results["fit_results"][sensor.name]["optimal_bias"]
 
             # Add point to the VirtualGateSet instead. Associate with the relevant SensorDot
-            # Optionally step the DAC to this voltage? 
+            # Optionally step the DAC to this voltage?
 
             sensor.add_point(
                 VoltagePointName.MEASURE,
