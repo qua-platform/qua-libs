@@ -50,7 +50,10 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         node.parameters.tau_max,
         node.parameters.tau_step,
     )
-    tau_attrs = {"long_name": "per-arm idle time", "units": "ns"}
+    tau_attrs = {
+        "long_name": "Hahn echo idle delay τ (each π/2–π segment)",
+        "units": "ns",
+    }
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),

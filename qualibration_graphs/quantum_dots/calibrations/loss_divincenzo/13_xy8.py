@@ -32,9 +32,16 @@ from qualibration_libs.runtime import simulate_and_plot
 # %% {Node initialisation}
 description = """
         XY8 DYNAMICAL DECOUPLING T2 MEASUREMENT
-This node measures qubit coherence under XY8 dynamical decoupling. Eight refocusing pi pulses
-with alternating X/Y axes and CPMG timing filter higher-frequency noise. Total idle time
-per sweep point is 16*tau, and the signal decays as exp(-16*tau/T2_xy8).
+This node measures qubit coherence under XY8 dynamical decoupling. Eight refocusing pi
+pulses with alternating X/Y axes and CPMG timing filter higher-frequency noise.
+
+Pulse sequence (CPMG timing; X = x180, Y = y180):
+
+    pi/2 - tau - X - 2*tau - Y - 2*tau - X - 2*tau - Y - 2*tau - Y - 2*tau - X - 2*tau - Y - 2*tau - X - tau - pi/2
+
+The swept parameter tau is the CPMG half-spacing: the two bookend delays are tau, and
+the seven intervals between refocusing pulses are 2*tau. Total free evolution per point
+is 16*tau. The signal decays as exp(-16*tau/T2_xy8).
 
 Prerequisites:
     - Hahn echo node (12) and its prerequisites.
@@ -56,8 +63,8 @@ Results (``node.results["fit_results"][<qubit>]``):
     - ``decay_rate`` [1/ns]: effective rate 16 / T2_xy8.
 
 Figures (``node.results["figures"]``):
-    - ``"decay"``: horizontal subplots of conditional readout vs tau with exponential fit
-      overlay for each qubit.
+    - ``"decay"``: horizontal subplots of conditional readout vs CPMG half-spacing tau
+      (16 tau total idle) with exponential fit overlay for each qubit.
 
 State update:
     - None (diagnostic measurement; inspect ``fit_results`` and ``ds_fit``).
@@ -102,7 +109,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "tau": xr.DataArray(tau_values, attrs={"long_name": "half inter-pulse spacing", "units": "ns"}),
+        "tau": xr.DataArray(
+            tau_values,
+            attrs={
+                "long_name": "XY8 CPMG half-spacing τ (bookend τ, inter-pulse 2τ)",
+                "units": "ns",
+            },
+        ),
     }
 
     with program() as node.namespace["qua_program"]:

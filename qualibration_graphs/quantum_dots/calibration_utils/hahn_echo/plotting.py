@@ -21,6 +21,9 @@ _SIGNAL_LABELS = {
 }
 
 
+_TAU_XLABEL = "Idle delay τ (each π/2–π segment; 2τ total evolution) [{unit}]"
+
+
 def _tau_axis(tau_ns: np.ndarray) -> tuple[np.ndarray, str]:
     tau_plot = tau_ns.astype(float)
     if float(tau_plot.max()) > 5_000.0:
@@ -90,7 +93,7 @@ def plot_all(
                     label="Exponential fit",
                 )
 
-        ax.set_xlabel(f"Per-arm idle time τ ({time_unit})")
+        ax.set_xlabel(_TAU_XLABEL.format(unit=time_unit))
         ax.set_ylabel(y_label)
         ax.set_ylim(-0.05, 1.05)
         apply_node_outcome_style(ax, qname, success)
