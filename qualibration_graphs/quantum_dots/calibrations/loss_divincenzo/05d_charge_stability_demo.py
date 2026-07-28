@@ -181,8 +181,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.run_in_video_mode
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
-    # Connect to the QOP
+    """Connect to the OPX and simulate the QUA program"""
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
@@ -205,8 +204,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-    # Connect to the QOP
+    """Connect to the OPX, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
