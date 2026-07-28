@@ -30,7 +30,6 @@ from qualibration_libs.data import XarrayDataFetcher
 from calibration_utils.common_utils.experiment import (
     get_dots,
     get_sensors,
-    suppress_fetcher_axis_log_spam,
 )
 
 description = """
@@ -222,8 +221,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
-    # Connect to the QOP
+    """Connect to the OPX and simulate the QUA program"""
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
@@ -246,10 +244,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-    # Get rid of the "first axis must be qubit or qubit_pair" logger
-    suppress_fetcher_axis_log_spam()
-    # Connect to the QOP
+    """Connect to the OPX, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
