@@ -91,7 +91,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program for the Hahn echo sequence.
 
     Sweeps idle delay τ (each x90–y180 segment; total evolution 2τ). Pulse sequence per sweep point:
-
         empty → measure(p1) → initialise → x90 → idle(τ) → y180 → idle(τ) → x90 → measure(p2)
     """
     node.namespace["qubits"] = qubits = get_qubits(node)
