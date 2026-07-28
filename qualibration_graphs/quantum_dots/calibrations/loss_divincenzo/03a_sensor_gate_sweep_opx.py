@@ -8,7 +8,6 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 from qualang_tools.loops import from_array
 
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
@@ -20,13 +19,12 @@ from calibration_utils.sensor_dot import (
     fit_raw_data,
     log_fitted_results,
     generate_simulated_dataset,
+    plot_all,
 )
-from calibration_utils.sensor_dot import plot_raw_phase, plot_amplitude_with_fit
 # from calibration_utils.common_utils.annotation import annotate_node_figures
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
@@ -60,16 +58,15 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.sensor_names = ["virtual_sensor_1", "virtual_sensor_2"]
+    # Examples (keep commented for safety; edit locally when debugging):
+    # node.parameters.sensor_names = ["virtual_sensor_1", "virtual_sensor_2"]
     # node.parameters.num_shots = 2
-    node.parameters.offset_min = -0.4
-    node.parameters.offset_max = 0.4
-    node.parameters.offset_step = 0.001
-    # node.parameters.simulate = True
-    node.parameters.use_simulated_data = False
-    node.parameters.peak_fit_side = "left"
+    # node.parameters.offset_min = -0.4
+    # node.parameters.offset_max = 0.4
+    # node.parameters.offset_step = 0.001
+    # node.parameters.use_simulated_data = True
+    # node.parameters.peak_fit_side = "left"
     # node.parameters.duration_after_step = 5000
-    # node.parameters.simulate = True
     pass
 
 
@@ -84,9 +81,6 @@ node.machine = Quam.load()
 )
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    # Class containing tools to help handle units and conversions.
-    u = unit(coerce_to_integer=True)
-
     # Get the relevant sensor dots from the node
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
@@ -239,8 +233,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
@@ -255,16 +249,11 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
-    fig_raw_phase = plot_raw_phase(node.results["ds_raw"], node.namespace["sensors"])
-    fig_amplitude_fit = plot_amplitude_with_fit(
-        node.results["ds_raw"], node.namespace["sensors"], node.results["ds_fit"]
+    node.results["figures"] = plot_all(
+        node.results["ds_fit"], node.namespace["sensors"]
     )
-    plt.show()
-    # Store the generated figures
-    node.results["figures"] = {
-        "phase": fig_raw_phase,
-        "amplitude_gradient": fig_amplitude_fit,
-    }
+    if not node.modes.external:
+        plt.show()
     # ### Annotations can come later, once calibration_utils is done
     # annotate_node_figures(node)
 

@@ -13,7 +13,7 @@ highest charge sensitivity — sit at  x0 ± γ / (2√3).
 
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict, NamedTuple
+from typing import Tuple, Dict, NamedTuple, Optional
 import numpy as np
 import xarray as xr
 from scipy.optimize import curve_fit
@@ -71,6 +71,11 @@ def fit_lorentzian(
     v: np.ndarray,
     signal: np.ndarray,
     side: str = "right",
+    *,
+    x0_guess: Optional[float] = None,
+    gamma_guess: Optional[float] = None,
+    amp_guess: Optional[float] = None,
+    offset_guess: Optional[float] = None,
 ) -> LorentzianFitResult:
     """Fit a Lorentzian peak to a 1D sensor sweep.
 
@@ -88,11 +93,22 @@ def fit_lorentzian(
     LorentzianFitResult
         Fitted parameters and the derived optimal voltage.
     """
-    peak_idx = int(np.argmax(signal))
-    x0_guess = float(v[peak_idx])
-    amp_guess = float(signal[peak_idx] - np.median(signal))
-    gamma_guess = float((v[-1] - v[0]) / 10)
-    offset_guess = float(np.median(signal))
+    v = np.asarray(v, dtype=float)
+    signal = np.asarray(signal, dtype=float)
+
+    if offset_guess is None:
+        offset_guess = float(np.nanmedian(signal))
+
+    if x0_guess is None:
+        peak_idx = int(np.nanargmax(signal))
+        x0_guess = float(v[peak_idx])
+
+    if amp_guess is None:
+        idx0 = int(np.nanargmin(np.abs(v - x0_guess)))
+        amp_guess = float(signal[idx0] - offset_guess)
+
+    if gamma_guess is None:
+        gamma_guess = float((v[-1] - v[0]) / 10) if len(v) > 1 else 1.0
 
     popt, pcov = curve_fit(
         lorentzian,
@@ -207,7 +223,9 @@ def fit_raw_data(
     peak_results = peaks_dips(ds.amplitude, "bias_offsets")
 
     side = getattr(node.parameters, "peak_fit_side", "left")
-    ds_fit, fit_results = _extract_relevant_fit_parameters(peak_results, ds, node, side = side)
+    ds_fit, fit_results = _extract_relevant_fit_parameters(
+        peak_results, ds, node, side=side
+    )
     return ds_fit, fit_results
 
 
@@ -257,6 +275,10 @@ def _extract_relevant_fit_parameters(
     gradient_curve_list = []
     success_list = []
 
+    log_callable = getattr(node, "log", None)
+    if log_callable is None:
+        log_callable = logging.getLogger(__name__).info
+
     for sensor in sensors:
         peak_pos = peak_ds.position.sel(sensors=sensor.name).values
         peak_detected = not np.isnan(peak_pos)
@@ -265,7 +287,34 @@ def _extract_relevant_fit_parameters(
 
         if peak_detected:
             try:
-                lor_result = fit_lorentzian(bias_offsets, sensor_amp, side = side)
+                peak_width = float(peak_ds.width.sel(sensors=sensor.name).values)
+                gamma_guess = peak_width if np.isfinite(peak_width) and peak_width > 0 else None
+
+                lor_result = fit_lorentzian(
+                    bias_offsets,
+                    sensor_amp,
+                    side=side,
+                    x0_guess=float(peak_pos),
+                    gamma_guess=gamma_guess,
+                )
+
+                # Guardrails: ensure the derived optimum is meaningful for this scan.
+                finite_fit = (
+                    np.isfinite(lor_result.x0)
+                    and np.isfinite(lor_result.gamma)
+                    and np.isfinite(lor_result.optimal_voltage)
+                )
+                in_span = (bias_offsets.min() <= lor_result.optimal_voltage) and (
+                    lor_result.optimal_voltage <= bias_offsets.max()
+                )
+                if not finite_fit:
+                    raise ValueError("Non-finite Lorentzian fit parameters.")
+                if not in_span:
+                    raise ValueError(
+                        "Optimal bias outside scanned range "
+                        f"[{bias_offsets.min():.4g}, {bias_offsets.max():.4g}] V."
+                    )
+
                 fitted = lorentzian(
                     bias_offsets,
                     lor_result.x0,
@@ -291,8 +340,11 @@ def _extract_relevant_fit_parameters(
                 gradient_curve_list.append(grad)
                 success_list.append(True)
                 continue
-            except RuntimeError:
-                pass
+            except (RuntimeError, ValueError, FloatingPointError) as exc:
+                log_callable(
+                    f"[fit] Sensor '{sensor.name}': feature detected at {float(peak_pos):.4g} V "
+                    f"but fit rejected ({type(exc).__name__}: {exc}). Marking as failed."
+                )
 
         lor_x0_list.append(np.nan)
         lor_gamma_list.append(np.nan)
@@ -306,7 +358,7 @@ def _extract_relevant_fit_parameters(
         success_list.append(False)
 
     sensor_names = [s.name for s in sensors]
-    fit = peak_ds.copy()
+    fit = peak_ds.copy().rename({"amplitude": "peak_amplitude"})
 
     fit = fit.assign_coords(lorentzian_x0=("sensors", lor_x0_list))
     fit.lorentzian_x0.attrs = {"long_name": "Lorentzian center", "units": "V"}
@@ -342,6 +394,8 @@ def _extract_relevant_fit_parameters(
     fit = xr.merge(
         [fit, fitted_da.rename("fitted_curve"), gradient_da.rename("gradient")]
     )
+    if "amplitude" in ds and "phase" in ds:
+        fit = xr.merge([fit, ds[["amplitude", "phase"]]])
 
     fit_results = {
         sensor.name: FitParameters(

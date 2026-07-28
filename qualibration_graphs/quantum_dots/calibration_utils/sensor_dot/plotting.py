@@ -9,6 +9,21 @@ from qualang_tools.units import unit
 
 u = unit(coerce_to_integer=True)
 
+def plot_all(ds_fit: xr.Dataset, sensors: List) -> dict[str, Figure]:
+    """Standard node plotting API.
+
+    Parameters
+    ----------
+    ds_fit:
+        Fit dataset produced by ``fit_raw_data`` (also includes derived fields used for plots).
+    sensors:
+        SensorDot batchable list (or list-like) used for naming/ordering.
+    """
+    figures: dict[str, Figure] = {}
+    figures["phase"] = plot_raw_phase(ds_fit, sensors)
+    figures["amplitude_gradient"] = plot_amplitude_with_fit(ds_fit, sensors, ds_fit)
+    return figures
+
 
 def plot_raw_amplitude(ds: xr.Dataset, sensors: List) -> Figure:
     """
