@@ -16,8 +16,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum per-arm idle time in nanoseconds. Default is 10000 ns (10 µs)."""
     tau_step: int = 16
     """Step size for the per-arm idle time sweep in nanoseconds. Default is 16 ns."""
-    operation: str = "x180"
-    """Name of the qubit pi-pulse operation. Default is 'x180'."""
     use_simulated_data: bool = False
     """Whether to generate simulated data instead of measuring via the OPX."""
     sim_noise_std: float = 0.03
