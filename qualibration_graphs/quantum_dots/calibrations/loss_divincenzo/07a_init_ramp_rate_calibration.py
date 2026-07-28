@@ -10,9 +10,9 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
-from qualibration_libs.parameters import get_qubit_pairs
+from qualibration_libs.parameters.experiment import get_qubit_pairs
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 from calibration_utils.init_ramp_rate import (
     Parameters,
     analyse_ramp_rate,
@@ -269,6 +269,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Re-resolve qubit-pairs based on the loaded node parameters
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
+# %% {Process_raw_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def process_raw_data(node: QualibrationNode[Parameters, Quam]):
+    """Stage a fit/plot dataset without mutating ds_raw."""
+    node.results["ds_fit"] = node.results["ds_raw"].copy()
+
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -277,8 +283,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
     qp_names = [qp.name for qp in qubit_pairs]
 
+    ds_in = node.results.get("ds_fit", node.results["ds_raw"])
     ds_fit, fit_results = analyse_ramp_rate(
-        node.results["ds_raw"],
+        ds_in,
         qp_names,
         find_minimum=node.parameters.find_minimum,
     )
