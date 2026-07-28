@@ -51,7 +51,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         node.parameters.tau_step,
     )
     tau_attrs = {
-        "long_name": "Hahn echo idle delay τ (each π/2–π segment)",
+        "long_name": "Hahn echo idle delay τ (each x90–y180 segment)",
         "units": "ns",
     }
 

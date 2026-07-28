@@ -20,7 +20,7 @@ from calibration_utils.xy8 import (
     plot_all,
     generate_simulated_dataset,
 )
-from calibration_utils.measurement_utils.measurement_streams import (
+from calibration_utils.measurement_utils import (
     declare_streams,
     save_measurement,
     buffer_streams,
@@ -105,7 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.tau_max,
         node.parameters.tau_step,
     )
-    tau_clock_cycles = tau_values // 4  # QUA wait() uses 4 ns clock cycles
+    tau_clock_cycles = tau_values // 4  # ns → QUA clock cycles (1 cycle = 4 ns)
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -119,7 +119,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     with program() as node.namespace["qua_program"]:
-        t = declare(int)  # half inter-pulse spacing tau in clock cycles
+        t = declare(int)  # swept τ in QUA clock cycles (1 cycle = 4 ns)
         n = declare(int)  # shot counter
 
         p2, p1, parity_streams = declare_streams(node, qubits)

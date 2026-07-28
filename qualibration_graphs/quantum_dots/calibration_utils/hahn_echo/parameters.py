@@ -11,11 +11,15 @@ class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     tau_min: int = 16
-    """Minimum per-arm idle time in nanoseconds. Must be >= 4 clock cycles. Default is 16 ns."""
+    """Minimum Hahn echo idle delay τ in nanoseconds (each x90–y180 segment; total evolution 2τ).
+
+    Must be a multiple of 4 ns (1 QUA clock cycle). Default is 16 ns."""
     tau_max: int = 10_000
-    """Maximum per-arm idle time in nanoseconds. Default is 10000 ns (10 µs)."""
+    """Maximum Hahn echo idle delay τ in nanoseconds (each x90–y180 segment; total evolution 2τ).
+
+    Default is 10 000 ns (10 µs per segment; 20 µs total evolution)."""
     tau_step: int = 16
-    """Step size for the per-arm idle time sweep in nanoseconds. Default is 16 ns."""
+    """Step size for the τ sweep in nanoseconds. Default is 16 ns (4 QUA clock cycles)."""
     use_simulated_data: bool = False
     """Whether to generate simulated data instead of measuring via the OPX."""
     sim_noise_std: float = 0.03

@@ -21,7 +21,7 @@ _SIGNAL_LABELS = {
 }
 
 
-_TAU_XLABEL = "Idle delay τ (each π/2–π segment; 2τ total evolution) [{unit}]"
+_TAU_XLABEL = "Idle delay τ (each x90–y180 segment; 2τ total evolution) [{unit}]"
 
 
 def _tau_axis(tau_ns: np.ndarray) -> tuple[np.ndarray, str]:
