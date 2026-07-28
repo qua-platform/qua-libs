@@ -32,7 +32,7 @@ from scipy.optimize import differential_evolution
 
 import xarray as xr
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils import get_parity_item_names
+from calibration_utils.measurement_utils import get_parity_item_names, process_streams
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +140,20 @@ def _fit_single_qubit(
         logger.warning("XY8 T2 fit failed", exc_info=True)
 
     return result
+
+
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Compute conditional expectations from joint-outcome streams.
+
+    Returns a new dataset; ``ds_raw`` in the node is left unchanged.
+    """
+    qubits = node.namespace["qubits"]
+    return process_streams(
+        ds,
+        [q.name for q in qubits],
+        parity_measurement=node.parameters.parity_measurement,
+        sweep_dims=("tau",),
+    )
 
 
 def fit_raw_data(

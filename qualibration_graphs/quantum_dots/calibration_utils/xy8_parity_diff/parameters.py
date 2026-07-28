@@ -16,7 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum half inter-pulse spacing in nanoseconds. Default is 10000 ns (10 µs)."""
     tau_step: int = 4
     """Step size for the half inter-pulse spacing sweep in nanoseconds. Default is 4 ns (1 clock cycle)."""
-
+    parity_measurement: bool = False
+    """Whether or not to perform parity measurement."""
 
 class Parameters(
     NodeParameters,
