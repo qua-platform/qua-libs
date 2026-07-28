@@ -134,6 +134,9 @@ for i, q in enumerate(machine.qubits.values()):
     q.T2ramsey = 0.5e-6
     q.T2echo = 2e-6
 
+    # Set all qubit to be active
+    machine.active_qubit_names.append(q.name)
+
 
 ##############################
 # %%   Sensor Properties #####
