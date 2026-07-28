@@ -177,9 +177,10 @@ def fit_raw_data(
     Returns
     -------
     (ds_fit, fit_results) : tuple
-        *ds_fit* is a copy of the input dataset.  *fit_results* maps
-        qubit name → dict of :class:`FitParameters` fields plus ``_diag``
-        with per-trace data for plotting.
+        *ds_fit* contains processed streams, per-qubit fitted curves
+        (``{analysis_signal}_fit_{qubit}``), and summary scalars on a
+        ``qubit`` coordinate.  *fit_results* maps qubit name → dict of
+        :class:`FitParameters` fields plus ``_diag`` for plotting.
     """
     qubits = node.namespace["qubits"]
     tau_ns = np.asarray(ds.tau.values, dtype=float)
@@ -192,6 +193,7 @@ def fit_raw_data(
     )
 
     fit_results: Dict[str, Dict[str, Any]] = {}
+    fit_curve_vars: Dict[str, Tuple[list[str], np.ndarray]] = {}
 
     for qname in qubit_names:
         signal_var = f"{analysis_signal}_{qname}"
@@ -205,6 +207,10 @@ def fit_raw_data(
                 success=False,
             )
             fit_results[qname] = asdict(fp)
+            fit_curve_vars[f"{analysis_signal}_fit_{qname}"] = (
+                ["tau"],
+                np.full_like(tau_ns, np.nan, dtype=float),
+            )
             continue
 
         signal_1d = np.asarray(ds[signal_var].values, dtype=float)
@@ -222,6 +228,10 @@ def fit_raw_data(
                 success=False,
             )
             fit_results[qname] = asdict(fp)
+            fit_curve_vars[f"{analysis_signal}_fit_{qname}"] = (
+                ["tau"],
+                np.full_like(tau_ns, np.nan, dtype=float),
+            )
             continue
 
         result = _fit_single_qubit(tau_ns, signal_1d)
@@ -234,8 +244,34 @@ def fit_raw_data(
         )
         fit_results[qname] = asdict(fp)
         fit_results[qname]["_diag"] = result
+        fit_curve_vars[f"{analysis_signal}_fit_{qname}"] = (
+            ["tau"],
+            np.asarray(result["fitted_curve"], dtype=float),
+        )
 
-    ds_fit = ds.copy()
+    ds_fit = ds.assign(
+        {
+            name: xr.DataArray(
+                data,
+                dims=dims,
+                coords={"tau": ds.tau},
+                attrs={"long_name": "fitted XY8 decay"},
+            )
+            for name, (dims, data) in fit_curve_vars.items()
+        }
+    )
+    ds_fit = ds_fit.assign(
+        T2_xy8=("qubit", [fit_results[q]["T2_xy8"] for q in qubit_names]),
+        amplitude=("qubit", [fit_results[q]["amplitude"] for q in qubit_names]),
+        offset=("qubit", [fit_results[q]["offset"] for q in qubit_names]),
+        decay_rate=("qubit", [fit_results[q]["decay_rate"] for q in qubit_names]),
+        success=("qubit", [fit_results[q]["success"] for q in qubit_names]),
+    ).assign_coords(qubit=qubit_names)
+    ds_fit["T2_xy8"].attrs = {"long_name": "XY8 T2", "units": "ns"}
+    ds_fit["amplitude"].attrs = {"long_name": "XY8 contrast"}
+    ds_fit["offset"].attrs = {"long_name": "baseline"}
+    ds_fit["decay_rate"].attrs = {"long_name": "decay rate", "units": "1/ns"}
+
     return ds_fit, fit_results
 
 
