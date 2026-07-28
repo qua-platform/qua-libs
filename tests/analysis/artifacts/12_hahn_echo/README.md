@@ -48,7 +48,7 @@ State update:
 | `analysis_signal` | `E_p2_given_p1_0` | Which conditional expectation to use for fitting.
 E_p2_given_p1_0: P(second=1 | first=0) — post-select on empty dot.
 E_p2_given_p1_1: P(second=1 | first=1) — post-select on loaded dot. |
-| `parity_pre_measurement` | `True` | Whether to use parity pre measurement. Default is False. |
+| `parity_measurement` | `True` | Whether to use parity pre measurement. Default is False. |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
