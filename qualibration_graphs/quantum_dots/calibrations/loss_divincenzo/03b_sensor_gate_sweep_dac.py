@@ -27,24 +27,45 @@ from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Node initialisation}
 description = """
-        CHARGE SENSOR GATE SWEEP with the DAC using the VirtualDCSet
+        SENSOR DOT GATE SWEEP (DAC / VirtualDCSet)
 
-The measurement performs a voltage sweep across a specified range with configurable step size. The voltage is stepped by your 
-external DAC, which must be configured in the execute_qua_program run_action first. You can optionally step to the measure point
-of the associated qubit_pair upon measurement, so that the un-virtualized sensor gate DAC sweep will be at the most sensitive
-point at the qubit_pair's measure point. 
+This sequence performs a 1D sweep of the sensor-dot gate bias using an external DAC (via the VirtualDCSet). The OPX runs the
+readout and pauses between points while Python steps the DAC to the next bias value, then resumes the QUA program.
+Optionally, the associated qubit-pair can be stepped to its ``measure`` point at each DAC step to calibrate the sensor response
+at a physically relevant operating point.
 
-At each voltage point, a readout pulse is sent to the resonator coupled to the sensor dot, and the reflected signal is 
-demodulated and recorded. A global average is performed (averaging on the most outer loop) and the data is extracted while 
-the program is running to display the sensor response with increasing SNR.
+At each bias value, a readout pulse is sent to the sensor resonator and the reflected signal is demodulated into the 'I' and 'Q'
+quadratures. The sweep is averaged to improve SNR and post-processed to extract a recommended operating point
+(maximum-sensitivity bias).
 
 Prerequisites:
     - Connect the AC line of the bias-tee connected to the sensor dot to one OPX channel.
-    - Having initialized the Quam (quam_config/populate_quam_state_*.py).
-    - Having calibrated the resonators coupled to the SensorDot components.
+    - External DAC configured and reachable through the VirtualDCSet in QUAM.
+    - QUAM initialised (e.g. ``quam_config/populate_quam_state_*.py``).
+    - SensorDot readout resonators calibrated (time-of-flight/offsets/gains + readout frequency, amplitude, duration).
+
+Datasets:
+    - ``ds_raw``: untouched I/Q fetched from the OPX (never modified after acquisition).
+    - ``ds_processed``: ``ds_raw`` plus derived amplitude/phase (used by fitting and plotting).
+    - ``ds_fit``: processed sweeps plus analysis outputs (derived fields and per-sensor summary coordinates). Used by
+      ``plot_data``.
+    - ``fit_results``: compact per-sensor calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][<sensor>]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``optimal_bias`` [V]: recommended operating bias (Lorentzian inflection point; side set by ``peak_fit_side``).
+    - ``peak_position`` [V]: detected Coulomb-peak position (feature detection).
+    - ``lorentzian_gamma`` [V]: Lorentzian FWHM (linewidth) of the fitted peak.
+    - ``max_gradient_bias`` [V]: bias at maximum slope (closest sampled point to ``optimal_bias``).
+
+Figures (``node.results["figures"]``):
+    - ``"phase"``: phase vs bias offset for each sensor.
+    - ``"amplitude_gradient"``: amplitude with Lorentzian fit overlay and a marker at the max-gradient point.
 
 State update:
-    - Update the optimal voltage bias of each sensor dot.
+    - For each successful sensor, sets the corresponding VirtualDCSet channel to the recommended gate voltage
+      (initial DAC offset + ``optimal_bias``).
 """
 
 
