@@ -77,6 +77,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -93,8 +94,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     ramp_step = int(node.parameters.ramp_duration_step)
     if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
         raise ValueError(
-            f"Ramp settings must be divisible by 4. "
-            f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
+            f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
         )
 
     # Sweep axis 2: detuning voltage applied at the INITIALIZE point
@@ -179,20 +179,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # .buffer(len(detuning_array))       : group points along detuning axis (innermost loop)
                 # .buffer(len(ramp_duration_array))  : group points along ramp axis (outer loop)
                 # .average()                         : average over all shots on the OPX
-                state_st[qp.name].buffer(len(detuning_array)).buffer(
-                    len(ramp_duration_array)
-                ).average().save(f"state_{qp.name}")
-                i_st[qp.name].buffer(len(detuning_array)).buffer(
-                    len(ramp_duration_array)
-                ).average().save(f"I_{qp.name}")
-                q_st[qp.name].buffer(len(detuning_array)).buffer(
-                    len(ramp_duration_array)
-                ).average().save(f"Q_{qp.name}")
+                state_st[qp.name].buffer(len(detuning_array)).buffer(len(ramp_duration_array)).average().save(
+                    f"state_{qp.name}"
+                )
+                i_st[qp.name].buffer(len(detuning_array)).buffer(len(ramp_duration_array)).average().save(
+                    f"I_{qp.name}"
+                )
+                q_st[qp.name].buffer(len(detuning_array)).buffer(len(ramp_duration_array)).average().save(
+                    f"Q_{qp.name}"
+                )
 
 
 # %% {Simulate}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
     or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -202,9 +203,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -215,8 +214,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data."""
@@ -232,10 +230,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -259,6 +254,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+
 
 # %% {Process_raw_data}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -284,8 +280,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
     node.outcomes = {
-        qp_name: ("successful" if r["success"] else "failed")
-        for qp_name, r in node.results["fit_results"].items()
+        qp_name: ("successful" if r["success"] else "failed") for qp_name, r in node.results["fit_results"].items()
     }
 
 
@@ -314,18 +309,15 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes.get(qp.name) != "successful":
                 continue
-    
+
             dot_pair = qp.quantum_dot_pair
             optimal_ramp = node.results["fit_results"][qp.name]["optimal_ramp_duration"]
-    
+
             init_macro = dot_pair.macros.get("initialize")
             if init_macro is not None and hasattr(init_macro, "update"):
                 init_macro.update(ramp_duration=optimal_ramp)
             else:
-                node.log(
-                    f"  {qp.name}: no updatable initialise macro found on "
-                    f"{dot_pair.name}"
-                )
+                node.log(f"  {qp.name}: no updatable initialise macro found on " f"{dot_pair.name}")
 
 
 # %% {Save_results}
