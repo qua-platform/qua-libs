@@ -52,7 +52,7 @@ Datasets:
     - ``fit_results``: compact per-qubit-pair dict with the optimal coordinates.
 
 Figures (``node.results["figures"]``):
-    - ``"summary_2d"``: 4-panel summary (state + I heatmaps and their FFTs along wait axis).
+    - ``"summary_2d"``: 6-panel summary (state + I/Q heatmaps and their FFTs along wait axis).
 
 State update:
     - The initialisation macro ``ramp_duration`` on each qubit pair.
@@ -114,6 +114,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     if wait_min < 16:
         raise ValueError(f"Minimum wait duration must be >= 16 ns (4 clock cycles). Got {wait_min}")
 
+    # TODO: Allow building of log arrays?
     ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
     wait_ns_array = np.arange(wait_min, wait_max, wait_step, dtype=int)
 
@@ -327,6 +328,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             dot_pair = qp.quantum_dot_pair
             optimal_ramp = node.results["fit_results"][qp.name]["optimal_ramp_duration"]
 
+            # TODO: Does the wait duration update anything here?
             init_macro = dot_pair.macros.get("initialize")
             if init_macro is not None and hasattr(init_macro, "update"):
                 init_macro.update(ramp_duration=optimal_ramp)
