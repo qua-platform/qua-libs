@@ -48,33 +48,36 @@ def plot_2d_summary(
     qubit_pair_names: list[str],
     fit_results: Optional[Dict] = None,
 ) -> plt.Figure:
-    """4-panel summary per qubit pair.
+    """6-panel summary per qubit pair.
 
-    Layout (2 rows × 2 columns per qubit pair):
-        (1) Avg state vs (wait, ramp)        | (2) FFT of state along wait axis
-        (3) Avg I vs (wait, ramp)            | (4) FFT of I along wait axis
+    Layout (2 rows × 3 columns per qubit pair):
+        Row 1 (heatmaps): Avg state | Avg I | Avg Q
+        Row 2 (FFTs):     FFT(state) | FFT(I) | FFT(Q)
 
     Multiple qubit pairs are tiled as extra column groups.
     """
     n_pairs = max(len(qubit_pair_names), 1)
     fig, axes = plt.subplots(
         2,
-        2 * n_pairs,
-        figsize=(6 * 2 * n_pairs, 5 * 2),
+        3 * n_pairs,
+        figsize=(6 * 3 * n_pairs, 5 * 2),
         squeeze=False,
     )
 
     for p_idx, qp_name in enumerate(qubit_pair_names):
-        col_base = 2 * p_idx
+        col_base = 3 * p_idx
         ax_state = axes[0, col_base]
-        ax_state_fft = axes[0, col_base + 1]
-        ax_iq = axes[1, col_base]
-        ax_iq_fft = axes[1, col_base + 1]
+        ax_i = axes[0, col_base + 1]
+        ax_q = axes[0, col_base + 2]
+
+        ax_state_fft = axes[1, col_base]
+        ax_i_fft = axes[1, col_base + 1]
+        ax_q_fft = axes[1, col_base + 2]
 
         ramp = ds_raw["ramp_duration"].values
         wait = ds_raw["wait_duration"].values
 
-        # ── (1) Avg state heatmap ──────────────────────────────────────
+        # ── Avg state heatmap ──────────────────────────────────────────
         state_key = f"state_{qp_name}"
         if state_key in ds_raw:
             state_2d = ds_raw[state_key].values
@@ -103,7 +106,7 @@ def plot_2d_summary(
                     )
                     ax_state.legend(fontsize=7)
 
-            # ── (2) FFT of state ───────────────────────────────────────
+            # ── FFT of state ───────────────────────────────────────────
             freqs, fft_mag = _compute_fft_2d(state_2d, wait)
             im_fft = ax_state_fft.pcolormesh(
                 freqs,
@@ -124,39 +127,71 @@ def plot_2d_summary(
         ax_state.set_ylabel("Ramp duration (ns)")
         ax_state.set_title(f"{qp_name} — Avg state")
 
-        # ── (3) Avg I heatmap ──────────────────────────────────────────
+        # ── Avg I heatmap + FFT(I) ─────────────────────────────────────
         i_key = f"I_{qp_name}"
         if i_key in ds_raw:
             i_2d = ds_raw[i_key].values
-            im_i = ax_iq.pcolormesh(
+            im_i = ax_i.pcolormesh(
                 wait,
                 ramp,
                 i_2d,
                 shading="nearest",
                 cmap="viridis",
             )
-            fig.colorbar(im_i, ax=ax_iq, label="Avg I")
+            fig.colorbar(im_i, ax=ax_i, label="Avg I")
 
-            # ── (4) FFT of I ───────────────────────────────────────────
             freqs_i, fft_mag_i = _compute_fft_2d(i_2d, wait)
-            im_fft_i = ax_iq_fft.pcolormesh(
+            im_fft_i = ax_i_fft.pcolormesh(
                 freqs_i,
                 ramp,
                 fft_mag_i,
                 shading="nearest",
                 cmap="inferno",
             )
-            fig.colorbar(im_fft_i, ax=ax_iq_fft, label="|FFT|")
-            ax_iq_fft.set_xlabel("Frequency (MHz)")
-            ax_iq_fft.set_ylabel("Ramp duration (ns)")
-            ax_iq_fft.set_title(f"{qp_name} — FFT(I)")
+            fig.colorbar(im_fft_i, ax=ax_i_fft, label="|FFT|")
+            ax_i_fft.set_xlabel("Frequency (MHz)")
+            ax_i_fft.set_ylabel("Ramp duration (ns)")
+            ax_i_fft.set_title(f"{qp_name} — FFT(I)")
         else:
-            ax_iq.set_title(f"{qp_name} (no I data)")
-            ax_iq_fft.set_title(f"{qp_name} (no I data)")
+            ax_i.set_title(f"{qp_name} (no I data)")
+            ax_i_fft.set_title(f"{qp_name} (no I data)")
 
-        ax_iq.set_xlabel("Wait duration (ns)")
-        ax_iq.set_ylabel("Ramp duration (ns)")
-        ax_iq.set_title(f"{qp_name} — Avg I")
+        ax_i.set_xlabel("Wait duration (ns)")
+        ax_i.set_ylabel("Ramp duration (ns)")
+        ax_i.set_title(f"{qp_name} — Avg I")
+
+        # ── Avg Q heatmap + FFT(Q) ─────────────────────────────────────
+        q_key = f"Q_{qp_name}"
+        if q_key in ds_raw:
+            q_2d = ds_raw[q_key].values
+            im_q = ax_q.pcolormesh(
+                wait,
+                ramp,
+                q_2d,
+                shading="nearest",
+                cmap="viridis",
+            )
+            fig.colorbar(im_q, ax=ax_q, label="Avg Q")
+
+            freqs_q, fft_mag_q = _compute_fft_2d(q_2d, wait)
+            im_fft_q = ax_q_fft.pcolormesh(
+                freqs_q,
+                ramp,
+                fft_mag_q,
+                shading="nearest",
+                cmap="inferno",
+            )
+            fig.colorbar(im_fft_q, ax=ax_q_fft, label="|FFT|")
+            ax_q_fft.set_xlabel("Frequency (MHz)")
+            ax_q_fft.set_ylabel("Ramp duration (ns)")
+            ax_q_fft.set_title(f"{qp_name} — FFT(Q)")
+        else:
+            ax_q.set_title(f"{qp_name} (no Q data)")
+            ax_q_fft.set_title(f"{qp_name} (no Q data)")
+
+        ax_q.set_xlabel("Wait duration (ns)")
+        ax_q.set_ylabel("Ramp duration (ns)")
+        ax_q.set_title(f"{qp_name} — Avg Q")
 
     fig.suptitle("Init 2D calibration summary", fontsize=14)
     fig.tight_layout()

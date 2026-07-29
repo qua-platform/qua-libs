@@ -85,13 +85,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
     qubit_pairs = get_qubit_pairs(node)
-
     node.namespace["qubit_pairs"] = qubit_pairs
 
-    # Sweep axis 1: ramp duration (ns). QUA timing is 4 ns clock cycles.
+    # Sweep axis 1: ramp duration (ns)
+    # Build the ramp-duration sweep (in ns)
     ramp_min = int(node.parameters.ramp_duration_min)
     ramp_max = int(node.parameters.ramp_duration_max)
     ramp_step = int(node.parameters.ramp_duration_step)
+
+    # An OPX clock cycle is 4ns. Therefore, all ramp durations must be divisible by 4
     if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
         raise ValueError(
             f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
@@ -102,6 +104,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     detuning_max = float(node.parameters.detuning_max)
     detuning_step = float(node.parameters.detuning_step)
 
+    # TODO: Allow building of log arrays?
     ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
     detuning_array = np.arange(detuning_min, detuning_max, detuning_step)
 
