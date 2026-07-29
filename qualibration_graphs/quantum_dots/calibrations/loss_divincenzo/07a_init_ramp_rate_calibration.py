@@ -107,8 +107,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     if node.parameters.ramp_log_scale:
         n_ramp_pts = int((ramp_max - ramp_min) // ramp_step)
         ramp_duration_array = np.logspace(
-            ramp_min,
-            ramp_max,
+            np.log10(ramp_min), 
+            np.log10(ramp_max),
             n_ramp_pts,
             dtype=int,
             endpoint=True,
