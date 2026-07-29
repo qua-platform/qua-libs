@@ -9,11 +9,7 @@ class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of shots per (ramp_duration, detuning) point."""
     use_simulated_data: bool = False
-    """If True, bypass hardware execution and generate a synthetic ``ds_raw``.
-
-    This is intended to validate the analysis and plotting pipeline for this node
-    (dims/coords/variable names), not to replace QUA simulation.
-    """
+    """If True, bypass hardware execution and generate a synthetic ``ds_raw``."""
     ramp_duration_min: int = 16
     """Minimum ramp duration in ns (must be multiple of 4)."""
     ramp_duration_max: int = 2000
