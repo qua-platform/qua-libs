@@ -32,7 +32,7 @@ description = """
 This sequence extends the ramp-rate calibration by adding a second sweep axis: the wait
 duration between the initialisation ramp and the state measurement.
 
-For each (ramp_duration, wait_duration) point the sequence empties the dots, initialises
+For each (ramp_duration, wait_duration) point the sequence empties the dots, initializes
 with the given ramp duration, waits for the specified duration, then performs a state
 measurement using the balanced measurement macro.  The boolean state assignment (0 or 1) is
 averaged over many shots to produce a 2D map of mean state occupation.
@@ -41,7 +41,7 @@ The analysis identifies the (ramp_duration, wait_duration) pair that yields the 
 (or maximum, controlled by the ``find_minimum`` parameter) average state assignment.
 
 Prerequisites:
-    - Having initialised the Quam.
+    - Having initialized the Quam.
     - Having calibrated the PSB measurement point (06a-06c).
     - Having the balanced measurement macro configured with a valid threshold.
 
@@ -84,14 +84,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Build the 2D sweep axes and the QUA pulse sequence (ramp duration × wait duration)."""
 
     # ── Experiment parameters (Python side) ──────────────────────────────
-    qubit_pairs = get_qubit_pairs(node)
 
+    # Which qubit pairs to perform this experiment with
+    qubit_pairs = get_qubit_pairs(node)
     node.namespace["qubit_pairs"] = qubit_pairs
 
-    # Sweep axis 1: ramp duration (ns). QUA timing is 4 ns clock cycles.
+    # Sweep axis 1: ramp duration (ns)
+    # Build the ramp-duration sweep (in ns)
     ramp_min = int(node.parameters.ramp_duration_min)
     ramp_max = int(node.parameters.ramp_duration_max)
     ramp_step = int(node.parameters.ramp_duration_step)
+
+    # An OPX clock cycle is 4ns. Therefore, all ramp durations must be divisible by 4
     if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
         raise ValueError(
             f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
@@ -101,6 +105,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     wait_min = int(node.parameters.wait_duration_min)
     wait_max = int(node.parameters.wait_duration_max)
     wait_step = int(node.parameters.wait_duration_step)
+
+    # An OPX clock cycle is 4ns. Therefore, all wait durations must be divisible by 4
     if wait_min % 4 != 0 or wait_max % 4 != 0 or wait_step % 4 != 0:
         raise ValueError(
             f"Wait settings must be divisible by 4. " f"Got min={wait_min}, max={wait_max}, step={wait_step}"
@@ -110,6 +116,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
     wait_ns_array = np.arange(wait_min, wait_max, wait_step, dtype=int)
+
     # Convert wait times from ns to clock-cycles for the QUA `wait()` instruction
     wait_cc_array = (wait_ns_array // 4).astype(int)
 
@@ -154,7 +161,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ── INNER LOOPS: sweep ramp duration and wait duration ───
                 with for_(*from_array(ramp_dur, ramp_duration_array)):
                     with for_(*from_array(wait_dur, wait_cc_array)):
-
+                        # Initialize with the requested ramp duration
                         dot_pair.initialize(
                             ramp_duration=ramp_dur,
                             target_state=node.parameters.target_state,
@@ -173,6 +180,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         )
 
                         align()
+
+                        # Ramp back to zero, since all the outputs are sticky
                         dot_pair.voltage_sequence.ramp_to_zero()
 
                         # Append this point's data to the stream buffers
@@ -322,7 +331,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if init_macro is not None and hasattr(init_macro, "update"):
                 init_macro.update(ramp_duration=optimal_ramp)
             else:
-                node.log(f"  {qp.name}: no updatable initialise macro found on " f"{dot_pair.name}")
+                node.log(f"  {qp.name}: no updatable initialize macro found on " f"{dot_pair.name}")
 
 
 # %% {Save_results}

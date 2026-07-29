@@ -97,11 +97,7 @@ def analyse_init_2d(
             continue
 
         # nanargmin/nanargmax will ignore NaNs (but we already checked not all-NaN).
-        opt_flat = (
-            int(np.nanargmin(state_2d))
-            if find_minimum
-            else int(np.nanargmax(state_2d))
-        )
+        opt_flat = int(np.nanargmin(state_2d)) if find_minimum else int(np.nanargmax(state_2d))
         opt_ramp_idx, opt_wait_idx = np.unravel_index(opt_flat, state_2d.shape)
 
         opt_ramp = int(ramp[opt_ramp_idx])
@@ -168,4 +164,3 @@ def log_fitted_results(fit_results: Dict[str, dict], log_callable=print) -> None
         else:
             reason = r.get("failure_reason", "analysis failed")
             log_callable(f"  {qp_name}: FAIL ({reason})")
-

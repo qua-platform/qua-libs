@@ -48,8 +48,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     ramp_step = int(node.parameters.ramp_duration_step)
     if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
         raise ValueError(
-            f"Ramp settings must be divisible by 4. "
-            f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
+            f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
         )
 
     wait_min = int(node.parameters.wait_duration_min)
@@ -57,13 +56,10 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     wait_step = int(node.parameters.wait_duration_step)
     if wait_min % 4 != 0 or wait_max % 4 != 0 or wait_step % 4 != 0:
         raise ValueError(
-            f"Wait settings must be divisible by 4. "
-            f"Got min={wait_min}, max={wait_max}, step={wait_step}"
+            f"Wait settings must be divisible by 4. " f"Got min={wait_min}, max={wait_max}, step={wait_step}"
         )
     if wait_min < 16:
-        raise ValueError(
-            f"Minimum wait duration must be >= 16 ns (4 clock cycles). Got {wait_min}"
-        )
+        raise ValueError(f"Minimum wait duration must be >= 16 ns (4 clock cycles). Got {wait_min}")
 
     ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
     wait_duration_array = np.arange(wait_min, wait_max, wait_step, dtype=int)
@@ -101,7 +97,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         w_sigma = max(20.0, 0.22 * float(wait.max() - wait.min() if wait.size > 1 else 1.0))
 
         # A smooth basin/peak around (r0, w0).
-        gauss = np.exp(-((rr - r0) / r_sigma) ** 2 - ((ww - w0) / w_sigma) ** 2)
+        gauss = np.exp(-(((rr - r0) / r_sigma) ** 2) - ((ww - w0) / w_sigma) ** 2)
 
         # Add an oscillatory component along the wait axis so the FFT panels are meaningful.
         period_ns = rng.uniform(120.0, 450.0)
@@ -160,4 +156,3 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         },
         attrs={"source": "simulated", "node": "init_2d"},
     )
-

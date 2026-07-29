@@ -57,7 +57,8 @@ def plot_2d_summary(
     """
     n_pairs = max(len(qubit_pair_names), 1)
     fig, axes = plt.subplots(
-        2, 2 * n_pairs,
+        2,
+        2 * n_pairs,
         figsize=(6 * 2 * n_pairs, 5 * 2),
         squeeze=False,
     )
@@ -77,8 +78,13 @@ def plot_2d_summary(
         if state_key in ds_raw:
             state_2d = ds_raw[state_key].values
             im = ax_state.pcolormesh(
-                detuning, ramp, state_2d,
-                shading="nearest", cmap="RdBu_r", vmin=0, vmax=1,
+                detuning,
+                ramp,
+                state_2d,
+                shading="nearest",
+                cmap="RdBu_r",
+                vmin=0,
+                vmax=1,
             )
             fig.colorbar(im, ax=ax_state, label="Avg state")
 
@@ -88,20 +94,22 @@ def plot_2d_summary(
                     ax_state.plot(
                         r["optimal_detuning"],
                         r["optimal_ramp_duration"],
-                        "k*", markersize=18,
-                        markeredgecolor="white", markeredgewidth=1.0,
-                        label=(
-                            f"opt ramp={r['optimal_ramp_duration']} ns, "
-                    f"detuning={r['optimal_detuning']:.4g} V"
-                        ),
+                        "k*",
+                        markersize=18,
+                        markeredgecolor="white",
+                        markeredgewidth=1.0,
+                        label=(f"opt ramp={r['optimal_ramp_duration']} ns, " f"detuning={r['optimal_detuning']:.4g} V"),
                     )
                     ax_state.legend(fontsize=7)
 
             # ── (2) FFT of state ───────────────────────────────────────
             freqs, fft_mag = _compute_fft_2d(state_2d, detuning)
             im_fft = ax_state_fft.pcolormesh(
-                freqs, ramp, fft_mag,
-                shading="nearest", cmap="inferno",
+                freqs,
+                ramp,
+                fft_mag,
+                shading="nearest",
+                cmap="inferno",
             )
             fig.colorbar(im_fft, ax=ax_state_fft, label="|FFT|")
             ax_state_fft.set_xlabel("Spatial frequency (1/V)")
@@ -120,16 +128,22 @@ def plot_2d_summary(
         if i_key in ds_raw:
             i_2d = ds_raw[i_key].values
             im_i = ax_iq.pcolormesh(
-                detuning, ramp, i_2d,
-                shading="nearest", cmap="viridis",
+                detuning,
+                ramp,
+                i_2d,
+                shading="nearest",
+                cmap="viridis",
             )
             fig.colorbar(im_i, ax=ax_iq, label="Avg I")
 
             # ── (4) FFT of I ───────────────────────────────────────────
             freqs_i, fft_mag_i = _compute_fft_2d(i_2d, detuning)
             im_fft_i = ax_iq_fft.pcolormesh(
-                freqs_i, ramp, fft_mag_i,
-                shading="nearest", cmap="inferno",
+                freqs_i,
+                ramp,
+                fft_mag_i,
+                shading="nearest",
+                cmap="inferno",
             )
             fig.colorbar(im_fft_i, ax=ax_iq_fft, label="|FFT|")
             ax_iq_fft.set_xlabel("Spatial frequency (1/V)")

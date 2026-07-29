@@ -31,7 +31,7 @@ description = """
 This sequence calibrates the ramp duration of the initialisation macro by sweeping the ramp rate
 and measuring the consistency of initialising into either state. 
 
-For each ramp duration the sequence optionally empties the dots, initialises with the given ramp duration,
+For each ramp duration the sequence optionally empties the dots, initializes with the given ramp duration,
 then performs a state measurement using the balanced measurement macro.  The boolean state
 assignment (0 or 1) is averaged over many shots to produce the mean state occupation for each
 ramp duration.
@@ -40,21 +40,19 @@ The analysis identifies the ramp duration that yields the minimum (or maximum, c
 ``find_minimum`` parameter) average state assignment, corresponding to the purest initialisation.
 
 Prerequisites:
-    - Having initialised the Quam.
+    - Having initialized the Quam.
     - Having calibrated the PSB measurement point (06a-06c).
     - Having the balanced measurement macro configured with a valid threshold.
 
 Datasets:
     - ``ds_raw``: untouched data fetched from the OPX (or generated synthetically when
       ``use_simulated_data=True``). Contains per-qubit-pair variables:
-      ``state_<pair>``, ``I_<pair>``, ``Q_<pair>`` indexed by ``(shot, ramp_duration)``.
+      ``state_<pair>``, ``I_<pair>``, ``Q_<pair>`` indexed by ``ramp_duration`` (averaged on the OPX).
     - ``fit_results``: compact per-qubit-pair summary dict produced by ``analyse_ramp_rate``.
 
 Figures (``node.results["figures"]``):
     - ``"avg_state_vs_ramp_duration"``: average state vs ramp duration with optimum marker.
     - ``"iq_vs_ramp_duration"``: average I and Q vs ramp duration.
-    - ``"q_density_vs_ramp_duration"``: per-shot Q density vs ramp duration.
-    - ``"i_density_vs_ramp_duration"``: per-shot I density vs ramp duration.
 
 State update:
     - The initialisation macro ``ramp_duration`` on each qubit pair.
@@ -121,7 +119,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Metadata for data fetching: labels the saved arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([qp.name for qp in qubit_pairs]),
-        "shot": xr.DataArray(np.arange(node.parameters.num_shots)),
         "ramp_duration": xr.DataArray(
             ramp_duration_array,
             attrs={"long_name": "ramp duration", "units": "ns"},
@@ -156,7 +153,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # ── INNER LOOP: sweep ramp duration ──────────────────────
                 with for_(*from_array(ramp_dur, ramp_duration_array)):
-                    # Initialise with the requested ramp duration, then measure and classify state
+                    # Initialize with the requested ramp duration
                     dot_pair.initialize(
                         ramp_duration=ramp_dur,
                         target_state=node.parameters.target_state,
@@ -186,10 +183,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for qp in qubit_pairs:
                 # Each save() above is one ramp-duration point.
                 # .buffer(len(ramp_duration_array)) : group points along the ramp_duration axis
-                # .buffer(n_avg)                    : group repeats along the shot axis
-                state_st[qp.name].buffer(len(ramp_duration_array)).buffer(n_avg).save(f"state_{qp.name}")
-                I_st[qp.name].buffer(len(ramp_duration_array)).buffer(n_avg).save(f"I_{qp.name}")
-                Q_st[qp.name].buffer(len(ramp_duration_array)).buffer(n_avg).save(f"Q_{qp.name}")
+                state_st[qp.name].buffer(len(ramp_duration_array)).average().save(f"state_{qp.name}")
+                I_st[qp.name].buffer(len(ramp_duration_array)).average().save(f"I_{qp.name}")
+                Q_st[qp.name].buffer(len(ramp_duration_array)).average().save(f"Q_{qp.name}")
 
 
 # %% {Simulate}
@@ -318,12 +314,12 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             dot_pair = qp.quantum_dot_pair
             optimal_ramp = node.results["fit_results"][qp.name]["optimal_ramp_duration"]
 
-            # Update the initialise macro if it supports state updates
+            # Update the initialize macro if it supports state updates
             init_macro = dot_pair.macros.get("initialize")
             if init_macro is not None and hasattr(init_macro, "update"):
                 init_macro.update(ramp_duration=optimal_ramp)
             else:
-                node.log(f"  {qp.name}: no updatable initialise macro found on " f"{dot_pair.name}")
+                node.log(f"  {qp.name}: no updatable initialize macro found on " f"{dot_pair.name}")
 
 
 # %% {Save_results}

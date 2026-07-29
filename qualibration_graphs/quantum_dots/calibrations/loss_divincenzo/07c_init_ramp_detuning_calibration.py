@@ -33,7 +33,7 @@ This sequence extends the ramp-rate calibration by adding a second sweep axis: t
 voltage of the INITIALIZE voltage point.
 
 For each (ramp_duration, detuning) point the sequence sets the INITIALIZE voltage point to
-the given detuning, initialises with the given ramp duration, then performs a state
+the given detuning, initializes with the given ramp duration, then performs a state
 measurement using the balanced measurement macro.  The boolean state assignment (0 or 1) is
 averaged over many shots to produce a 2D map of mean state occupation.
 
@@ -41,7 +41,7 @@ The analysis identifies the (ramp_duration, detuning) pair that yields the minim
 (or maximum, controlled by the ``find_minimum`` parameter) average state assignment.
 
 Prerequisites:
-    - Having initialised the Quam.
+    - Having initialized the Quam.
     - Having calibrated the PSB measurement point (06a-06c).
     - Having the balanced measurement macro configured with a valid threshold.
 
@@ -146,8 +146,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ── INNER LOOPS: sweep ramp duration and detuning ────────
                 with for_(*from_array(ramp_dur, ramp_duration_array)):
                     with for_(*from_array(det, detuning_array)):
-
-                        # Initialise at the requested detuning and ramp duration
+                        # Initialize with the requested ramp duration at a particular detuning point
                         dot_pair.initialize(
                             ramp_duration=ramp_dur,
                             point={dot_pair.name: det},
@@ -164,6 +163,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         )
 
                         align()
+
+                        # Ramp back to zero, since all the outputs are sticky
                         dot_pair.voltage_sequence.ramp_to_zero()
 
                         # Append this point's data to the stream buffers
@@ -317,7 +318,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if init_macro is not None and hasattr(init_macro, "update"):
                 init_macro.update(ramp_duration=optimal_ramp)
             else:
-                node.log(f"  {qp.name}: no updatable initialise macro found on " f"{dot_pair.name}")
+                node.log(f"  {qp.name}: no updatable initialize macro found on " f"{dot_pair.name}")
 
 
 # %% {Save_results}
