@@ -48,8 +48,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     ramp_step = int(node.parameters.ramp_duration_step)
     if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
         raise ValueError(
-            f"Ramp settings must be divisible by 4. "
-            f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
+            f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
         )
 
     detuning_min = float(node.parameters.detuning_min)
@@ -90,7 +89,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         r_sigma = max(20.0, 0.20 * float(ramp.max() - ramp.min() if ramp.size > 1 else 1.0))
         d_sigma = max(0.01, 0.18 * float(det.max() - det.min() if det.size > 1 else 1.0))
 
-        gauss = np.exp(-((rr - r0) / r_sigma) ** 2 - ((dd - d0) / d_sigma) ** 2)
+        gauss = np.exp(-(((rr - r0) / r_sigma) ** 2) - ((dd - d0) / d_sigma) ** 2)
 
         # Add a mild oscillatory component along detuning so the FFT panel is non-trivial.
         period_v = rng.uniform(0.06, 0.18)
@@ -148,4 +147,3 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         },
         attrs={"source": "simulated", "node": "init_ramp_detuning"},
     )
-

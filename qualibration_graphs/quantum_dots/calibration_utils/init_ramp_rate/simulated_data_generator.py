@@ -36,8 +36,7 @@ def _build_ramp_duration_array(node: QualibrationNode) -> np.ndarray:
 
     if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
         raise ValueError(
-            f"Ramp settings must be divisible by 4. "
-            f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
+            f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
         )
 
     if bool(getattr(node.parameters, "ramp_log_scale", False)):
@@ -53,10 +52,7 @@ def _build_ramp_duration_array(node: QualibrationNode) -> np.ndarray:
         ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
 
     if ramp_duration_array.size < 1:
-        raise ValueError(
-            "Ramp duration sweep is empty. "
-            f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
-        )
+        raise ValueError("Ramp duration sweep is empty. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}")
 
     return ramp_duration_array
 
@@ -66,7 +62,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
     The output is shaped to match the *real* acquisition pipeline for this node:
     per-qubit-pair variables named ``state_{qp}``, ``I_{qp}``, and ``Q_{qp}`` with
-    dimensions ``(shot, ramp_duration)`` and a ``ramp_duration`` coordinate.
+    dimension ``ramp_duration`` (averaged on the OPX) and a ``ramp_duration`` coordinate.
 
     Parameters
     ----------
@@ -80,22 +76,12 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     ramp_duration_array = _build_ramp_duration_array(node)
     n_ramp = int(ramp_duration_array.size)
 
-    n_shots = int(node.parameters.num_shots)
-    if n_shots < 1:
-        raise ValueError(f"num_shots must be >= 1. Got {n_shots}")
-
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qp_names),
-        "shot": xr.DataArray(np.arange(n_shots)),
         "ramp_duration": xr.DataArray(
             ramp_duration_array,
             attrs={"long_name": "ramp duration", "units": "ns"},
         ),
-    }
-
-    coords = {
-        "shot": np.arange(n_shots),
-        "ramp_duration": ramp_duration_array,
     }
 
     rng = np.random.default_rng(seed=42)
@@ -125,15 +111,19 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
         if find_minimum:
             # Minimum at optimum, higher away from optimum.
-            p_state = p_floor + p_amp * (1.0 - np.exp(-((ramp_vals - optimum) / sigma) ** 2))
+            p_state = p_floor + p_amp * (1.0 - np.exp(-(((ramp_vals - optimum) / sigma) ** 2)))
         else:
             # Maximum at optimum, lower away from optimum.
-            p_state = p_floor + p_amp * np.exp(-((ramp_vals - optimum) / sigma) ** 2)
+            p_state = p_floor + p_amp * np.exp(-(((ramp_vals - optimum) / sigma) ** 2))
 
         p_state = np.clip(p_state, 1e-3, 1.0 - 1e-3)
 
-        # Bernoulli shots per ramp duration.
-        state = (rng.random((n_shots, n_ramp)) < p_state[None, :]).astype(int)
+        # Simulate shot statistics, then return the OPX-averaged traces.
+        n_shots = int(node.parameters.num_shots)
+        if n_shots < 1:
+            raise ValueError(f"num_shots must be >= 1. Got {n_shots}")
+        state_shots = (rng.random((n_shots, n_ramp)) < p_state[None, :]).astype(int)
+        state = state_shots.mean(axis=0)
 
         # Simulated I/Q readout clusters, separated by state with mild drift vs ramp.
         phase = 0.6 + 0.3 * idx
@@ -147,36 +137,37 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         noise_i = rng.uniform(0.03, 0.06)
         noise_q = rng.uniform(0.03, 0.06)
 
-        I = np.where(state == 0, i0[None, :], i1[None, :]) + rng.normal(0.0, noise_i, size=(n_shots, n_ramp))
-        Q = np.where(state == 0, q0[None, :], q1[None, :]) + rng.normal(0.0, noise_q, size=(n_shots, n_ramp))
+        I_shots = np.where(state_shots == 0, i0[None, :], i1[None, :]) + rng.normal(
+            0.0, noise_i, size=(n_shots, n_ramp)
+        )
+        Q_shots = np.where(state_shots == 0, q0[None, :], q1[None, :]) + rng.normal(
+            0.0, noise_q, size=(n_shots, n_ramp)
+        )
+        I = I_shots.mean(axis=0)
+        Q = Q_shots.mean(axis=0)
 
         data_vars[f"state_{qp_name}"] = xr.DataArray(
             state,
-            dims=("shot", "ramp_duration"),
-            coords=coords,
+            dims=("ramp_duration",),
+            coords={"ramp_duration": ramp_duration_array},
             attrs={"long_name": "State assignment", "units": "arb."},
         )
         data_vars[f"I_{qp_name}"] = xr.DataArray(
             I,
-            dims=("shot", "ramp_duration"),
-            coords=coords,
+            dims=("ramp_duration",),
+            coords={"ramp_duration": ramp_duration_array},
             attrs={"long_name": "I quadrature", "units": "arb."},
         )
         data_vars[f"Q_{qp_name}"] = xr.DataArray(
             Q,
-            dims=("shot", "ramp_duration"),
-            coords=coords,
+            dims=("ramp_duration",),
+            coords={"ramp_duration": ramp_duration_array},
             attrs={"long_name": "Q quadrature", "units": "arb."},
         )
 
     return xr.Dataset(
         data_vars=data_vars,
         coords={
-            "shot": xr.DataArray(
-                np.arange(n_shots),
-                dims=("shot",),
-                attrs={"long_name": "shot"},
-            ),
             "ramp_duration": xr.DataArray(
                 ramp_duration_array,
                 dims=("ramp_duration",),
@@ -190,4 +181,3 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         },
         attrs={"source": "simulated", "node": "07a_init_ramp_rate_calibration"},
     )
-

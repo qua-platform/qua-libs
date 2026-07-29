@@ -67,12 +67,8 @@ def analyse_ramp_rate(
             success_list.append(False)
             continue
 
-        state = ds_raw[key]
-        if "shot" in state.dims:
-            avg_state = state.mean(dim="shot").values
-        else:
-            avg_state = state.values
-        avg_state = np.asarray(avg_state, dtype=float)
+        state_1d = ds_raw[key]
+        avg_state = np.asarray(state_1d.values, dtype=float)
 
         finite = np.isfinite(avg_state)
         if not np.any(finite):
@@ -88,9 +84,8 @@ def analyse_ramp_rate(
             success_list.append(False)
             continue
 
-        opt_idx = (
-            int(np.nanargmin(avg_state)) if find_minimum else int(np.nanargmax(avg_state))
-        )
+        # Finding either the minimum or the maximum value. TODO: Change to a Literal string arg instead of a bool?
+        opt_idx = int(np.nanargmin(avg_state) if find_minimum else np.nanargmax(avg_state))
 
         opt_ramp = int(ramp_durations[opt_idx])
         opt_state = float(avg_state[opt_idx])
@@ -136,6 +131,7 @@ def log_fitted_results(fit_results: Dict[str, dict], log_callable=print) -> None
     """Log a human-readable summary of the ramp-rate analysis (expects serialized dicts)."""
     for qp_name, r in fit_results.items():
         if r.get("success", False):
+            # Again, may be easier if it is a string
             extremum = "minimum" if r.get("find_minimum", True) else "maximum"
             log_callable(
                 f"  {qp_name}: optimal ramp duration = {r['optimal_ramp_duration']} ns "

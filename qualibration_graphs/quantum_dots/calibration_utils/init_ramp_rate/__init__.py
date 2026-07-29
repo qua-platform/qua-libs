@@ -4,8 +4,6 @@ from .plotting import (
     plot_all,
     plot_avg_state_vs_ramp_duration,
     plot_iq_vs_ramp_duration,
-    plot_q_density_vs_ramp_duration,
-    plot_i_density_vs_ramp_duration,
 )
 from .simulated_data_generator import generate_simulated_dataset
 
@@ -17,7 +15,5 @@ __all__ = [
     "plot_all",
     "plot_avg_state_vs_ramp_duration",
     "plot_iq_vs_ramp_duration",
-    "plot_q_density_vs_ramp_duration",
-    "plot_i_density_vs_ramp_duration",
     "generate_simulated_dataset",
 ]
