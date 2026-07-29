@@ -7,11 +7,11 @@ from dataclasses import asdict
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 from qualang_tools.loops import from_array
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 from calibration_utils.psb_search_sweep_detuning import (
     Parameters,
     generate_simulated_dataset,
@@ -21,7 +21,6 @@ from calibration_utils.psb_search_fixed_detuning import plot_rotated_iq_density_
 from calibration_utils.common_utils.experiment import (
     get_sensors,
 )
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -34,8 +33,6 @@ from calibration_utils.iq_sweep import (
     plot_visibility_vs_sweep,
     plot_sweep_summary,
 )
-
-from qualibrate.core.models.outcome import Outcome
 
 
 # %% {Node initialisation}
@@ -75,12 +72,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubit_pairs = ["q1_q2"]
-    node.parameters.simulate = False
-    node.parameters.simulation_duration_ns = 60_000
-    node.parameters.use_simulated_data = False
-    node.parameters.detuning_points = 2
-    node.parameters.num_shots = 300
+    pass
 
 
 # Instantiate the QUAM class from the state file
@@ -101,26 +93,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
     qubit_pairs = _resolve_qubit_pairs(node)
-    dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
-
-    # Detuning axes may be added after the voltage sequence was first cached.
-    # Refresh the sequence so keep-level tracking includes the detuning virtual axis.
-    for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
-        node.machine.reset_voltage_sequence(gate_set_id)
-    for dot_pair in dot_pair_objects:
-        if len(dot_pair.sensor_dots) != 1:
-            raise ValueError(
-                f"06a_PSB_search_opx_sweep_detuning expects exactly one sensor dot per pair; "
-                f"{dot_pair.id!r} has {len(dot_pair.sensor_dots)}"
-            )
-
-    node.namespace["dot_pairs"] = dot_pair_objects
     node.namespace["qubit_pairs"] = qubit_pairs
 
     detuning_min = node.parameters.detuning_min
     detuning_max = node.parameters.detuning_max
     detuning_points = node.parameters.detuning_points
-    # detuning_step = (detuning_max - detuning_min) / detuning_points
 
     detuning_array = np.linspace(detuning_min, detuning_max, detuning_points)
 
@@ -266,11 +243,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
+            progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                start_time=data_fetcher.t_start
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -307,7 +283,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qubit_name: (Outcome.SUCCESSFUL if fit_result["success"] else Outcome.FAILED)
+        qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
@@ -356,7 +332,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "histograms_vs_detuning": fig_histograms,
         "rotated_iq_density": fig_iq,
     }
-    annotate_node_figures(node)
 
 
 # %% {Update_state}
