@@ -11,6 +11,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.loops import from_array
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
+from qualibration_libs.parameters import get_qubit_pairs
 from quam_config import QubitQuam as Quam
 from calibration_utils.psb_search_sweep_detuning import (
     Parameters,
@@ -79,54 +80,63 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 node.machine = Quam.load()
 
 
-def _resolve_qubit_pairs(node: QualibrationNode[Parameters, Quam]):
-    """Resolve logical qubit pairs from parameters or default to all machine pairs."""
-    if node.parameters.qubit_pairs not in (None, ""):
-        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
-
-    return list(node.machine.qubit_pairs.values())
-
-
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the sweep axes and the QUA pulse sequence."""
 
-    qubit_pairs = _resolve_qubit_pairs(node)
+    # ── Experiment parameters (Python side) ──────────────────────────────
+
+    # Select which qubit-pairs participate in this calibration
+    qubit_pairs = get_qubit_pairs(node)
     node.namespace["qubit_pairs"] = qubit_pairs
+    num_qubit_pairs = len(qubit_pairs)
 
+    # Number of shots per ramp-duration point
+    n_avg = node.parameters.num_shots
+
+    # Build the detuning sweep
     detuning_min = node.parameters.detuning_min
     detuning_max = node.parameters.detuning_max
     detuning_points = node.parameters.detuning_points
-
     detuning_array = np.linspace(detuning_min, detuning_max, detuning_points)
 
     # The swept axes. n_runs is the shot index (inner→outer: detuning, n_runs).
     # The qubit_pair dim is inferred from the per-pair stream names.
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
-        "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
+        "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
         "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
     }
-    with program() as node.namespace["qua_program"]:
-        n = declare(int)
-        n_st = declare_output_stream()
 
-        detuning = declare(fixed)
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
+    with program() as node.namespace["qua_program"]:
+
+        
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
+
+        # n = declare(int)
+        # n_st = declare_output_stream()
 
         # Each logical qubit pair is read out through the single sensor dot of
         # its underlying quantum-dot pair.
-        I_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
-        Q_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
-        I = {qp.name: declare(fixed) for qp in qubit_pairs}
-        Q = {qp.name: declare(fixed) for qp in qubit_pairs}
+        # I_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
+        # Q_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
+        # I = {qp.name: declare(fixed) for qp in qubit_pairs}
+        # Q = {qp.name: declare(fixed) for qp in qubit_pairs}
 
+        # Real-time variable holding the detuning value
+        detuning = declare(fixed)
+
+        # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
 
             # Perform them all sequentially for now. Can add footprint batching later
-            for qubit_pair in qubit_pairs:
+            for i, qubit_pair in enumerate(qubit_pairs):
                 dot_pair = qubit_pair.quantum_dot_pair
+
+                # ── INNER LOOP: sweep sensor plunger gate voltage ──────────
                 with for_(*from_array(detuning, detuning_array)):
                     # ---------------------------------------------------------
                     # Step 1: Initialize - load electron into dots (fixed duration)
