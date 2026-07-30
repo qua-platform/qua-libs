@@ -179,10 +179,16 @@ job = qm.execute(power_rabi_single_shot_timing)
 result_handles = job.result_handles
 result_handles.wait_for_all_values()
 
-I = float(require_single_value(result_handles, "I"))
-Q = float(require_single_value(result_handles, "Q"))
-play_cycles = int(require_single_value(result_handles, "x180_timestamps"))
-measure_cycles = int(require_single_value(result_handles, "readout_timestamps"))
+# Fetch each value explicitly using get().fetch_all() on separate lines
+I_raw = result_handles.get("I").fetch_all()
+Q_raw = result_handles.get("Q").fetch_all()
+play_cycles_raw = result_handles.get("x180_timestamps").fetch_all()
+measure_cycles_raw = result_handles.get("readout_timestamps").fetch_all()
+
+I = float(fetched_values(I_raw))
+Q = float(fetched_values(Q_raw))
+play_cycles = int(fetched_values(play_cycles_raw))
+measure_cycles = int(fetched_values(measure_cycles_raw))
 
 I_volts = float(u.demod2volts(I, readout_len))
 Q_volts = float(u.demod2volts(Q, readout_len))
