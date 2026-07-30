@@ -6,10 +6,8 @@ from qualibration_libs.parameters import (
     IdleTimeNodeParameters,
 )
 
-from calibration_utils.common_utils.experiment import (
-    HeraldedInitializeParameters,
-    ParityDiffAnalysisParameters,
-)
+from calibration_utils.heralded_initialization_utils.parameters import HeraldedInitializeParameters
+from calibration_utils.measurement_utils.parameters import ParityDiffAnalysisParameters
 
 
 class NodeSpecificParameters(RunnableParameters):

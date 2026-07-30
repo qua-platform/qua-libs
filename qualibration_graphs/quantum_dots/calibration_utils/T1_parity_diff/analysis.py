@@ -1,7 +1,7 @@
 """T₁ relaxation-time analysis from conditional readout statistics.
 
 This module fits an exponential decay to the selected analysis signal
-(``E_p2_given_p1_0`` or ``E_p2_given_p1_1`` from joint-outcome streams)
+(``E_p1_given_p0_0`` or ``E_p1_given_p0_1`` from joint-outcome streams)
 measured after a π–idle–measure sequence:
 
 .. math::
@@ -39,7 +39,7 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.common_utils.parity_streams import get_parity_item_names
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -177,8 +177,8 @@ def fit_raw_data(
 
     Expects a 1-D dataset with coordinate ``tau`` (ns), joint streams
     ``p0_p0_<qubit>``, …, and processed variables
-    ``E_p2_given_p1_0_<qubit>`` / ``E_p2_given_p1_1_<qubit>`` (from
-    :func:`~calibration_utils.common_utils.parity_streams.process_joint_streams`).
+    ``E_p1_given_p0_0_<qubit>`` / ``E_p1_given_p0_1_<qubit>`` (from
+    :func:`~calibration_utils.measurement_utils.measurement_streams.process_joint_streams`).
 
     Parameters
     ----------
@@ -197,7 +197,7 @@ def fit_raw_data(
     qubits = node.namespace["qubits"]
     tau_ns = np.asarray(ds.tau.values, dtype=float)
 
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
     qubit_names = get_parity_item_names(
         ds,
         analysis_signal,

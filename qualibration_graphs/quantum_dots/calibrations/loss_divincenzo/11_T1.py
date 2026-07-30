@@ -16,12 +16,12 @@ from calibration_utils.T1_parity_diff import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.common_utils.experiment import get_qubits
-from calibration_utils.common_utils.parity_streams import (
-    declare_parity_streams,
-    save_parity_measurement,
-    buffer_parity_streams,
-    process_parity_streams,
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.measurement_utils.measurement_streams import (
+    declare_streams,
+    save_measurement,
+    buffer_streams,
+    process_streams,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -108,7 +108,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n = declare(int)
         t_wait = declare(int)
 
-        p2, p1, parity_streams = declare_parity_streams(node, qubits)
+        p_post, p_pre, streams = declare_streams(node, qubits)
 
         n_st = declare_output_stream()
 
@@ -118,7 +118,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 with for_(*from_array(t, tau_values // 4)):
 
-                    if node.parameters.parity_pre_measurement:
+                    if node.parameters.parity_measurement:
                         qubit.empty()
                         a1 = qubit.measure()
 
@@ -139,21 +139,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     qubit.voltage_sequence.ramp_to_zero()
 
-                    assign(p2, Cast.to_int(a2))
+                    assign(p_post, Cast.to_int(a2))
 
                     align()
 
-                    if node.parameters.parity_pre_measurement:
-                        assign(p1, Cast.to_int(a1))
+                    if node.parameters.parity_measurement:
+                        assign(p_pre, Cast.to_int(a1))
 
-                    save_parity_measurement(node, qubit.name, p1, p2, parity_streams)
+                    save_measurement(node, qubit.name, p_pre, p_post, streams)
 
         with stream_processing():
             n_st.save("n")
 
             n_tau = len(tau_values)
             for qubit in qubits:
-                buffer_parity_streams(node, qubit.name, parity_streams, n_tau)
+                buffer_streams(node, qubit.name, streams, n_tau)
 
 
 # %% {Simulate}
@@ -223,10 +223,10 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def process_raw_data(node: QualibrationNode[Parameters, Quam]):
     """Compute conditional expectations from joint-outcome streams."""
-    node.results["ds_raw"] = process_parity_streams(
+    node.results["ds_raw"] = process_streams(
         node.results["ds_raw"],
         [q.name for q in node.namespace["qubits"]],
-        parity_pre_measurement=node.parameters.parity_pre_measurement,
+        parity_measurement=node.parameters.parity_measurement,
         sweep_dims=("tau",),
     )
 
@@ -242,6 +242,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     }
     node.namespace["_fit_results_full"] = fit_results
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        name: ("successful" if fit_result["success"] else "failed")
+        for name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
@@ -258,7 +262,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fit_with_diag,
         analysis_signal=node.parameters.analysis_signal,
     )
-    node.results["figure"] = fig
+    node.results["figures"] = {"raw_data_with_fit": fig}
 
 
 # %% {Update_state}
@@ -271,7 +275,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if not node.results["fit_results"][qubit.name]["success"]:
                 continue
             fit_result = node.results["fit_results"][qubit.name]
-            qubit.T1 = fit_result["T1"]
+            qubit.T1 = fit_result["T1"] * 1e-9
 
 
 # %% {Save_results}

@@ -43,7 +43,7 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.common_utils.parity_streams import get_parity_item_names
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -290,9 +290,9 @@ def fit_raw_data(
     """Fit Ramsey frequency and T₂* for each qubit using ±δ triangulation.
 
     Expects joint-outcome streams processed by
-    :func:`~calibration_utils.common_utils.parity_streams.process_joint_streams`,
+    :func:`~calibration_utils.measurement_utils.measurement_streams.process_joint_streams`,
     so the analysis uses ``{analysis_signal}_{qubit}`` (default
-    ``E_p2_given_p1_0_<qubit>``) of shape (2, n_tau), with coordinates
+    ``E_p1_given_p0_0_<qubit>``) of shape (2, n_tau), with coordinates
     ``detuning`` (2 values: [+δ, −δ] in Hz) and ``tau`` (idle time in ns).
 
     Parameters
@@ -312,7 +312,7 @@ def fit_raw_data(
     qubits = node.namespace["qubits"]
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
 
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
     qubit_names = get_parity_item_names(
         ds,
         analysis_signal,
