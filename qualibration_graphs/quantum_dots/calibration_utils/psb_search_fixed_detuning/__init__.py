@@ -6,9 +6,6 @@ from .analysis import (
 )
 from .parameters import Parameters
 from .plotting import (
-    plot_single_histogram_with_fit,
-    plot_rotated_iq_density,
-    plot_rotated_iq_density_at_optimum,
     plot_labeled_histogram_barthel,
     plot_labeled_histogram_gmm,
 )
@@ -27,9 +24,6 @@ __all__ = [
     "canonicalize_fixed_point_ds_raw",
     "generate_simulated_dataset",
     "plot_simulated_histograms",
-    "plot_single_histogram_with_fit",
-    "plot_rotated_iq_density",
-    "plot_rotated_iq_density_at_optimum",
     "plot_labeled_histogram_barthel",
     "plot_labeled_histogram_gmm",
 ]

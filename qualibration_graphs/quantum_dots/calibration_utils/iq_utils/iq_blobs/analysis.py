@@ -9,6 +9,9 @@ from jax import config as jax_config
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 
+# Shared utils
+from ..analysis import process_raw_dataset
+
 # Barthel model imports
 from .readout_barthel.utils import Barthel1DMetricCurves
 from .readout_barthel.calibrate import Barthel1DFromIQ
@@ -56,24 +59,6 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         else:
             s_qubit += " FAIL!\n"
         log_callable(s_qubit + s)
-
-
-def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    # Fix the structure of ds to avoid tuples
-    def extract_value(element):
-        if isinstance(element, tuple):
-            return element[0]
-        return element
-
-    ds = xr.apply_ufunc(
-        extract_value,
-        ds,
-        vectorize=True,  # This ensures the function is applied element-wise
-        dask="parallelized",  # This allows for parallel processing
-        output_dtypes=[float],  # Specify the output data type
-    )
-    # ds = convert_IQ_to_V(ds, node.namespace["qubits"], IQ_list=["Ig", "Qg", "Ie", "Qe"])
-    return ds
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
