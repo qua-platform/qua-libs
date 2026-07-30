@@ -9,10 +9,7 @@ import xarray as xr
 if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
-from calibration_utils.common_utils.experiment import (
-    _make_batchable_list_from_multiplexed,
-)
-
+from qualibration_libs.parameters.experiment import _make_batchable_list_from_multiplexed
 
 def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     """Generate simulated IQ charge-sensing data and populate the node namespace.
