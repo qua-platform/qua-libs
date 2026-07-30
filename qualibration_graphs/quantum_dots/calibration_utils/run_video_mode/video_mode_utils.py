@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Optional
 import time
 from werkzeug.serving import make_server
 import os
@@ -18,19 +18,7 @@ import subprocess
 _DASHBOARD_THREAD: Optional[threading.Thread] = None
 _DASHBOARD_SERVER = None
 
-__all__ = ["VideoModeCommonParameters", "create_video_mode", "stop_dashboard"]
-
-
-class VideoModeCommonParameters(RunnableParameters):
-    run_in_video_mode: bool = True
-    """Optionally open Video Mode with the qualibration node."""
-    virtual_gate_set_id: Optional[str] = None
-    """Name of the associated VirtualGateSet in your QPU. """
-    video_mode_port: int = 8002
-    """Localhost port to open VideoMode with"""
-    dc_control: bool = False
-    """If an associated external DC offset exists."""
-    result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
+__all__ = ["create_video_mode", "stop_dashboard"]
 
 
 def stop_dashboard(port: int = 8050):
