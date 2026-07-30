@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from calibration_utils.common_utils.parity_streams import get_parity_item_names
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 
 def _get_qubit_names_from_ds(
@@ -35,7 +35,7 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p2_given_p1_0",
+    analysis_signal: str = "E_p1_given_p0_0",
 ) -> "plt.Figure":
     """Plot T₁ decay with exponential fit for each qubit.
 

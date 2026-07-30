@@ -17,12 +17,12 @@ from calibration_utils.ramsey_parity_diff import (
     log_fitted_results,
     plot_raw_data_with_fit,
 )
-from calibration_utils.common_utils.experiment import get_qubits
-from calibration_utils.common_utils.parity_streams import (
-    declare_parity_streams,
-    save_parity_measurement,
-    buffer_parity_streams,
-    process_parity_streams,
+from qualibration_libs.parameters import get_qubits
+from calibration_utils.measurement_utils.measurement_streams import (
+    declare_streams,
+    save_measurement,
+    buffer_streams,
+    process_streams,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -107,7 +107,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
         df = declare(int)
         n = declare(int)
 
-        p2, p1, parity_streams = declare_parity_streams(node, qubits)
+        p_post, p_pre, streams = declare_streams(node, qubits)
 
         n_st = declare_output_stream()
 
@@ -124,7 +124,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 
                         align()
 
-                        if node.parameters.parity_pre_measurement:
+                        if node.parameters.parity_measurement:
                             qubit.empty()
                             a1 = qubit.measure()
 
@@ -148,12 +148,12 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
                         qubit.voltage_sequence.ramp_to_zero()
                         align()
 
-                        assign(p2, Cast.to_int(a2))
+                        assign(p_post, Cast.to_int(a2))
 
-                        if node.parameters.parity_pre_measurement:
-                            assign(p1, Cast.to_int(a1))
+                        if node.parameters.parity_measurement:
+                            assign(p_pre, Cast.to_int(a1))
 
-                        save_parity_measurement(node, qubit.name, p1, p2, parity_streams)
+                        save_measurement(node, qubit.name, p_pre, p_post, streams)
 
             qubit.xy.update_frequency(intermediate_frequency)
 
@@ -163,7 +163,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
             n_detuning = len(detuning_values)
             n_tau = len(tau_values)
             for qubit in qubits:
-                buffer_parity_streams(node, qubit.name, parity_streams, n_detuning, n_tau)
+                buffer_streams(node, qubit.name, streams, n_detuning, n_tau)
 
 
 # %% {Simulate}
@@ -220,10 +220,10 @@ def load_data(node: QualibrationNode[RamseyParameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def process_raw_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Compute conditional expectations from joint-outcome streams."""
-    node.results["ds_raw"] = process_parity_streams(
+    node.results["ds_raw"] = process_streams(
         node.results["ds_raw"],
         [q.name for q in node.namespace["qubits"]],
-        parity_pre_measurement=node.parameters.parity_pre_measurement,
+        parity_measurement=node.parameters.parity_measurement,
         sweep_dims=("detuning", "tau"),
     )
 
@@ -233,8 +233,12 @@ def analyse_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Analyse the raw data to extract Ramsey frequency and T2*."""
     ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["ds_fit"] = ds_fit
-    node.results["fit_results"] = fit_results
-    log_fitted_results(fit_results, log_callable=node.log)
+    node.results["fit_results"] = {
+        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
+        for k, v in fit_results.items()
+    }
+    node.namespace["_fit_results_full"] = fit_results
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
         qname: ("successful" if r["success"] else "failed")
         for qname, r in fit_results.items()
@@ -245,14 +249,17 @@ def analyse_data(node: QualibrationNode[RamseyParameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Plot the raw and fitted data."""
+    fit_with_diag = node.namespace.get(
+        "_fit_results_full", node.results.get("fit_results", {})
+    )
     fig = plot_raw_data_with_fit(
         node.results["ds_raw"],
         node.results.get("ds_fit"),
         node.namespace["qubits"],
-        node.results.get("fit_results", {}),
+        fit_with_diag,
         analysis_signal=node.parameters.analysis_signal,
     )
-    node.results["figure"] = fig
+    node.results["figures"] = {"raw_data_with_fit": fig}
 
 
 # %% {Update_state}
@@ -266,7 +273,7 @@ def update_state(node: QualibrationNode[RamseyParameters, Quam]):
 
             fit_result = node.results["fit_results"][qubit.name]
             qubit.larmor_frequency = qubit.larmor_frequency + fit_result["freq_offset"]
-            qubit.T2ramsey = fit_result["t2_star"]
+            qubit.T2ramsey = fit_result["t2_star"] * 1e-9
 
 # %% {Save_results}
 @node.run_action()
