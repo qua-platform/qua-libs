@@ -117,6 +117,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # TODO: Add a check for this. Possible to perform this node for dots in different gate sets?
     vgs_id = elements[0].voltage_sequence.gate_set.id
 
+    # Each swept frequency is played as a square wave (period = 2 * half_period) rather
+    # than a QUA frequency sweep, since the bias-tee element is stepped, not driven at
+    # an IF. `num_periods` pads each frequency's square wave to cover the same fixed
+    # `total_length_ns` acquisition window, and `amp_array`/`square_wave_idx` (below)
+    # walk the precomputed +/-amplitude half-periods via `for_each_`.
     half_periods_ns = np.round(1e9 / (2 * np.flip(frequencies)) / 4).astype(int) * 4
     total_length_ns = int(
         max([s.readout_resonator.operations["readout"].length for s in sensors]) * 5

@@ -184,18 +184,18 @@ def fit_raw_data(
             )
             fit_results[key] = fit_params
 
-            fit_curve = _high_pass_model(
-                frequencies,
-                fit_params.amplitude,
-                fit_params.cutoff_frequency_Hz,
-                fit_params.offset,
-            )
-            fit_key = f"fit_{el.name}_{i + 1}"
-            ds_fit = ds_fit.assign(
-                {fit_key: xr.DataArray(fit_curve, dims=["frequency"])}
-            )
-
             if fit_params.success:
+                fit_curve = _high_pass_model(
+                    frequencies,
+                    fit_params.amplitude,
+                    fit_params.cutoff_frequency_Hz,
+                    fit_params.offset,
+                )
+                fit_key = f"fit_{el.name}_{i + 1}"
+                ds_fit = ds_fit.assign(
+                    {fit_key: xr.DataArray(fit_curve, dims=["frequency"])}
+                )
+
                 H = frequencies / np.sqrt(
                     frequencies**2 + fit_params.cutoff_frequency_Hz**2
                 )

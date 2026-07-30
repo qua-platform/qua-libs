@@ -126,6 +126,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # TODO: Add a check for this. Possible to perform this node for dots in different gate sets?
     vgs_id = elements[0].voltage_sequence.gate_set.id
 
+    # Pulse runs 20% longer than the measurement window so the sliced demodulation
+    # never reads past the end of the readout pulse (rounded to a 4 ns clock cycle).
     pulse_time = int(np.round(node.parameters.measurement_time * 1.2 / 4) * 4)
 
     with program() as node.namespace["qua_program"]:
@@ -159,6 +161,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Align everything first
                     align()
 
+                    # Extra settling time (ns) before the step so the sliced demodulation
+                    # starts after the voltage transient/electronics have settled.
                     wait_time = 1000
                     # Perform the single step. Minimum duration, as it is sticky anyway
                     seq.step_to_voltages(

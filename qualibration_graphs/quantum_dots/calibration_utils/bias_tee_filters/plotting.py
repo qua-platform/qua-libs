@@ -76,6 +76,7 @@ def plot_all(
                     label="With extracted correction",
                 )
 
+            success = True
             if fit_results is not None and key in fit_results:
                 fr = fit_results[key]
                 if isinstance(fr, dict):
@@ -83,26 +84,30 @@ def plot_all(
                     f_c = fr["cutoff_frequency_Hz"]
                     B = fr["offset"]
                     tau_ns = fr["time_constant_ns"]
+                    success = bool(fr.get("success", True))
                 else:
                     A, f_c, B = fr.amplitude, fr.cutoff_frequency_Hz, fr.offset
                     tau_ns = fr.time_constant_ns
+                    success = bool(getattr(fr, "success", True))
 
-                f_fine = np.linspace(freqs.min(), freqs.max(), 300)
-                fit_fine = _high_pass_model(f_fine, A, f_c, B)
-                ax.plot(
-                    f_fine / 1e3,
-                    fit_fine * 1e3,
-                    "-",
-                    color="red",
-                    label=f"Fit: τ = {tau_ns:.0f} ns, f_c = {f_c / 1e3:.1f} kHz",
-                )
-                if freqs.min() <= f_c <= freqs.max():
-                    ax.axvline(f_c / 1e3, color="gray", ls=":", lw=1, alpha=0.6)
+                if success:
+                    f_fine = np.linspace(freqs.min(), freqs.max(), 300)
+                    fit_fine = _high_pass_model(f_fine, A, f_c, B)
+                    ax.plot(
+                        f_fine / 1e3,
+                        fit_fine * 1e3,
+                        "-",
+                        color="red",
+                        label=f"Fit: τ = {tau_ns:.0f} ns, f_c = {f_c / 1e3:.1f} kHz",
+                    )
+                    if freqs.min() <= f_c <= freqs.max():
+                        ax.axvline(f_c / 1e3, color="gray", ls=":", lw=1, alpha=0.6)
 
             ax.set_xlim(freqs_kHz.min(), freqs_kHz.max())
             ax.set_xlabel("Frequency [kHz]")
             ax.set_ylabel("Amplitude [mV]")
-            ax.set_title(f"{key}")
+            title = f"{key}" if success else f"{key}  |  fit failed"
+            ax.set_title(title, color="black" if success else "red")
             ax.legend(fontsize=8)
             ax.grid(True, alpha=0.3)
             col += 1

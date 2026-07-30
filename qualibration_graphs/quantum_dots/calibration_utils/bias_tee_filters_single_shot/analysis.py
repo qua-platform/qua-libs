@@ -133,7 +133,7 @@ def _fit_individual(
         A, tau, B = best_popt
         success = True
     else:
-        A = A_pos if abs(A_pos) > abs(A_neg) else A_neg
+        A = A_pos
         tau = t_span / 3
         B = B_start
         success = False
@@ -182,18 +182,18 @@ def fit_raw_data(
             )
             fit_results[key] = fit_params
 
-            fit_curve = _exponential_decay_model(
-                time_ns,
-                fit_params.amplitude,
-                fit_params.time_constant_ns,
-                fit_params.offset,
-            )
-            fit_key = f"fit_{el.name}_{i + 1}"
-            ds_fit = ds_fit.assign(
-                {fit_key: xr.DataArray(fit_curve, dims=["time"])}
-            )
-
             if fit_params.success:
+                fit_curve = _exponential_decay_model(
+                    time_ns,
+                    fit_params.amplitude,
+                    fit_params.time_constant_ns,
+                    fit_params.offset,
+                )
+                fit_key = f"fit_{el.name}_{i + 1}"
+                ds_fit = ds_fit.assign(
+                    {fit_key: xr.DataArray(fit_curve, dims=["time"])}
+                )
+
                 correction = fit_params.amplitude * (
                     1 - np.exp(-time_ns / fit_params.time_constant_ns)
                 )

@@ -71,32 +71,37 @@ def plot_all(
                     label="With extracted correction",
                 )
 
+            success = True
             if fit_results is not None and key in fit_results:
                 fr = fit_results[key]
                 if isinstance(fr, dict):
                     A = fr["amplitude"]
                     tau_ns = fr["time_constant_ns"]
                     B = fr["offset"]
+                    success = bool(fr.get("success", True))
                 else:
                     A, tau_ns, B = fr.amplitude, fr.time_constant_ns, fr.offset
+                    success = bool(getattr(fr, "success", True))
 
-                t_fine = np.linspace(time_ns.min(), time_ns.max(), 300)
-                fit_fine = _exponential_decay_model(t_fine, A, tau_ns, B)
-                tau_us = tau_ns / 1e3
-                ax.plot(
-                    t_fine / 1e3,
-                    fit_fine * 1e3,
-                    "-",
-                    color="red",
-                    label=f"Fit: τ = {tau_us:.2f} µs ({tau_ns:.0f} ns)",
-                )
-                if time_ns.min() <= tau_ns <= time_ns.max():
-                    ax.axvline(tau_us, color="gray", ls=":", lw=1, alpha=0.6, label="τ")
+                if success:
+                    t_fine = np.linspace(time_ns.min(), time_ns.max(), 300)
+                    fit_fine = _exponential_decay_model(t_fine, A, tau_ns, B)
+                    tau_us = tau_ns / 1e3
+                    ax.plot(
+                        t_fine / 1e3,
+                        fit_fine * 1e3,
+                        "-",
+                        color="red",
+                        label=f"Fit: τ = {tau_us:.2f} µs ({tau_ns:.0f} ns)",
+                    )
+                    if time_ns.min() <= tau_ns <= time_ns.max():
+                        ax.axvline(tau_us, color="gray", ls=":", lw=1, alpha=0.6, label="τ")
 
             ax.set_xlim(time_us.min(), time_us.max())
             ax.set_xlabel("Time [µs]")
             ax.set_ylabel("Amplitude [mV]")
-            ax.set_title(f"{key}")
+            title = f"{key}" if success else f"{key}  |  fit failed"
+            ax.set_title(title, color="black" if success else "red")
             ax.legend(fontsize=8)
             ax.grid(True, alpha=0.3)
             col += 1
