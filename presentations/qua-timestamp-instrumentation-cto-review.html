@@ -1,0 +1,1526 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CTO review of zero-touch QUA timestamp instrumentation">
+  <title>Zero-Touch QUA Timing — CTO Review</title>
+  <style>
+    :root {
+      --ink: #eef5f6;
+      --muted: #9fb2b7;
+      --dim: #71858b;
+      --bg: #071316;
+      --panel: rgba(14, 34, 39, 0.82);
+      --panel-strong: #10282d;
+      --line: rgba(173, 213, 218, 0.15);
+      --cyan: #67e8f9;
+      --green: #9bf6a7;
+      --amber: #ffd47a;
+      --red: #ff8f8f;
+      --blue: #82aaff;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 14% 18%, rgba(103, 232, 249, 0.08), transparent 30%),
+        radial-gradient(circle at 84% 78%, rgba(155, 246, 167, 0.06), transparent 32%),
+        var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(to bottom, black, transparent 86%);
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .deck {
+      height: 100%;
+      position: relative;
+      isolation: isolate;
+    }
+
+    .topbar {
+      position: fixed;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(7, 19, 22, 0.82);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: max-content;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 18px rgba(155, 246, 167, 0.8);
+    }
+
+    .progress-track {
+      height: 2px;
+      flex: 1;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--green));
+      transition: width 280ms ease;
+    }
+
+    .counter {
+      min-width: 54px;
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 54px 0 58px;
+      display: none;
+      overflow: auto;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(30px, 5vw, 76px);
+    }
+
+    .slide.active {
+      display: flex;
+      animation: enter 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    @keyframes enter {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .content {
+      width: min(1320px, 100%);
+      margin: auto;
+    }
+
+    .eyebrow {
+      margin: 0 0 16px;
+      color: var(--cyan);
+      font-size: clamp(11px, 1.1vw, 14px);
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 1050px;
+      margin-bottom: 24px;
+      font-size: clamp(48px, 7.2vw, 104px);
+      font-weight: 760;
+      letter-spacing: -0.055em;
+      line-height: 0.96;
+    }
+
+    h2 {
+      max-width: 1040px;
+      margin-bottom: 28px;
+      font-size: clamp(36px, 4.7vw, 70px);
+      font-weight: 730;
+      letter-spacing: -0.045em;
+      line-height: 1.02;
+    }
+
+    h3 {
+      margin-bottom: 10px;
+      font-size: clamp(17px, 1.6vw, 23px);
+      letter-spacing: -0.02em;
+    }
+
+    .lead {
+      max-width: 900px;
+      color: var(--muted);
+      font-size: clamp(19px, 2vw, 29px);
+      line-height: 1.45;
+    }
+
+    .accent {
+      color: var(--green);
+    }
+
+    .cyan {
+      color: var(--cyan);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .dim {
+      color: var(--dim);
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 48px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.025);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.8;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .card {
+      position: relative;
+      min-height: 160px;
+      padding: clamp(20px, 2.4vw, 32px);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(19, 48, 54, 0.74), rgba(10, 27, 31, 0.88));
+      box-shadow: var(--shadow);
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      right: -40px;
+      bottom: -70px;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.025;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+      font-size: clamp(14px, 1.25vw, 18px);
+      line-height: 1.55;
+    }
+
+    .metric {
+      margin-bottom: 8px;
+      color: var(--green);
+      font-size: clamp(34px, 4vw, 60px);
+      font-weight: 760;
+      letter-spacing: -0.05em;
+      line-height: 1;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .number {
+      display: inline-grid;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 22px;
+      place-items: center;
+      border: 1px solid rgba(103, 232, 249, 0.35);
+      border-radius: 10px;
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .timeline {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 40px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      top: 28px;
+      left: 15%;
+      right: 15%;
+      height: 1px;
+      background: linear-gradient(90deg, var(--cyan), var(--green));
+      opacity: 0.5;
+    }
+
+    .phase {
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(10, 28, 32, 0.9);
+    }
+
+    .phase-tag {
+      display: inline-grid;
+      width: 56px;
+      height: 56px;
+      margin-bottom: 22px;
+      place-items: center;
+      border: 1px solid rgba(103, 232, 249, 0.28);
+      border-radius: 18px;
+      background: var(--bg);
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .phase strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: clamp(18px, 1.6vw, 24px);
+    }
+
+    .phase p {
+      margin-bottom: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: 1fr 42px 1fr 42px 1fr 42px 1fr;
+      align-items: stretch;
+      gap: 8px;
+      margin-top: 36px;
+    }
+
+    .node {
+      display: flex;
+      min-height: 190px;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+    }
+
+    .node .node-id {
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .node strong {
+      font-size: clamp(17px, 1.55vw, 23px);
+    }
+
+    .node small {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .arrow {
+      display: grid;
+      place-items: center;
+      color: var(--green);
+      font-size: 26px;
+    }
+
+    .code-grid {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .code-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #071114;
+      box-shadow: var(--shadow);
+    }
+
+    .code-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 46px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dots i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--dim);
+    }
+
+    pre {
+      margin: 0;
+      padding: clamp(18px, 2vw, 28px);
+      overflow: auto;
+      color: #c9d8dc;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: clamp(12px, 1.15vw, 17px);
+      line-height: 1.65;
+      tab-size: 4;
+    }
+
+    .kw {
+      color: var(--blue);
+    }
+
+    .fn {
+      color: var(--cyan);
+    }
+
+    .str {
+      color: var(--green);
+    }
+
+    .comment {
+      color: #647d83;
+    }
+
+    .contract-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .contract-row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 20px;
+      align-items: start;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .contract-row:last-child {
+      border-bottom: 0;
+    }
+
+    .contract-row code {
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .contract-row span {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .flow-lanes {
+      display: grid;
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .lane-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .lane-track {
+      position: relative;
+      height: 54px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.018);
+    }
+
+    .pulse {
+      position: absolute;
+      top: 10px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border-radius: 9px;
+      color: #071316;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .pulse.drive {
+      left: 4%;
+      width: 18%;
+      background: var(--cyan);
+    }
+
+    .pulse.readout {
+      left: 31%;
+      width: 56%;
+      background: var(--green);
+    }
+
+    .tick {
+      position: absolute;
+      top: -7px;
+      bottom: -7px;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.42);
+    }
+
+    .tick.a {
+      left: 4%;
+    }
+
+    .tick.b {
+      left: 31%;
+    }
+
+    .tick-labels {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 18px;
+      margin-top: -4px;
+    }
+
+    .ticks {
+      position: relative;
+      height: 28px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .ticks span {
+      position: absolute;
+      transform: translateX(-50%);
+    }
+
+    .ticks .ta {
+      left: 4%;
+    }
+
+    .ticks .tb {
+      left: 31%;
+    }
+
+    .evidence {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 22px;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 12px;
+    }
+
+    .check {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 15px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .check:last-child {
+      border-bottom: 0;
+    }
+
+    .check-mark {
+      display: grid;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(155, 246, 167, 0.12);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .check strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .check span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .risk-table {
+      width: 100%;
+      overflow: hidden;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(9, 25, 29, 0.78);
+      box-shadow: var(--shadow);
+    }
+
+    .risk-table th,
+    .risk-table td {
+      padding: 17px 18px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .risk-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .risk-table th {
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .risk-table td {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .risk-table td:first-child {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .severity {
+      display: inline-flex;
+      min-width: 62px;
+      justify-content: center;
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .severity.high {
+      background: rgba(255, 143, 143, 0.12);
+      color: var(--red);
+    }
+
+    .severity.medium {
+      background: rgba(255, 212, 122, 0.12);
+      color: var(--amber);
+    }
+
+    .decision {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .verdict {
+      display: flex;
+      min-height: 360px;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(28px, 3.5vw, 48px);
+      border: 1px solid rgba(155, 246, 167, 0.26);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(145deg, rgba(155, 246, 167, 0.08), transparent 48%),
+        var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .verdict-label {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .verdict h3 {
+      max-width: 650px;
+      font-size: clamp(32px, 4vw, 58px);
+      line-height: 1.04;
+    }
+
+    .verdict p {
+      max-width: 660px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: clamp(16px, 1.5vw, 20px);
+      line-height: 1.55;
+    }
+
+    .actions {
+      display: grid;
+      gap: 12px;
+    }
+
+    .action {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+    }
+
+    .action b {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(103, 232, 249, 0.09);
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .action strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 15px;
+    }
+
+    .action span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .footer-controls {
+      position: fixed;
+      z-index: 20;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 26px;
+      border-top: 1px solid var(--line);
+      background: rgba(7, 19, 22, 0.86);
+      backdrop-filter: blur(16px);
+    }
+
+    .hint {
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .nav button {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--ink);
+      cursor: pointer;
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .nav button:hover:not(:disabled) {
+      border-color: rgba(103, 232, 249, 0.46);
+      background: rgba(103, 232, 249, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .nav button:disabled {
+      cursor: default;
+      opacity: 0.28;
+    }
+
+    .slide-dots {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .slide-dot {
+      width: 6px;
+      height: 6px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: #40545a;
+      cursor: pointer;
+      transition: width 180ms ease, border-radius 180ms ease, background 180ms ease;
+    }
+
+    .slide-dot.active {
+      width: 24px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    @media (max-width: 900px) {
+      .grid-3,
+      .grid-4,
+      .timeline,
+      .code-grid,
+      .evidence,
+      .decision {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .architecture {
+        grid-template-columns: 1fr;
+      }
+
+      .arrow {
+        transform: rotate(90deg);
+      }
+
+      .slide {
+        align-items: flex-start;
+      }
+
+      .timeline::before {
+        display: none;
+      }
+
+      .contract-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .risk-table {
+        display: block;
+        overflow-x: auto;
+      }
+
+      .hint {
+        display: none;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .topbar {
+        padding: 0 16px;
+      }
+
+      .brand {
+        font-size: 10px;
+      }
+
+      .slide {
+        padding: 30px 18px;
+      }
+
+      .slide-dots {
+        display: none;
+      }
+
+      .lane {
+        grid-template-columns: 88px 1fr;
+      }
+
+      .tick-labels {
+        grid-template-columns: 88px 1fr;
+      }
+    }
+
+    @media print {
+      html,
+      body {
+        height: auto;
+        overflow: visible;
+        background: #fff;
+        color: #111;
+      }
+
+      body::before,
+      .topbar,
+      .footer-controls {
+        display: none !important;
+      }
+
+      .slide,
+      .slide.active {
+        position: relative;
+        inset: auto;
+        display: flex !important;
+        min-height: 100vh;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
+        animation: none;
+        background: #071316;
+        color: var(--ink);
+      }
+
+      .slide:last-child {
+        page-break-after: auto;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .slide.active,
+      .progress-bar,
+      .slide-dot,
+      .nav button {
+        animation: none;
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" aria-label="CTO review presentation">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark"></span>Engineering Review</div>
+      <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="counter" id="counter">01 / 12</div>
+    </header>
+
+    <section class="slide active" data-title="Executive review" aria-hidden="false">
+      <div class="content">
+        <p class="eyebrow">CTO architecture review · July 2026</p>
+        <h1>Zero-touch QUA<br><span class="accent">timing instrumentation</span></h1>
+        <p class="lead">
+          A reusable path from naturally written quantum-control programs to exact
+          <span class="cyan">play / measure start times</span>—without contaminating the experiment source.
+        </p>
+        <div class="hero-meta">
+          <span class="pill">Original program preserved</span>
+          <span class="pill">4 ns → nanoseconds</span>
+          <span class="pill">No visualization dependency</span>
+          <span class="pill">Hardware validation pending</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Executive summary" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Executive summary</p>
+        <h2>The engineering direction is sound.<br>The release boundary is not yet proven.</h2>
+        <div class="grid-4">
+          <article class="card">
+            <div class="metric">0</div>
+            <div class="metric-label">timestamp edits inside QUA</div>
+            <p>The final API consumes a completed program rather than replacing each operation.</p>
+          </article>
+          <article class="card">
+            <div class="metric">2</div>
+            <div class="metric-label">integration calls</div>
+            <p>Create the timing recorder, execute its cloned program, then fetch the outcome.</p>
+          </article>
+          <article class="card">
+            <div class="metric">6/6</div>
+            <div class="metric-label">focused tests passing</div>
+            <p>Cloning, recursion, result preservation, conversion, ordering, and failures are covered.</p>
+          </article>
+          <article class="card">
+            <div class="metric" style="color: var(--amber)">1</div>
+            <div class="metric-label">gating dependency</div>
+            <p>Post-build instrumentation uses internal SDK protobuf structure because no public hook exists.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Problem" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">The problem</p>
+        <h2>Compiler scheduling is observable.<br>Experiment source should stay scientific.</h2>
+        <div class="grid-2">
+          <article class="card">
+            <span class="number">01</span>
+            <h3>Operational need</h3>
+            <p>
+              Retrieve the exact start time of each executed <code>play()</code> and
+              <code>measure()</code>, including compiler scheduling and control-flow effects.
+            </p>
+          </article>
+          <article class="card">
+            <span class="number">02</span>
+            <h3>Developer constraint</h3>
+            <p>
+              Scientists must keep writing normal QUA. Timing diagnostics cannot require wrapper calls,
+              hand-authored labels, or experiment-by-experiment rewrites.
+            </p>
+          </article>
+        </div>
+        <div class="card" style="margin-top: 18px; min-height: auto; border-color: rgba(155, 246, 167, 0.25)">
+          <p class="eyebrow" style="margin-bottom: 8px; color: var(--green)">Non-negotiable product requirement</p>
+          <p class="lead" style="margin-bottom: 0; max-width: none">
+            “Give the tool the program I naturally wrote; give me back the timing.”
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Engineering journey" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Engineering journey</p>
+        <h2>Three iterations clarified the real abstraction.</h2>
+        <div class="timeline">
+          <article class="phase">
+            <span class="phase-tag">08c</span>
+            <strong>Production experiment</strong>
+            <p>Power Rabi error amplification with nested parameter and averaging loops.</p>
+          </article>
+          <article class="phase">
+            <span class="phase-tag">08d</span>
+            <strong>Manual timing proof</strong>
+            <p>One-shot loops, explicit timestamp streams, conversion, relative analysis, no simulation.</p>
+          </article>
+          <article class="phase" style="border-color: rgba(155, 246, 167, 0.28)">
+            <span class="phase-tag" style="color: var(--green); border-color: rgba(155, 246, 167, 0.35)">08e</span>
+            <strong>Zero-touch reusable tool</strong>
+            <p>Natural QUA body; completed program is cloned and instrumented automatically.</p>
+          </article>
+        </div>
+        <p class="lead" style="margin-top: 32px">
+          The initially proposed wrapper API was rejected because it moved instrumentation burden
+          into every experiment. That was the correct product correction.
+        </p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Architecture" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Chosen architecture</p>
+        <h2>Instrument after construction. Execute a clone. Preserve the source.</h2>
+        <div class="architecture" role="img" aria-label="Architecture flow from natural QUA program to timestamp outcome">
+          <article class="node">
+            <span class="node-id">01 / INPUT</span>
+            <strong>Natural QUA <code>Program</code></strong>
+            <small>Normal play, measure, loops, conditions, and stream processing.</small>
+          </article>
+          <div class="arrow" aria-hidden="true">→</div>
+          <article class="node">
+            <span class="node-id">02 / TRANSFORM</span>
+            <strong>Recursive protobuf walk</strong>
+            <small>Discover nested play / measure nodes and generate stable handles.</small>
+          </article>
+          <div class="arrow" aria-hidden="true">→</div>
+          <article class="node">
+            <span class="node-id">03 / EXECUTE</span>
+            <strong>Instrumented clone</strong>
+            <small>Add timestamp labels, result analysis streams, and QOP capability metadata.</small>
+          </article>
+          <div class="arrow" aria-hidden="true">→</div>
+          <article class="node">
+            <span class="node-id">04 / OUTCOME</span>
+            <strong>Structured timing results</strong>
+            <small>Clock cycles, nanoseconds, occurrence arrays, ordering, and relative offsets.</small>
+          </article>
+        </div>
+        <div class="grid-3" style="margin-top: 18px">
+          <div class="pill">Depth-first statement discovery</div>
+          <div class="pill">Existing outputs retained</div>
+          <div class="pill">Original protobuf byte-identical</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Developer experience" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Developer experience</p>
+        <h2>The QUA body remains exactly what a physicist expects.</h2>
+        <div class="code-grid">
+          <article class="code-card">
+            <header class="code-head">
+              Natural experiment
+              <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            </header>
+            <pre><span class="kw">with</span> <span class="fn">program</span>() <span class="kw">as</span> experiment:
+    <span class="kw">with</span> <span class="fn">for_</span>(n, 0, n &lt; 1, n + 1):
+        <span class="fn">play</span>(<span class="str">"x180"</span>, <span class="str">"qubit"</span>)
+        <span class="fn">align</span>(<span class="str">"qubit"</span>, <span class="str">"resonator"</span>)
+        <span class="fn">measure</span>(
+            <span class="str">"readout"</span>,
+            <span class="str">"resonator"</span>,
+            demod_process,
+        )
+
+<span class="comment"># No timestamp_stream. No custom calls. No names.</span></pre>
+          </article>
+          <article class="code-card">
+            <header class="code-head">
+              Timing integration
+              <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            </header>
+            <pre><span class="kw">from</span> timestamp_tools <span class="kw">import</span> TimestampRecorder
+
+<span class="comment"># After the program context closes</span>
+timing = <span class="fn">TimestampRecorder</span>(experiment)
+
+job = qm.<span class="fn">execute</span>(timing.program)
+results = timing.<span class="fn">fetch</span>(job)
+
+rows = results.<span class="fn">as_rows</span>(
+    reference=0
+)</pre>
+          </article>
+        </div>
+        <div class="card" style="margin-top: 18px; min-height: auto">
+          <strong class="accent">Product property:</strong>
+          <span class="muted"> instrumentation is opt-in at execution time, not embedded in scientific source.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Data contract" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Outcome and data contract</p>
+        <h2>Machine-readable first. Human-readable when needed.</h2>
+        <div class="grid-2">
+          <article class="card">
+            <div class="contract-list">
+              <div class="contract-row">
+                <code>names</code>
+                <span>Automatically generated static-statement identities such as <code>play_0_x180_qubit</code>.</span>
+              </div>
+              <div class="contract-row">
+                <code>clock_cycles</code>
+                <span>Raw arrays returned by QOP. Loop execution produces multiple ordered occurrences.</span>
+              </div>
+              <div class="contract-row">
+                <code>nanoseconds</code>
+                <span>Converted arrays using the configured 4 ns clock-cycle duration.</span>
+              </div>
+              <div class="contract-row">
+                <code>as_rows()</code>
+                <span>Sorted event rows with type, pulse, element, path, occurrence, absolute and relative time.</span>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <p class="eyebrow">Illustrative single-shot outcome</p>
+            <div class="flow-lanes">
+              <div class="lane">
+                <span class="lane-label">qubit</span>
+                <div class="lane-track">
+                  <span class="tick a"></span>
+                  <span class="pulse drive">x180</span>
+                </div>
+              </div>
+              <div class="lane">
+                <span class="lane-label">resonator</span>
+                <div class="lane-track">
+                  <span class="tick b"></span>
+                  <span class="pulse readout">readout</span>
+                </div>
+              </div>
+              <div class="tick-labels">
+                <span></span>
+                <div class="ticks">
+                  <span class="ta">400 ns</span>
+                  <span class="tb">440 ns</span>
+                </div>
+              </div>
+            </div>
+            <p class="muted" style="margin-top: 20px; margin-bottom: 0">
+              Example only: fake handles verified a 40 ns relative start offset. Hardware values remain pending.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Validation" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Validation evidence</p>
+        <h2>The transformation closes locally.<br>The physical system does not—yet.</h2>
+        <div class="evidence">
+          <article class="card">
+            <div class="metric">6 / 6</div>
+            <div class="metric-label">focused tests passing</div>
+            <p>
+              Plus Python compilation, Black formatting, flake8, QUA construction, serialized stream checks,
+              and fake result-handle execution.
+            </p>
+          </article>
+          <article class="card">
+            <div class="checklist">
+              <div class="check">
+                <span class="check-mark">✓</span>
+                <div><strong>Source immutability</strong><span>Original protobuf remains byte-for-byte unchanged.</span></div>
+              </div>
+              <div class="check">
+                <span class="check-mark">✓</span>
+                <div><strong>Recursive discovery</strong><span>Validated across loop, conditional, and strict-timing containers.</span></div>
+              </div>
+              <div class="check">
+                <span class="check-mark">✓</span>
+                <div><strong>Result preservation</strong><span>Existing stream-processing outputs remain in the cloned program.</span></div>
+              </div>
+              <div class="check">
+                <span class="check-mark">✓</span>
+                <div><strong>Fetch outcome</strong><span>Occurrences, 4 ns conversion, sorting, relative offsets, and missing handles.</span></div>
+              </div>
+              <div class="check">
+                <span class="check-mark" style="color: var(--amber); background: rgba(255, 212, 122, 0.12)">!</span>
+                <div><strong>Hardware acceptance</strong><span>No QOP hardware was available; compiler/server execution is the remaining gate.</span></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Risk register" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Risk register</p>
+        <h2>The main risk is compatibility, not concept.</h2>
+        <table class="risk-table">
+          <thead>
+            <tr>
+              <th>Risk</th>
+              <th>Severity</th>
+              <th>Why it matters</th>
+              <th>Proposed control</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Private protobuf dependency</td>
+              <td><span class="severity high">High</span></td>
+              <td>The SDK has no public post-build instrumentation hook.</td>
+              <td>Isolate adapter, pin supported SDKs, serialization contract tests per release.</td>
+            </tr>
+            <tr>
+              <td>No hardware proof</td>
+              <td><span class="severity high">High</span></td>
+              <td>Local correctness does not prove QOP compilation and timestamp delivery.</td>
+              <td>Run a minimal OPX acceptance matrix before merge or release.</td>
+            </tr>
+            <tr>
+              <td>Result volume in large loops</td>
+              <td><span class="severity medium">Medium</span></td>
+              <td>Every statement occurrence creates a timestamp value.</td>
+              <td>Add selection filters and explicit occurrence/stream budgets.</td>
+            </tr>
+            <tr>
+              <td>Unsupported pre-instrumented programs</td>
+              <td><span class="severity medium">Medium</span></td>
+              <td>Mixed manual and automatic streams can create ambiguous ownership.</td>
+              <td>Current behavior fails clearly; later add an explicit coexistence policy.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Rollout" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Proposed rollout</p>
+        <h2>Move through a hardware-gated beta—not directly to general availability.</h2>
+        <div class="grid-3">
+          <article class="card">
+            <span class="number">P0</span>
+            <h3>Hardware acceptance</h3>
+            <p>Single shot, nested loops, conditional path, pre-existing result streams, and multiple elements.</p>
+          </article>
+          <article class="card">
+            <span class="number">P1</span>
+            <h3>Compatibility contract</h3>
+            <p>Test supported qm-qua versions, formalize failure messages, and document internal coupling.</p>
+          </article>
+          <article class="card">
+            <span class="number">P2</span>
+            <h3>Hardening and upstream</h3>
+            <p>Statement filters, stream-volume guardrails, performance benchmark, then promotion into qualang-tools.</p>
+          </article>
+        </div>
+        <div class="grid-2" style="margin-top: 18px">
+          <article class="card" style="min-height: auto">
+            <p class="eyebrow" style="color: var(--green)">Beta exit criteria</p>
+            <p style="margin-bottom: 0">Correct timing on target hardware across the acceptance matrix and two supported SDK versions.</p>
+          </article>
+          <article class="card" style="min-height: auto">
+            <p class="eyebrow" style="color: var(--amber)">Do not promise yet</p>
+            <p style="margin-bottom: 0">Universal compatibility with every QUA statement type or unlimited loop-volume telemetry.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Decision" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">CTO decision</p>
+        <div class="decision">
+          <article class="verdict">
+            <span class="verdict-label">Recommendation</span>
+            <h3>Proceed as an <span class="accent">experimental, hardware-gated capability.</span></h3>
+            <p>
+              The developer experience now matches the product requirement. Approve continued investment,
+              conditional on proving the private-SDK adapter against real QOP execution before external release.
+            </p>
+          </article>
+          <div class="actions">
+            <article class="action">
+              <b>01</b>
+              <div><strong>Approve architecture</strong><span>Post-build cloned instrumentation is the selected direction.</span></div>
+            </article>
+            <article class="action">
+              <b>02</b>
+              <div><strong>Fund hardware validation</strong><span>Allocate QOP access and an owner for the acceptance matrix.</span></div>
+            </article>
+            <article class="action">
+              <b>03</b>
+              <div><strong>Set compatibility policy</strong><span>Choose supported qm-qua versions and release cadence.</span></div>
+            </article>
+            <article class="action">
+              <b>04</b>
+              <div><strong>Gate general release</strong><span>No GA until hardware, volume, and upgrade behavior are measured.</span></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Appendix" aria-hidden="true">
+      <div class="content">
+        <p class="eyebrow">Appendix · implementation surface</p>
+        <h2>What changed, and where.</h2>
+        <div class="grid-3">
+          <article class="card">
+            <p class="eyebrow">qua-libs</p>
+            <h3>08d manual baseline</h3>
+            <p>Single-shot timing, explicit streams, host-side nanosecond analysis, hardware-only execution.</p>
+          </article>
+          <article class="card">
+            <p class="eyebrow">qua-libs · local prototype</p>
+            <h3><code>timestamp_tools.py</code></h3>
+            <p>Inspectable local cloning, recursive discovery, stream injection, capability preservation, and fetching.</p>
+          </article>
+          <article class="card">
+            <p class="eyebrow">qua-libs</p>
+            <h3>08e natural example</h3>
+            <p>Unmodified QUA body and minimal post-build integration. No simulation or visualization.</p>
+          </article>
+        </div>
+        <div class="card" style="margin-top: 18px">
+          <p class="lead" style="margin-bottom: 8px">Packaging path</p>
+          <p style="margin-bottom: 0">
+            Test and understand the module locally first. Promote it into <code>qualang_tools</code> only after
+            hardware and SDK-compatibility gates pass.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer-controls">
+      <span class="hint">← → navigate · Home / End jump · P print / PDF</span>
+      <div class="slide-dots" id="slideDots" aria-label="Slide picker"></div>
+      <nav class="nav" aria-label="Presentation navigation">
+        <button id="prevButton" type="button" aria-label="Previous slide">←</button>
+        <button id="nextButton" type="button" aria-label="Next slide">→</button>
+      </nav>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const counter = document.getElementById("counter");
+      const progressBar = document.getElementById("progressBar");
+      const prevButton = document.getElementById("prevButton");
+      const nextButton = document.getElementById("nextButton");
+      const slideDots = document.getElementById("slideDots");
+      let current = 0;
+      let touchStartX = null;
+
+      const pad = (value) => String(value).padStart(2, "0");
+
+      slides.forEach((slide, index) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "slide-dot";
+        dot.setAttribute("aria-label", `Go to slide ${index + 1}: ${slide.dataset.title}`);
+        dot.addEventListener("click", () => show(index));
+        slideDots.appendChild(dot);
+      });
+
+      const dots = Array.from(document.querySelectorAll(".slide-dot"));
+
+      function show(index, updateHash = true) {
+        current = Math.max(0, Math.min(index, slides.length - 1));
+        slides.forEach((slide, slideIndex) => {
+          const active = slideIndex === current;
+          slide.classList.toggle("active", active);
+          slide.setAttribute("aria-hidden", String(!active));
+        });
+        dots.forEach((dot, dotIndex) => dot.classList.toggle("active", dotIndex === current));
+        counter.textContent = `${pad(current + 1)} / ${pad(slides.length)}`;
+        progressBar.style.width = `${((current + 1) / slides.length) * 100}%`;
+        prevButton.disabled = current === 0;
+        nextButton.disabled = current === slides.length - 1;
+        document.title = `${slides[current].dataset.title} — Zero-Touch QUA Timing`;
+        if (updateHash) history.replaceState(null, "", `#${current + 1}`);
+        slides[current].scrollTop = 0;
+      }
+
+      prevButton.addEventListener("click", () => show(current - 1));
+      nextButton.addEventListener("click", () => show(current + 1));
+
+      document.addEventListener("keydown", (event) => {
+        if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+        if (["ArrowRight", "PageDown", " "].includes(event.key)) {
+          event.preventDefault();
+          show(current + 1);
+        } else if (["ArrowLeft", "PageUp"].includes(event.key)) {
+          event.preventDefault();
+          show(current - 1);
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          show(0);
+        } else if (event.key === "End") {
+          event.preventDefault();
+          show(slides.length - 1);
+        } else if (event.key.toLowerCase() === "p") {
+          event.preventDefault();
+          window.print();
+        }
+      });
+
+      document.addEventListener("touchstart", (event) => {
+        touchStartX = event.changedTouches[0].clientX;
+      }, { passive: true });
+
+      document.addEventListener("touchend", (event) => {
+        if (touchStartX === null) return;
+        const delta = event.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(delta) > 60) show(current + (delta < 0 ? 1 : -1));
+        touchStartX = null;
+      }, { passive: true });
+
+      const requested = Number.parseInt(location.hash.slice(1), 10);
+      show(Number.isFinite(requested) ? requested - 1 : 0, false);
+    })();
+  </script>
+</body>
+</html>

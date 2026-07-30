@@ -1,0 +1,1309 @@
+[
+  {
+    "script": "00_hello_qua.py",
+    "category": "hardware_skip",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "hello_qua",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "play_0_pi_qubit"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "01_manual_mixer_calibration.py",
+    "category": "hardware_skip",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "cw_output",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "play_0_cw_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "02_raw_adc_traces.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "raw_trace_prog",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "measure_0_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "02_raw_adc_traces_mw_fem.py",
+    "category": "hardware_skip",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "raw_trace_prog",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "measure_0_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "03_time_of_flight.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "raw_trace_prog",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "measure_0_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "03_time_of_flight_mw_fem.py",
+    "category": "hardware_skip",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "raw_trace_prog",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "measure_0_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "04a_resonator_spectroscopy.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "resonator_spec",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "measure_0_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "04b_resonator_spectroscopy_wide_range_octave.py",
+    "category": "hardware_skip",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "resonator_spec",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "measure_0_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "04c_resonator_spectroscopy_wide_range_octave_update_IF.py",
+    "category": "hardware_skip",
+    "load_status": "fail",
+    "load_error": "NameError: name 'qm' is not defined",
+    "programs": []
+  },
+  {
+    "script": "05_resonator_spectroscopy_vs_amplitude.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "resonator_spec_2D",
+        "instrument_status": "pass",
+        "operation_count": 1,
+        "operation_names": [
+          "measure_0_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "06a_qubit_spectroscopy.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "qubit_spec",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_saturation_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "06b_qubit_spectroscopy_wide_range_outer_loop.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "qubit_spec",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_saturation_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "06c_qubit_spectroscopy_wide_range_inner_loop.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "qubit_spec",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_saturation_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "06d_qubit_spectroscopy_wide_range_octave.py",
+    "category": "hardware_skip",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "qubit_spec",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_saturation_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "06e_qubit_spectroscopy_wide_range_octave_update_IF.py",
+    "category": "hardware_skip",
+    "load_status": "fail",
+    "load_error": "No completed Program objects found before QOP connection.",
+    "programs": []
+  },
+  {
+    "script": "07a_rabi_chevron_duration.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "rabi_amp_freq",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "07b_rabi_chevron_amplitude.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "rabi_amp_freq",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "08a_time_rabi.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "time_rabi",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "08b_power_rabi.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "power_rabi",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "08c_power_rabi_error_amplification.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "power_rabi_err",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "08d_power_rabi_single_shot_timing.py",
+    "category": "manual_timestamps",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "power_rabi_single_shot_timing",
+        "instrument_status": "expected_fail",
+        "operation_count": 0,
+        "operation_names": [],
+        "instrument_error": "ValueError: Statement at 'program.script.body.statements[0].for_.body.statements[0].for_.body.statements[0].for_.body.statements[0].for_.body.statements[0]' already has timestamp stream 'r3'. TimestampRecorder expects a program without manual timestamps.",
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "08e_power_rabi_single_shot_timing_with_tool.py",
+    "category": "reference",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "power_rabi_single_shot_timing",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "09a_IQ_blobs.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "IQ_blobs",
+        "instrument_status": "pass",
+        "operation_count": 3,
+        "operation_names": [
+          "measure_0_readout_resonator",
+          "play_1_x180_qubit",
+          "measure_2_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "09b_resonator_depletion_time.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "res_depletion_time",
+        "instrument_status": "pass",
+        "operation_count": 4,
+        "operation_names": [
+          "measure_0_readout_resonator",
+          "play_1_x90_qubit",
+          "play_2_x90_qubit",
+          "measure_3_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "09c_active_reset.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "active_reset_prog",
+        "instrument_status": "pass",
+        "operation_count": 7,
+        "operation_names": [
+          "measure_0_readout_resonator",
+          "play_1_x180_qubit",
+          "measure_2_readout_resonator",
+          "measure_3_readout_resonator",
+          "play_4_x180_qubit",
+          "play_5_x180_qubit",
+          "measure_6_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "10a_readout_frequency_optimization.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "ro_freq_opt",
+        "instrument_status": "pass",
+        "operation_count": 3,
+        "operation_names": [
+          "measure_0_readout_resonator",
+          "play_1_x180_qubit",
+          "measure_2_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "10b_readout_amplitude_optimization.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "ro_amp_opt",
+        "instrument_status": "pass",
+        "operation_count": 3,
+        "operation_names": [
+          "measure_0_readout_resonator",
+          "play_1_x180_qubit",
+          "measure_2_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "10c_readout_duration_optimization.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "ro_duration_opt",
+        "instrument_status": "pass",
+        "operation_count": 3,
+        "operation_names": [
+          "measure_0_readout_resonator",
+          "play_1_x180_qubit",
+          "measure_2_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "10d_readout_weights_optimization.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "opt_weights",
+        "instrument_status": "pass",
+        "operation_count": 3,
+        "operation_names": [
+          "measure_0_readout_resonator",
+          "play_1_x180_qubit",
+          "measure_2_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "11_T1.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "T1",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "12_ramsey_chevron.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "ramsey_freq_duration",
+        "instrument_status": "pass",
+        "operation_count": 5,
+        "operation_names": [
+          "play_0_x90_qubit",
+          "play_1_x90_qubit",
+          "play_2_x90_qubit",
+          "play_3_x90_qubit",
+          "measure_4_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "13a_ramsey_w_virtual_rotation.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "ramsey",
+        "instrument_status": "pass",
+        "operation_count": 3,
+        "operation_names": [
+          "play_0_x90_qubit",
+          "play_1_x90_qubit",
+          "measure_2_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "13b_ramsey_w_detuning.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "ramsey",
+        "instrument_status": "pass",
+        "operation_count": 3,
+        "operation_names": [
+          "play_0_x90_qubit",
+          "play_1_x90_qubit",
+          "measure_2_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "14_echo.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "echo",
+        "instrument_status": "pass",
+        "operation_count": 4,
+        "operation_names": [
+          "play_0_x90_qubit",
+          "play_1_x180_qubit",
+          "play_2_x90_qubit",
+          "measure_3_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "15_allxy.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "ALL_XY",
+        "instrument_status": "pass",
+        "operation_count": 57,
+        "operation_names": [
+          "measure_0_readout_resonator",
+          "play_1_x180_qubit",
+          "play_2_x180_qubit",
+          "measure_3_readout_resonator",
+          "play_4_y180_qubit",
+          "play_5_y180_qubit",
+          "measure_6_readout_resonator",
+          "play_7_x180_qubit",
+          "play_8_y180_qubit",
+          "measure_9_readout_resonator",
+          "play_10_y180_qubit",
+          "play_11_x180_qubit",
+          "measure_12_readout_resonator",
+          "play_13_x90_qubit",
+          "measure_14_readout_resonator",
+          "play_15_y90_qubit",
+          "measure_16_readout_resonator",
+          "play_17_x90_qubit",
+          "play_18_y90_qubit",
+          "measure_19_readout_resonator",
+          "play_20_y90_qubit",
+          "play_21_x90_qubit",
+          "measure_22_readout_resonator",
+          "play_23_x90_qubit",
+          "play_24_y180_qubit",
+          "measure_25_readout_resonator",
+          "play_26_y90_qubit",
+          "play_27_x180_qubit",
+          "measure_28_readout_resonator",
+          "play_29_x180_qubit",
+          "play_30_y90_qubit",
+          "measure_31_readout_resonator",
+          "play_32_y180_qubit",
+          "play_33_x90_qubit",
+          "measure_34_readout_resonator",
+          "play_35_x90_qubit",
+          "play_36_x180_qubit",
+          "measure_37_readout_resonator",
+          "play_38_x180_qubit",
+          "play_39_x90_qubit",
+          "measure_40_readout_resonator",
+          "play_41_y90_qubit",
+          "play_42_y180_qubit",
+          "measure_43_readout_resonator",
+          "play_44_y180_qubit",
+          "play_45_y90_qubit",
+          "measure_46_readout_resonator",
+          "play_47_x180_qubit",
+          "measure_48_readout_resonator",
+          "play_49_y180_qubit",
+          "measure_50_readout_resonator",
+          "play_51_x90_qubit",
+          "play_52_x90_qubit",
+          "measure_53_readout_resonator",
+          "play_54_y90_qubit",
+          "play_55_y90_qubit",
+          "measure_56_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "15_cpmg.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "cpmg",
+        "instrument_status": "pass",
+        "operation_count": 4,
+        "operation_names": [
+          "play_0_x90_qubit",
+          "play_1_y180_qubit",
+          "play_2_x90_qubit",
+          "measure_3_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "16_xy8.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "xy8",
+        "instrument_status": "pass",
+        "operation_count": 11,
+        "operation_names": [
+          "play_0_x90_qubit",
+          "play_1_x180_qubit",
+          "play_2_y180_qubit",
+          "play_3_x180_qubit",
+          "play_4_y180_qubit",
+          "play_5_y180_qubit",
+          "play_6_x180_qubit",
+          "play_7_y180_qubit",
+          "play_8_x180_qubit",
+          "play_9_x90_qubit",
+          "measure_10_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "16a_randomized_benchmarking.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "rb",
+        "instrument_status": "pass",
+        "operation_count": 45,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "play_1_y180_qubit",
+          "play_2_y180_qubit",
+          "play_3_x180_qubit",
+          "play_4_x90_qubit",
+          "play_5_y90_qubit",
+          "play_6_x90_qubit",
+          "play_7_y90_qubit",
+          "play_8_x90_qubit",
+          "play_9_y90_qubit",
+          "play_10_x90_qubit",
+          "play_11_y90_qubit",
+          "play_12_y90_qubit",
+          "play_13_x90_qubit",
+          "play_14_y90_qubit",
+          "play_15_x90_qubit",
+          "play_16_y90_qubit",
+          "play_17_x90_qubit",
+          "play_18_y90_qubit",
+          "play_19_x90_qubit",
+          "play_20_x90_qubit",
+          "play_21_x90_qubit",
+          "play_22_y90_qubit",
+          "play_23_y90_qubit",
+          "play_24_x90_qubit",
+          "play_25_y90_qubit",
+          "play_26_x90_qubit",
+          "play_27_x90_qubit",
+          "play_28_y90_qubit",
+          "play_29_x90_qubit",
+          "play_30_x180_qubit",
+          "play_31_y90_qubit",
+          "play_32_x180_qubit",
+          "play_33_y90_qubit",
+          "play_34_y180_qubit",
+          "play_35_x90_qubit",
+          "play_36_y180_qubit",
+          "play_37_x90_qubit",
+          "play_38_x90_qubit",
+          "play_39_y90_qubit",
+          "play_40_x90_qubit",
+          "play_41_x90_qubit",
+          "play_42_y90_qubit",
+          "play_43_x90_qubit",
+          "measure_44_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "16b_randomized_benchmarking_interleaved.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "rb",
+        "instrument_status": "pass",
+        "operation_count": 45,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "play_1_y180_qubit",
+          "play_2_y180_qubit",
+          "play_3_x180_qubit",
+          "play_4_x90_qubit",
+          "play_5_y90_qubit",
+          "play_6_x90_qubit",
+          "play_7_y90_qubit",
+          "play_8_x90_qubit",
+          "play_9_y90_qubit",
+          "play_10_x90_qubit",
+          "play_11_y90_qubit",
+          "play_12_y90_qubit",
+          "play_13_x90_qubit",
+          "play_14_y90_qubit",
+          "play_15_x90_qubit",
+          "play_16_y90_qubit",
+          "play_17_x90_qubit",
+          "play_18_y90_qubit",
+          "play_19_x90_qubit",
+          "play_20_x90_qubit",
+          "play_21_x90_qubit",
+          "play_22_y90_qubit",
+          "play_23_y90_qubit",
+          "play_24_x90_qubit",
+          "play_25_y90_qubit",
+          "play_26_x90_qubit",
+          "play_27_x90_qubit",
+          "play_28_y90_qubit",
+          "play_29_x90_qubit",
+          "play_30_x180_qubit",
+          "play_31_y90_qubit",
+          "play_32_x180_qubit",
+          "play_33_y90_qubit",
+          "play_34_y180_qubit",
+          "play_35_x90_qubit",
+          "play_36_y180_qubit",
+          "play_37_x90_qubit",
+          "play_38_x90_qubit",
+          "play_39_y90_qubit",
+          "play_40_x90_qubit",
+          "play_41_x90_qubit",
+          "play_42_y90_qubit",
+          "play_43_x90_qubit",
+          "measure_44_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "16c_randomized_benchmarking_20ns.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "rb",
+        "instrument_status": "pass",
+        "operation_count": 85,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "play_1_x90_qubit",
+          "play_2_x90_qubit",
+          "play_3_y180_qubit",
+          "play_4_y90_qubit",
+          "play_5_y90_qubit",
+          "play_6_x180_qubit",
+          "play_7_x180_qubit",
+          "play_8_x180_qubit",
+          "play_9_x180_qubit",
+          "play_10_x90_qubit",
+          "play_11_x180_qubit",
+          "play_12_x90_qubit",
+          "play_13_x180_qubit",
+          "play_14_y180_qubit",
+          "play_15_x180_qubit",
+          "play_16_y90_qubit",
+          "play_17_x180_qubit",
+          "play_18_y90_qubit",
+          "play_19_x90_qubit",
+          "play_20_x90_qubit",
+          "play_21_x180_qubit",
+          "play_22_x90_qubit",
+          "play_23_x90_qubit",
+          "play_24_x90_qubit",
+          "play_25_x90_qubit",
+          "play_26_x90_qubit",
+          "play_27_y180_qubit",
+          "play_28_x90_qubit",
+          "play_29_y90_qubit",
+          "play_30_x90_qubit",
+          "play_31_y90_qubit",
+          "play_32_x90_qubit",
+          "play_33_x90_qubit",
+          "play_34_x180_qubit",
+          "play_35_x90_qubit",
+          "play_36_x90_qubit",
+          "play_37_x90_qubit",
+          "play_38_x90_qubit",
+          "play_39_x90_qubit",
+          "play_40_y180_qubit",
+          "play_41_x90_qubit",
+          "play_42_y90_qubit",
+          "play_43_x90_qubit",
+          "play_44_y90_qubit",
+          "play_45_y180_qubit",
+          "play_46_y180_qubit",
+          "play_47_x180_qubit",
+          "play_48_y180_qubit",
+          "play_49_x90_qubit",
+          "play_50_y180_qubit",
+          "play_51_x90_qubit",
+          "play_52_y180_qubit",
+          "play_53_y180_qubit",
+          "play_54_y180_qubit",
+          "play_55_y90_qubit",
+          "play_56_y180_qubit",
+          "play_57_y90_qubit",
+          "play_58_y90_qubit",
+          "play_59_y90_qubit",
+          "play_60_x180_qubit",
+          "play_61_y90_qubit",
+          "play_62_x90_qubit",
+          "play_63_y90_qubit",
+          "play_64_x90_qubit",
+          "play_65_y90_qubit",
+          "play_66_y180_qubit",
+          "play_67_y90_qubit",
+          "play_68_y90_qubit",
+          "play_69_y90_qubit",
+          "play_70_y90_qubit",
+          "play_71_y90_qubit",
+          "play_72_y90_qubit",
+          "play_73_x180_qubit",
+          "play_74_y90_qubit",
+          "play_75_x90_qubit",
+          "play_76_y90_qubit",
+          "play_77_x90_qubit",
+          "play_78_y90_qubit",
+          "play_79_y180_qubit",
+          "play_80_y90_qubit",
+          "play_81_y90_qubit",
+          "play_82_y90_qubit",
+          "play_83_y90_qubit",
+          "measure_84_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "16d_randomized_benchmarking_interleaved_20ns.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "rb",
+        "instrument_status": "pass",
+        "operation_count": 85,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "play_1_x90_qubit",
+          "play_2_x90_qubit",
+          "play_3_y180_qubit",
+          "play_4_y90_qubit",
+          "play_5_y90_qubit",
+          "play_6_x180_qubit",
+          "play_7_x180_qubit",
+          "play_8_x180_qubit",
+          "play_9_x180_qubit",
+          "play_10_x90_qubit",
+          "play_11_x180_qubit",
+          "play_12_x90_qubit",
+          "play_13_x180_qubit",
+          "play_14_y180_qubit",
+          "play_15_x180_qubit",
+          "play_16_y90_qubit",
+          "play_17_x180_qubit",
+          "play_18_y90_qubit",
+          "play_19_x90_qubit",
+          "play_20_x90_qubit",
+          "play_21_x180_qubit",
+          "play_22_x90_qubit",
+          "play_23_x90_qubit",
+          "play_24_x90_qubit",
+          "play_25_x90_qubit",
+          "play_26_x90_qubit",
+          "play_27_y180_qubit",
+          "play_28_x90_qubit",
+          "play_29_y90_qubit",
+          "play_30_x90_qubit",
+          "play_31_y90_qubit",
+          "play_32_x90_qubit",
+          "play_33_x90_qubit",
+          "play_34_x180_qubit",
+          "play_35_x90_qubit",
+          "play_36_x90_qubit",
+          "play_37_x90_qubit",
+          "play_38_x90_qubit",
+          "play_39_x90_qubit",
+          "play_40_y180_qubit",
+          "play_41_x90_qubit",
+          "play_42_y90_qubit",
+          "play_43_x90_qubit",
+          "play_44_y90_qubit",
+          "play_45_y180_qubit",
+          "play_46_y180_qubit",
+          "play_47_x180_qubit",
+          "play_48_y180_qubit",
+          "play_49_x90_qubit",
+          "play_50_y180_qubit",
+          "play_51_x90_qubit",
+          "play_52_y180_qubit",
+          "play_53_y180_qubit",
+          "play_54_y180_qubit",
+          "play_55_y90_qubit",
+          "play_56_y180_qubit",
+          "play_57_y90_qubit",
+          "play_58_y90_qubit",
+          "play_59_y90_qubit",
+          "play_60_x180_qubit",
+          "play_61_y90_qubit",
+          "play_62_x90_qubit",
+          "play_63_y90_qubit",
+          "play_64_x90_qubit",
+          "play_65_y90_qubit",
+          "play_66_y180_qubit",
+          "play_67_y90_qubit",
+          "play_68_y90_qubit",
+          "play_69_y90_qubit",
+          "play_70_y90_qubit",
+          "play_71_y90_qubit",
+          "play_72_y90_qubit",
+          "play_73_x180_qubit",
+          "play_74_y90_qubit",
+          "play_75_x90_qubit",
+          "play_76_y90_qubit",
+          "play_77_x90_qubit",
+          "play_78_y90_qubit",
+          "play_79_y180_qubit",
+          "play_80_y90_qubit",
+          "play_81_y90_qubit",
+          "play_82_y90_qubit",
+          "play_83_y90_qubit",
+          "measure_84_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "17_DRAG_calibration_Google.py",
+    "category": "hardware_skip",
+    "load_status": "fail",
+    "load_error": "AssertionError: The DRAG coefficient 'drag_coef' must be different from 0 in the config.",
+    "programs": []
+  },
+  {
+    "script": "17_DRAG_calibration_Yale.py",
+    "category": "hardware_skip",
+    "load_status": "fail",
+    "load_error": "AssertionError: The DRAG coefficient 'drag_coef' must be different from 0 in the config.",
+    "programs": []
+  },
+  {
+    "script": "18_AC_Stark_calibration_Google.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "ac_stark_shift",
+        "instrument_status": "pass",
+        "operation_count": 3,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "play_1_x180_qubit",
+          "measure_2_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "19_state_tomography.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "state_tomography",
+        "instrument_status": "pass",
+        "operation_count": 5,
+        "operation_names": [
+          "play_0_y90_qubit",
+          "measure_1_readout_resonator",
+          "play_2_x90_qubit",
+          "measure_3_readout_resonator",
+          "measure_4_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "20_frequency_tracking.py",
+    "category": "hardware_skip",
+    "load_status": "fail",
+    "load_error": "No completed Program objects found before QOP connection.",
+    "programs": []
+  }
+]
