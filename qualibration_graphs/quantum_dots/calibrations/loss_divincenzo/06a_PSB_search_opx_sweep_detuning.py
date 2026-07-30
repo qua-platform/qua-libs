@@ -73,6 +73,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.use_simulated_data = True
     pass
 
 
@@ -165,6 +166,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     
 
                     # ── STEP 3 - MEASURE: Perform the measurement at the PSB point ──────────
+
                     rr = sensor.readout_resonator
                     readout_length = rr.operations[op_name].length
 

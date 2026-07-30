@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 from scipy.stats import norm as _scipy_norm
 
-from calibration_utils.common_utils.experiment import get_qubits
+from qualibration_libs.parameters import get_qubits
 from calibration_utils.iq_blobs.analysis import FitParameters
 
 
