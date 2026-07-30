@@ -112,35 +112,36 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
 
-        
+        # Allocate real-time variables on the OPX:
+        #   I[i], Q[i]   : demodulated quadratures for qubit_pair i
+        #   I_st[i], Q_st[i] : buffers collecting I/Q before transfer to PC
+        #   n            : shot counter
+        #   n_st         : stream reporting shot index to PC (progress bar)
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
-
-        # n = declare(int)
-        # n_st = declare_output_stream()
-
-        # Each logical qubit pair is read out through the single sensor dot of
-        # its underlying quantum-dot pair.
-        # I_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
-        # Q_st = {qp.name: declare_output_stream() for qp in qubit_pairs}
-        # I = {qp.name: declare(fixed) for qp in qubit_pairs}
-        # Q = {qp.name: declare(fixed) for qp in qubit_pairs}
 
         # Real-time variable holding the detuning value
         detuning = declare(fixed)
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
-            save(n, n_st)
+            save(n, n_st) # tell the PC which shot we are on
 
             # Perform them all sequentially for now. Can add footprint batching later
             for i, qubit_pair in enumerate(qubit_pairs):
+
+                # Extract the underlying quantum dot pair
                 dot_pair = qubit_pair.quantum_dot_pair
+                op_name = "readout" + f"_{dot_pair.name}"
+
+                # Use the first sensor dot in the list of sensors associated with the quantum dot pair
+                sensor = dot_pair.sensor_dots[0]
 
                 # ── INNER LOOP: sweep sensor plunger gate voltage ──────────
                 with for_(*from_array(detuning, detuning_array)):
-                    # ---------------------------------------------------------
-                    # Step 1: Initialize - load electron into dots (fixed duration)
-                    # ---------------------------------------------------------
+
+                    # ── STEP 1 - INITIALIZE: Perform the initialization sequence ──────────
+
+                    # Requires the chosen macro on dot_pair.macros (empty or initialize)
                     if node.parameters.qubit_pair_to_initialize is not None: 
                         initialization_qubit_pair = node.machine.qubit_pairs[node.parameters.qubit_pair_to_initialize]
                         dp = initialization_qubit_pair.quantum_dot_pair
@@ -151,11 +152,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     if node.parameters.qubit_to_pulse is not None: 
                         q = node.machine.qubits[node.parameters.qubit_to_pulse]
                         q.x180()
-                    # Requires the chosen macro on dot_pair.macros (empty or initialize)
-                    # ---------------------------------------------------------
-                    # Step 2: Measure
-                    # ---------------------------------------------------------
-                    # No macro used here, since this node will characterise the macro
+
+
+                    # ── STEP 2 - RAMP: Ramp to the correct detuning point ──────────
 
                     # First ramp to the fixed detuning point
                     dot_pair.ramp_to_voltages(
@@ -163,37 +162,42 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         ramp_duration=node.parameters.ramp_duration,
                         duration=node.parameters.buffer_duration,
                     )
-                    op_name = "readout" + f"_{dot_pair.name}"
-
-                    # And then explicitly measure using the pair's single sensor dot.
-                    sensor = dot_pair.sensor_dots[0]
-                    rr = sensor.readout_resonator
-                    readout_length = rr.operations[op_name].length
-                    dot_pair.voltage_sequence.track_sticky_duration(readout_length)
-                    align(rr.id, dot_pair.physical_channel.id)
-
-                    rr.measure(op_name, qua_vars=(I[qubit_pair.name], Q[qubit_pair.name]))
                     
 
-                    save(I[qubit_pair.name], I_st[qubit_pair.name])
-                    save(Q[qubit_pair.name], Q_st[qubit_pair.name])
-                    align(rr.id, dot_pair.physical_channel.id)
-                    # Apply the compensation pulse via the voltage sequence
-                    dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero = True, return_to_zero = True)
-                    dot_pair.voltage_sequence.ramp_to_zero()
+                    # ── STEP 3 - MEASURE: Perform the measurement at the PSB point ──────────
+                    rr = sensor.readout_resonator
+                    readout_length = rr.operations[op_name].length
 
-                    wait(1000000//4)
+                    # Make sure to track the duration of the readout pulse. This is to ensure that the compensation pulse calculation is correct
+                    dot_pair.voltage_sequence.track_sticky_duration(readout_length)
+
+                    align(rr.id, dot_pair.physical_channel.id) # Make sure to align the measure command to be AFTER the ramp + wait
+
+                    # Play the "readout_{quantum_dot_pair.name}" pulse and integrate I/Q into I[i], Q[i]
+                    rr.measure(op_name, qua_vars=(I[i], Q[i]))
+
+                    # Append this voltage point's I/Q to the stream buffer
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+                    align()
+
+                    # Apply the compensation pulse via the voltage sequence. This both steps to 0 before, and goes back to 0 after
+                    dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero = True, return_to_zero = True)
                     
                     align()
 
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n")
-            for qubit_pair in qubit_pairs:
-                # Shot-by-shot: inner buffer = detuning, outer buffer = n_runs.
-                I_st[qubit_pair.name].buffer(len(detuning_array)).buffer(node.parameters.num_shots).save(
+            n_st.save("n") # expose shot counter as "n" in the fetched dataset
+            for i, qubit_pair in enumerate(qubit_pairs):
+                # Each save() above is one voltage point. 
+                # .buffer(len(detuning_array)) : group points along the detuning axis
+                # .buffer(n_avg) : group points along the repetitions axis
+                # Result : 2D trace I(detuning, n_avg), Q(detuning, n_avg) per qubit pair
+                I_st[I].buffer(len(detuning_array)).buffer(n_avg).save(
                     f"I_{qubit_pair.name}"
                 )
-                Q_st[qubit_pair.name].buffer(len(detuning_array)).buffer(node.parameters.num_shots).save(
+                Q_st[i].buffer(len(detuning_array)).buffer(n_avg).save(
                     f"Q_{qubit_pair.name}"
                 )
 
