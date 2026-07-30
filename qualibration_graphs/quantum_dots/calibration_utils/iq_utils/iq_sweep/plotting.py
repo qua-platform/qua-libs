@@ -4,18 +4,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-
-def _grid(n: int):
-    n_cols = int(np.ceil(np.sqrt(n)))
-    n_rows = int(np.ceil(n / n_cols))
-    return n_rows, n_cols
-
-
-def _sweep_axis_label(fits: xr.Dataset, sweep_name: str) -> str:
-    attrs = fits[sweep_name].attrs if sweep_name in fits.coords else {}
-    long_name = attrs.get("long_name", sweep_name)
-    units = attrs.get("units")
-    return f"{long_name} [{units}]" if units else long_name
+from ..plotting import (
+    _grid,
+    _sweep_axis_label,
+    plot_rotated_iq_density,
+    plot_rotated_iq_density_at_optimum,
+    plot_single_histogram_with_fit as _plot_single_histogram_with_fit,
+)
 
 
 def plot_metric_vs_sweep(
@@ -320,3 +315,16 @@ def plot_histograms_vs_sweep(
     )
     fig.tight_layout()
     return fig
+
+
+def plot_single_histogram_with_fit(
+    ds: Any,
+    fits: xr.Dataset,
+    qubit_pairs: List[Any],
+    *,
+    sweep_name: str = "singleton",
+    n_bins: int = 120,
+) -> Figure:
+    # Backwards-compatible wrapper: ds_raw is unused (historical signature).
+    _ = (ds, sweep_name)
+    return _plot_single_histogram_with_fit(fits, qubit_pairs, n_bins=n_bins)

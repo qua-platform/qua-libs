@@ -1,4 +1,3 @@
-from .parameters import Parameters
 from .analysis import (
     process_raw_dataset,
     fit_raw_data,
@@ -12,7 +11,6 @@ from .validate import (
 )
 
 __all__ = [
-    "Parameters",
     "process_raw_dataset",
     "fit_raw_data",
     "fit_barthel_mixed_iq",

@@ -9,11 +9,14 @@ from jax import config as jax_config
 
 from qualibrate import QualibrationNode
 
-from calibration_utils.iq_blobs.readout_barthel.utils import Barthel1DMetricCurves
-from calibration_utils.iq_blobs.readout_barthel.calibrate import Barthel1DFromIQ
-from calibration_utils.iq_blobs.readout_barthel.classify import (
+from ..iq_blobs.readout_barthel.utils import Barthel1DMetricCurves
+from ..iq_blobs.readout_barthel.calibrate import Barthel1DFromIQ
+from ..iq_blobs.readout_barthel.classify import (
     classify_iq_with_pca_threshold,
 )
+
+# Shared utils
+from ..analysis import process_raw_dataset
 
 jax_config.update("jax_enable_x64", True)
 
@@ -60,24 +63,6 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
             f"IW angle = {r['iw_angle'] * 180 / np.pi:.1f} deg"
         )
         log_callable(s_qubit + s)
-
-
-def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Strip tuple wrapping coming out of the data fetcher."""
-
-    def extract_value(element):
-        if isinstance(element, tuple):
-            return element[0]
-        return element
-
-    ds = xr.apply_ufunc(
-        extract_value,
-        ds,
-        vectorize=True,
-        dask="parallelized",
-        output_dtypes=[float],
-    )
-    return ds
 
 
 def _fit_single_slice(

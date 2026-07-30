@@ -12,13 +12,13 @@ from typing import Any, Dict, Optional, Sequence, Union
 import xarray as xr
 from matplotlib.figure import Figure
 
-from calibration_utils.iq_sweep.plotting import (
+from calibration_utils.iq_utils.iq_sweep.plotting import (
     plot_fidelity_vs_sweep,
     plot_histograms_vs_sweep,
     plot_sweep_summary,
+    plot_rotated_iq_density_at_optimum,
     plot_visibility_vs_sweep,
 )
-from calibration_utils.psb_search_fixed_detuning import plot_rotated_iq_density_at_optimum
 
 
 def plot_all(

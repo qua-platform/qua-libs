@@ -22,7 +22,7 @@ from calibration_utils.psb_search_sweep_ramp_rate import (
     plot_measure_duration_sweep_figures,
     plot_simulated_dataset_histograms,
 )
-from calibration_utils.psb_search_fixed_detuning import plot_rotated_iq_density_at_optimum
+from calibration_utils.iq_sweep.plotting import plot_rotated_iq_density_at_optimum
 from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.runtime import simulate_and_plot
