@@ -2,10 +2,6 @@ from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from calibration_utils.common_utils.experiment import BaseExperimentNodeParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.run_video_mode.video_mode_specific_parameters import (
-    VideoModeCommonParameters,
-)
-
 from typing import List, Optional
 
 

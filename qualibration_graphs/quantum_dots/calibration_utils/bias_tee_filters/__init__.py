@@ -4,7 +4,7 @@ from .analysis import (
     fit_raw_data,
     log_fitted_results,
 )
-from .plotting import plot_signal_vs_frequency
+from .plotting import plot_all
 from .simulated_data_generator import generate_simulated_dataset
 
 __all__ = [
@@ -12,6 +12,6 @@ __all__ = [
     "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",
-    "plot_signal_vs_frequency",
+    "plot_all",
     "generate_simulated_dataset",
 ]

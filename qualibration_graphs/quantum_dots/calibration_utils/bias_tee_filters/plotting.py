@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 from .analysis import _high_pass_model
 
 
-def plot_signal_vs_frequency(
+def plot_all(
     ds: xr.Dataset,
     elements: List,
     sensors: List,
     fit_results: Optional[Dict] = None,
-) -> Figure:
+) -> Dict[str, Figure]:
     """Plot IQ amplitude vs square-wave frequency with the fitted high-pass curve.
 
     One subplot per element/sensor combination.  Data is shown as scatter
@@ -112,4 +112,4 @@ def plot_signal_vs_frequency(
 
     fig.suptitle("Bias Tee Filter Characterization")
     fig.tight_layout()
-    return fig
+    return {"signal_vs_frequency": fig}

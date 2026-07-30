@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 from .analysis import _exponential_decay_model
 
 
-def plot_signal_vs_time(
+def plot_all(
     ds: xr.Dataset,
     elements: List,
     sensors: List,
     fit_results: Optional[Dict] = None,
-) -> Figure:
+) -> Dict[str, Figure]:
     """Plot IQ amplitude vs time with the fitted exponential decay.
 
     One subplot per element/sensor combination.  Data is shown as scatter
@@ -50,7 +50,7 @@ def plot_signal_vs_time(
                 col += 1
                 continue
 
-            time_ns = ds.time_array.values
+            time_ns = ds.time.values
             time_us = time_ns / 1e3
             amplitude = ds[amp_key].values
 
@@ -106,4 +106,4 @@ def plot_signal_vs_time(
 
     fig.suptitle("Bias Tee Single-Shot Decay")
     fig.tight_layout()
-    return fig
+    return {"signal_vs_time": fig}
