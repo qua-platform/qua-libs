@@ -178,7 +178,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None
     or node.parameters.simulate
-    or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -267,7 +266,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse Data}
 @node.run_action(
     skip_if=node.parameters.simulate
-    or node.parameters.run_in_video_mode
     or not node.parameters.perform_edge_analysis
 )
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
@@ -278,7 +276,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+@node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
     for tracked_resonator in node.namespace.get("tracked_resonators", []):
@@ -323,52 +321,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             if fit_params.get("segments"):
                 fig_lines = plot_line_fit_overlays(sensor_data, fit_params, sensor.id)
                 node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
-
-
-# %%
-from calibration_utils.run_video_mode import create_video_mode
-
-
-@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
-def run_video_mode(node: QualibrationNode[Parameters, Quam]):
-    if node.parameters.virtual_gate_set_id is None:
-        x_obj, y_obj = node.machine.get_component(
-            node.parameters.x_axis_name
-        ), node.machine.get_component(node.parameters.y_axis_name)
-        if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
-            raise ValueError(
-                f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
-            )
-        vgs_id = x_obj.voltage_sequence.gate_set.id
-    else:
-        vgs_id = node.parameters.virtual_gate_set_id
-    x_axis_name = node.parameters.x_axis_name
-    y_axis_name = node.parameters.y_axis_name
-    x_span, x_points = node.parameters.x_span, node.parameters.x_points
-    y_span, y_points = node.parameters.y_span, node.parameters.y_points
-
-    from pathlib import Path
-
-    quam_state_path = Path(node.machine.serialiser._get_state_path()).resolve()
-    create_video_mode(
-        machine=node.machine,
-        num_software_averages=node.parameters.num_shots,
-        log=node.log,
-        x_axis_name=x_axis_name,
-        y_axis_name=y_axis_name,
-        x_span=x_span,
-        x_points=x_points,
-        y_span=y_span,
-        y_points=y_points,
-        virtual_gate_id=vgs_id,
-        dc_control=node.parameters.dc_control,
-        readout_pulses=[
-            node.machine.sensor_dots[name].readout_resonator.operations["readout"]
-            for name in node.parameters.sensor_names
-        ],
-        save_path=str(quam_state_path),
-        port = node.parameters.video_mode_port,
-    )
 
 
 # %% {Save_results}
