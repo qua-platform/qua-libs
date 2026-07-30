@@ -2,7 +2,7 @@ from qua_dashboards.virtual_gates import virtual_layer_adder
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.run_video_mode.video_mode_parameters import VideoModeParameters
+from calibration_utils.run_video_mode.video_mode_utils import VideoModeCommonParameters
 
 from typing import List, Literal, Dict, Union, Callable, Optional
 
@@ -61,7 +61,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     DCControlParameters,
-    VideoModeParameters,
+    VideoModeCommonParameters,
     NodeSpecificParameters,
 ):
     """05a: OPX charge stability map with optional video mode."""
