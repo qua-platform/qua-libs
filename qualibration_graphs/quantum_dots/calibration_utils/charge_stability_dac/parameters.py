@@ -2,9 +2,7 @@ from qua_dashboards.virtual_gates import virtual_layer_adder
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.run_video_mode.video_mode_specific_parameters import (
-    VideoModeCommonParameters,
-)
+from calibration_utils.common_utils.dc_control_parameters import DCControlParameters
 
 from typing import List, Literal, Dict, Union, Callable, Optional
 
@@ -50,7 +48,7 @@ class NodeSpecificParameters(RunnableParameters):
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
-    VideoModeCommonParameters,
+    DCControlParameters,
     NodeSpecificParameters,
 ):
     plot_pca: bool = True
@@ -59,8 +57,8 @@ class Parameters(
 
 class OPXQDACParameters(
     NodeParameters,
-    VideoModeCommonParameters,
     CommonNodeParameters,
+    DCControlParameters,
     NodeSpecificParameters,
 ):
     x_from_qdac: bool = False
@@ -75,7 +73,6 @@ class OPXQDACParameters(
 
 class SimulationParameters(
     NodeParameters,
-    VideoModeCommonParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
 ):
