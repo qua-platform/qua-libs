@@ -130,7 +130,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence for sensor in multiplexed_sensors.values()
             }
 
-            # ── OUTER LOOP: repeat the full frequency sweep n_avg times ──
+            # ── OUTER LOOP: repeat the full sweep n_avg times ──
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)  # tell the PC which shot we are on
 
