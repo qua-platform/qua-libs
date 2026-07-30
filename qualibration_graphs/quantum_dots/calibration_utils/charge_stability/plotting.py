@@ -7,6 +7,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from quam_builder.architecture.quantum_dots.components import SensorDot
+from calibration_utils.iq_blobs.readout_barthel import pca_project_1d
 
 
 def _sort_for_plot(da: xr.DataArray) -> xr.DataArray:
@@ -20,6 +21,60 @@ def _sort_for_plot(da: xr.DataArray) -> xr.DataArray:
         if y_vals.ndim == 1 and y_vals.size > 1 and np.any(np.diff(y_vals) < 0):
             da = da.sortby("y_volts")
     return da
+
+
+def pca_plotter(ds: xr.Dataset) -> Figure:
+    """Plot a PC1 projection map from raw I/Q data for each sensor.
+
+    The PCA axis is fitted per sensor on the flattened IQ cloud, then each pixel
+    is projected onto that 1D axis and shown as a 2D map over (x_volts, y_volts).
+    """
+    if "I" not in ds.data_vars or "Q" not in ds.data_vars:
+        raise KeyError("Dataset must contain 'I' and 'Q' data variables.")
+    if "sensors" not in ds.dims:
+        raise KeyError("Dataset must include a 'sensors' dimension.")
+
+    sensor_ids = ds.coords["sensors"].values
+    num_sensors = len(sensor_ids)
+    fig, axes = plt.subplots(1, num_sensors, figsize=(6 * num_sensors, 5), squeeze=False)
+    axes = axes.flatten()
+
+    for ax, sensor_id in zip(axes, sensor_ids):
+        sensor_data = ds.sel(sensors=sensor_id)
+        i_map = np.asarray(sensor_data["I"].values, dtype=float)
+        q_map = np.asarray(sensor_data["Q"].values, dtype=float)
+
+        valid_mask = np.isfinite(i_map) & np.isfinite(q_map)
+        projected = np.full(i_map.shape, np.nan, dtype=float)
+
+        if np.count_nonzero(valid_mask) >= 2:
+            iq_points = np.column_stack([i_map[valid_mask], q_map[valid_mask]])
+            y_proj, _ = pca_project_1d(iq_points, labels=None, orient="auto")
+            projected[valid_mask] = np.asarray(y_proj, dtype=float)
+
+        pca_da = xr.DataArray(
+            projected,
+            dims=sensor_data["I"].dims,
+            coords=sensor_data["I"].coords,
+            name="pca_projection",
+        )
+        pca_da = _sort_for_plot(pca_da)
+        pca_da.plot(
+            ax=ax,
+            x="x_volts",
+            y="y_volts",
+            cmap="coolwarm",
+            add_colorbar=True,
+            cbar_kwargs={"label": "PC1 projection (a.u.)"},
+        )
+        ax.set_title(f"{sensor_id}")
+        ax.set_xlabel("X Voltage (V)")
+        ax.set_ylabel("Y Voltage (V)")
+
+    fig.suptitle("Charge Stability Map - PCA Projection")
+    fig.tight_layout()
+    return fig
+
 
 def _align_base_to_overlay(
     base_array: np.ndarray, overlay_array: np.ndarray

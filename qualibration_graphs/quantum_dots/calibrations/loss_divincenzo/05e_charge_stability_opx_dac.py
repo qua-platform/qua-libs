@@ -14,8 +14,8 @@ from qualang_tools.units import unit
 from qualang_tools.loops import from_array
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability_dac import (
-    Parameters,
+from calibration_utils.charge_stability import (
+    OPXuDACParameters as Parameters,
     get_voltage_arrays,
     ScanMode,
     plot_raw_amplitude,
