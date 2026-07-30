@@ -11,53 +11,57 @@ from qualang_tools.results import progress_counter
 from qualang_tools.loops import from_array
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
-from qualibration_libs.parameters import get_qubit_pairs
+from qualibration_libs.parameters.experiment import get_qubit_pairs
 from quam_config import QubitQuam as Quam
 from calibration_utils.psb_search_sweep_detuning import (
     Parameters,
     generate_simulated_dataset,
-    plot_simulated_dataset_histograms,
-)
-from calibration_utils.psb_search_fixed_detuning import plot_rotated_iq_density_at_optimum
-from calibration_utils.common_utils.experiment import (
-    get_sensors,
+    process_raw_dataset,
+    fit_raw_data_pca_gaussian,
+    log_fitted_results,
+    plot_all,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-from calibration_utils.iq_sweep import (
-    fit_raw_data,
-    fit_raw_data_pca_gaussian,
-    log_fitted_results,
-    plot_fidelity_vs_sweep,
-    plot_histograms_vs_sweep,
-    plot_visibility_vs_sweep,
-    plot_sweep_summary,
-)
-
 
 # %% {Node initialisation}
 description = """
-        PAULI SPIN BLOCKADE SEARCH - Sweep Detuning
-The goal of this sequence is to find the Pauli Spin Blockade (PSB) region.
-To do so, the following triangle in voltage space (empty - random initialization - measurement) is applied using OPX
-channels on the fast lines of the bias-tees while sweeping the "measure" voltage point along the detuning axis.
+PAULI SPIN BLOCKADE SEARCH — Sweep detuning (OPX)
 
-The OPX measures the response via RF reflectometry or DC current sensing during the readout window
-(last segment of the triangle). A single-point averaging is performed and the data is extracted while
-the program is running to display the results.
+This node searches for the Pauli Spin Blockade (PSB) region by sweeping the
+inter-dot detuning and measuring the sensor response during a PSB readout window.
+Each sweep point plays a voltage sequence (prepare → ramp → measure) using OPX 
+fast-line channels, and acquires per-shot I/Q data.
 
-Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
-triangle so that the fast line of the bias-tees sees zero voltage on average. Otherwise, the high-pass filtering effect
-of the bias-tee will distort the fast pulses over time, unless a compensation pulse is played.
+Prerequisites
+-------------
+- QUAM configured and loaded (``quam_config/populate_quam_state_*.py``).
+- Sensor-dot readout calibrated (resonator calibration nodes completed).
+- Detuning axis and voltage points (empty / initialize / measure) defined on the dot pair.
 
-Prerequisites:
-    - Having initialized the Quam (quam_config/populate_quam_state_*.py).
-    - Having calibrated the resonators coupled to the SensorDot components.
-    - Having calibrated the "empty" and "initialization" voltage points, and having defined the detuning axis.
+Datasets
+--------
+- ``ds_raw``: shot-level ``I`` and ``Q`` vs ``detuning`` (dims: ``qubit_pair``, ``n_runs``, ``detuning``).
+- ``ds_fit``: readout metrics and optimum detuning per pair (from ``iq_sweep`` analysis).
+- ``fit_results``: per-pair scalar results (serialized dataclass) for logging and state updates.
 
-State update:
-    - The optimal detuning value for PSB readout, as the voltage point associated with the .measure macro.
+Results
+-------
+For each qubit pair, the node identifies an optimal detuning (by fidelity or visibility)
+and extracts the readout axis and threshold used for the PSB readout discrimination.
+
+Figures
+-------
+- Fidelity and visibility vs detuning
+- Sweep summary (fidelity + visibility on twin axes)
+- Shot histograms vs detuning (projected readout axis)
+- Rotated IQ density at the optimal detuning with the chosen threshold
+
+State update
+------------
+Updates the dot pair ``MEASURE`` voltage point detuning and stores the readout threshold
+for the selected optimal detuning (only for successful pairs).
 """
 
 
@@ -93,7 +97,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = qubit_pairs
     num_qubit_pairs = len(qubit_pairs)
 
-    # Number of shots per ramp-duration point
+    # Number of shots per detuning point
     n_avg = node.parameters.num_shots
 
     # Build the detuning sweep
@@ -102,12 +106,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     detuning_points = node.parameters.detuning_points
     detuning_array = np.linspace(detuning_min, detuning_max, detuning_points)
 
-    # The swept axes. n_runs is the shot index (inner→outer: detuning, n_runs).
-    # The qubit_pair dim is inferred from the per-pair stream names.
+    # The swept axes. Buffer order is (detuning) then (n_runs).
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
-        "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
         "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
+        "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -196,7 +199,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # .buffer(len(detuning_array)) : group points along the detuning axis
                 # .buffer(n_avg) : group points along the repetitions axis
                 # Result : 2D trace I(detuning, n_avg), Q(detuning, n_avg) per qubit pair
-                I_st[I].buffer(len(detuning_array)).buffer(n_avg).save(
+                I_st[i].buffer(len(detuning_array)).buffer(n_avg).save(
                     f"I_{qubit_pair.name}"
                 )
                 Q_st[i].buffer(len(detuning_array)).buffer(n_avg).save(
@@ -234,13 +237,6 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     node.log("[sim] Simulated PSB detuning dataset generated successfully.")
 
 
-@node.run_action(skip_if=not node.parameters.use_simulated_data)
-def plot_simulated_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the simulated data."""
-    fig = plot_simulated_dataset_histograms(node.results["ds_raw"])
-    plt.show()
-
-
 # %% {Execute}
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
@@ -248,7 +244,7 @@ def plot_simulated_data(node: QualibrationNode[Parameters, Quam]):
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
-    qmm = node.machine.connect(timeout = node.parameters.timeout)
+    qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
@@ -283,9 +279,14 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    node.namespace["qubit_pairs"] = _resolve_qubit_pairs(node)
-    # Get the active sensors from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
+
+
+# %% {Process_raw_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def process_raw_data(node: QualibrationNode[Parameters, Quam]):
+    """Process raw dataset into a plotting/analysis-ready dataset (keeps ds_raw immutable)."""
+    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
 
 
 # %% {Analyse_data}
@@ -293,7 +294,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
 
-    node.results["ds_fit"], fit_results = fit_raw_data_pca_gaussian(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data_pca_gaussian(
+        node.results["ds_processed"], node
+    )
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
@@ -307,47 +310,16 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot fidelity and visibility vs detuning for each qubit pair."""
-    qubit_pairs = node.namespace["qubit_pairs"]
-    sweep_name = node.parameters.sweep_name
-
-    fig_fidelity = plot_fidelity_vs_sweep(
+    """Plot all node figures via the shared plotting API."""
+    node.results["figures"] = plot_all(
         node.results["ds_raw"],
-        qubit_pairs,
-        node.results["ds_fit"],
-        sweep_name=sweep_name,
-    )
-    fig_visibility = plot_visibility_vs_sweep(
-        node.results["ds_raw"],
-        qubit_pairs,
-        node.results["ds_fit"],
-        sweep_name=sweep_name,
-    )
-    fig_summary = plot_sweep_summary(
-        node.results["ds_raw"],
-        qubit_pairs,
-        node.results["ds_fit"],
-        sweep_name=sweep_name,
-    )
-    fig_histograms = plot_histograms_vs_sweep(
-        node.results["ds_raw"],
-        qubit_pairs,
-        node.results["ds_fit"],
-        sweep_name=sweep_name,
-    )
-    fig_iq = plot_rotated_iq_density_at_optimum(
-        node.results["ds_raw"],
-        node.results["fit_results"],
         node.namespace["qubit_pairs"],
+        node.results["ds_fit"],
+        sweep_name=node.parameters.sweep_name,
+        fit_results=node.results["fit_results"],
     )
-    plt.show()
-    node.results["figures"] = {
-        "fidelity_vs_detuning": fig_fidelity,
-        "visibility_vs_detuning": fig_visibility,
-        "sweep_summary": fig_summary,
-        "histograms_vs_detuning": fig_histograms,
-        "rotated_iq_density": fig_iq,
-    }
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
