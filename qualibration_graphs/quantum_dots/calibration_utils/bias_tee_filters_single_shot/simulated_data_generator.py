@@ -38,7 +38,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     time_array = (np.arange(num_chunks) + 0.5) * node.parameters.integration_time
 
     node.namespace["sweep_axes"] = {
-        "time_array": xr.DataArray(
+        "time": xr.DataArray(
             time_array,
             attrs={"long_name": "time", "units": "ns"},
         ),
@@ -61,7 +61,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
             Q_vals = decay * 0.3 + rng.normal(0, noise_level, size=len(time_array))
 
             suffix = f"{el.name}_{i + 1}"
-            data_vars[f"I_{suffix}"] = xr.DataArray(I_vals, dims=["time_array"])
-            data_vars[f"Q_{suffix}"] = xr.DataArray(Q_vals, dims=["time_array"])
+            data_vars[f"I_{suffix}"] = xr.DataArray(I_vals, dims=["time"])
+            data_vars[f"Q_{suffix}"] = xr.DataArray(Q_vals, dims=["time"])
 
-    return xr.Dataset(data_vars, coords={"time_array": time_array})
+    return xr.Dataset(data_vars, coords={"time": time_array})

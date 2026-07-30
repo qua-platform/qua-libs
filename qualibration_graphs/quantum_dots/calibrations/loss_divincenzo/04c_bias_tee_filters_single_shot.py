@@ -17,12 +17,12 @@ from calibration_utils.bias_tee_filters_single_shot import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    plot_signal_vs_time,
+    plot_all,
     generate_simulated_dataset,
 )
-from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
+from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
@@ -39,8 +39,21 @@ Prerequisites:
     - Having calibrated the relevant sensor dots.
     - Having identified a Coulomb peak on the plunger dot gate voltage.
 
+Datasets:
+    - ds_raw: Raw IQ data (I_{el}_{i}, Q_{el}_{i}) vs time for each element/sensor pair.
+    - ds_fit: Processed dataset with amplitude_{el}_{i}, fit_{el}_{i}, and
+      amplitude_corrected_{el}_{i} variables per element/sensor pair.
+
+Results:
+    - fit_results: Dict of {el_name}_{sensor_name} → FitParameters (amplitude,
+      time_constant_ns, cutoff_frequency_Hz, offset, success).
+
+Figures:
+    - signal_vs_time: IQ amplitude vs time after the step with the fitted exponential
+      decay and correction overlay per element/sensor pair.
+
 State update:
-    - The output digital filter parameters.
+    - exponential_filter on each element's OPX output port: [(1.0, tau_ns)].
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -56,6 +69,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
+    # node.parameters.use_simulated_data = True
+    # node.parameters.estimated_bias_tee_tau_ns = 20000  # ns
     pass
 
 
@@ -88,7 +103,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     time_array = (np.arange(num_chunks) + 0.5) * node.parameters.integration_time
     node.namespace["sweep_axes"] = {
-        "time_array": xr.DataArray(
+        "time": xr.DataArray(
             time_array,
             attrs={"long_name": "time", "units": "ns"},
         ),
@@ -263,7 +278,7 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
         raise ValueError("measurement_time must be at least integration_time.")
     time_array = (np.arange(num_chunks) + 0.5) * node.parameters.integration_time
     node.namespace["sweep_axes"] = {
-        "time_array": xr.DataArray(
+        "time": xr.DataArray(
             time_array,
             attrs={"long_name": "time", "units": "ns"},
         ),
@@ -298,10 +313,14 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit an exponential decay to extract the bias tee time constant."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    node.outcomes = {
+        name: ("successful" if fit_result["success"] else "failed")
+        for name, fit_result in node.results["fit_results"].items()
+    }
 
 
 # %% {Plot_data}
@@ -309,14 +328,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot amplitude vs time with the fitted exponential decay."""
     ds_plot = node.results.get("ds_fit", node.results["ds_raw"])
-    fig = plot_signal_vs_time(
+    node.results["figures"] = plot_all(
         ds_plot,
         node.namespace["elements"],
         node.namespace["sensors"],
         fit_results=node.results.get("fit_results"),
     )
-    plt.show()
-    node.results["figures"] = {"signal_vs_time": fig}
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}

@@ -15,16 +15,16 @@ class FitParameters:
 
     Attributes:
         amplitude: Scaling factor A in the high-pass transfer function model.
+        time_constant_ns: Derived time constant tau = 1 / (2*pi*f_c), in nanoseconds.
         cutoff_frequency_Hz: Cutoff frequency f_c of the bias tee high-pass filter.
         offset: Baseline offset B.
-        time_constant_ns: Derived time constant tau = 1 / (2*pi*f_c), in nanoseconds.
         success: Whether the fit converged to physically reasonable parameters.
     """
 
     amplitude: float
+    time_constant_ns: float
     cutoff_frequency_Hz: float
     offset: float
-    time_constant_ns: float
     success: bool
 
 
@@ -144,9 +144,9 @@ def _fit_individual(
 
     return FitParameters(
         amplitude=float(A),
+        time_constant_ns=float(tau_ns),
         cutoff_frequency_Hz=float(f_c),
         offset=float(B),
-        time_constant_ns=float(tau_ns),
         success=success,
     )
 
@@ -205,11 +205,6 @@ def fit_raw_data(
                 ds_fit = ds_fit.assign(
                     {corr_key: xr.DataArray(corrected, dims=["frequency"])}
                 )
-
-    node.outcomes = {
-        key: ("successful" if fp.success else "failed")
-        for key, fp in fit_results.items()
-    }
 
     return ds_fit, fit_results
 

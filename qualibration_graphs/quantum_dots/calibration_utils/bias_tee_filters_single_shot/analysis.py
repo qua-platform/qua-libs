@@ -162,7 +162,7 @@ def fit_raw_data(
     elements = node.namespace["elements"]
     sensors = node.namespace["sensors"]
 
-    time_ns = ds.time_array.values
+    time_ns = ds.time.values
     ds_fit = ds.copy()
     fit_results = {}
 
@@ -190,7 +190,7 @@ def fit_raw_data(
             )
             fit_key = f"fit_{el.name}_{i + 1}"
             ds_fit = ds_fit.assign(
-                {fit_key: xr.DataArray(fit_curve, dims=["time_array"])}
+                {fit_key: xr.DataArray(fit_curve, dims=["time"])}
             )
 
             if fit_params.success:
@@ -200,13 +200,8 @@ def fit_raw_data(
                 corrected = signal + correction
                 corr_key = f"amplitude_corrected_{el.name}_{i + 1}"
                 ds_fit = ds_fit.assign(
-                    {corr_key: xr.DataArray(corrected, dims=["time_array"])}
+                    {corr_key: xr.DataArray(corrected, dims=["time"])}
                 )
-
-    node.outcomes = {
-        key: ("successful" if fp.success else "failed")
-        for key, fp in fit_results.items()
-    }
 
     return ds_fit, fit_results
 
