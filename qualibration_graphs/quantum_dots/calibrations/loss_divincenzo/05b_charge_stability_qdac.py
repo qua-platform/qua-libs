@@ -29,11 +29,11 @@ from calibration_utils.charge_stability import (
 
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters.experiment import _make_batchable_list_from_multiplexed
 
 from calibration_utils.common_utils.experiment import (
     get_dots,
     get_sensors,
-    _make_batchable_list_from_multiplexed,
 )
 
 description = """

@@ -1,10 +1,10 @@
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from calibration_utils.common_utils.experiment import (
-    BaseExperimentNodeParameters,
     HeraldedInitializeParameters,
 )
 from qualibration_libs.parameters import CommonNodeParameters
+from qualibration_libs.parameters.experiment import BaseExperimentNodeParameters
 from typing import List, Optional
 
 
