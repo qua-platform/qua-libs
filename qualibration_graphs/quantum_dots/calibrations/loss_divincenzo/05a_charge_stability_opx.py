@@ -335,7 +335,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
                 node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
 
 
-# %%
+# %% {Run_video_mode}
 from calibration_utils.run_video_mode import create_video_mode
 
 

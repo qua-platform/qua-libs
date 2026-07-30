@@ -26,7 +26,6 @@ from calibration_utils.charge_stability import (
     plot_change_point_overlays,
     plot_line_fit_overlays,
 )
-from calibration_utils.run_video_mode.qdac_video_mode import create_video_mode
 
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -74,10 +73,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.run_in_video_mode
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
@@ -469,7 +465,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None
     or node.parameters.simulate
-    or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -520,10 +515,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Analyse_data}
-@node.run_action(
-    skip_if=node.parameters.run_in_video_mode
-    or not node.parameters.perform_edge_analysis
-)
+@node.run_action(skip_if=not node.parameters.perform_edge_analysis)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     # TODO: Implement analysis - remove pass when complete
@@ -541,7 +533,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
-@node.run_action(skip_if=node.parameters.run_in_video_mode)
+@node.run_action()
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
 
@@ -571,68 +563,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             if fit_params.get("segments"):
                 fig_lines = plot_line_fit_overlays(sensor_data, fit_params, sensor.id)
                 node.results["figures"][f"{sensor.id}_line_fits"] = fig_lines
-
-
-# %%
-@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
-def run_video_mode(node: QualibrationNode[Parameters, Quam]):
-    if node.parameters.virtual_gate_set_id == None:
-        x_obj, y_obj = node.machine.get_component(
-            node.parameters.x_axis_name
-        ), node.machine.get_component(node.parameters.y_axis_name)
-        if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
-            raise ValueError(
-                f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
-            )
-        vgs_id = x_obj.voltage_sequence.gate_set.id
-    else:
-        vgs_id = node.parameters.virtual_gate_set_id
-    if node.parameters.x_from_qdac:
-        import warnings
-
-        warnings.warn(
-            "Hybrid Video Mode will run with X Axis from OPX and Y Axis from QDAC"
-        )
-    x_axis_name = node.parameters.x_axis_name
-    y_axis_name = node.parameters.y_axis_name
-    x_span, x_points = node.parameters.x_span, node.parameters.x_points
-    y_span, y_points = node.parameters.y_span, node.parameters.y_points
-
-    from pathlib import Path
-
-    quam_state_path = Path(node.machine.serialiser._get_state_path()).resolve()
-
-    create_video_mode(
-        machine=node.machine,
-        num_software_averages=node.parameters.num_shots,
-        log=node.log,
-        x_axis_name=x_axis_name,
-        y_axis_name=y_axis_name,
-        x_span=x_span,
-        x_points=x_points,
-        y_span=y_span,
-        y_points=y_points,
-        virtual_gate_id=vgs_id,
-        dc_control=True,
-        readout_pulses=[
-            node.machine.sensor_dots[name].readout_resonator.operations["readout"]
-            for name in node.parameters.sensor_names
-        ],
-        save_path=str(quam_state_path),
-        settle_time=int(
-            getattr(
-                node.machine.get_component(
-                    node.parameters.x_axis_name
-                ).physical_channel,
-                "settling_time",
-                None,
-            )
-            or node.parameters.qdac_dwell_time_us * 1e3
-        ),
-        qdac_ext_trigger_input_port=node.machine.get_component(
-            node.parameters.y_axis_name
-        ).physical_channel.qdac_spec.qdac_trigger_in,
-    )
 
 
 # %% {Save_results}
