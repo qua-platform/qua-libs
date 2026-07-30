@@ -7,12 +7,10 @@
     "programs": [
       {
         "program_name": "hello_qua",
-        "instrument_status": "pass",
-        "operation_count": 1,
-        "operation_names": [
-          "play_0_pi_qubit"
-        ],
-        "instrument_error": null,
+        "instrument_status": "fail",
+        "operation_count": 0,
+        "operation_names": [],
+        "instrument_error": "IndexError: list index out of range",
         "compile_status": "skipped",
         "compile_error": null,
         "hardware_status": "skipped",
@@ -29,12 +27,10 @@
     "programs": [
       {
         "program_name": "cw_output",
-        "instrument_status": "pass",
-        "operation_count": 1,
-        "operation_names": [
-          "play_0_cw_resonator"
-        ],
-        "instrument_error": null,
+        "instrument_status": "fail",
+        "operation_count": 0,
+        "operation_names": [],
+        "instrument_error": "IndexError: list index out of range",
         "compile_status": "skipped",
         "compile_error": null,
         "hardware_status": "skipped",
@@ -429,7 +425,7 @@
         "instrument_status": "expected_fail",
         "operation_count": 0,
         "operation_names": [],
-        "instrument_error": "ValueError: Statement at 'program.script.body.statements[0].for_.body.statements[0].for_.body.statements[0].for_.body.statements[0].for_.body.statements[0]' already has timestamp stream 'r3'. TimestampRecorder expects a program without manual timestamps.",
+        "instrument_error": "ValueError: Statement at 'program.script.body.statements[0].for.body.statements[0].for.body.statements[0].for.body.statements[0].for.body.statements[0]' already has timestamp stream 'r3'. TimestampRecorder expects a program without manual timestamps.",
         "compile_status": "skipped",
         "compile_error": null,
         "hardware_status": "skipped",
@@ -446,6 +442,52 @@
     "programs": [
       {
         "program_name": "power_rabi_single_shot_timing",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "08f_power_rabi_loop_timing_with_tool.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "power_rabi_loop_timing",
+        "instrument_status": "pass",
+        "operation_count": 2,
+        "operation_names": [
+          "play_0_x180_qubit",
+          "measure_1_readout_resonator"
+        ],
+        "instrument_error": null,
+        "compile_status": "skipped",
+        "compile_error": null,
+        "hardware_status": "skipped",
+        "hardware_error": null,
+        "timestamp_count": 0
+      }
+    ]
+  },
+  {
+    "script": "08g_timestamp_lazy_minimal.py",
+    "category": "standard",
+    "load_status": "pass",
+    "load_error": null,
+    "programs": [
+      {
+        "program_name": "power_rabi",
         "instrument_status": "pass",
         "operation_count": 2,
         "operation_names": [
@@ -518,18 +560,10 @@
     "programs": [
       {
         "program_name": "active_reset_prog",
-        "instrument_status": "pass",
-        "operation_count": 7,
-        "operation_names": [
-          "measure_0_readout_resonator",
-          "play_1_x180_qubit",
-          "measure_2_readout_resonator",
-          "measure_3_readout_resonator",
-          "play_4_x180_qubit",
-          "play_5_x180_qubit",
-          "measure_6_readout_resonator"
-        ],
-        "instrument_error": null,
+        "instrument_status": "fail",
+        "operation_count": 0,
+        "operation_names": [],
+        "instrument_error": "IndexError: list index out of range",
         "compile_status": "skipped",
         "compile_error": null,
         "hardware_status": "skipped",
@@ -842,15 +876,10 @@
     "programs": [
       {
         "program_name": "cpmg",
-        "instrument_status": "pass",
-        "operation_count": 4,
-        "operation_names": [
-          "play_0_x90_qubit",
-          "play_1_y180_qubit",
-          "play_2_x90_qubit",
-          "measure_3_readout_resonator"
-        ],
-        "instrument_error": null,
+        "instrument_status": "fail",
+        "operation_count": 0,
+        "operation_names": [],
+        "instrument_error": "ValueError: Unsupported loop update for variable 'v3'.",
         "compile_status": "skipped",
         "compile_error": null,
         "hardware_status": "skipped",
@@ -867,22 +896,10 @@
     "programs": [
       {
         "program_name": "xy8",
-        "instrument_status": "pass",
-        "operation_count": 11,
-        "operation_names": [
-          "play_0_x90_qubit",
-          "play_1_x180_qubit",
-          "play_2_y180_qubit",
-          "play_3_x180_qubit",
-          "play_4_y180_qubit",
-          "play_5_y180_qubit",
-          "play_6_x180_qubit",
-          "play_7_y180_qubit",
-          "play_8_x180_qubit",
-          "play_9_x90_qubit",
-          "measure_10_readout_resonator"
-        ],
-        "instrument_error": null,
+        "instrument_status": "fail",
+        "operation_count": 0,
+        "operation_names": [],
+        "instrument_error": "ValueError: Unsupported loop update for variable 'v3'.",
         "compile_status": "skipped",
         "compile_error": null,
         "hardware_status": "skipped",

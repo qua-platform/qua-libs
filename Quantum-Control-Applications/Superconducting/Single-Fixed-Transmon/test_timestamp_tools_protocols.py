@@ -42,6 +42,9 @@ SKIP_SCRIPTS = {
     "macros.py",
     "RB_fits.py",
     "timestamp_tools.py",
+    "_timestamp_loops.py",
+    "_timestamp_proto.py",
+    "_timestamp_durations.py",
 }
 
 # Wrong config variant or multi-hour / interactive flows not suitable for batch HW smoke tests.

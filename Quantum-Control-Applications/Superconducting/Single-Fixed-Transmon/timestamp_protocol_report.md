@@ -1,13 +1,13 @@
 # TimestampRecorder Protocol Validation Report
 
-Generated: 2026-07-30 02:16 UTC
+Generated: 2026-07-30 03:06 UTC
 Hardware phase: disabled
 
 ## Executive summary
 
-- Protocol scripts scanned: **46**
-- Programs loaded for instrumentation: **41/46**
-- Instrumentation succeeded: **41** program(s)
+- Protocol scripts scanned: **48**
+- Programs loaded for instrumentation: **43/48**
+- Instrumentation succeeded: **38** program(s)
 - Manual-timestamp guard (08d): **expected rejection**
 
 ### Tool changes made during validation
@@ -26,8 +26,8 @@ Hardware phase: disabled
 
 | Script | Category | Load | Instrument | Compile | Hardware | Ops | Timestamps |
 | --- | --- | --- | --- | --- | --- | ---: | ---: |
-| 00_hello_qua.py | hardware_skip | pass | pass | skipped | skipped | 1 | - |
-| 01_manual_mixer_calibration.py | hardware_skip | pass | pass | skipped | skipped | 1 | - |
+| 00_hello_qua.py | hardware_skip | pass | fail | skipped | skipped | 0 | - |
+| 01_manual_mixer_calibration.py | hardware_skip | pass | fail | skipped | skipped | 0 | - |
 | 02_raw_adc_traces.py | standard | pass | pass | skipped | skipped | 1 | - |
 | 02_raw_adc_traces_mw_fem.py | hardware_skip | pass | pass | skipped | skipped | 1 | - |
 | 03_time_of_flight.py | standard | pass | pass | skipped | skipped | 1 | - |
@@ -48,9 +48,11 @@ Hardware phase: disabled
 | 08c_power_rabi_error_amplification.py | standard | pass | pass | skipped | skipped | 2 | - |
 | 08d_power_rabi_single_shot_timing.py | manual_timestamps | pass | expected_fail | skipped | skipped | 0 | - |
 | 08e_power_rabi_single_shot_timing_with_tool.py | reference | pass | pass | skipped | skipped | 2 | - |
+| 08f_power_rabi_loop_timing_with_tool.py | standard | pass | pass | skipped | skipped | 2 | - |
+| 08g_timestamp_lazy_minimal.py | standard | pass | pass | skipped | skipped | 2 | - |
 | 09a_IQ_blobs.py | standard | pass | pass | skipped | skipped | 3 | - |
 | 09b_resonator_depletion_time.py | standard | pass | pass | skipped | skipped | 4 | - |
-| 09c_active_reset.py | standard | pass | pass | skipped | skipped | 7 | - |
+| 09c_active_reset.py | standard | pass | fail | skipped | skipped | 0 | - |
 | 10a_readout_frequency_optimization.py | standard | pass | pass | skipped | skipped | 3 | - |
 | 10b_readout_amplitude_optimization.py | standard | pass | pass | skipped | skipped | 3 | - |
 | 10c_readout_duration_optimization.py | standard | pass | pass | skipped | skipped | 3 | - |
@@ -61,8 +63,8 @@ Hardware phase: disabled
 | 13b_ramsey_w_detuning.py | standard | pass | pass | skipped | skipped | 3 | - |
 | 14_echo.py | standard | pass | pass | skipped | skipped | 4 | - |
 | 15_allxy.py | standard | pass | pass | skipped | skipped | 57 | - |
-| 15_cpmg.py | standard | pass | pass | skipped | skipped | 4 | - |
-| 16_xy8.py | standard | pass | pass | skipped | skipped | 11 | - |
+| 15_cpmg.py | standard | pass | fail | skipped | skipped | 0 | - |
+| 16_xy8.py | standard | pass | fail | skipped | skipped | 0 | - |
 | 16a_randomized_benchmarking.py | standard | pass | pass | skipped | skipped | 45 | - |
 | 16b_randomized_benchmarking_interleaved.py | standard | pass | pass | skipped | skipped | 45 | - |
 | 16c_randomized_benchmarking_20ns.py | standard | pass | pass | skipped | skipped | 85 | - |
@@ -75,8 +77,13 @@ Hardware phase: disabled
 
 ## Failures
 
+- **00_hello_qua.py** (instrument): IndexError: list index out of range
+- **01_manual_mixer_calibration.py** (instrument): IndexError: list index out of range
 - **04c_resonator_spectroscopy_wide_range_octave_update_IF.py** (load): NameError: name 'qm' is not defined
 - **06e_qubit_spectroscopy_wide_range_octave_update_IF.py** (load): No completed Program objects found before QOP connection.
+- **09c_active_reset.py** (instrument): IndexError: list index out of range
+- **15_cpmg.py** (instrument): ValueError: Unsupported loop update for variable 'v3'.
+- **16_xy8.py** (instrument): ValueError: Unsupported loop update for variable 'v3'.
 - **17_DRAG_calibration_Google.py** (load): AssertionError: The DRAG coefficient 'drag_coef' must be different from 0 in the config.
 - **17_DRAG_calibration_Yale.py** (load): AssertionError: The DRAG coefficient 'drag_coef' must be different from 0 in the config.
 - **20_frequency_tracking.py** (load): No completed Program objects found before QOP connection.

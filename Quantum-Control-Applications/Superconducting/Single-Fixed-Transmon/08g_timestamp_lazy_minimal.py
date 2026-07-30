@@ -90,7 +90,7 @@ else:
     ###########################
     # The original ``power_rabi`` is not edited. TimestampRecorder builds an
     # instrumented clone; only the clone is executed on hardware.
-    timing = TimestampRecorder(power_rabi)
+    timing = TimestampRecorder(power_rabi, config=config)
     job = qm.execute(timing.program)  # note: timing.program, not power_rabi
 
     # Do not wait for the full I/Q sweep — timestamp streams are enough.

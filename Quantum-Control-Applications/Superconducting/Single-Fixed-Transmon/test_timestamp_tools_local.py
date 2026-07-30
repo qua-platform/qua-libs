@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from qm import QopCaps
-from qm.qua import declare, declare_stream, for_, if_, measure, play, program, save, stream_processing, strict_timing_
+from qm.qua import declare, declare_stream, fixed, for_, if_, measure, play, program, save, stream_processing, strict_timing_
 
 import timestamp_tools
 from timestamp_tools import TimestampRecorder
@@ -185,7 +185,8 @@ def test_loop_indexing_maps_nested_sweep_point():
     shot = result.select_shot({0: 1, 1: 1, 2: 1}, reference=measure_name)
 
     assert shot[measure_name]["occurrence"] == 7
-    assert shot[measure_name]["time_ns"] == 107.0
+    assert shot[measure_name]["clock_cycle"] == 107
+    assert shot[measure_name]["time_ns"] == 107.0 * timing.clock_cycle_ns
     np.testing.assert_array_equal(shot[play_name]["clock_cycles"], [13, 14, 15])
 
 
@@ -195,3 +196,38 @@ def test_missing_result_handle_is_reported():
 
     with pytest.raises(KeyError, match=timing.handles[timing.names[1]]):
         timing.fetch(job)
+
+
+def test_config_resolves_pulse_lengths_for_print_shot(capsys):
+    config = {
+        "elements": {
+            "qubit": {"operations": {"x180": "x180_pulse"}},
+            "resonator": {"operations": {"readout": "readout_pulse"}, "time_of_flight": 28},
+        },
+        "pulses": {
+            "x180_pulse": {"length": 40},
+            "readout_pulse": {"length": 5000},
+        },
+    }
+
+    with program() as qua_program:
+        play("x180", "qubit")
+        measure("readout", "resonator")
+
+    timing = TimestampRecorder(qua_program, config=config)
+    assert timing._operations[0].duration_ns == 40.0
+    assert timing._operations[1].duration_ns == 5000.0
+    assert timing._operations[1].time_of_flight_ns == 28.0
+
+    job = FakeJob(
+        {
+            timing.handles[timing.names[0]]: np.array([10]),
+            timing.handles[timing.names[1]]: np.array([20]),
+        }
+    )
+    result = timing.fetch(job)
+    result.print_shot()
+    output = capsys.readouterr().out
+    assert "length 40 ns" in output
+    assert "gap (end -> next start): 0 ns" in output
+    assert "ADC integration start (start + ToF): 108 ns" in output
