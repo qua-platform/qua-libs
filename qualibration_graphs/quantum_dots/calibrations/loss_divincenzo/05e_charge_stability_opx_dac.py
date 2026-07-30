@@ -1,4 +1,5 @@
 # %% {Imports}
+import time
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -51,7 +52,7 @@ Prerequisites:
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="05a_charge_stability_opx_dac", description=description, parameters=Parameters()
+    name="05e_charge_stability_opx_dac", description=description, parameters=Parameters()
 )
 
 
@@ -75,30 +76,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     u = unit(coerce_to_integer=True)
 
     node.namespace["sensors"] = sensors = get_sensors(node)
-
     x_name = node.parameters.x_axis_name
-
-    # x_obj = node.machine.get_component(
-    #     node.parameters.x_axis_name
-    # )
     node.namespace["axes_names"] = {"x_axis": x_name}
-
     virtual_gate_set_name = "main_qpu"
-    #vgs_id = node.machine.voltage_sequences[virtual_gate_set_name].gate_set.id
 
     x_volts, y_volts = get_voltage_arrays(
         node
     )
-    # node.namespace["tracked_resonators"] = []
-    # for s in ["virtual_sensor_1"]:
-    #     with tracked_updates(
-    #         node.machine.sensor_dots[s].readout_resonator, auto_revert=True, dont_assign_to_none=True
-    #     ) as resonator:
-    #         resonator.operations["readout"].length = (
-    #             node.parameters.ramp_duration
-    #         )
-    #         resonator.
-    #         node.namespace["tracked_resonators"].append(resonator)
     num_sensors = len(sensors)
 
     node.namespace["dac_values"] = y_volts
@@ -200,12 +184,25 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     qmm = node.machine.connect()
 
-    # Prepare DAC
-    raise NotImplementedError(
-        "Hardware execution for this node requires a DAC/gate-manager driver that is "
-        "specific to your lab's setup. Plug in your own driver here to obtain a `gates` "
-        "handle exposing `get_voltage`/`set_voltage` for `node.parameters.y_axis_name`."
-    )
+    # Prepare DAC — this node performs a hybrid 2D scan: the X axis is swept by the OPX in
+    # QUA, while the Y axis is stepped externally. The QUA program calls pause() at the start
+    # of each Y line (see create_qua_program); the loop below resumes the job only after
+    # the DAC voltage has been updated.
+    #
+    # Before commenting out the raise below, replace this block with your lab-specific DAC
+    # driver code that:
+    #   1. Connects to the external source(s) used for the Y axis (e.g. instantiate dac1,
+    #      dac2, or a single instrument handle).
+    #   2. Exposes a `gates` object where getattr(gates, node.parameters.y_axis_name) returns
+    #      a gate with get_voltage() and set_voltage(voltage) — the offset read at the start
+    #      of the scan is added to each y value from node.namespace["dac_values"] below.
+    #   3. Provides a close_dacs(...) helper (or equivalent) to disconnect/reset the hardware
+    #      after the scan completes and the Y-axis offset is restored.
+    # raise NotImplementedError(
+    #     "Hardware execution for this node requires a DAC/gate-manager driver that is "
+    #     "specific to your lab's setup. Plug in your own driver here to obtain a `gates` "
+    #     "handle exposing `get_voltage`/`set_voltage` for `node.parameters.y_axis_name`."
+    # )
 
     # Get the config from the machine
     config = node.machine.generate_config()
@@ -217,7 +214,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     dac_offset = gate.get_voltage()
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
 
-    import time
     qm = qmm.open_qm(config)
     node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
     for i, y_value in enumerate(node.namespace["dac_values"]):
@@ -250,7 +246,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
     gate.set_voltage(dac_offset)
-    close_dacs(dac1, dac2)
+    
+    # Close the DAC here if your lab-specific driver supports it
 
 
 # %% {Load_historical_data}
