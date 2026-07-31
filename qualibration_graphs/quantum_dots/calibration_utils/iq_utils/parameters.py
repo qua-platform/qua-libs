@@ -4,8 +4,6 @@ from qualibrate.core.parameters import RunnableParameters
 __all__ = ["IQParameters", "IQSweepParameters"]
 
 class IQParameters(RunnableParameters): 
-    um_shots: int = 2000
-    """Number of runs to perform per sweep point. Default is 2000."""
     operation: Literal["readout", "readout_QND"] = "readout"
     """Type of operation to perform. Default is "readout"."""
 
@@ -20,3 +18,6 @@ class IQSweepParameters(IQParameters):
     Rabi-style IQ-blob experiment) or a single mixed-state acquisition (I,Q,
     as in a PSB search where loading is random). Determines whether a confusion
     matrix is computed. Default False = mixed-state mode."""
+    plot_kde: bool = True
+    """For the resulting figure, optionally plot the kernel density estimation. If False, this plots 
+    the raw scatter plot."""

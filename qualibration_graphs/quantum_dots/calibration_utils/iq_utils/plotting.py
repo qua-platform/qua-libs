@@ -51,6 +51,13 @@ def _plot_iq_kde(ax: plt.Axes, I: np.ndarray, Q: np.ndarray, *, n_grid: int = 10
         cmap="viridis",
     )
 
+def _plot_iq_scatter(
+    ax: plt.Axes, I: np.ndarray, Q: np.ndarray, *, s: float = 4, alpha: float = 0.15
+) -> None:
+    """Render raw I/Q shots as a scatter (density emerges from point overlap)."""
+    ax.scatter(I, Q, s=s, alpha=alpha, edgecolors="none", color="C0", rasterized=True)
+    ax.set_aspect("auto")
+
 
 def _names(items: Sequence[Union[str, Any]]) -> list[str]:
     return [x if isinstance(x, str) else getattr(x, "name", str(x)) for x in items]
@@ -62,6 +69,9 @@ def plot_rotated_iq_density(
     items: Sequence[Union[str, Any]],
     *,
     n_grid: int = 100,
+    plot_kde: bool = True,
+    alpha: float = 0.15, 
+    s: float = 4,
 ) -> Figure:
     """Two subplots per item: raw IQ density and rotated IQ density + threshold."""
     names = _names(items)
@@ -90,7 +100,10 @@ def plot_rotated_iq_density(
             ax_rot.set_title(f"{name} (insufficient data)")
             continue
 
-        _plot_iq_kde(ax_raw, I_raw, Q_raw, n_grid=n_grid)
+        if plot_kde: 
+            _plot_iq_kde(ax_raw, I_raw, Q_raw, n_grid=n_grid)
+        else: 
+            _plot_iq_scatter(ax_raw, I_raw, Q_raw, alpha = alpha, s = s)
         ax_raw.set_xlabel("I")
         ax_raw.set_ylabel("Q")
         ax_raw.set_title(f"{name}  (raw)")
@@ -99,7 +112,10 @@ def plot_rotated_iq_density(
         I_rot = I_raw * cos_a + Q_raw * sin_a
         Q_rot = -I_raw * sin_a + Q_raw * cos_a
 
-        _plot_iq_kde(ax_rot, I_rot, Q_rot, n_grid=n_grid)
+        if plot_kde: 
+            _plot_iq_kde(ax_rot, I_rot, Q_rot, n_grid=n_grid)
+        else: 
+            _plot_iq_scatter(ax_rot, I_rot, Q_rot, alpha = alpha, s = s)
         ax_rot.axvline(
             I_threshold,
             color="r",
@@ -123,6 +139,9 @@ def plot_rotated_iq_density_at_optimum(
     items: Sequence[Union[str, Any]],
     *,
     n_grid: int = 100,
+    plot_kde: bool = True,
+    alpha: float = 0.15, 
+    s: float = 4,
 ) -> Figure:
     """One subplot per item: rotated IQ density at the optimal sweep point."""
     names = _names(items)
@@ -171,23 +190,11 @@ def plot_rotated_iq_density_at_optimum(
         I_rot = I_raw * cos_a + Q_raw * sin_a
         Q_rot = -I_raw * sin_a + Q_raw * cos_a
 
-        i_min, i_max = I_rot.min(), I_rot.max()
-        q_min, q_max = Q_rot.min(), Q_rot.max()
-        i_pad = 0.1 * (i_max - i_min) or 1e-9
-        q_pad = 0.1 * (q_max - q_min) or 1e-9
-        i_grid = np.linspace(i_min - i_pad, i_max + i_pad, n_grid)
-        q_grid = np.linspace(q_min - q_pad, q_max + q_pad, n_grid)
-        II, QQ = np.meshgrid(i_grid, q_grid)
-        kde = gaussian_kde(np.vstack([I_rot, Q_rot]))
-        density = kde(np.vstack([II.ravel(), QQ.ravel()])).reshape(n_grid, n_grid)
+        if plot_kde: 
+            _plot_iq_kde(ax, I_rot, Q_rot, n_grid = n_grid)
+        else: 
+            _plot_iq_scatter(ax, I_rot, Q_rot, alpha = alpha, s = s)
 
-        ax.imshow(
-            density,
-            origin="lower",
-            aspect="auto",
-            extent=[i_grid[0], i_grid[-1], q_grid[0], q_grid[-1]],
-            cmap="viridis",
-        )
         ax.axvline(
             I_threshold,
             color="r",
