@@ -4,26 +4,28 @@ from typing import Dict, List
 from qualibration_libs.core import tracked_updates
 
 from qualibration_libs.parameters.experiment import QualibrationNode
-from quam_builder.architecture.quantum_dots.components.readout_resonator import ReadoutResonatorSingle, ReadoutResonatorIQ
+from quam_builder.architecture.quantum_dots.components.readout_resonator import (
+    ReadoutResonatorSingle,
+    ReadoutResonatorIQ,
+)
 
 __all__ = [
-    "build_psb_readout_sweep", 
-    "modify_and_track_point", 
+    "build_psb_readout_sweep",
+    "modify_and_track_point",
     "modify_and_track_readout_pulse",
     "validate_readout",
     "validate_dot_pairs",
     "prepare_dot_pairs",
 ]
 
-def prepare_dot_pairs(
-    node: QualibrationNode
-): 
+
+def prepare_dot_pairs(node: QualibrationNode):
     """
-    Prepares the QuantumDotPair objects of the QubitPair: 
-        - Resets the voltage sequence. Done for consecutive runs 
+    Prepares the QuantumDotPair objects of the QubitPair:
+        - Resets the voltage sequence. Done for consecutive runs
         - Ensures that no quantum_dot_pair has more than one SensorDot
-        - If readout_length_max is None in parameters, ensure that either the readout lengths are the same, or 
-            raise an error. 
+        - If readout_length_max is None in parameters, ensure that either the readout lengths are the same, or
+            raise an error.
     """
     qubit_pairs = node.namespace["qubit_pairs"]
     dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
@@ -58,11 +60,10 @@ def prepare_dot_pairs(
         readout_max = unique_lengths.pop()
     return readout_max
 
-def _validate_array_size(
-    sweep_dict: Dict
-): 
+
+def _validate_array_size(sweep_dict: Dict):
     """Ensures that the array size of the built sweep is larger than the number of segments for a given pulse length.
-    
+
     Built on the sweep_dict returned in `build_psb_readout_sweep`"""
     array_size = sweep_dict["array_size"]
     num_segments = sweep_dict["num_segments"]
@@ -72,9 +73,8 @@ def _validate_array_size(
             f"(pulse_length={sweep_dict["pulse_length"]})."
         )
 
-def _validate_resonator_types(
-    qubit_pairs
-): 
+
+def _validate_resonator_types(qubit_pairs):
     """Ensures that all ReadoutResonators of all SensorDot objects are consistent"""
     kinds = {type(qp.quantum_dot_pair.sensor_dots[0].readout_resonator) for qp in qubit_pairs}
     if len(kinds) != 1:
@@ -85,11 +85,9 @@ def _validate_resonator_types(
     return readout_cls
 
 
-def validate_readout(
-    qubit_pairs, sweep_dict: Dict
-): 
+def validate_readout(qubit_pairs, sweep_dict: Dict):
     """
-    Ensures that: 
+    Ensures that:
         - The array size of the built sweep is larger than the number of segments for a given pulse length
         - All ReadoutResonators of all SensorDot objects are consistent
     """
@@ -98,14 +96,16 @@ def validate_readout(
 
 
 def modify_and_track_point(
-    qubit_pair, detuning_value: float, tracked_dict: Dict,
-): 
+    qubit_pair,
+    detuning_value: float,
+    tracked_dict: Dict,
+):
     """If a detuning value is given, then this will be added to the tracked changes dict and the point will be mutated for now."""
     # If not value is given, skip
-    if detuning_value is None: 
+    if detuning_value is None:
         return
 
-    # First extract the dot pair and the correspoding gate_set
+    # First extract the dot pair and the correspoding gate_set
     dot_pair = qubit_pair.quantum_dot_pair
     dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
 
@@ -117,12 +117,15 @@ def modify_and_track_point(
     tracked_dict[dot_pair.name] = point.voltages.get(dot_pair.name)
     point.voltages[dot_pair.name] = detuning_value
 
+
 def modify_and_track_readout_pulse(
-    qubit_pair, readout_length: int, tracked_list: List,
-):         
+    qubit_pair,
+    readout_length: int,
+    tracked_list: List,
+):
     """Update the readout pulse length for a given sensor's readout resonator, and the corresponding pulse"""
 
-    # Extract the readout_resonator for the qubit_pair's quantum_dot_pair, and create the readout operation name. 
+    # Extract the readout_resonator for the qubit_pair's quantum_dot_pair, and create the readout operation name.
     rr = qubit_pair.quantum_dot_pair.sensor_dots[0].readout_resonator
     op_name = "readout" + f"_{qubit_pair.quantum_dot_pair.name}"
 
@@ -130,6 +133,7 @@ def modify_and_track_readout_pulse(
     with tracked_updates(rr, auto_revert=False, dont_assign_to_none=True) as resonator:
         resonator.operations[op_name].length = readout_length
         tracked_list.append(resonator)
+
 
 def build_psb_readout_sweep(readout_length_min: int, readout_length_max: int, readout_length_points: int) -> dict:
     """Build sweep grid consistent with 05c charge-state readout time (arange + chunk step).

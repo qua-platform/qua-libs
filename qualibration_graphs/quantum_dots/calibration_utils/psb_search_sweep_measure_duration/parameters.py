@@ -29,6 +29,7 @@ class NodeSpecificParameters(RunnableParameters):
     use_simulated_data: bool = False
     """If True, skip QUA compile/execute and build synthetic shot-by-shot I/Q. Default False."""
 
+
 class Parameters(
     NodeParameters,
     CommonNodeParameters,

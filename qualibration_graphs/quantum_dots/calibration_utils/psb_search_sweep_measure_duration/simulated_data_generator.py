@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
 
-
 def _duration_unit(t_ns: float, t_min: float, t_max: float) -> float:
     span = t_max - t_min
     if abs(span) < 1e-15:
@@ -42,7 +41,6 @@ def _global_readout_axis_from_endpoints(I: np.ndarray, Q: np.ndarray, *, n_edge:
         return 1.0, 0.0
     delta /= norm
     return float(delta[0]), float(delta[1])
-
 
 
 def _grid_subplots(n: int) -> tuple[int, int]:
