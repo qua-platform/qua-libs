@@ -44,7 +44,7 @@ _SHARED_DIR = (
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
 
-from shared_fixtures import (  # noqa: E402
+from tests.shared_fixtures import (  # noqa: E402
     REPO_ROOT,
     _diff_dicts,
     apply_param_overrides,

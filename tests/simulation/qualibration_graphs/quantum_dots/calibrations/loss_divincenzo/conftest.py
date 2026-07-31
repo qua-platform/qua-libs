@@ -30,6 +30,8 @@ if str(CURRENT_DIR) not in sys.path:
 if str(SIMULATION_ROOT) not in sys.path:
     sys.path.insert(0, str(SIMULATION_ROOT))
 
+
+
 # ── Shared helpers ─────────────────────────────────────────────────────
 _SHARED_DIR = (
     Path(__file__).resolve().parents[5]
@@ -40,7 +42,7 @@ _SHARED_DIR = (
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
 
-from shared_fixtures import (  # noqa: E402
+from tests.shared_fixtures import (  # noqa: E402
     REPO_ROOT,
     apply_param_overrides,
     cloud_simulator_qmm,
@@ -57,9 +59,9 @@ from shared_fixtures import (  # noqa: E402
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam
 
 from tests.quam_test_machine import regenerate_state_directory  # noqa: E402
-from quam_factory import (
-    create_ld_quam,
-)  # noqa: F401  — re-export for test_quam_factory_state
+# from quam_factory import (
+#     create_ld_quam,
+# )  # noqa: F401  — re-export for test_quam_factory_state
 
 # ── Cache setup ────────────────────────────────────────────────────────
 _cache_base = SIMULATION_ROOT / ".pytest_cache"
