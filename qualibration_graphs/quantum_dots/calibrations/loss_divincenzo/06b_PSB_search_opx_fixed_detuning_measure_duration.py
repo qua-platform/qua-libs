@@ -170,38 +170,37 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # Loop over the qubit_pairs
             for i, qubit_pair in enumerate(qubit_pairs):
+                align() # Initial global align
 
                 # ── STEP 1 - SETUP & INITIALIZE: Setup the sweep and initialize ──────────
-
                 # Extract the underlying quantum_dot_pair and its readout name
                 dot_pair = qubit_pair.quantum_dot_pair
                 op_name = "readout" + f"_{dot_pair.name}"
 
                 # Use the first sensor dot in the list of sensors associated with the quantum dot pair
                 sensor = dot_pair.sensor_dots[0]
+                rr = sensor.readout_resonator
+                readout_length = rr.operations[op_name].length
 
                 # Perform the chosen initialize macro
                 dot_pair.macros[node.parameters.initialization_macro].apply()
 
-                # ── STEP 2 - RAMP: Ramp to the measure point ──────────
+                # Align the start of the resonator's wait command to the END of the initialization macro
+                align(rr.id, dot_pair.physical_channel.id)
 
+                # ── STEP 2 - RAMP: Ramp to the measure point ──────────
                 dot_pair.ramp_to_point(
                     "measure",
                     ramp_duration=node.parameters.ramp_duration,
-                    duration=node.parameters.buffer_duration,
+                    duration=node.parameters.buffer_duration + readout_length,
                 )
 
+                # Resonator will be sat idle during the ramp + buffer. wait() function argument is in clock cycles, hence the division by 4
+                rr.wait((node.parameters.ramp_duration + node.parameters.buffer_duration)//4)
+
+
                 # ── STEP 3 - MEASURE: Perform the measurement ──────────
-
-                rr = sensor.readout_resonator
-                readout_length = rr.operations[op_name].length
-
-                # Make sure to track the duration of the readout pulse. This is to ensure that the compensation pulse calculation is correct
-                dot_pair.voltage_sequence.track_sticky_duration(readout_length)
-
-                # Make sure to align the measure command to be AFTER the ramp + wait
-                align(rr.id, dot_pair.physical_channel.id)
-
+                
                 # Play the "readout_{quantum_dot_pair.name}" pulse and cumulatively integrate I/Q
                 # measure_accumulated returns differently depending on ReadoutResonator type:
                 #      ReadoutResonatorSingle - returns a single IQ pair, since we have a single analog input
@@ -210,8 +209,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     I_acc, Q_acc = rr.measure_accumulated(op_name, segment_length=sweep["segment_length"])
                 else:
                     II_a, IQ_a, QI_a, QQ_a = rr.measure_accumulated(op_name, segment_length=sweep["segment_length"])
-
-                align(rr.id, dot_pair.physical_channel.id)
 
                 # Apply the compensation pulse via the voltage sequence. This both steps to 0 before, and goes back to 0 after
                 dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
