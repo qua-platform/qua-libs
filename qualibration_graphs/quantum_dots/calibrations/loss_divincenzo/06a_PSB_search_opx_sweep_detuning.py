@@ -92,8 +92,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── Experiment parameters (Python side) ──────────────────────────────
 
     # Select which qubit-pairs participate in this calibration
-    qubit_pairs = get_qubit_pairs(node)
-    node.namespace["qubit_pairs"] = qubit_pairs
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
 
     # Number of shots per detuning point

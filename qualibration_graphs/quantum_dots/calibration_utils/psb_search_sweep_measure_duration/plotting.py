@@ -8,11 +8,12 @@ from matplotlib.figure import Figure
 
 from qualibrate.core import QualibrationNode
 
-from calibration_utils.iq_sweep import (
+from calibration_utils.iq_utils import (
     plot_fidelity_vs_sweep,
     plot_histograms_vs_sweep,
     plot_sweep_summary,
     plot_visibility_vs_sweep,
+    plot_rotated_iq_density_at_optimum,
 )
 
 __all__ = ["plot_measure_duration_sweep_figures"]

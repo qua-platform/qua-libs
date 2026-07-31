@@ -1,22 +1,17 @@
 # %% {Imports}
-from dataclasses import asdict
-
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from dataclasses import asdict
 
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
-
+from qualang_tools.results import progress_counter
+from quam_builder.architecture.quantum_dots.components.readout_resonator import ReadoutResonatorSingle, ReadoutResonatorIQ
 from qualibrate.core import QualibrationNode
-from qualibrate.core.models.outcome import Outcome
-from quam_config import Quam
-from quam_builder.architecture.quantum_dots.components.readout_resonator import (
-    ReadoutResonatorIQ,
-    ReadoutResonatorSingle,
-)
+from qualibration_libs.parameters.experiment import get_qubit_pairs
+from quam_config import QubitQuam as Quam
 from calibration_utils.psb_search_sweep_measure_duration import (
     Parameters,
     build_psb_readout_sweep,
@@ -25,13 +20,16 @@ from calibration_utils.psb_search_sweep_measure_duration import (
     log_fitted_results,
     plot_measure_duration_sweep_figures,
     plot_simulated_dataset_histograms,
+    plot_rotated_iq_density_at_optimum,
+    modify_and_track_point,
+    modify_and_track_readout_pulse,
+    validate_readout,
+    prepare_dot_pairs
 )
-from calibration_utils.iq_sweep.plotting import plot_rotated_iq_density_at_optimum
 from calibration_utils.common_utils.experiment import get_sensors
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.core import tracked_updates
+
 
 
 # %% {Node initialisation}
@@ -65,52 +63,25 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.num_shots = 10
-    node.parameters.qubit_pairs = ["q1_q2"]
-    node.parameters.simulate = False
-    node.parameters.simulation_duration_ns = 60_000
-    node.parameters.use_simulated_data = True
+    pass
 
 
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
 
-def _resolve_qubit_pairs(node: QualibrationNode[Parameters, Quam]):
-    if node.parameters.qubit_pairs not in (None, ""):
-        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
-    return list(node.machine.qubit_pairs.values())
-
-
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create sweep axes and QUA program: PSB triangle + accumulated readout vs integration time."""
-    qubit_pairs = _resolve_qubit_pairs(node)
-    dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
+    """Build the sweep axes and the QUA pulse sequence."""
 
-    for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
-        node.machine.reset_voltage_sequence(gate_set_id)
-    for dot_pair in dot_pair_objects:
-        if len(dot_pair.sensor_dots) != 1:
-            raise ValueError(
-                f"06e expects exactly one sensor dot per pair; {dot_pair.id!r} has {len(dot_pair.sensor_dots)}"
-            )
+    # ── Experiment parameters (Python side) ──────────────────────────────
 
-    node.namespace["dot_pairs"] = dot_pair_objects
-    node.namespace["qubit_pairs"] = qubit_pairs
+    # Select which qubit-pairs participate in this calibration
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
 
-    node.namespace["tracked_original_detunings"] = {}
-    for dot_pair in dot_pair_objects:
-        if node.parameters.detuning is not None:
-            dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
-            point_name = dot_pair._create_point_name("measure")
-            point = dot_pair_gate_set.get_macros()[point_name]
-            node.namespace["tracked_original_detunings"][dot_pair.name] = point.voltages.get(dot_pair.name)
-            point.voltages[dot_pair.name] = node.parameters.detuning
-
-    readout_max = node.parameters.readout_length_max
-    if readout_max is None:
-        readout_max = dot_pair_objects[0].sensor_dots[0].readout_resonator.operations["readout"].length
+    # Validate dot pairs and extract the max readout, in-case none is given
+    readout_max = prepare_dot_pairs(node)
 
     sweep = build_psb_readout_sweep(
         node.parameters.readout_length_min,
@@ -119,42 +90,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
     array_size = sweep["array_size"]
     segment_length = sweep["segment_length"]
-    pulse_length = sweep["pulse_length"]
-    sweep_coord = sweep["sweep_coord"]
-    sweep_name = node.parameters.sweep_name
     node.namespace["readout_sweep"] = sweep
 
-    num_segments = sweep["num_segments"]
-    if array_size > num_segments:
-        raise ValueError(
-            f"Sweep has {array_size} save points but pulse allows {num_segments} segments "
-            f"(pulse_length={pulse_length})."
-        )
+    readout_cls = validate_readout(qubit_pairs, sweep)
 
-    kinds = {type(qp.quantum_dot_pair.sensor_dots[0].readout_resonator) for qp in qubit_pairs}
-    if len(kinds) != 1:
-        raise TypeError(f"06e expects all qubit pairs to use the same readout resonator class; got {kinds}.")
-    (readout_cls,) = tuple(kinds)
-    if readout_cls not in (ReadoutResonatorSingle, ReadoutResonatorIQ):
-        raise TypeError(f"06e supports ReadoutResonatorSingle and ReadoutResonatorIQ; got {readout_cls}.")
-
+    node.namespace["tracked_original_detunings"] = {}
     node.namespace["tracked_resonators"] = []
-    seen = set()
     for qubit_pair in qubit_pairs:
-        rr = qubit_pair.quantum_dot_pair.sensor_dots[0].readout_resonator
-        op_name = "readout" + f"_{qubit_pair.quantum_dot_pair.name}"
-        rid = id(rr)
-        if rid in seen:
-            continue
-        seen.add(rid)
-        with tracked_updates(rr, auto_revert=False, dont_assign_to_none=True) as resonator:
-            resonator.operations[op_name].length = pulse_length
-            node.namespace["tracked_resonators"].append(resonator)
+        modify_and_track_readout_pulse(qubit_pair, sweep["pulse_length"], node.namespace["tracked_resonators"])
+        modify_and_track_point(qubit_pair, node.parameters.detuning, node.namespace["tracked_original_detunings"])
 
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([qp.name for qp in qubit_pairs]),
         "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
-        sweep_name: xr.DataArray(sweep_coord, attrs={"long_name": "readout length", "units": "ns"}),
+        node.parameters.sweep_name: xr.DataArray(sweep["sweep_coord"], attrs={"long_name": "readout length", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -261,8 +210,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         job.wait_until("Done")
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
-                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
+            progress_counter(
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start
             )
         node.log(job.execution_report())
 
@@ -281,7 +230,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     load_data_id = node.parameters.load_data_id
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    node.namespace["qubit_pairs"] = _resolve_qubit_pairs(node)
+    node.namespace["qubit_pairs"] = get_qubit_pairs(node)
     node.namespace["dot_pairs"] = [qp.quantum_dot_pair for qp in node.namespace["qubit_pairs"]]
     node.namespace["sensors"] = get_sensors(node)
 
@@ -294,7 +243,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qubit_name: (Outcome.SUCCESSFUL if fit_result["success"] else Outcome.FAILED)
+        qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
@@ -318,7 +267,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "histograms_vs_readout_length": figs["histograms_vs_sweep"],
         "rotated_iq_density": fig_iq,
     }
-    annotate_node_figures(node)
 
 
 # %% {Update_state}

@@ -13,7 +13,7 @@ import xarray as xr
 
 from qualibrate.core import QualibrationNode
 
-from calibration_utils.iq_sweep import fit_raw_data_pca_gaussian, log_fitted_results
+from calibration_utils.iq_utils import fit_raw_data_pca_gaussian, log_fitted_results
 
 __all__ = [
     "fit_measure_duration_raw_data",
