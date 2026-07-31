@@ -35,7 +35,7 @@ _SHARED_DIR = (
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
 
-from shared_fixtures import (  # noqa: E402
+from tests.shared_fixtures import (  # noqa: E402
     REPO_ROOT,
     apply_param_overrides,
     call_node_action,
@@ -48,7 +48,7 @@ from shared_fixtures import (  # noqa: E402
     reimport_node_to_register_actions,
     setup_test_cache,
 )
-from quam_factory import create_ld_quam  # noqa: E402
+# from quam_factory import create_ld_quam  # noqa: E402
 
 # Same-directory helper module ``virtual_ld_defaults`` (tests-only defaults).
 if str(CURRENT_DIR) not in sys.path:
@@ -344,7 +344,10 @@ def minimal_quam_factory():
     """Factory fixture returning a ``LossDiVincenzoQuam`` with default macros."""
 
     def _factory():
-        return create_ld_quam()
+        from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD, LossDiVincenzoQuam
+        machine = LossDiVincenzoQuam.load("C:\\git\\qua-libs\\tests\\quam_machine_state")
+        return machine
+
 
     return _factory
 
