@@ -75,6 +75,7 @@ def _validate_array_size(
 def _validate_resonator_types(
     qubit_pairs
 ): 
+    """Ensures that all ReadoutResonators of all SensorDot objects are consistent"""
     kinds = {type(qp.quantum_dot_pair.sensor_dots[0].readout_resonator) for qp in qubit_pairs}
     if len(kinds) != 1:
         raise TypeError(f"06b expects all qubit pairs to use the same readout resonator class; got {kinds}.")
@@ -87,9 +88,13 @@ def _validate_resonator_types(
 def validate_readout(
     qubit_pairs, sweep_dict: Dict
 ): 
+    """
+    Ensures that: 
+        - The array size of the built sweep is larger than the number of segments for a given pulse length
+        - All ReadoutResonators of all SensorDot objects are consistent
+    """
     _validate_array_size(sweep_dict)
     return _validate_resonator_types(qubit_pairs)
-
 
 
 def modify_and_track_point(

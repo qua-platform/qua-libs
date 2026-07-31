@@ -126,12 +126,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)  # tell the PC which shot we are on
+            save(n, n_st) # tell the PC which shot we are on
 
             # Perform them all sequentially for now. Can add footprint batching later
             for i, qubit_pair in enumerate(qubit_pairs):
 
-                # Extract the underlying quantum dot pair
+                # Extract the underlying quantum_dot_pair and its readout name
                 dot_pair = qubit_pair.quantum_dot_pair
                 op_name = "readout" + f"_{dot_pair.name}"
 
@@ -172,9 +172,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Make sure to track the duration of the readout pulse. This is to ensure that the compensation pulse calculation is correct
                     dot_pair.voltage_sequence.track_sticky_duration(readout_length)
 
+                    # Make sure to align the measure command to be AFTER the ramp + wait
                     align(
                         rr.id, dot_pair.physical_channel.id
-                    )  # Make sure to align the measure command to be AFTER the ramp + wait
+                    )  
 
                     # Play the "readout_{quantum_dot_pair.name}" pulse and integrate I/Q into I[i], Q[i]
                     rr.measure(op_name, qua_vars=(I[i], Q[i]))
