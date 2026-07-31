@@ -88,6 +88,7 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 
@@ -157,9 +158,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   n_st         : stream reporting shot index to PC (progress bar)
         #   tmp_i, tmp_q : run-time variables to fill up the stream buffers
         n = declare(int)
-        n_st = declare_stream()
-        I_st = [declare_stream() for qp in qubit_pairs]
-        Q_st = [declare_stream() for qp in qubit_pairs]
+        n_st = declare_output_stream()
+        I_st = [declare_output_stream() for qp in qubit_pairs]
+        Q_st = [declare_output_stream() for qp in qubit_pairs]
         tmp_i = declare(fixed)
         tmp_q = declare(fixed)
 
