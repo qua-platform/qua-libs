@@ -230,6 +230,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
         "samples": samples,
     }
 
+
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):

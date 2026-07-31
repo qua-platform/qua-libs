@@ -11,13 +11,12 @@ __all__ = [
     "validate_and_build_ramp_sweep",
 ]
 
-def validate_and_build_ramp_sweep(
-    node: QualibrationNode
-): 
-    """
-    Build a simple linear array of ramp durations. 
 
-    Ensures that: 
+def validate_and_build_ramp_sweep(node: QualibrationNode):
+    """
+    Build a simple linear array of ramp durations.
+
+    Ensures that:
         - The ramp_min, ramp_max, and ramp_step are all multiples of 4, matching the QUA clock cycle
         - The resulting ramp_duration_array is not empty
     """
@@ -33,9 +32,8 @@ def validate_and_build_ramp_sweep(
     ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
     if len(ramp_duration_array) == 0:
         raise ValueError("Empty ramp duration sweep: require ramp_duration_min < ramp_duration_max with positive step.")
-    
-    return ramp_duration_array
 
+    return ramp_duration_array
 
 
 def prepare_dot_pairs(node: QualibrationNode):
@@ -51,7 +49,6 @@ def prepare_dot_pairs(node: QualibrationNode):
     # TODO: Verify that this is strictly necessary
     for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
         node.machine.reset_voltage_sequence(gate_set_id)
-    
 
 
 def build_ramp_duration_sweep(ramp_duration_min: int, ramp_duration_max: int, ramp_duration_step: int) -> np.ndarray:
@@ -60,6 +57,7 @@ def build_ramp_duration_sweep(ramp_duration_min: int, ramp_duration_max: int, ra
     r_max = int(ramp_duration_max)
     step = int(ramp_duration_step)
     return np.arange(r_min, r_max, step, dtype=int)
+
 
 def modify_and_track_point(
     qubit_pair,
