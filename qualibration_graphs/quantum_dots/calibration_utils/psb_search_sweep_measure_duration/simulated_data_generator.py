@@ -5,67 +5,18 @@ from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 import numpy as np
 import xarray as xr
 
-from calibration_utils.iq_blobs.readout_barthel.simulate import (
+from calibration_utils.iq_utils.iq_blobs.readout_barthel.simulate import (
     SimulationParamsIQ,
     simulate_readout_iq,
 )
+
+from qualibration_libs.parameters import get_qubit_pairs
+from .helper_utils import build_psb_readout_sweep
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
     from qualibrate.core import QualibrationNode
 
-
-def build_psb_readout_sweep(readout_length_min: int, readout_length_max: int, readout_length_points: int) -> dict:
-    """Build sweep grid consistent with 05c charge-state readout time (arange + chunk step).
-
-    QM requires the readout pulse length to equal an integer number of accumulated segments:
-    ``pulse_length == num_segments * 4 * segment_length`` (see ``measure_accumulated``).
-    ``readout_length_max`` is therefore rounded **down** to the nearest valid pulse length.
-
-    Returns keys: ``array_size``, ``step_ns``, ``samples_per_chunk``, ``sweep_coord``,
-    ``pulse_length`` (effective ns), ``segment_length`` (QUA ``segment_length`` arg),
-    ``num_segments``.
-    """
-    r_min = max(4, int(readout_length_min) // 4 * 4)
-    r_max = max(r_min + 4, int(readout_length_max) // 4 * 4)
-    n_pts = max(1, int(readout_length_points))
-    if n_pts < 2:
-        step_ns = max(4, r_max - r_min)
-    else:
-        step_ns = max(4, ((r_max - r_min) // (n_pts - 1)) // 4 * 4)
-    segment_length = max(1, step_ns // 4)
-    chunk_ns = 4 * segment_length
-    num_segments = r_max // chunk_ns
-    if num_segments < 1:
-        num_segments = 1
-    pulse_length = num_segments * chunk_ns
-    if pulse_length < r_min:
-        num_segments = int(np.ceil(r_min / chunk_ns))
-        pulse_length = num_segments * chunk_ns
-
-    integrations_times = np.arange(r_min, pulse_length, step_ns, dtype=int)
-    if len(integrations_times) == 0:
-        integrations_times = np.array([min(r_min, pulse_length)], dtype=int)
-    array_size = len(integrations_times)
-    if array_size > num_segments:
-        array_size = num_segments
-        integrations_times = integrations_times[:array_size]
-    sweep_coord = np.arange(1, array_size + 1, dtype=int) * chunk_ns
-    return {
-        "array_size": array_size,
-        "step_ns": step_ns,
-        "samples_per_chunk": segment_length,
-        "sweep_coord": sweep_coord,
-        "pulse_length": pulse_length,
-        "segment_length": segment_length,
-        "num_segments": num_segments,
-    }
-
-
-def _resolve_qubit_pairs(node: "QualibrationNode") -> List:
-    if node.parameters.qubit_pairs not in (None, ""):
-        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
-    return list(node.machine.qubit_pairs.values())
 
 
 def _duration_unit(t_ns: float, t_min: float, t_max: float) -> float:
@@ -73,12 +24,6 @@ def _duration_unit(t_ns: float, t_min: float, t_max: float) -> float:
     if abs(span) < 1e-15:
         return 0.5
     return float(np.clip((t_ns - t_min) / span, 0.0, 1.0))
-
-
-def _grid_subplots(n: int) -> tuple[int, int]:
-    n_cols = int(np.ceil(np.sqrt(n)))
-    n_rows = int(np.ceil(n / n_cols))
-    return n_rows, n_cols
 
 
 def _global_readout_axis_from_endpoints(I: np.ndarray, Q: np.ndarray, *, n_edge: int) -> tuple[float, float]:
@@ -97,6 +42,13 @@ def _global_readout_axis_from_endpoints(I: np.ndarray, Q: np.ndarray, *, n_edge:
         return 1.0, 0.0
     delta /= norm
     return float(delta[0]), float(delta[1])
+
+
+
+def _grid_subplots(n: int) -> tuple[int, int]:
+    n_cols = int(np.ceil(np.sqrt(n)))
+    n_rows = int(np.ceil(n / n_cols))
+    return n_rows, n_cols
 
 
 def plot_simulated_dataset_histograms(
@@ -195,7 +147,7 @@ def plot_simulated_dataset_histograms(
 
 def generate_simulated_dataset(node: "QualibrationNode") -> xr.Dataset:
     """Synthetic PSB readout-length sweep; shot noise scales down ~ 1/sqrt(T/T_ref)."""
-    qubit_pairs = _resolve_qubit_pairs(node)
+    qubit_pairs = get_qubit_pairs(node)
     pair_names = [qp.name for qp in qubit_pairs]
 
     readout_max = node.parameters.readout_length_max
