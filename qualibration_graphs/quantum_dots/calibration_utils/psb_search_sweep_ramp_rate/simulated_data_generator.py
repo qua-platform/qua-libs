@@ -5,20 +5,16 @@ from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 import numpy as np
 import xarray as xr
 
-from calibration_utils.iq_blobs.readout_barthel.simulate import (
+from calibration_utils.iq_utils.iq_blobs.readout_barthel.simulate import (
     SimulationParamsIQ,
     simulate_readout_iq,
 )
+from .helper_utils import build_ramp_duration_sweep
+from qualibration_libs.parameters import get_qubit_pairs
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
     from qualibrate.core import QualibrationNode
-
-
-def _resolve_qubit_pairs(node: "QualibrationNode") -> List:
-    if node.parameters.qubit_pairs not in (None, ""):
-        return [node.machine.qubit_pairs[name] for name in node.parameters.qubit_pairs]
-    return list(node.machine.qubit_pairs.values())
 
 
 def _duration_unit(t_ns: float, t_min: float, t_max: float) -> float:
@@ -28,17 +24,9 @@ def _duration_unit(t_ns: float, t_min: float, t_max: float) -> float:
     return float(np.clip((t_ns - t_min) / span, 0.0, 1.0))
 
 
-def build_ramp_duration_sweep(ramp_duration_min: int, ramp_duration_max: int, ramp_duration_step: int) -> np.ndarray:
-    """Build ramp duration grid (ns), same rules as 06d (multiples of 4 validated by caller)."""
-    r_min = int(ramp_duration_min)
-    r_max = int(ramp_duration_max)
-    step = int(ramp_duration_step)
-    return np.arange(r_min, r_max, step, dtype=int)
-
-
 def generate_simulated_dataset(node: "QualibrationNode") -> xr.Dataset:
     """Synthetic PSB ramp-duration sweep; contrast improves toward longer ramps (toy model)."""
-    qubit_pairs = _resolve_qubit_pairs(node)
+    qubit_pairs = get_qubit_pairs(node)
     pair_names = [qp.name for qp in qubit_pairs]
 
     ramp_array = build_ramp_duration_sweep(

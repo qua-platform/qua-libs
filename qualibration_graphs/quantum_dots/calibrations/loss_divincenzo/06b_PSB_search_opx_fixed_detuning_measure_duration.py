@@ -125,7 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # measure_accumulated returns differently depending on ReadoutResonator type:
     #      ReadoutResonatorSingle - returns a single IQ pair, since we have a single analog input
     #      ReadoutResonatorIQ - returns 4 IQs, since we have a dual analog input
-    # Therefore, the class must be consistent
+    # Therefore, the class must be consistent. The returned readout_cls can be either "single" or "dual"
     readout_cls = validate_readout(qubit_pairs, sweep)
 
     # Temporary changes to the Quam for the sake of the program. These are:
