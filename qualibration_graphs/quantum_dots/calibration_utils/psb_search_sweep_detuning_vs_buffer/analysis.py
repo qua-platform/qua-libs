@@ -28,9 +28,7 @@ def analyse_detuning_vs_buffer(ds_raw: xr.Dataset) -> tuple[xr.Dataset, dict]:
                 i_vals = i_data[p_idx, :, d_idx, b_idx]
                 q_vals = q_data[p_idx, :, d_idx, b_idx]
                 pc1_map[p_idx, d_idx, b_idx] = _pc1_std(i_vals, q_vals)
-                iq_trace_map[p_idx, d_idx, b_idx] = float(
-                    np.trace(np.cov(np.column_stack([i_vals, q_vals]).T))
-                )
+                iq_trace_map[p_idx, d_idx, b_idx] = float(np.trace(np.cov(np.column_stack([i_vals, q_vals]).T)))
 
     ds_fit = xr.Dataset(
         data_vars={

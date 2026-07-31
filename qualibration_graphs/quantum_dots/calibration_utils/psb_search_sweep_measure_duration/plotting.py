@@ -38,12 +38,8 @@ def plot_measure_duration_sweep_figures(
     ds_fit = node.results["ds_fit"]
 
     return {
-        "fidelity_vs_sweep": plot_fidelity_vs_sweep(
-            ds_raw, qubit_pairs, ds_fit, sweep_name=sweep_name
-        ),
-        "visibility_vs_sweep": plot_visibility_vs_sweep(
-            ds_raw, qubit_pairs, ds_fit, sweep_name=sweep_name
-        ),
+        "fidelity_vs_sweep": plot_fidelity_vs_sweep(ds_raw, qubit_pairs, ds_fit, sweep_name=sweep_name),
+        "visibility_vs_sweep": plot_visibility_vs_sweep(ds_raw, qubit_pairs, ds_fit, sweep_name=sweep_name),
         "sweep_summary": plot_sweep_summary(ds_raw, qubit_pairs, ds_fit, sweep_name=sweep_name),
         "histograms_vs_sweep": plot_histograms_vs_sweep(
             ds_raw, qubit_pairs, ds_fit, sweep_name=sweep_name, normalize_by_sweep=True

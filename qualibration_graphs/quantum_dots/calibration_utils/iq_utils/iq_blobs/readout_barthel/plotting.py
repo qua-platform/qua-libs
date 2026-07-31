@@ -127,9 +127,7 @@ def plot_fit(
         return arr.mean(axis=0)
 
     def _norm_pdf_local(x, mu, sigma):
-        return (1.0 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(
-            -((x - mu) ** 2) / (2 * sigma**2)
-        )
+        return (1.0 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
 
     if posterior == "ppd_mean":
         # Average densities over posterior draws (label-invariant)
@@ -170,8 +168,7 @@ def plot_fit(
         ax.text(
             0.02,
             0.98,
-            f"weights: "
-            + "  ".join([f"w_{k+1}={pi_mean[k]:.2f}" for k in range(n_comp)]),
+            f"weights: " + "  ".join([f"w_{k+1}={pi_mean[k]:.2f}" for k in range(n_comp)]),
             transform=ax.transAxes,
             va="top",
             fontsize=9,
@@ -461,9 +458,7 @@ def _norm_pdf(x, mu, sigma):
     return np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (np.sqrt(2 * np.pi) * sigma)
 
 
-def evaluate_barthel_density_1d_grid(
-    xs, *, mu_S, mu_T, sigma, pT, T1, tauM, dec_nodes=48
-):
+def evaluate_barthel_density_1d_grid(xs, *, mu_S, mu_T, sigma, pT, T1, tauM, dec_nodes=48):
     """
     Evaluate the 1D Barthel mixture on xs. Returns (total, comp_dict)
     comp_dict has keys: 'S', 'T_no', 'T_dec'
@@ -562,9 +557,7 @@ def plot_barthel_fit_1d(
         idx = _choose_draw_indices(S, ppd_draws)
 
         total = np.zeros_like(xs)
-        comps_sum = dict(
-            S=np.zeros_like(xs), T_no=np.zeros_like(xs), T_dec=np.zeros_like(xs)
-        )
+        comps_sum = dict(S=np.zeros_like(xs), T_no=np.zeros_like(xs), T_dec=np.zeros_like(xs))
 
         for i in idx:
             mu_S = float(np.asarray(samples["mu_S"])[i])
@@ -815,15 +808,11 @@ def plot_iq_with_pca_and_threshold(
         thr_kwargs = dict(color="C3", ls="--", lw=2)
 
     ax.plot([p1[0], p2[0]], [p1[1], p2[1]], label="PCA axis", **pca_kwargs)
-    ax.plot(
-        [q1[0], q2[0]], [q1[1], q2[1]], label=r"$V_{\rm rf}$ threshold", **thr_kwargs
-    )
+    ax.plot([q1[0], q2[0]], [q1[1], q2[1]], label=r"$V_{\rm rf}$ threshold", **thr_kwargs)
 
     if annotate:
         ax.plot(mean[0], mean[1], marker="x", ms=8, color=pca_kwargs.get("color", "C2"))
-        ax.plot(
-            p_thr[0], p_thr[1], marker="o", ms=6, color=thr_kwargs.get("color", "C3")
-        )
+        ax.plot(p_thr[0], p_thr[1], marker="o", ms=6, color=thr_kwargs.get("color", "C3"))
         ax.text(p_thr[0], p_thr[1], f"  Vrf={float(v_rf):.3f}", va="center", fontsize=9)
 
     ax.set_xlabel("I")

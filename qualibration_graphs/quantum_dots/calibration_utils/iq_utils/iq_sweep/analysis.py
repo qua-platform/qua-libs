@@ -108,9 +108,7 @@ def _fit_single_slice(
         proj_dir = proj.pc1 * proj.sign
         angle = float(jnp.arctan2(proj_dir[1], proj_dir[0]))
 
-        rot = jnp.array(
-            [[jnp.cos(angle), jnp.sin(angle)], [-jnp.sin(angle), jnp.cos(angle)]]
-        )
+        rot = jnp.array([[jnp.cos(angle), jnp.sin(angle)], [-jnp.sin(angle), jnp.cos(angle)]])
         proj_rotated_mean = proj.mean @ rot.T
 
         fidelity_res = Barthel1DMetricCurves.summarize_metric(
@@ -208,9 +206,7 @@ _METRIC_KEYS = [
 ]
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """Fit Barthel model for every (qubit, sweep_value) slice.
 
     The sweep coordinate is selected via ``node.parameters.sweep_name`` so the
@@ -220,10 +216,7 @@ def fit_raw_data(
     """
     sweep_name = node.parameters.sweep_name
     if sweep_name not in ds.coords and sweep_name not in ds.dims:
-        raise KeyError(
-            f"sweep_name='{sweep_name}' not found in ds. "
-            f"Available coords: {list(ds.coords)}"
-        )
+        raise KeyError(f"sweep_name='{sweep_name}' not found in ds. " f"Available coords: {list(ds.coords)}")
     sweep_values = np.asarray(ds[sweep_name].values)
     n_sweep = len(sweep_values)
 
@@ -235,15 +228,9 @@ def fit_raw_data(
 
     labeled = bool(getattr(node.parameters, "labeled_states", False))
     if labeled and not {"Ig", "Qg", "Ie", "Qe"}.issubset(ds.data_vars):
-        raise KeyError(
-            "labeled_states=True but ds is missing one of Ig/Qg/Ie/Qe. "
-            f"Found: {list(ds.data_vars)}"
-        )
+        raise KeyError("labeled_states=True but ds is missing one of Ig/Qg/Ie/Qe. " f"Found: {list(ds.data_vars)}")
     if not labeled and not {"I", "Q"}.issubset(ds.data_vars):
-        raise KeyError(
-            "labeled_states=False but ds is missing I/Q. "
-            f"Found: {list(ds.data_vars)}"
-        )
+        raise KeyError("labeled_states=False but ds is missing I/Q. " f"Found: {list(ds.data_vars)}")
 
     for qi, qp in enumerate(qubit_pairs):
         for si in range(n_sweep):
@@ -263,13 +250,9 @@ def fit_raw_data(
             for k in _METRIC_KEYS:
                 arrays[k][qi, si] = float(res[k])
 
-    ds_fit = xr.Dataset(
-        coords={"qubit_pair": qubit_pair_names, sweep_name: sweep_values}
-    )
+    ds_fit = xr.Dataset(coords={"qubit_pair": qubit_pair_names, sweep_name: sweep_values})
     for k in _METRIC_KEYS:
-        ds_fit = ds_fit.assign(
-            {k: xr.DataArray(arrays[k], dims=["qubit_pair", sweep_name])}
-        )
+        ds_fit = ds_fit.assign({k: xr.DataArray(arrays[k], dims=["qubit_pair", sweep_name])})
 
     metric_choice = node.parameters.optimization_metric
     fit_results: Dict[str, FitParameters] = {}
@@ -308,9 +291,7 @@ def fit_raw_data(
             visibility = float(arrays["visibility_opt"][qi, opt_idx])
         else:
             cm = [[np.nan, np.nan], [np.nan, np.nan]]
-            iw_angle = I_threshold = ge_threshold = readout_fidelity = visibility = (
-                np.nan
-            )
+            iw_angle = I_threshold = ge_threshold = readout_fidelity = visibility = np.nan
             readout_threshold = np.nan
             readout_projector = {"wI": np.nan, "wQ": np.nan, "offset": np.nan}
 
@@ -339,15 +320,9 @@ def fit_raw_data(
 
     ds_fit = ds_fit.assign(
         {
-            "optimal_sweep_value_fidelity": xr.DataArray(
-                opt_val_fid, coords={"qubit_pair": qubit_pair_names}
-            ),
-            "optimal_sweep_value_visibility": xr.DataArray(
-                opt_val_vis, coords={"qubit_pair": qubit_pair_names}
-            ),
-            "optimal_sweep_value": xr.DataArray(
-                opt_val_selected, coords={"qubit_pair": qubit_pair_names}
-            ),
+            "optimal_sweep_value_fidelity": xr.DataArray(opt_val_fid, coords={"qubit_pair": qubit_pair_names}),
+            "optimal_sweep_value_visibility": xr.DataArray(opt_val_vis, coords={"qubit_pair": qubit_pair_names}),
+            "optimal_sweep_value": xr.DataArray(opt_val_selected, coords={"qubit_pair": qubit_pair_names}),
             "success_overall": xr.DataArray(
                 [fit_results[qp].success for qp in qubit_pair_names],
                 coords={"qubit_pair": qubit_pair_names},
@@ -371,9 +346,7 @@ def _argmax_safe(values: np.ndarray, coords: np.ndarray) -> Tuple[int, float]:
 # ---------------------------------------------------------------------------
 
 
-def _pca_projector_np(
-    I: np.ndarray, Q: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+def _pca_projector_np(I: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """First PCA component from all IQ samples.
 
     Returns (w, mu): w is the unit PC1 direction (shape (2,)), mu is the data
@@ -471,8 +444,7 @@ def _two_gaussian_fidelity_visibility(
     delta = jnp.abs(mu2 - mu1)
     sqrt2 = jnp.sqrt(jnp.array(2.0))
     p_err = (
-        jax.scipy.special.erfc(delta / (2.0 * sigma1 * sqrt2))
-        + jax.scipy.special.erfc(delta / (2.0 * sigma2 * sqrt2))
+        jax.scipy.special.erfc(delta / (2.0 * sigma1 * sqrt2)) + jax.scipy.special.erfc(delta / (2.0 * sigma2 * sqrt2))
     ) / 4.0
     fidelity = 1.0 - p_err
     visibility = 2.0 * fidelity - 1.0
@@ -494,9 +466,7 @@ _PCA_GMM_KEYS = [
 ]
 
 
-def fit_raw_data_pca_gaussian(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+def fit_raw_data_pca_gaussian(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """PCA-projection + analytical two-Gaussian alternative to :func:`fit_raw_data`.
 
     For each qubit pair:
@@ -514,10 +484,7 @@ def fit_raw_data_pca_gaussian(
     """
     sweep_name = node.parameters.sweep_name
     if sweep_name not in ds.coords and sweep_name not in ds.dims:
-        raise KeyError(
-            f"sweep_name='{sweep_name}' not found in ds. "
-            f"Available coords: {list(ds.coords)}"
-        )
+        raise KeyError(f"sweep_name='{sweep_name}' not found in ds. " f"Available coords: {list(ds.coords)}")
     sweep_values = np.asarray(ds[sweep_name].values)
     n_sweep = len(sweep_values)
 
@@ -558,9 +525,7 @@ def fit_raw_data_pca_gaussian(
         mu1, sigma1, mu2, sigma2 = _vmap_em_two_gaussians(z_sweep)
 
         # 4. Analytical fidelity and visibility from Gaussian parameters.
-        fidelity, visibility = _two_gaussian_fidelity_visibility(
-            mu1, sigma1, mu2, sigma2
-        )
+        fidelity, visibility = _two_gaussian_fidelity_visibility(mu1, sigma1, mu2, sigma2)
 
         # Threshold in the un-centred projected IQ frame (I·wI + Q·wQ > threshold).
         t_star = np.asarray((mu1 + mu2) / 2.0) + z_offset
@@ -569,9 +534,7 @@ def fit_raw_data_pca_gaussian(
         visibility_np = np.asarray(visibility)
         # Threshold > 0.5 avoids false positives: F >= 0.5 by construction
         # even for zero separation, so 0.5 would mark everything as success.
-        success_vec = np.where(
-            np.isfinite(fidelity_np) & (fidelity_np > 0.6), 1.0, 0.0
-        )
+        success_vec = np.where(np.isfinite(fidelity_np) & (fidelity_np > 0.6), 1.0, 0.0)
 
         # mu1/mu2 are in the centered per-slice PCA space; shift by z_offset so
         # they sit in the same uncentered projected frame as the plotted shots
@@ -588,13 +551,9 @@ def fit_raw_data_pca_gaussian(
         arrays["ge_threshold"][qi] = t_star
         arrays["success"][qi] = success_vec
 
-    ds_fit = xr.Dataset(
-        coords={"qubit_pair": qubit_pair_names, sweep_name: sweep_values}
-    )
+    ds_fit = xr.Dataset(coords={"qubit_pair": qubit_pair_names, sweep_name: sweep_values})
     for k in _PCA_GMM_KEYS:
-        ds_fit = ds_fit.assign(
-            {k: xr.DataArray(arrays[k], dims=["qubit_pair", sweep_name])}
-        )
+        ds_fit = ds_fit.assign({k: xr.DataArray(arrays[k], dims=["qubit_pair", sweep_name])})
 
     metric_choice = node.parameters.optimization_metric
     fit_results: Dict[str, FitParameters] = {}
@@ -652,15 +611,9 @@ def fit_raw_data_pca_gaussian(
 
     ds_fit = ds_fit.assign(
         {
-            "optimal_sweep_value_fidelity": xr.DataArray(
-                opt_val_fid, coords={"qubit_pair": qubit_pair_names}
-            ),
-            "optimal_sweep_value_visibility": xr.DataArray(
-                opt_val_vis, coords={"qubit_pair": qubit_pair_names}
-            ),
-            "optimal_sweep_value": xr.DataArray(
-                opt_val_selected, coords={"qubit_pair": qubit_pair_names}
-            ),
+            "optimal_sweep_value_fidelity": xr.DataArray(opt_val_fid, coords={"qubit_pair": qubit_pair_names}),
+            "optimal_sweep_value_visibility": xr.DataArray(opt_val_vis, coords={"qubit_pair": qubit_pair_names}),
+            "optimal_sweep_value": xr.DataArray(opt_val_selected, coords={"qubit_pair": qubit_pair_names}),
             "success_overall": xr.DataArray(
                 [fit_results[qp].success for qp in qubit_pair_names],
                 coords={"qubit_pair": qubit_pair_names},

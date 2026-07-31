@@ -16,9 +16,7 @@ class SimulationParams:
     T1: float = 2.0  # Relaxation time from T→S during measurement
 
 
-def _sample_truncated_exponential(
-    rng: Generator, low: float, high: float, lam: float, size: int
-) -> np.ndarray:
+def _sample_truncated_exponential(rng: Generator, low: float, high: float, lam: float, size: int) -> np.ndarray:
     """Sample from a truncated exponential on [low, high] with density ∝ exp(-lam*(x-low)).
     Equivalent to inverse-CDF sampling on a bounded interval.
     """
@@ -64,9 +62,7 @@ def simulate_readout(
     lam = tau_M / (T1 * dV)  # matches the exponential factor in the notes
 
     # Prepare initial states
-    labels = (
-        rng.uniform(size=n) < params.p_triplet
-    )  # True means initial T, False means S
+    labels = rng.uniform(size=n) < params.p_triplet  # True means initial T, False means S
     x = np.empty(n, dtype=float)
 
     # Singlets
@@ -87,9 +83,7 @@ def simulate_readout(
 
         # Decay-in-flight: ideal voltage from truncated exponential over [V_S, V_T], then Gaussian noise
         if idx_T_de.size > 0:
-            U = _sample_truncated_exponential(
-                rng, low=V_S, high=V_T, lam=lam, size=idx_T_de.size
-            )
+            U = _sample_truncated_exponential(rng, low=V_S, high=V_T, lam=lam, size=idx_T_de.size)
             x[idx_T_de] = rng.normal(loc=U, scale=s, size=idx_T_de.size)
 
     if return_labels:
@@ -132,9 +126,7 @@ def _chol_from_sigmas(sigma_I: float, sigma_Q: float, rho: float) -> np.ndarray:
     return np.linalg.cholesky(cov)
 
 
-def _sample_trunc_exp_time(
-    rng: Generator, tau_M: float, T1: float, size: int
-) -> np.ndarray:
+def _sample_trunc_exp_time(rng: Generator, tau_M: float, T1: float, size: int) -> np.ndarray:
     """Sample decay times t in [0, tau_M) from an exponential with rate 1/T1 truncated at tau_M,
     i.e. conditional on at least one decay before tau_M."""
     if T1 <= 0:

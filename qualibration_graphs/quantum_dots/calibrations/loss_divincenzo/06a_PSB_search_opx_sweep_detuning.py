@@ -130,7 +130,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
-            save(n, n_st) # tell the PC which shot we are on
+            save(n, n_st)  # tell the PC which shot we are on
 
             # Perform them all sequentially for now. Can add footprint batching later
             for i, qubit_pair in enumerate(qubit_pairs):
@@ -148,27 +148,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ── STEP 1 - INITIALIZE: Perform the initialization sequence ──────────
 
                     # Requires the chosen macro on dot_pair.macros (empty or initialize)
-                    if node.parameters.qubit_pair_to_initialize is not None: 
+                    if node.parameters.qubit_pair_to_initialize is not None:
                         initialization_qubit_pair = node.machine.qubit_pairs[node.parameters.qubit_pair_to_initialize]
                         dp = initialization_qubit_pair.quantum_dot_pair
                         dp.macros[node.parameters.initialization_macro].apply()
-                    else: 
+                    else:
                         dot_pair.macros[node.parameters.initialization_macro].apply()
-                    
-                    if node.parameters.qubit_to_pulse is not None: 
+
+                    if node.parameters.qubit_to_pulse is not None:
                         q = node.machine.qubits[node.parameters.qubit_to_pulse]
                         q.x180()
-
 
                     # ── STEP 2 - RAMP: Ramp to the correct detuning point ──────────
 
                     # First ramp to the fixed detuning point
                     dot_pair.ramp_to_voltages(
-                        {dot_pair.name: detuning, dot_pair.barrier_gate.name : node.parameters.barrier_gate_voltage},
+                        {dot_pair.name: detuning, dot_pair.barrier_gate.name: node.parameters.barrier_gate_voltage},
                         ramp_duration=node.parameters.ramp_duration,
                         duration=node.parameters.buffer_duration,
                     )
-                    
 
                     # ── STEP 3 - MEASURE: Perform the measurement at the PSB point ──────────
 
@@ -178,7 +176,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Make sure to track the duration of the readout pulse. This is to ensure that the compensation pulse calculation is correct
                     dot_pair.voltage_sequence.track_sticky_duration(readout_length)
 
-                    align(rr.id, dot_pair.physical_channel.id) # Make sure to align the measure command to be AFTER the ramp + wait
+                    align(
+                        rr.id, dot_pair.physical_channel.id
+                    )  # Make sure to align the measure command to be AFTER the ramp + wait
 
                     # Play the "readout_{quantum_dot_pair.name}" pulse and integrate I/Q into I[i], Q[i]
                     rr.measure(op_name, qua_vars=(I[i], Q[i]))
@@ -189,24 +189,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                     # Apply the compensation pulse via the voltage sequence. This both steps to 0 before, and goes back to 0 after
-                    dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero = True, return_to_zero = True)
-                    
+                    dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
+
                     align()
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n") # expose shot counter as "n" in the fetched dataset
+            n_st.save("n")  # expose shot counter as "n" in the fetched dataset
             for i, qubit_pair in enumerate(qubit_pairs):
-                # Each save() above is one voltage point. 
+                # Each save() above is one voltage point.
                 # .buffer(len(detuning_array)) : group points along the detuning axis
                 # .buffer(n_avg) : group points along the repetitions axis
                 # Result : 2D trace I(detuning, n_avg), Q(detuning, n_avg) per qubit pair
-                I_st[i].buffer(len(detuning_array)).buffer(n_avg).save(
-                    f"I_{qubit_pair.name}"
-                )
-                Q_st[i].buffer(len(detuning_array)).buffer(n_avg).save(
-                    f"Q_{qubit_pair.name}"
-                )
+                I_st[i].buffer(len(detuning_array)).buffer(n_avg).save(f"I_{qubit_pair.name}")
+                Q_st[i].buffer(len(detuning_array)).buffer(n_avg).save(f"Q_{qubit_pair.name}")
 
 
 # %% {Simulate}
@@ -253,15 +249,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        job.wait_until("Done")     
+        job.wait_until("Done")
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start
-            )
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Reshape the per-pair streams into a qubit_pair-indexed ds with I/Q variables.
@@ -296,9 +288,7 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
 
-    node.results["ds_fit"], fit_results = fit_raw_data_pca_gaussian(
-        node.results["ds_processed"], node
-    )
+    node.results["ds_fit"], fit_results = fit_raw_data_pca_gaussian(node.results["ds_processed"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
@@ -313,17 +303,17 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot all node figures via the shared plotting API."""
-    # s and alpha are relevant kwargs for plotting a scatter plot. 
-    # Hard coded here as 4 and 0.15, since they should not be exposed as node parameters. 
+    # s and alpha are relevant kwargs for plotting a scatter plot.
+    # Hard coded here as 4 and 0.15, since they should not be exposed as node parameters.
     node.results["figures"] = plot_all(
         node.results["ds_raw"],
         node.namespace["qubit_pairs"],
         node.results["ds_fit"],
         sweep_name=node.parameters.sweep_name,
         fit_results=node.results["fit_results"],
-        plot_kde = node.parameters.plot_kde,
-        s = 4, 
-        alpha = 0.15
+        plot_kde=node.parameters.plot_kde,
+        s=4,
+        alpha=0.15,
     )
     if not node.modes.external:
         plt.show()
@@ -342,7 +332,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             dot_pair = qp.quantum_dot_pair
             dot_pair.add_point(
                 VoltagePointName.MEASURE,
-                voltages={dot_pair.name: float(fit_result["optimal_sweep_value"]), dot_pair.barrier_gate.name: node.parameters.barrier_gate_voltage},
+                voltages={
+                    dot_pair.name: float(fit_result["optimal_sweep_value"]),
+                    dot_pair.barrier_gate.name: node.parameters.barrier_gate_voltage,
+                },
                 duration=node.parameters.buffer_duration,
                 replace_existing_point=True,
             )

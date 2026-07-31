@@ -90,9 +90,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.machine.reset_voltage_sequence(gate_set_id)
     for dp in dot_pairs:
         if len(dp.sensor_dots) != 1:
-            raise ValueError(
-                f"06d expects exactly one sensor dot per pair; {dp.id!r} has {len(dp.sensor_dots)}."
-            )
+            raise ValueError(f"06d expects exactly one sensor dot per pair; {dp.id!r} has {len(dp.sensor_dots)}.")
 
     node.namespace["qubits"] = qubits
     node.namespace["qubit_dot_pairs"] = qubit_dot_pairs
@@ -107,9 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             point.voltages[dp.name] = node.parameters.detuning
 
     node.namespace["sweep_axes"] = {
-        "n_runs": xr.DataArray(
-            np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}
-        ),
+        "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -118,8 +114,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         I_no_pi_st = {q.name: declare_output_stream() for q in qubits}
         Q_no_pi_st = {q.name: declare_output_stream() for q in qubits}
-        I_pi_st    = {q.name: declare_output_stream() for q in qubits}
-        Q_pi_st    = {q.name: declare_output_stream() for q in qubits}
+        I_pi_st = {q.name: declare_output_stream() for q in qubits}
+        Q_pi_st = {q.name: declare_output_stream() for q in qubits}
 
         with for_(n, 0, n < node.parameters.num_shots, n + 1):
             save(n, n_st)
@@ -165,23 +161,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Execute QUA and assemble ``ds_raw`` with ``I_no_pi``, ``Q_no_pi``, ``I_pi``, ``Q_pi``."""
     qmm = node.machine.connect()
@@ -194,10 +184,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter_with_log(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         node.log(job.execution_report())
 
@@ -205,12 +192,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         arrays = [dataset[f"{prefix}_{n}"] for n in qnames]
         return xr.concat(arrays, dim="qubit").assign_coords(qubit=qnames)
 
-    node.results["ds_raw"] = xr.Dataset({
-        "I_no_pi": _concat("I_no_pi"),
-        "Q_no_pi": _concat("Q_no_pi"),
-        "I_pi":    _concat("I_pi"),
-        "Q_pi":    _concat("Q_pi"),
-    })
+    node.results["ds_raw"] = xr.Dataset(
+        {
+            "I_no_pi": _concat("I_no_pi"),
+            "Q_no_pi": _concat("Q_no_pi"),
+            "I_pi": _concat("I_pi"),
+            "Q_pi": _concat("Q_pi"),
+        }
+    )
 
 
 # %% {Load_historical_data}
@@ -238,9 +227,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         # fit_raw_data reports confusion-matrix fidelity; replace with the analytic
         # model optimum stored in ds_fit.fidelity_opt (same as fit_barthel_mixed_iq).
         for q in qubits:
-            fit_results[q.name].readout_fidelity = 100.0 * float(
-                ds_fit["fidelity_opt"].sel(qubit=q.name)
-            )
+            fit_results[q.name].readout_fidelity = 100.0 * float(ds_fit["fidelity_opt"].sel(qubit=q.name))
     else:  # "gmm"
         fit_results, ds_gmm_fit = fit_gmm_labeled(ds_labeled, qubits)
         node.results["ds_gmm_fit"] = ds_gmm_fit
@@ -289,7 +276,10 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         ax_rot.plot(Ie_r * 1e3, Qe_r * 1e3, ".", alpha=0.4, markersize=2, label="T", color="C1")
         if I_thr is not None and np.isfinite(I_thr):
             ax_rot.axvline(
-                I_thr * 1e3, color="C3", ls="--", lw=1.5,
+                I_thr * 1e3,
+                color="C3",
+                ls="--",
+                lw=1.5,
                 label=f"I_threshold = {I_thr * 1e3:.2f} mV",
             )
         ax_rot.set_xlabel("I_rot [mV]")

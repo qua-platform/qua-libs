@@ -100,9 +100,7 @@ def make_gmm_model_factory(
     return model_builder
 
 
-def build_gmm_model(
-    priors: Optional[Dict[str, Any]] = None
-) -> Callable[[jnp.ndarray], None]:
+def build_gmm_model(priors: Optional[Dict[str, Any]] = None) -> Callable[[jnp.ndarray], None]:
     """
     Build a 2-component 1D Gaussian mixture model (convenience wrapper).
 
@@ -175,9 +173,7 @@ def make_gmm_model_factory_2d(
             N = y.shape[0]
 
             pi_conc = priors_local.get("pi_conc", jnp.ones(K))
-            mu_loc = priors_local.get(
-                "mu_loc", jnp.linspace(jnp.min(y, axis=0), jnp.max(y, axis=0), K)
-            )
+            mu_loc = priors_local.get("mu_loc", jnp.linspace(jnp.min(y, axis=0), jnp.max(y, axis=0), K))
             mu_scale = priors_local.get("mu_scale", jnp.ones((K, 2)) * 0.5)
             sigma_scale = priors_local.get("sigma_scale", jnp.ones((K, 2)) * 0.5)
 
@@ -347,17 +343,13 @@ def log_likelihood_samples_2d_diag(
     log_component = (
         jnp.log(pi)[:, :, None]
         - 0.5 * jnp.log(2.0 * jnp.pi * sigma**2).sum(axis=2)[:, :, None]
-        - ((x_exp - mu[:, :, None, :]) ** 2 / (2.0 * sigma[:, :, None, :] ** 2)).sum(
-            axis=3
-        )
+        - ((x_exp - mu[:, :, None, :]) ** 2 / (2.0 * sigma[:, :, None, :] ** 2)).sum(axis=3)
     )
     log_mix = jsp.logsumexp(log_component, axis=1)
     return log_mix.sum(axis=1)
 
 
-def compute_bic_2d_diag(
-    x: jnp.ndarray, samples: Dict[str, jnp.ndarray]
-) -> Tuple[float, float]:
+def compute_bic_2d_diag(x: jnp.ndarray, samples: Dict[str, jnp.ndarray]) -> Tuple[float, float]:
     """
     Compute BIC for 2D diagonal-covariance GMM model selection.
 

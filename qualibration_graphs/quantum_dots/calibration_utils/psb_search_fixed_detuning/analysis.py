@@ -38,20 +38,24 @@ def build_labeled_dataset(ds_raw: xr.Dataset, init_state_label: str) -> xr.Datas
     """Map I_no_pi/Q_no_pi/I_pi/Q_pi → Ig/Qg/Ie/Qe based on init_state_label."""
     if init_state_label == "decay":
         # No pi pulse loads T (decay/excited); pi pulse loads S (ground)
-        return xr.Dataset({
-            "Ig": ds_raw["I_pi"],
-            "Qg": ds_raw["Q_pi"],
-            "Ie": ds_raw["I_no_pi"],
-            "Qe": ds_raw["Q_no_pi"],
-        })
+        return xr.Dataset(
+            {
+                "Ig": ds_raw["I_pi"],
+                "Qg": ds_raw["Q_pi"],
+                "Ie": ds_raw["I_no_pi"],
+                "Qe": ds_raw["Q_no_pi"],
+            }
+        )
     else:  # "no_decay"
         # No pi pulse loads S (ground); pi pulse loads T (excited)
-        return xr.Dataset({
-            "Ig": ds_raw["I_no_pi"],
-            "Qg": ds_raw["Q_no_pi"],
-            "Ie": ds_raw["I_pi"],
-            "Qe": ds_raw["Q_pi"],
-        })
+        return xr.Dataset(
+            {
+                "Ig": ds_raw["I_no_pi"],
+                "Qg": ds_raw["Q_no_pi"],
+                "Ie": ds_raw["I_pi"],
+                "Qe": ds_raw["Q_pi"],
+            }
+        )
 
 
 def gmm_analytic_fidelity(means, stds, weights, t_grid=None):
@@ -64,15 +68,15 @@ def gmm_analytic_fidelity(means, stds, weights, t_grid=None):
     Sweeps t over a dense grid and returns the maximum.
     """
     m0, m1 = float(means[0]), float(means[1])  # S component < T component
-    s0, s1 = float(stds[0]),  float(stds[1])
+    s0, s1 = float(stds[0]), float(stds[1])
 
     if t_grid is None:
         lo = min(m0 - 4 * s0, m1 - 4 * s1)
         hi = max(m0 + 4 * s0, m1 + 4 * s1)
         t_grid = np.linspace(lo, hi, 2000)
 
-    FS = _scipy_norm.cdf(t_grid, loc=m0, scale=s0)          # P(X <= t | S)
-    FT = 1.0 - _scipy_norm.cdf(t_grid, loc=m1, scale=s1)    # P(X > t  | T)
+    FS = _scipy_norm.cdf(t_grid, loc=m0, scale=s0)  # P(X <= t | S)
+    FT = 1.0 - _scipy_norm.cdf(t_grid, loc=m1, scale=s1)  # P(X > t  | T)
     fidelity_curve = 0.5 * (FS + FT)
 
     best_idx = int(np.argmax(fidelity_curve))
@@ -105,7 +109,7 @@ def fit_gmm_labeled(
 
     y_g_list, y_e_list = [], []
     gmm_mean_S_list, gmm_mean_T_list = [], []
-    gmm_std_S_list,  gmm_std_T_list  = [], []
+    gmm_std_S_list, gmm_std_T_list = [], []
     gmm_weight_S_list, gmm_weight_T_list = [], []
     ge_threshold_list, readout_fidelity_list = [], []
 
@@ -131,8 +135,8 @@ def fit_gmm_labeled(
         gmm = GaussianMixture(n_components=2, random_state=42)
         gmm.fit(y.reshape(-1, 1))
 
-        raw_means   = gmm.means_.ravel()
-        raw_stds    = np.sqrt(gmm.covariances_.ravel())
+        raw_means = gmm.means_.ravel()
+        raw_stds = np.sqrt(gmm.covariances_.ravel())
         raw_weights = gmm.weights_
 
         # Identify which GMM component is S vs T using the two streams'
@@ -143,8 +147,8 @@ def fit_gmm_labeled(
         s_comp = int(np.argmax(avg_posterior_g))
         t_comp = 1 - s_comp
 
-        means_st   = raw_means[[s_comp, t_comp]]
-        stds_st    = raw_stds[[s_comp, t_comp]]
+        means_st = raw_means[[s_comp, t_comp]]
+        stds_st = raw_stds[[s_comp, t_comp]]
         weights_st = raw_weights[[s_comp, t_comp]]
 
         # Ensure S < T on the projected axis (required by the fidelity
@@ -198,21 +202,21 @@ def fit_gmm_labeled(
     y_g_pad = np.full((len(qnames), n_s_max), np.nan)
     y_e_pad = np.full((len(qnames), n_t_max), np.nan)
     for i, (yg, ye) in enumerate(zip(y_g_list, y_e_list)):
-        y_g_pad[i, :len(yg)] = yg
-        y_e_pad[i, :len(ye)] = ye
+        y_g_pad[i, : len(yg)] = yg
+        y_e_pad[i, : len(ye)] = ye
 
     ds_gmm_fit = xr.Dataset(
         coords={"qubit": qnames},
         data_vars={
-            "y_g":           (["qubit", "n_s"],  y_g_pad),
-            "y_e":           (["qubit", "n_t"],  y_e_pad),
-            "gmm_mean_S":    ("qubit", np.array(gmm_mean_S_list)),
-            "gmm_mean_T":    ("qubit", np.array(gmm_mean_T_list)),
-            "gmm_std_S":     ("qubit", np.array(gmm_std_S_list)),
-            "gmm_std_T":     ("qubit", np.array(gmm_std_T_list)),
-            "gmm_weight_S":  ("qubit", np.array(gmm_weight_S_list)),
-            "gmm_weight_T":  ("qubit", np.array(gmm_weight_T_list)),
-            "ge_threshold":  ("qubit", np.array(ge_threshold_list)),
+            "y_g": (["qubit", "n_s"], y_g_pad),
+            "y_e": (["qubit", "n_t"], y_e_pad),
+            "gmm_mean_S": ("qubit", np.array(gmm_mean_S_list)),
+            "gmm_mean_T": ("qubit", np.array(gmm_mean_T_list)),
+            "gmm_std_S": ("qubit", np.array(gmm_std_S_list)),
+            "gmm_std_T": ("qubit", np.array(gmm_std_T_list)),
+            "gmm_weight_S": ("qubit", np.array(gmm_weight_S_list)),
+            "gmm_weight_T": ("qubit", np.array(gmm_weight_T_list)),
+            "ge_threshold": ("qubit", np.array(ge_threshold_list)),
             "readout_fidelity": ("qubit", np.array(readout_fidelity_list)),
         },
     )

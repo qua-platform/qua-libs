@@ -100,9 +100,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
             point_name = dot_pair._create_point_name("measure")
             point = dot_pair_gate_set.get_macros()[point_name]
-            node.namespace["tracked_original_detunings"][dot_pair.name] = point.voltages.get(
-                dot_pair.name
-            )
+            node.namespace["tracked_original_detunings"][dot_pair.name] = point.voltages.get(dot_pair.name)
             point.voltages[dot_pair.name] = node.parameters.detuning
 
     ramp_min = int(node.parameters.ramp_duration_min)
@@ -143,7 +141,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with for_(*from_array(ramp_d, ramp_duration_array)):
                 for qubit_pair in qubit_pairs:
                     dot_pair = qubit_pair.quantum_dot_pair
-                    dot_pair.voltage_sequence.step_to_voltages(voltages = {}, duration = node.parameters.reset_wait_time)
+                    dot_pair.voltage_sequence.step_to_voltages(voltages={}, duration=node.parameters.reset_wait_time)
                     align()
 
                     dot_pair.macros[node.parameters.initialization_macro].apply()
@@ -165,11 +163,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     save(Q[qubit_pair.name], Q_st[qubit_pair.name])
                     align(rr.id, dot_pair.physical_channel.id)
 
-                    dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero = True, return_to_zero = True)
+                    dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
 
                     dot_pair.voltage_sequence.ramp_to_zero()
 
-                    align()                   
+                    align()
 
         with stream_processing():
             n_st.save("n")
@@ -223,14 +221,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        job.wait_until("Done")  
+        job.wait_until("Done")
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter_with_log(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         node.log(job.execution_report())
 

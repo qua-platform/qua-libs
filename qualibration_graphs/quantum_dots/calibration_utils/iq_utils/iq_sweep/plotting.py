@@ -29,9 +29,7 @@ def plot_metric_vs_sweep(
     """
     n = len(qubit_pairs)
     n_rows, n_cols = _grid(n)
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), squeeze=False)
     axes_flat = axes.flatten()
 
     sweep_vals = np.asarray(fits[sweep_name].values)
@@ -105,9 +103,7 @@ def plot_sweep_summary(
     """Fidelity and visibility on twin y-axes per qubit pair with both optima marked."""
     n = len(qubit_pairs)
     n_rows, n_cols = _grid(n)
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows), squeeze=False)
     axes_flat = axes.flatten()
     sweep_vals = np.asarray(fits[sweep_name].values)
     x_label = _sweep_axis_label(fits, sweep_name)
@@ -191,9 +187,7 @@ def plot_histograms_vs_sweep(
     """
     n = len(qubit_pairs)
     n_rows, n_cols = _grid(n)
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(5.5 * n_cols, 4.2 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5.5 * n_cols, 4.2 * n_rows), squeeze=False)
     axes_flat = axes.flatten()
 
     sweep_vals = np.asarray(ds[sweep_name].values)
@@ -215,7 +209,7 @@ def plot_histograms_vs_sweep(
             I = np.asarray(ds.I.sel(qubit_pair=name, **{sweep_name: v}).values).ravel()
             Q = np.asarray(ds.Q.sel(qubit_pair=name, **{sweep_name: v}).values).ravel()
             if use_amplitude:
-                proj = I ** 2 + Q ** 2
+                proj = I**2 + Q**2
             else:
                 ang = float(np.asarray(fit_q.iw_angle.sel(**{sweep_name: v}).values))
                 if not np.isfinite(ang):
@@ -309,10 +303,7 @@ def plot_histograms_vs_sweep(
     for idx in range(n, len(axes_flat)):
         axes_flat[idx].set_visible(False)
 
-    fig.suptitle(
-        f"Shot histograms vs {sweep_name}"
-        + (" [normalised by sweep value]" if normalize_by_sweep else "")
-    )
+    fig.suptitle(f"Shot histograms vs {sweep_name}" + (" [normalised by sweep value]" if normalize_by_sweep else ""))
     fig.tight_layout()
     return fig
 

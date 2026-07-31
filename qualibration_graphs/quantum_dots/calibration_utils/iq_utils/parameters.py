@@ -3,11 +3,13 @@ from qualibrate.core.parameters import RunnableParameters
 
 __all__ = ["IQParameters", "IQSweepParameters"]
 
-class IQParameters(RunnableParameters): 
+
+class IQParameters(RunnableParameters):
     operation: Literal["readout", "readout_QND"] = "readout"
     """Type of operation to perform. Default is "readout"."""
 
-class IQSweepParameters(IQParameters): 
+
+class IQSweepParameters(IQParameters):
     sweep_name: str = "detuning"
     """Name of the swept coordinate in ds_raw (e.g. "detuning", "integration_time")."""
     optimization_metric: Literal["fidelity", "visibility"] = "fidelity"

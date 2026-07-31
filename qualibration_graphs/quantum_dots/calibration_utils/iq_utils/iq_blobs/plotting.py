@@ -69,9 +69,7 @@ def plot_iq_blobs(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     return fig
 
 
-def plot_individual_iq_blobs(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
+def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -181,9 +179,7 @@ def plot_histograms(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     return fig
 
 
-def plot_individual_histograms(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
+def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -302,9 +298,7 @@ def plot_confusion_matrices(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset)
     return fig
 
 
-def plot_individual_confusion_matrix(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
+def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots individual quantum dot pair data on a given axis with optional fit.
 
@@ -324,9 +318,7 @@ def plot_individual_confusion_matrix(
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    confusion = np.array(
-        [[float(fit.gg), float(fit.ge)], [float(fit.eg), float(fit.ee)]]
-    )
+    confusion = np.array([[float(fit.gg), float(fit.ge)], [float(fit.eg), float(fit.ee)]])
     ax.imshow(confusion)
     ax.set_xticks([0, 1])
     ax.set_yticks([0, 1])
@@ -393,9 +385,7 @@ def plot_visibility_curves(ds: xr.Dataset, qubits: List[Any], fits: xr.Dataset):
     return fig
 
 
-def plot_individual_visibility_curve(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
+def plot_individual_visibility_curve(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """
     Plots fidelity and visibility curves on the same axes, highlighting their optima.
 

@@ -33,10 +33,6 @@ class NodeSpecificParameters(RunnableParameters):
 
 
 class Parameters(
-    NodeParameters,
-    CommonNodeParameters,
-    NodeSpecificParameters,
-    QubitPairExperimentNodeParameters,
-    IQSweepParameters
+    NodeParameters, CommonNodeParameters, NodeSpecificParameters, QubitPairExperimentNodeParameters, IQSweepParameters
 ):
     pass

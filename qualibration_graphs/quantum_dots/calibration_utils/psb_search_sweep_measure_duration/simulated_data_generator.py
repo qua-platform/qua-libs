@@ -200,11 +200,7 @@ def generate_simulated_dataset(node: "QualibrationNode") -> xr.Dataset:
 
     readout_max = node.parameters.readout_length_max
     if readout_max is None:
-        readout_max = (
-            qubit_pairs[0].quantum_dot_pair.sensor_dots[0].readout_resonator.operations[
-                "readout"
-            ].length
-        )
+        readout_max = qubit_pairs[0].quantum_dot_pair.sensor_dots[0].readout_resonator.operations["readout"].length
 
     sweep = build_psb_readout_sweep(
         node.parameters.readout_length_min,

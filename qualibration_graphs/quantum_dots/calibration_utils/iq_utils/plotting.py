@@ -51,9 +51,8 @@ def _plot_iq_kde(ax: plt.Axes, I: np.ndarray, Q: np.ndarray, *, n_grid: int = 10
         cmap="viridis",
     )
 
-def _plot_iq_scatter(
-    ax: plt.Axes, I: np.ndarray, Q: np.ndarray, *, s: float = 4, alpha: float = 0.15
-) -> None:
+
+def _plot_iq_scatter(ax: plt.Axes, I: np.ndarray, Q: np.ndarray, *, s: float = 4, alpha: float = 0.15) -> None:
     """Render raw I/Q shots as a scatter (density emerges from point overlap)."""
     ax.scatter(I, Q, s=s, alpha=alpha, edgecolors="none", color="C0", rasterized=True)
     ax.set_aspect("auto")
@@ -70,7 +69,7 @@ def plot_rotated_iq_density(
     *,
     n_grid: int = 100,
     plot_kde: bool = True,
-    alpha: float = 0.15, 
+    alpha: float = 0.15,
     s: float = 4,
 ) -> Figure:
     """Two subplots per item: raw IQ density and rotated IQ density + threshold."""
@@ -100,10 +99,10 @@ def plot_rotated_iq_density(
             ax_rot.set_title(f"{name} (insufficient data)")
             continue
 
-        if plot_kde: 
+        if plot_kde:
             _plot_iq_kde(ax_raw, I_raw, Q_raw, n_grid=n_grid)
-        else: 
-            _plot_iq_scatter(ax_raw, I_raw, Q_raw, alpha = alpha, s = s)
+        else:
+            _plot_iq_scatter(ax_raw, I_raw, Q_raw, alpha=alpha, s=s)
         ax_raw.set_xlabel("I")
         ax_raw.set_ylabel("Q")
         ax_raw.set_title(f"{name}  (raw)")
@@ -112,10 +111,10 @@ def plot_rotated_iq_density(
         I_rot = I_raw * cos_a + Q_raw * sin_a
         Q_rot = -I_raw * sin_a + Q_raw * cos_a
 
-        if plot_kde: 
+        if plot_kde:
             _plot_iq_kde(ax_rot, I_rot, Q_rot, n_grid=n_grid)
-        else: 
-            _plot_iq_scatter(ax_rot, I_rot, Q_rot, alpha = alpha, s = s)
+        else:
+            _plot_iq_scatter(ax_rot, I_rot, Q_rot, alpha=alpha, s=s)
         ax_rot.axvline(
             I_threshold,
             color="r",
@@ -140,16 +139,14 @@ def plot_rotated_iq_density_at_optimum(
     *,
     n_grid: int = 100,
     plot_kde: bool = True,
-    alpha: float = 0.15, 
+    alpha: float = 0.15,
     s: float = 4,
 ) -> Figure:
     """One subplot per item: rotated IQ density at the optimal sweep point."""
     names = _names(items)
     n = len(names)
     n_rows, n_cols = _grid_subplots(n)
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(5.5 * n_cols, 4.5 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5.5 * n_cols, 4.5 * n_rows), squeeze=False)
     axes_flat = axes.flatten()
 
     for idx, name in enumerate(names):
@@ -170,12 +167,8 @@ def plot_rotated_iq_density_at_optimum(
             continue
 
         try:
-            I_raw = np.asarray(
-                ds_raw.I.sel(qubit_pair=name).isel({sweep_dim: opt_idx}).values, dtype=float
-            ).ravel()
-            Q_raw = np.asarray(
-                ds_raw.Q.sel(qubit_pair=name).isel({sweep_dim: opt_idx}).values, dtype=float
-            ).ravel()
+            I_raw = np.asarray(ds_raw.I.sel(qubit_pair=name).isel({sweep_dim: opt_idx}).values, dtype=float).ravel()
+            Q_raw = np.asarray(ds_raw.Q.sel(qubit_pair=name).isel({sweep_dim: opt_idx}).values, dtype=float).ravel()
         except Exception as exc:
             ax.set_title(f"{name} (data error: {exc})")
             continue
@@ -190,10 +183,10 @@ def plot_rotated_iq_density_at_optimum(
         I_rot = I_raw * cos_a + Q_raw * sin_a
         Q_rot = -I_raw * sin_a + Q_raw * cos_a
 
-        if plot_kde: 
-            _plot_iq_kde(ax, I_rot, Q_rot, n_grid = n_grid)
-        else: 
-            _plot_iq_scatter(ax, I_rot, Q_rot, alpha = alpha, s = s)
+        if plot_kde:
+            _plot_iq_kde(ax, I_rot, Q_rot, n_grid=n_grid)
+        else:
+            _plot_iq_scatter(ax, I_rot, Q_rot, alpha=alpha, s=s)
 
         ax.axvline(
             I_threshold,
@@ -204,9 +197,7 @@ def plot_rotated_iq_density_at_optimum(
         )
         ax.set_xlabel("I (rotated)")
         ax.set_ylabel("Q (rotated)")
-        ax.set_title(
-            f"{name}  [{sweep_dim}={result.get('optimal_sweep_value', opt_idx):.4g}]"
-        )
+        ax.set_title(f"{name}  [{sweep_dim}={result.get('optimal_sweep_value', opt_idx):.4g}]")
         ax.legend(loc="upper right", fontsize=8)
 
     for j in range(n, len(axes_flat)):
@@ -227,9 +218,7 @@ def plot_single_histogram_with_fit(
     names = _names(items)
     n = len(names)
     n_rows, n_cols = _grid_subplots(n)
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(5.5 * n_cols, 4.2 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5.5 * n_cols, 4.2 * n_rows), squeeze=False)
     axes_flat = axes.flatten()
 
     has_irot = "irot_scale" in ds_fit and "irot_offset" in ds_fit

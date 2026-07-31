@@ -65,9 +65,9 @@ def plot_all(
         ds_raw,
         fit_results,
         list(qubit_pairs),
-        plot_kde = plot_kde,
-        s = s,
-        alpha = alpha,
+        plot_kde=plot_kde,
+        s=s,
+        alpha=alpha,
     )
     return figures
 
