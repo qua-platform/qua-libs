@@ -20,13 +20,13 @@ from calibration_utils.iq_utils import (
 )
 
 __all__ = [
-    "fit_measure_duration_raw_data",
+    "fit_sweep_rate_raw_data",
     "log_fitted_results",
     "process_raw_dataset",
 ]
 
 
-def fit_measure_duration_raw_data(
+def fit_sweep_rate_raw_data(
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict]:
     """Fit ``node.results['ds_raw']`` per qubit pair and per sweep point.
