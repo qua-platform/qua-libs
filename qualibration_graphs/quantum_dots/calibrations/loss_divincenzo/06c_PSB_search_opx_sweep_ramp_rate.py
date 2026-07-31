@@ -137,14 +137,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   I_st[name], Q_st[name] : buffers collecting I/Q before transfer to PC
         #   n            : shot counter
         #   n_st         : stream reporting shot index to PC (progress bar)
-        n = declare(int)
-        n_st = declare_stream()
-        ramp_d = declare(int)
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=len(qubit_pairs))
 
-        I_st = {qp.name: declare_stream() for qp in qubit_pairs}
-        Q_st = {qp.name: declare_stream() for qp in qubit_pairs}
-        I = {qp.name: declare(fixed) for qp in qubit_pairs}
-        Q = {qp.name: declare(fixed) for qp in qubit_pairs}
+        # Real time variable for the ramp duration
+        ramp_d = declare(int)
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < n_avg, n + 1):
@@ -152,7 +148,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # ── INNER LOOP: sweep ramp duration ───────────────────────────
             with for_(*from_array(ramp_d, ramp_duration_array)):
-                for qubit_pair in qubit_pairs:
+                for i, qubit_pair in enumerate(qubit_pairs):
                     dot_pair = qubit_pair.quantum_dot_pair
 
                     # ── STEP 0 - RESET: ensure settling between sweep points ──────────
@@ -184,8 +180,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     rr.measure(op_name, qua_vars=(I[qubit_pair.name], Q[qubit_pair.name]))
 
                     # Append this sweep point's I/Q to the stream buffer
-                    save(I[qubit_pair.name], I_st[qubit_pair.name])
-                    save(Q[qubit_pair.name], Q_st[qubit_pair.name])
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
                     align(rr.id, dot_pair.physical_channel.id)
 
                     # Apply the compensation pulse via the voltage sequence
@@ -200,13 +196,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             n_r = len(ramp_duration_array)
-            for qp in qubit_pairs:
+            for i, qp in enumerate(qubit_pairs):
                 # Each save() above is one sweep point.
                 # .buffer(n_r)   : group points along the ramp_duration axis
                 # .buffer(n_avg) : group points along the repetitions axis
                 # Result : 2D trace I(ramp_duration, n_runs), Q(ramp_duration, n_runs) per qubit pair
-                I_st[qp.name].buffer(n_r).buffer(n_avg).save(f"I_{qp.name}")
-                Q_st[qp.name].buffer(n_r).buffer(n_avg).save(f"Q_{qp.name}")
+                I_st[i].buffer(n_r).buffer(n_avg).save(f"I_{qp.name}")
+                Q_st[i].buffer(n_r).buffer(n_avg).save(f"Q_{qp.name}")
 
 
 # %% {Simulate}
