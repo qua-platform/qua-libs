@@ -7,8 +7,9 @@ from .helper_utils import build_ramp_duration_sweep, prepare_dot_pairs, modify_a
 from .analysis import (
     fit_sweep_rate_raw_data,
     log_fitted_results,
+    process_raw_dataset,
 )
-from .plotting import plot_ramp_duration_sweep_figures
+from .plotting import plot_ramp_duration_sweep_figures, plot_all
 
 __all__ = [
     "Parameters",
@@ -18,7 +19,9 @@ __all__ = [
     "fit_sweep_rate_raw_data",
     "log_fitted_results",
     "plot_ramp_duration_sweep_figures",
+    "plot_all",
     "prepare_dot_pairs",
     "modify_and_track_point",
     "validate_and_build_ramp_sweep",
+    "process_raw_dataset",
 ]
