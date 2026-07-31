@@ -144,6 +144,13 @@ for i, q in enumerate(machine.qubits.values()):
 resonator_frequencies = [250e6, 300e6]
 readout_amplitude = 0.02  # In V
 readout_length = 5 * u.us
+# Define which quantum dot pair is used in the readout macro for reading out a given qubit
+qubit_readout_dot_mapping = {
+    "q1": "q2",
+    "q2": "q1",
+    "q3": "q4",
+    "q4": "q3",
+}
 
 for i, s in enumerate(machine.sensor_dots.values()):
     s.readout_resonator.intermediate_frequency = resonator_frequencies[i]
@@ -151,6 +158,9 @@ for i, s in enumerate(machine.sensor_dots.values()):
     s.readout_resonator.opx_output.upsampling_mode = "mw"
     s.readout_resonator.operations["readout"].amplitude = readout_amplitude
     s.readout_resonator.operations["readout"].length = readout_length
+
+for q in machine.qubits.values():
+    q.preferred_readout_quantum_dot = qubit_readout_dot_mapping[q.name]
 
 ################################
 # %%   Compensation Matrix #####
