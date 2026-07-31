@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 import numpy as np
 import xarray as xr
 
-from calibration_utils.iq_blobs.readout_barthel.simulate import (
+from calibration_utils.iq_utils.iq_blobs.readout_barthel.simulate import (
     SimulationParamsIQ,
     simulate_readout_iq,
 )

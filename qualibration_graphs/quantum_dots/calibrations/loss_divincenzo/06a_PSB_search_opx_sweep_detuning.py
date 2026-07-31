@@ -77,7 +77,9 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.num_shots = 5000
     node.parameters.use_simulated_data = True
+    node.parameters.plot_kde = False
     pass
 
 
@@ -311,12 +313,17 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot all node figures via the shared plotting API."""
+    # s and alpha are relevant kwargs for plotting a scatter plot. 
+    # Hard coded here as 4 and 0.15, since they should not be exposed as node parameters. 
     node.results["figures"] = plot_all(
         node.results["ds_raw"],
         node.namespace["qubit_pairs"],
         node.results["ds_fit"],
         sweep_name=node.parameters.sweep_name,
         fit_results=node.results["fit_results"],
+        plot_kde = node.parameters.plot_kde,
+        s = 4, 
+        alpha = 0.15
     )
     if not node.modes.external:
         plt.show()

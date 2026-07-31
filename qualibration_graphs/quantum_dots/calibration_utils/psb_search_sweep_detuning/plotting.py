@@ -28,6 +28,9 @@ def plot_all(
     *,
     sweep_name: str = "detuning",
     fit_results: Optional[Dict[str, Any]] = None,
+    plot_kde: bool = True,
+    s: float = 4,
+    alpha: float = 0.15,
 ) -> Dict[str, Figure]:
     """Generate all standard figures for the PSB detuning sweep node."""
     if fit_results is None:
@@ -62,6 +65,9 @@ def plot_all(
         ds_raw,
         fit_results,
         list(qubit_pairs),
+        plot_kde = plot_kde,
+        s = s,
+        alpha = alpha,
     )
     return figures
 
