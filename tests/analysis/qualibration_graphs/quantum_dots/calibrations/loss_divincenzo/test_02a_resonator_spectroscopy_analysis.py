@@ -1,8 +1,7 @@
 """Analysis test for 02a_resonator_spectroscopy.
 
-Builds a synthetic resonator-response dataset (I/Q vs detuning) with a
-single Lorentzian dip, then runs the node analysis pipeline via the
-shared ``analysis_runner`` fixture.
+Uses the node's ``generate_simulated_dataset`` helper to build synthetic I/Q
+data, then runs the analysis pipeline via the shared ``analysis_runner`` fixture.
 """
 
 from __future__ import annotations
@@ -12,12 +11,15 @@ import types
 
 import numpy as np
 import pytest
-import xarray as xr
 from matplotlib.figure import Figure
+from qualang_tools.units import unit
+
+from calibration_utils.resonator_spectroscopy import generate_simulated_dataset
 
 NODE_NAME = "02a_resonator_spectroscopy"
 SENSOR_NAME = "virtual_sensor_1"
-DETUNING_CENTER_HZ = 1.2e6
+FREQUENCY_SPAN_MHZ = 12.0
+SIMULATION_SEED = 42
 
 
 def _ensure_werkzeug_serving_stub() -> None:
@@ -58,36 +60,12 @@ def _ensure_video_mode_parameters_stub() -> None:
         sys.modules["calibration_utils.run_video_mode.video_mode_specific_parameters"] = params_mod
 
 
-def _build_resonator_ds_raw() -> xr.Dataset:
-    """Return synthetic raw data in the format expected by the node."""
-    frequency_detuning = np.linspace(-6e6, 6e6, 301, dtype=float)
-
-    width_hz = 0.7e6
-    baseline = 1.0
-    depth = 0.35
-
-    dip = depth / (1.0 + ((frequency_detuning - DETUNING_CENTER_HZ) / width_hz) ** 2)
-
-    # Mild baseline tilt and quadrature component for realistic IQ traces.
-    i_trace = baseline - dip + 0.01 * (frequency_detuning / np.max(np.abs(frequency_detuning)))
-    q_trace = 0.02 * np.sin(
-        2.0 * np.pi * (frequency_detuning - frequency_detuning.min()) / (np.ptp(frequency_detuning))
-    )
-
-    return xr.Dataset(
-        data_vars={
-            "I": (("sensor", "frequency_detuning"), i_trace[np.newaxis, :]),
-            "Q": (("sensor", "frequency_detuning"), q_trace[np.newaxis, :]),
-        },
-        coords={
-            "sensor": [SENSOR_NAME],
-            "frequency_detuning": xr.DataArray(
-                frequency_detuning,
-                dims="frequency_detuning",
-                attrs={"long_name": "readout frequency detuning from IF", "units": "Hz"},
-            ),
-        },
-    )
+def _expected_dip_shift_hz(frequency_span_in_mhz: float, seed: int = SIMULATION_SEED) -> float:
+    """Match the first random dip position drawn by ``generate_simulated_dataset``."""
+    u = unit(coerce_to_integer=True)
+    span = frequency_span_in_mhz * u.MHz
+    rng = np.random.default_rng(seed=seed)
+    return float(rng.uniform(-span * 0.05, span * 0.05))
 
 
 @pytest.mark.analysis
@@ -95,17 +73,19 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
     """Run analyse/plot actions and validate fit + figure outputs."""
     _ensure_werkzeug_serving_stub()
     _ensure_video_mode_parameters_stub()
-    ds_raw = _build_resonator_ds_raw()
+
+    expected_dip_shift_hz = _expected_dip_shift_hz(FREQUENCY_SPAN_MHZ)
 
     node = analysis_runner(
         node_name=NODE_NAME,
-        ds_raw=ds_raw,
+        simulated_data_generator=generate_simulated_dataset,
         param_overrides={
             "num_shots": 8,
-            "frequency_span_in_mhz": 12,
+            "frequency_span_in_mhz": FREQUENCY_SPAN_MHZ,
             "frequency_step_in_mhz": 0.04,
             "sensor_names": [SENSOR_NAME],
         },
+        analyse_qubits=[],
     )
 
     assert "IQ_abs" not in node.results["ds_raw"], "ds_raw should remain unprocessed after analysis."
@@ -121,9 +101,9 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
     assert fit["success"], f"Resonator fit should succeed, got: {fit}"
 
     fitted_shift = float(fit["frequency_shift"])
-    assert (
-        abs(fitted_shift - DETUNING_CENTER_HZ) < 0.8e6
-    ), f"Expected dip near {DETUNING_CENTER_HZ:.0f} Hz, got {fitted_shift:.0f} Hz"
+    assert abs(fitted_shift - expected_dip_shift_hz) < 0.8e6, (
+        f"Expected dip near {expected_dip_shift_hz:.0f} Hz, got {fitted_shift:.0f} Hz"
+    )
 
     fwhm = float(fit["fwhm"])
     assert np.isfinite(fwhm) and fwhm > 0.0, f"Expected positive finite FWHM, got {fwhm}"
@@ -136,7 +116,6 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
     assert len(figures["phase"].axes) > 0
     assert len(figures["amplitude"].axes) > 0
 
-    # update_state should set the sensor IF to the fitted resonance frequency.
     updated_if = float(node.machine.sensor_dots[SENSOR_NAME].readout_resonator.intermediate_frequency)
     assert np.isclose(
         updated_if, fit["resonator_frequency"], rtol=0.0, atol=1e-3
