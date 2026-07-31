@@ -68,7 +68,7 @@ def _validate_array_size(sweep_dict: Dict):
         )
 
 
-def _validate_resonator_types(qubit_pairs):
+def _validate_resonator_types(qubit_pairs) -> str:
     """Ensures that all ReadoutResonators of all SensorDot objects are consistent"""
     kinds = {type(qp.quantum_dot_pair.sensor_dots[0].readout_resonator) for qp in qubit_pairs}
     if len(kinds) != 1:
@@ -76,7 +76,10 @@ def _validate_resonator_types(qubit_pairs):
     (readout_cls,) = tuple(kinds)
     if readout_cls not in (ReadoutResonatorSingle, ReadoutResonatorIQ):
         raise TypeError(f"06b supports ReadoutResonatorSingle and ReadoutResonatorIQ; got {readout_cls}.")
-    return readout_cls
+    if readout_cls is ReadoutResonatorSingle:
+        return "single"
+    else:
+        return "dual"
 
 
 def validate_readout(qubit_pairs, sweep_dict: Dict):

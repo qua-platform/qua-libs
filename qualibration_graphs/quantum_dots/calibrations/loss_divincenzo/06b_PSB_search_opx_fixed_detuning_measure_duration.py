@@ -8,10 +8,7 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from quam_builder.architecture.quantum_dots.components.readout_resonator import (
-    ReadoutResonatorSingle,
-    ReadoutResonatorIQ,
-)
+
 from qualibrate.core import QualibrationNode
 from qualibration_libs.parameters.experiment import get_qubit_pairs
 from quam_config import QubitQuam as Quam
@@ -209,7 +206,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # measure_accumulated returns differently depending on ReadoutResonator type:
                 #      ReadoutResonatorSingle - returns a single IQ pair, since we have a single analog input
                 #      ReadoutResonatorIQ - returns 4 IQs, since we have a dual analog input
-                if readout_cls is ReadoutResonatorSingle:
+                if readout_cls == "single":
                     I_acc, Q_acc = rr.measure_accumulated(op_name, segment_length=sweep["segment_length"])
                 else:
                     II_a, IQ_a, QI_a, QQ_a = rr.measure_accumulated(op_name, segment_length=sweep["segment_length"])
@@ -221,7 +218,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # Measure_accumulated returns arrays, where each value cumulatively integrates
                 # Now we loop over the arrays, iteratively saving the value into the streams
-                if readout_cls is ReadoutResonatorSingle:
+                if readout_cls == "single":
                     with for_(idx, 0, idx < array_size, idx + 1):
                         save(I_acc[idx], I_st[i])
                         save(Q_acc[idx], Q_st[i])
