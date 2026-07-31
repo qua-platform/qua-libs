@@ -29,8 +29,9 @@ class NodeSpecificParameters(RunnableParameters):
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
-    NodeSpecificParameters,
     QubitPairExperimentNodeParameters,
     IQSweepParameters,
+    NodeSpecificParameters,
 ):
-    pass
+    sweep_name: str = "ramp_duration"
+    """Name of the swept coordinate in ``ds_raw`` (ramp duration in ns)."""

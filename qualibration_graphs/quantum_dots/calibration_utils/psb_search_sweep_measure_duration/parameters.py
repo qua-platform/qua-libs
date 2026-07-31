@@ -37,4 +37,5 @@ class Parameters(
     QubitPairExperimentNodeParameters,
     IQSweepParameters,
 ):
-    pass
+    sweep_name: str = "measure_duration"
+    """Name of the swept coordinate in ``ds_raw`` (ramp duration in ns)."""

@@ -1,4 +1,4 @@
-"""Figures for PSB readout-length sweeps (fidelity, visibility, summary, histograms)."""
+"""Figures for PSB ramp-duration sweeps (fidelity, visibility, summary, histograms)."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ def plot_ramp_duration_sweep_figures(
     *,
     sweep_name: Optional[str] = None,
 ) -> Dict[str, Figure]:
-    """Build the same sweep figure set as detuning PSB (06a), vs readout length.
+    """Build the same sweep figure set as detuning PSB (06a), vs ramp duration.
 
     Parameters
     ----------
@@ -59,15 +59,15 @@ def plot_all(
     s: float = 4,
     alpha: float = 0.15,
 ) -> Dict[str, Figure]:
-    """Standard `plot_all` API for 06b-style readout-length sweeps."""
+    """Standard `plot_all` API for 06c-style ramp-duration sweeps."""
     qubit_pairs_list: List[Any] = list(qubit_pairs)
     figs = {
-        "fidelity_vs_readout_length": plot_fidelity_vs_sweep(ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name),
-        "visibility_vs_readout_length": plot_visibility_vs_sweep(
+        "fidelity_vs_ramp_duration": plot_fidelity_vs_sweep(ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name),
+        "visibility_vs_ramp_duration": plot_visibility_vs_sweep(
             ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name
         ),
         "sweep_summary": plot_sweep_summary(ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name),
-        "histograms_vs_readout_length": plot_histograms_vs_sweep(
+        "histograms_vs_ramp_duration": plot_histograms_vs_sweep(
             ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name, normalize_by_sweep=True
         ),
         "rotated_iq_density": plot_rotated_iq_density_at_optimum(
