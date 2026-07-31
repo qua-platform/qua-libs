@@ -23,7 +23,6 @@ def prepare_dot_pairs(node: QualibrationNode):
     """
     Prepares the QuantumDotPair objects of the QubitPair:
         - Resets the voltage sequence. Done for consecutive runs
-        - Ensures that no quantum_dot_pair has more than one SensorDot
         - If readout_length_max is None in parameters, ensure that either the readout lengths are the same, or
             raise an error.
     """
@@ -33,11 +32,6 @@ def prepare_dot_pairs(node: QualibrationNode):
     # TODO: Verify that this is strictly necessary
     for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
         node.machine.reset_voltage_sequence(gate_set_id)
-    for dot_pair in dot_pair_objects:
-        if len(dot_pair.sensor_dots) != 1:
-            raise ValueError(
-                f"06e expects exactly one sensor dot per pair; {dot_pair.id!r} has {len(dot_pair.sensor_dots)}"
-            )
 
     readout_max = node.parameters.readout_length_max
     if readout_max is None:
@@ -97,7 +91,7 @@ def validate_readout(qubit_pairs, sweep_dict: Dict):
 
 def modify_and_track_point(
     qubit_pair,
-    detuning_value: float,
+    detuning_value: float | None,
     tracked_dict: Dict,
 ):
     """If a detuning value is given, then this will be added to the tracked changes dict and the point will be mutated for now."""
