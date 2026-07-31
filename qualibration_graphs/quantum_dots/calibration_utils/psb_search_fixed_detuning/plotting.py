@@ -45,22 +45,20 @@ def plot_labeled_histogram_barthel(
         n_runs = int(ds_labeled["Ig"].sel(qubit=qname).shape[-1])
         y_all = np.asarray(fit.y_pca.values, dtype=float).ravel()
         y_s = y_all[:n_runs]
-        y_t = y_all[n_runs: n_runs * 2]
+        y_t = y_all[n_runs : n_runs * 2]
 
         xs = np.asarray(fit.density_grid.values, dtype=float)
-        total    = np.asarray(fit.density_total.values,  dtype=float)
-        S_comp   = np.asarray(fit.density_S.values,      dtype=float)
-        T_no     = np.asarray(fit.density_T_no.values,   dtype=float)
-        T_dec    = np.asarray(fit.density_T_dec.values,  dtype=float)
+        total = np.asarray(fit.density_total.values, dtype=float)
+        S_comp = np.asarray(fit.density_S.values, dtype=float)
+        T_no = np.asarray(fit.density_T_no.values, dtype=float)
+        T_dec = np.asarray(fit.density_T_dec.values, dtype=float)
 
-        ax.hist(y_s[np.isfinite(y_s)], bins=n_bins, alpha=0.35, density=True,
-                label="S shots", color="C0")
-        ax.hist(y_t[np.isfinite(y_t)], bins=n_bins, alpha=0.35, density=True,
-                label="T shots", color="C1")
-        ax.plot(xs, total,  lw=2.0, color="black", label="Total (Barthel)")
-        ax.plot(xs, S_comp, lw=1.2, ls="--", color="C0",  label="S component")
-        ax.plot(xs, T_no,   lw=1.2, ls="--", color="C2",  label="T (no decay)")
-        ax.plot(xs, T_dec,  lw=1.2, ls="--", color="C3",  label="T (decay)")
+        ax.hist(y_s[np.isfinite(y_s)], bins=n_bins, alpha=0.35, density=True, label="S shots", color="C0")
+        ax.hist(y_t[np.isfinite(y_t)], bins=n_bins, alpha=0.35, density=True, label="T shots", color="C1")
+        ax.plot(xs, total, lw=2.0, color="black", label="Total (Barthel)")
+        ax.plot(xs, S_comp, lw=1.2, ls="--", color="C0", label="S component")
+        ax.plot(xs, T_no, lw=1.2, ls="--", color="C2", label="T (no decay)")
+        ax.plot(xs, T_dec, lw=1.2, ls="--", color="C3", label="T (decay)")
 
         thr = float(np.asarray(fit.norm_ge_threshold.values).ravel()[0])
         if np.isfinite(thr):
@@ -68,9 +66,14 @@ def plot_labeled_histogram_barthel(
 
         w = np.asarray(fit.weights.values, dtype=float).ravel()
         if w.size >= 3:
-            ax.text(0.02, 0.98,
-                    f"w_S={w[0]:.2f}  w_T(no)={w[1]:.2f}  w_T(dec)={w[2]:.2f}",
-                    transform=ax.transAxes, va="top", fontsize=8)
+            ax.text(
+                0.02,
+                0.98,
+                f"w_S={w[0]:.2f}  w_T(no)={w[1]:.2f}  w_T(dec)={w[2]:.2f}",
+                transform=ax.transAxes,
+                va="top",
+                fontsize=8,
+            )
 
         fid = float(np.asarray(fit.fidelity_opt.values).ravel()[0]) * 100
         ax.set_title(f"{qname}  (F = {fid:.1f} %)")
@@ -118,10 +121,10 @@ def plot_labeled_histogram_gmm(
         y_g = y_g[np.isfinite(y_g)]
         y_e = y_e[np.isfinite(y_e)]
 
-        m_S, s_S, w_S = (float(fit.gmm_mean_S),   float(fit.gmm_std_S),   float(fit.gmm_weight_S))
-        m_T, s_T, w_T = (float(fit.gmm_mean_T),   float(fit.gmm_std_T),   float(fit.gmm_weight_T))
-        thr             = float(fit.ge_threshold)
-        fid             = float(fit.readout_fidelity) * 100.0
+        m_S, s_S, w_S = (float(fit.gmm_mean_S), float(fit.gmm_std_S), float(fit.gmm_weight_S))
+        m_T, s_T, w_T = (float(fit.gmm_mean_T), float(fit.gmm_std_T), float(fit.gmm_weight_T))
+        thr = float(fit.ge_threshold)
+        fid = float(fit.readout_fidelity) * 100.0
 
         lo = min(m_S - 4 * s_S, m_T - 4 * s_T)
         hi = max(m_S + 4 * s_S, m_T + 4 * s_T)
@@ -130,14 +133,17 @@ def plot_labeled_histogram_gmm(
         # Bin edges over the same [lo, hi] window as the PDF curves so that bin width
         # matches the distribution width and histogram density aligns with the PDF scale.
         bin_edges = np.linspace(lo, hi, n_bins + 1)
-        ax.hist(y_g, bins=bin_edges, alpha=0.35, density=True, label="S shots",  color="C0")
-        ax.hist(y_e, bins=bin_edges, alpha=0.35, density=True, label="T shots",  color="C1")
-        ax.plot(xs, w_S * _scipy_norm.pdf(xs, m_S, s_S),
-                lw=1.2, ls="--", color="C0", label="S component")
-        ax.plot(xs, w_T * _scipy_norm.pdf(xs, m_T, s_T),
-                lw=1.2, ls="--", color="C1", label="T component")
-        ax.plot(xs, w_S * _scipy_norm.pdf(xs, m_S, s_S) + w_T * _scipy_norm.pdf(xs, m_T, s_T),
-                lw=2.0, color="black", label="Total (GMM)")
+        ax.hist(y_g, bins=bin_edges, alpha=0.35, density=True, label="S shots", color="C0")
+        ax.hist(y_e, bins=bin_edges, alpha=0.35, density=True, label="T shots", color="C1")
+        ax.plot(xs, w_S * _scipy_norm.pdf(xs, m_S, s_S), lw=1.2, ls="--", color="C0", label="S component")
+        ax.plot(xs, w_T * _scipy_norm.pdf(xs, m_T, s_T), lw=1.2, ls="--", color="C1", label="T component")
+        ax.plot(
+            xs,
+            w_S * _scipy_norm.pdf(xs, m_S, s_S) + w_T * _scipy_norm.pdf(xs, m_T, s_T),
+            lw=2.0,
+            color="black",
+            label="Total (GMM)",
+        )
 
         if np.isfinite(thr):
             ax.axvline(thr, color="r", ls="--", lw=1.5, label=f"Threshold = {thr:.3g}")

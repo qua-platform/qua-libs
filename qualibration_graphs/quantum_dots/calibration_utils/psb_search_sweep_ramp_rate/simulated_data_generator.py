@@ -47,9 +47,7 @@ def generate_simulated_dataset(node: "QualibrationNode") -> xr.Dataset:
         node.parameters.ramp_duration_step,
     )
     if len(ramp_array) == 0:
-        raise ValueError(
-            "Empty ramp duration sweep: check ramp_duration_min < ramp_duration_max with positive step."
-        )
+        raise ValueError("Empty ramp duration sweep: check ramp_duration_min < ramp_duration_max with positive step.")
 
     sweep_name = node.parameters.sweep_name
     ramp_floats = ramp_array.astype(float)

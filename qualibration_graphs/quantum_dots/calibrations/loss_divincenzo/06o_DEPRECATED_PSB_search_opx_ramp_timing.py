@@ -70,10 +70,7 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    dot_pair_objects = [
-        node.machine.quantum_dot_pairs[name]
-        for name in node.parameters.quantum_dot_pair_names
-    ]
+    dot_pair_objects = [node.machine.quantum_dot_pairs[name] for name in node.parameters.quantum_dot_pair_names]
 
     node.namespace["dot_pairs"] = dot_pair_objects
 
@@ -101,8 +98,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             point = dot_pair_gate_set.get_macros()[point_name]
 
             # Save the original detuning
-            node.namespace["tracked_original_detunings"][dot_pair.name] = (
-                point.voltages.get(dot_pair.detuning_axis_name)
+            node.namespace["tracked_original_detunings"][dot_pair.name] = point.voltages.get(
+                dot_pair.detuning_axis_name
             )
 
             # Apply the change for the node
@@ -110,9 +107,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # The swept 'axes'. Do we do a full 2D scan here?
     node.namespace["sweep_axes"] = {
-        "ramp_durations": xr.DataArray(
-            ramp_duration_array, attrs={"long_name": "ramp duration", "units": "ns"}
-        ),
+        "ramp_durations": xr.DataArray(ramp_duration_array, attrs={"long_name": "ramp duration", "units": "ns"}),
         "quantum_dot_pair": xr.DataArray([pair.name for pair in dot_pair_objects]),
     }
     with program() as prog:
@@ -152,9 +147,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # Measure point is a tracked change, so this should respect the user's detuning parameter input
                     # Ramp duration is overridden temporarily for each measure macro.
-                    I[dot_pair.name], Q[dot_pair.name] = dot_pair.measure(
-                        ramp_duration=ramp_duration
-                    )
+                    I[dot_pair.name], Q[dot_pair.name] = dot_pair.measure(ramp_duration=ramp_duration)
                     save(I[dot_pair.name], I_st[dot_pair.name])
                     save(Q[dot_pair.name], Q_st[dot_pair.name])
 
@@ -166,18 +159,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
 
             for pair in dot_pair_objects:
-                I_st[pair.name].buffer(len(ramp_duration_array)).average().save(
-                    f"I_{pair.name}"
-                )
-                Q_st[pair.name].buffer(len(ramp_duration_array)).average().save(
-                    f"Q_{pair.name}"
-                )
+                I_st[pair.name].buffer(len(ramp_duration_array)).average().save(f"I_{pair.name}")
+                Q_st[pair.name].buffer(len(ramp_duration_array)).average().save(f"Q_{pair.name}")
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
@@ -185,9 +172,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -197,9 +182,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -214,10 +197,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter_with_log(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -263,9 +243,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             point = dot_pair_gate_set.get_macros()[point_name]
 
             # Revert change
-            point.voltages[dot_pair.detuning_axis_name] = node.namespace[
-                "tracked_original_detunings"
-            ][dot_pair.name]
+            point.voltages[dot_pair.detuning_axis_name] = node.namespace["tracked_original_detunings"][dot_pair.name]
 
     with node.record_state_updates():
         # This is a characterization measurement and typically does not update state parameters.
@@ -283,6 +261,3 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
-
-
-    

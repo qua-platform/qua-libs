@@ -441,9 +441,7 @@ def fit_barthel_mixed_iq(
         m = np.isfinite(I) & np.isfinite(Q)
         I, Q = I[m], Q[m]
         if I.size < 8:
-            raise ValueError(
-                f"Need at least 8 finite I/Q shots for Barthel fit (pair {qp.name!r} has {I.size})."
-            )
+            raise ValueError(f"Need at least 8 finite I/Q shots for Barthel fit (pair {qp.name!r} has {I.size}).")
         X = jnp.asarray(np.column_stack([I, Q]), dtype=float)
 
         y, proj, normalizer, _mcmc, samples, _, _calib = Barthel1DFromIQ.fit(
@@ -459,9 +457,7 @@ def fit_barthel_mixed_iq(
         angle = jnp.arctan2(proj_dir[1], proj_dir[0])
         angles.append(float(angle))
 
-        rotation_matrix = jnp.array(
-            [[jnp.cos(angle), jnp.sin(angle)], [-jnp.sin(angle), jnp.cos(angle)]]
-        )
+        rotation_matrix = jnp.array([[jnp.cos(angle), jnp.sin(angle)], [-jnp.sin(angle), jnp.cos(angle)]])
         proj_rotated_mean = jnp.asarray(proj.mean) @ rotation_matrix.T
 
         irot_scale_list.append(float(normalizer.scale))
@@ -503,11 +499,7 @@ def fit_barthel_mixed_iq(
         S_comp = (1 - pT_m) * _norm_pdf(xs_jax, mu_S, sigma)
         p_no = float(jnp.exp(-tauM_m / T1_m)) if T1_m > 0 else 0.0
         T_no_comp = pT_m * p_no * _norm_pdf(xs_jax, mu_T, sigma)
-        T_dec_comp = (
-            pT_m
-            * (1.0 / T1_m)
-            * decay_inflight_integral(xs_jax, mu_S, mu_T, sigma, T1_m, tauM_m)
-        )
+        T_dec_comp = pT_m * (1.0 / T1_m) * decay_inflight_integral(xs_jax, mu_S, mu_T, sigma, T1_m, tauM_m)
         total = S_comp + T_no_comp + T_dec_comp
         w_S = 1 - pT_m
         w_T_no = pT_m * p_no

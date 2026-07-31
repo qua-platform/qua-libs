@@ -105,9 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
             point_name = dot_pair._create_point_name("measure")
             point = dot_pair_gate_set.get_macros()[point_name]
-            node.namespace["tracked_original_detunings"][dot_pair.name] = point.voltages.get(
-                dot_pair.name
-            )
+            node.namespace["tracked_original_detunings"][dot_pair.name] = point.voltages.get(dot_pair.name)
             point.voltages[dot_pair.name] = node.parameters.detuning
 
     readout_max = node.parameters.readout_length_max
@@ -195,7 +193,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     II_a, IQ_a, QI_a, QQ_a = rr.measure_accumulated(readout_pulse_name, segment_length=segment_length)
 
                 align(rr.id, dot_pair.physical_channel.id)
-                dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero = True, return_to_zero = True)
+                dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
                 dot_pair.voltage_sequence.ramp_to_zero()
 
                 if readout_cls is ReadoutResonatorSingle:
@@ -224,7 +222,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
-    qmm = node.machine.connect(timeout = 600)
+    qmm = node.machine.connect(timeout=600)
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {
@@ -264,10 +262,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter_with_log(
-                data_fetcher.get("n", 0),
-                node.parameters.num_shots,
-                start_time=data_fetcher.t_start,
-                node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
             )
         node.log(job.execution_report())
 
@@ -357,10 +352,12 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             operation = sensor_dot.readout_resonator.operations[op_name]
 
             optimal_ns = int(round(float(fit_result["optimal_sweep_value"])))
-            operation.length = optimal_ns 
+            operation.length = optimal_ns
 
             operation.integration_weights_angle -= float(fit_result["iw_angle"])
-            print(f"For sensor {sensor_dot.name}, pair {dot_pair.name}, threshold calculated to be {fit_result["I_threshold"]} and angle {float(fit_result["iw_angle"])}")
+            print(
+                f"For sensor {sensor_dot.name}, pair {dot_pair.name}, threshold calculated to be {fit_result["I_threshold"]} and angle {float(fit_result["iw_angle"])}"
+            )
             sensor_dot._add_readout_params(dot_pair.name, threshold=float(fit_result["I_threshold"]))
             sensor_dot.readout_thresholds[dot_pair.name] = float(fit_result["I_threshold"])
 

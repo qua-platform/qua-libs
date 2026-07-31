@@ -68,9 +68,7 @@ def _grid_subplots(n: int) -> tuple[int, int]:
     return n_rows, n_cols
 
 
-def _global_readout_axis_from_endpoints(
-    I: np.ndarray, Q: np.ndarray, *, n_edge: int
-) -> tuple[float, float]:
+def _global_readout_axis_from_endpoints(I: np.ndarray, Q: np.ndarray, *, n_edge: int) -> tuple[float, float]:
     """Unit vector (c, s) in the I–Q plane from low-detuning vs high-detuning centroids."""
     n_det = I.shape[1]
     k = max(1, min(n_edge, n_det // 2 or 1))
@@ -126,9 +124,7 @@ def plot_simulated_dataset_histograms(
 
     n = len(names)
     n_rows, n_cols = _grid_subplots(n)
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(5.5 * n_cols, 4.2 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5.5 * n_cols, 4.2 * n_rows), squeeze=False)
     axes_flat = axes.flatten()
 
     sweep_vals = np.asarray(ds[sweep_name].values, dtype=float)
@@ -285,8 +281,6 @@ def generate_simulated_dataset(node: "QualibrationNode") -> xr.Dataset:
         coords={
             "qubit_pair": pair_names,
             "n_runs": np.arange(num_shots),
-            "detuning": xr.DataArray(
-                detuning_array, dims="detuning", attrs={"long_name": "voltage", "units": "V"}
-            ),
+            "detuning": xr.DataArray(detuning_array, dims="detuning", attrs={"long_name": "voltage", "units": "V"}),
         },
     )

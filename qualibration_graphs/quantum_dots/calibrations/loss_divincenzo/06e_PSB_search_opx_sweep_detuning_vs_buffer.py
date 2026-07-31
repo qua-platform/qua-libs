@@ -92,8 +92,7 @@ def _reshape_to_shot_detuning_buffer(
         return arr.reshape(n_shots, n_detuning, n_buffer)
 
     raise ValueError(
-        f"Unexpected stream shape {arr.shape}; cannot coerce to "
-        f"({n_shots}, {n_detuning}, {n_buffer})."
+        f"Unexpected stream shape {arr.shape}; cannot coerce to " f"({n_shots}, {n_detuning}, {n_buffer})."
     )
 
 
@@ -110,8 +109,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     for dot_pair in dot_pairs:
         if len(dot_pair.sensor_dots) != 1:
             raise ValueError(
-                "06e expects exactly one sensor dot per pair; "
-                f"{dot_pair.id!r} has {len(dot_pair.sensor_dots)}."
+                "06e expects exactly one sensor dot per pair; " f"{dot_pair.id!r} has {len(dot_pair.sensor_dots)}."
             )
 
     buffer_min = int(node.parameters.buffer_duration_min)
@@ -143,9 +141,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
         "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
         "detuning": xr.DataArray(detuning_array, attrs={"long_name": "detuning", "units": "V"}),
-        "buffer_duration": xr.DataArray(
-            buffer_ns_array, attrs={"long_name": "buffer duration", "units": "ns"}
-        ),
+        "buffer_duration": xr.DataArray(buffer_ns_array, attrs={"long_name": "buffer duration", "units": "ns"}),
     }
 
     with program() as node.namespace["qua_program"]:
@@ -196,11 +192,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         save(q_var[qubit_pair.name], q_stream[qubit_pair.name])
 
                         align(rr.id, dot_pair.physical_channel.id)
-                        dot_pair.voltage_sequence.apply_compensation_pulse(
-                            go_to_zero=True, return_to_zero=True
-                        )
+                        dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
                         dot_pair.voltage_sequence.ramp_to_zero()
-                        wait(1000000//4)
+                        wait(1000000 // 4)
                         align()
 
         with stream_processing():
@@ -220,9 +214,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
