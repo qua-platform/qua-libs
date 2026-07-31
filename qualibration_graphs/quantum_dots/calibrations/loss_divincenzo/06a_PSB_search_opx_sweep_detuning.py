@@ -77,9 +77,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.num_shots = 5000
-    node.parameters.use_simulated_data = True
-    node.parameters.plot_kde = False
     pass
 
 
@@ -129,7 +126,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         detuning = declare(fixed)
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
-        with for_(n, 0, n < node.parameters.num_shots, n + 1):
+        with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)  # tell the PC which shot we are on
 
             # Perform them all sequentially for now. Can add footprint batching later
