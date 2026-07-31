@@ -61,7 +61,7 @@ qubit_pair_sensor_map = {
 # Convenience spec: QDAC1 coarse bias + OPX+ fine/fast outputs on controller 1.
 qdac_opx_spec = qdac2_spec(1) & opx_spec(con=1)
 
-# Sensor reflectometry: OPX+ singleInput channels (no Octave on readout).
+# Sensor reflectometry: OPX+ input/output resonator line (no Octave on readout).
 sensor_1_readout = opx_spec(con=1, in_port=1)
 
 # Shared spin-qubit ESR drive: OPX+ baseband IQ → Octave RF output.
@@ -89,7 +89,7 @@ connectivity.add_voltage_gate_lines("drain", name="", constraints=qdac2_spec(ind
 # Sensor gate lines (QDAC coarse + OPX+ fine)
 connectivity.add_sensor_dot_voltage_gate_lines(sensor_dots, constraints=qdac_opx_spec)
 
-# Sensor reflectometry (OPX+ input only)
+# Sensor reflectometry (OPX+ input/output; pins in_port, output auto-allocated)
 connectivity.add_sensor_dot_resonator_line(
     1,
     shared_line=False,

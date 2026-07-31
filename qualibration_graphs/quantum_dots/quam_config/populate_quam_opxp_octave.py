@@ -5,7 +5,8 @@ initial operational parameters before the first calibration.
 
 Hardware assumptions
 ----------------------
-- Sensor reflectometry: OPX+ ``singleInput`` channels (no Octave on readout).
+- Sensor reflectometry: OPX+ input/output resonator line (``add_sensor_dot_resonator_line``;
+  no Octave on readout).
 - Qubit ESR drive: OPX+ baseband IQ → Octave upconversion (shared drive line).
 """
 
@@ -97,21 +98,27 @@ for pair in machine.qubit_pairs.values():
 ##############################
 # %%   Sensor Properties #####
 ##############################
-# Reflectometry on OPX+ singleInput channels — demod IF only, no Octave on readout.
 resonator_frequencies = [250e6, 300e6]
+readout_amplitude = 0.02  # In V
 readout_length = 5 * u.us
-integration_weights_length = readout_length - 2000  # 2 µs margin for filter settling
+# Define which quantum dot pair is used in the readout macro for reading out a given qubit
+qubit_readout_dot_mapping = {
+    "q1": "q2",
+    "q2": "q1",
+    "q3": "q4",
+    "q4": "q3",
+}
 
 for i, sensor in enumerate(machine.sensor_dots.values()):
     resonator = sensor.readout_resonator
     resonator.intermediate_frequency = int(resonator_frequencies[i])
+    resonator.opx_output.output_mode = "direct"
+    resonator.opx_output.upsampling_mode = "mw"
+    resonator.operations["readout"].amplitude = readout_amplitude
     resonator.operations["readout"].length = readout_length
-    if hasattr(resonator, "integration_weights_length"):
-        resonator.integration_weights_length = integration_weights_length
 
-    # Passive / input-only reflectometry: no readout tone amplitude on an output port.
-    if hasattr(resonator, "opx_output") and resonator.opx_output is not None:
-        resonator.operations["readout"].amplitude = 0.0
+for q in machine.qubits.values():
+    q.preferred_readout_quantum_dot = qubit_readout_dot_mapping[q.name]
 
 ################################
 # %%   Compensation Matrix #####

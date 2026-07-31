@@ -34,7 +34,8 @@ qubit_pair_sensor_map = {
 ########################################################################################################################
 # %%                                 Define OPX+ / Octave channel constraints
 ########################################################################################################################
-# Sensor reflectometry: OPX+ single-input channels only (no Octave on readout).
+# Sensor reflectometry: OPX+ input/output resonator line (no Octave on readout).
+# Pins the ADC port; the wirer auto-allocates a matching OPX+ output port.
 sensor_1_readout = opx_spec(con=1, in_port=1)
 
 # Shared spin-qubit ESR drive: OPX+ baseband IQ → Octave upconversion → RF output.
