@@ -63,7 +63,9 @@ def plot_all(
     qubit_pairs_list: List[Any] = list(qubit_pairs)
     figs = {
         "fidelity_vs_readout_length": plot_fidelity_vs_sweep(ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name),
-        "visibility_vs_readout_length": plot_visibility_vs_sweep(ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name),
+        "visibility_vs_readout_length": plot_visibility_vs_sweep(
+            ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name
+        ),
         "sweep_summary": plot_sweep_summary(ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name),
         "histograms_vs_readout_length": plot_histograms_vs_sweep(
             ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name, normalize_by_sweep=True
@@ -72,9 +74,9 @@ def plot_all(
             ds_raw,
             fit_results,
             qubit_pairs_list,
-            plot_kde = plot_kde, 
-            s = s, 
-            alpha = alpha,
+            plot_kde=plot_kde,
+            s=s,
+            alpha=alpha,
         ),
     }
     return figs

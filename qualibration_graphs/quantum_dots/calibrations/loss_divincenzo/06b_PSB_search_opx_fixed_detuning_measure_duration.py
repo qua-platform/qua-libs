@@ -8,7 +8,10 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from quam_builder.architecture.quantum_dots.components.readout_resonator import ReadoutResonatorSingle, ReadoutResonatorIQ
+from quam_builder.architecture.quantum_dots.components.readout_resonator import (
+    ReadoutResonatorSingle,
+    ReadoutResonatorIQ,
+)
 from qualibrate.core import QualibrationNode
 from qualibration_libs.parameters.experiment import get_qubit_pairs
 from quam_config import QubitQuam as Quam
@@ -23,11 +26,10 @@ from calibration_utils.psb_search_sweep_measure_duration import (
     modify_and_track_point,
     modify_and_track_readout_pulse,
     validate_readout,
-    prepare_dot_pairs
+    prepare_dot_pairs,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-
 
 
 # %% {Node initialisation}
@@ -73,7 +75,7 @@ State update
 ------------
 Reverts temporary detuning/pulse-length overrides, then (if the fit succeeded) persists the
 optimal readout ``length``, integration-weights angle, and discrimination threshold on the
-pair’s sensor dot (same pattern as 05c length + 06a readout calibration).
+pair's sensor dot (same pattern as 05c length + 06a readout calibration).
 """
 
 
@@ -86,7 +88,6 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # node.parameters.num_shots = 10
     pass
 
 
@@ -123,15 +124,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Save the sweep params in the namespace
     node.namespace["readout_sweep"] = sweep
 
-    # measure_accumulated returns differently depending on ReadoutResonator type: 
+    # measure_accumulated returns differently depending on ReadoutResonator type:
     #      ReadoutResonatorSingle - returns a single IQ pair, since we have a single analog input
     #      ReadoutResonatorIQ - returns 4 IQs, since we have a dual analog input
     # Therefore, the class must be consistent
     readout_cls = validate_readout(qubit_pairs, sweep)
 
-
-    # Temporary changes to the Quam for the sake of the program. These are: 
-    #      - The readout pulse length is temporarily changed to match the sweep. This is because this node sweeps the readout length. 
+    # Temporary changes to the Quam for the sake of the program. These are:
+    #      - The readout pulse length is temporarily changed to match the sweep. This is because this node sweeps the readout length.
     #      - If a different detuning value is desired for this sweep, then this temporarily adds this detuning point to the "measure" point.
     node.namespace["tracked_original_detunings"] = {}
     node.namespace["tracked_resonators"] = []
@@ -143,7 +143,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([qp.name for qp in qubit_pairs]),
         "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
-        node.parameters.sweep_name: xr.DataArray(sweep["sweep_coord"], attrs={"long_name": "readout length", "units": "ns"}),
+        node.parameters.sweep_name: xr.DataArray(
+            sweep["sweep_coord"], attrs={"long_name": "readout length", "units": "ns"}
+        ),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -166,9 +168,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st) # tell the PC which shot we are on
+            save(n, n_st)  # tell the PC which shot we are on
 
-            # Loop over the qubit_pairs 
+            # Loop over the qubit_pairs
             for i, qubit_pair in enumerate(qubit_pairs):
 
                 # ── STEP 1 - SETUP & INITIALIZE: Setup the sweep and initialize ──────────
@@ -198,14 +200,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # Make sure to track the duration of the readout pulse. This is to ensure that the compensation pulse calculation is correct
                 dot_pair.voltage_sequence.track_sticky_duration(readout_length)
-                
-                # Make sure to align the measure command to be AFTER the ramp + wait
-                align(
-                        rr.id, dot_pair.physical_channel.id
-                )  
 
-                # Play the "readout_{quantum_dot_pair.name}" pulse and cumulatively integrate I/Q 
-                # measure_accumulated returns differently depending on ReadoutResonator type: 
+                # Make sure to align the measure command to be AFTER the ramp + wait
+                align(rr.id, dot_pair.physical_channel.id)
+
+                # Play the "readout_{quantum_dot_pair.name}" pulse and cumulatively integrate I/Q
+                # measure_accumulated returns differently depending on ReadoutResonator type:
                 #      ReadoutResonatorSingle - returns a single IQ pair, since we have a single analog input
                 #      ReadoutResonatorIQ - returns 4 IQs, since we have a dual analog input
                 if readout_cls is ReadoutResonatorSingle:
@@ -214,7 +214,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     II_a, IQ_a, QI_a, QQ_a = rr.measure_accumulated(op_name, segment_length=sweep["segment_length"])
 
                 align(rr.id, dot_pair.physical_channel.id)
-
 
                 # Apply the compensation pulse via the voltage sequence. This both steps to 0 before, and goes back to 0 after
                 dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
@@ -267,12 +266,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = generate_simulated_dataset(node)
     node.log("[sim] Simulated PSB readout-length dataset generated successfully.")
-
-
-@node.run_action(skip_if=not node.parameters.use_simulated_data)
-def plot_simulated_data(node: QualibrationNode[Parameters, Quam]):
-    """Deprecated: simulated data uses the same `plot_data` infrastructure."""
-    return
 
 
 # %% {Execute}
