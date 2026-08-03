@@ -15,12 +15,8 @@ if TYPE_CHECKING:
 # Typical spin-echo contrast (matches analysis tests).
 _DEFAULT_AMPLITUDE = 0.65
 _DEFAULT_OFFSET = 0.05
-_DEFAULT_T2_ECHO_NS = 2_000.0  # 2 µs
+DEFAULT_T2_ECHO_NS = 2_000.0  # 2 µs
 _IDLE_FACTOR = 2.0
-
-
-def _default_t2_echo(_qubit, _index: int) -> float:
-    return _DEFAULT_T2_ECHO_NS
 
 
 def _echo_decay(
@@ -60,16 +56,16 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         "tau": xr.DataArray(tau_values, attrs=tau_attrs),
     }
 
-    rng = np.random.default_rng(seed=42)
     noise_std = float(getattr(node.parameters, "sim_noise_std", 0.03))
     data_vars: dict[str, tuple[list[str], np.ndarray]] = {}
 
-    for index, qubit in enumerate(qubits):
-        t2 = _default_t2_echo(qubit, index)
-        amp = _DEFAULT_AMPLITUDE * (1.0 - 0.05 * index)
+    for qubit in qubits:
+        qubit_rng = np.random.default_rng(seed=42 + sum(map(ord, qubit.name)))
+        t2 = DEFAULT_T2_ECHO_NS
+        amp = _DEFAULT_AMPLITUDE
         off = _DEFAULT_OFFSET
         signal = _echo_decay(tau_values, t2, amplitude=amp, offset=off)
-        signal = signal + rng.normal(0.0, noise_std, size=signal.shape)
+        signal = signal + qubit_rng.normal(0.0, noise_std, size=signal.shape)
         signal = np.clip(signal, 0.0, 1.0)
 
         if node.parameters.parity_measurement:
