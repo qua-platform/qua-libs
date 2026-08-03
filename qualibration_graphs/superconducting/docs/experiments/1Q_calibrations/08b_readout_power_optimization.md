@@ -88,6 +88,8 @@ Unlike `07_iq_blobs`, this node always targets the `"readout"` operation specifi
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **[T1-vs-$\bar n$ — read this one first] `optimal_amplitude` keeps landing at or very near `end_amp`, and `meas_fidelity` is still rising at that edge** → it's tempting to just push `end_amp` higher to chase more SNR. Before doing that, check the `outliers` (inlier-fraction) curve in `figures["amplitude"]` alongside the fidelity curve: per **[GRTW2021]**'s T1-vs-$\bar n$ problem, raising readout power eventually triggers measurement-induced relaxation with no simple closed-form threshold for where it kicks in on this device. If `outliers` is already trending down as amplitude rises within your current range, that decline *is* the early warning sign — don't just extend the range and re-run; treat a declining inlier fraction as the real ceiling, not the fidelity curve alone.
 2. **`valid_amps` comes back empty — the node errors, or produces a NaN/undefined result instead of a clean `"failed"` outcome for a qubit** → `outliers_threshold` (default 0.98) is excluding every swept amplitude for that qubit, meaning even the *lowest* tested amplitude already shows a below-threshold inlier fraction — this isn't a graceful failure mode in the current source.
 3. **High `meas_fidelity` at the chosen amplitude, but the inner IQ-blobs fit's `readout_fidelity` (or the confusion matrix) looks worse than expected** → the two numbers come from different classifiers on the same data — a 2D Gaussian-mixture assignment (used to pick the amplitude) versus a 1D-threshold classifier (used for the final state update). A GMM can tolerate elongated/rotated blobs that a single-axis threshold resolves less cleanly. Cross-check visually with `figures["iq_blobs"]`/`figures["confusion_matrix"]`, not just the logged `meas_fidelity` number.
@@ -99,8 +101,9 @@ Unlike `07_iq_blobs`, this node always targets the `"readout"` operation specifi
 
 ## Parameter Tuning Heuristics
 
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
+
 1. **`valid_amps` comes back empty for a qubit** → lower `outliers_threshold` modestly and/or lower `start_amp` before assuming something else is broken.
-2. **Fidelity curve is still monotonically rising (or falling) across the entire `[start_amp, end_amp]` span, no interior peak** → the true optimum likely lies outside the swept range. Widen `start_amp`/`end_amp`/`num_amps` rather than accepting an edge value as final — same edge-of-span caution as other sweep-based nodes in this library.
 
 ## Next Steps
 

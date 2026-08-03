@@ -85,13 +85,16 @@ Applied only when the fit succeeds — failed qubits are skipped entirely:
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Outcome reported "failed" despite a clean-looking peak in the raw trace** → the actual failure gate is the saturation-amplitude check, not a direct visibility check (see Outputs). A very narrow fitted `width` inflates the `target_peak_width`-implied `saturation_amplitude` past `instrument_limits.max_wf_amplitude`. Either accept that the requested `target_peak_width` is unrealistically small for this peak, or ignore the outcome label and trust the visible peak (this node doesn't act on `saturation_amp`/`x180_amp` anyway — see the Parameters callout).
 2. **Logged "Qubit frequency" or the plot's "RF frequency" axis look offset from where you'd expect $f_{12}$ to be** → this is expected, not a bug: those values are computed by code shared with `03a` that doesn't know this node shifted its drive by `−anharmonicity`. They're off from the true e↔f frequency by exactly the (pre-fit) anharmonicity. Only trust `relative_freq` / the resulting `qubit.anharmonicity` update.
 3. **Peak found, but the resulting `anharmonicity` update looks physically implausible** (e.g. wildly different from the device's design value, or with the wrong sign of correction) → suspect image-sideband or LO-leakage excitation rather than a genuine e↔f resonance, exactly as the node's own docstring warns. Re-run `01a_mixer_calibration` and repeat.
 4. **Line looks weak/absent but not obviously mis-centered** → check that `x180` is actually populating $|e\rangle$ well (re-run `04b_power_rabi` if it hasn't been calibrated, or its calibration has drifted) before assuming the EF drive itself is the problem — with little population in $|e\rangle$, there's nothing for the EF drive to act on.
-5. **One qubit's fit degrades only under `multiplexed=True`** → as with `03a`/`03b`, concurrent multiplexed drive/readout can perturb the effective qubit response. Re-run with `multiplexed=False` to isolate whether this is a real crosstalk effect.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 1. **No peak visible anywhere in the swept span** → the seed `qubit.anharmonicity` is likely off by more than `frequency_span_in_mhz / 2` from the true value, so the sweep (centered on `RF_frequency − anharmonicity`) misses the real line. Widen `frequency_span_in_mhz` first; if that doesn't help, sanity-check the seed anharmonicity against the device's design value.
 2. **Peak is broad, split, or the fitted anharmonicity drifts run-to-run** → likely power broadening or an AC-Stark-like shift from too strong a drive; unlike `03b`, this node inherits `03a`'s default `operation_amplitude_factor = 1.0` rather than a reduced value, so it's worth deliberately lowering it here (à la `03b`'s 0.1 default) if the line doesn't resolve cleanly **[AE1987]**.

@@ -46,6 +46,8 @@ Inherits the common parameter set — see [Common node parameters](_common_param
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Program fails to compile** (error raised inside `create_qua_program` or immediately on `qm.execute`) → this points to a malformed or inconsistent QUAM configuration (e.g. `x180` not defined on `qubit.xy.operations`, or `node.machine.generate_config()` producing an invalid config) rather than anything physical. Fix the QUAM state/config before trying any other node — every other node in the library depends on the same `generate_config()` path.
 2. **`qm.execute` hangs, or `qm_session` eventually raises `TimeoutError`** → the OPX resources are already claimed by another open QM (a crashed previous session, or a colleague). Run `00_close_other_qms` first, then retry; if that doesn't help, check `timeout` (default 120 s) isn't simply too short for a busy/slow-to-release cluster.
 3. **Execution succeeds (`job.execution_report()` shows no errors, progress bar completes) but you see no waveform on a scope/spectrum analyzer at the `xy` output** → since this node performs no readout, "success" here only means the *digital* program ran — it says nothing about the analog output actually reaching the expected physical port. Check the config's port mapping for `qubit.xy` (I/Q output channels, Octave upconverter assignment) and any output attenuation/switch state in the signal path; a silently-misrouted or over-attenuated output will still report a clean `execution_report()`.
@@ -54,6 +56,8 @@ Inherits the common parameter set — see [Common node parameters](_common_param
 6. **You changed `num_shots` expecting to see a different waveform shape** → it won't change anything visible; `num_shots` only repeats the same fixed 11-point amplitude sweep more times for a longer/more stable progress-bar run. If you need a different amplitude range or step count, those are hardcoded (`np.linspace(-1, 1, 11)`) and require editing the node source, not passing a parameter.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 This node produces no measured/fitted result and has no sweep/acquisition parameter whose value affects output quality — its only parameter, `num_shots`, only changes run time and progress-bar granularity (see Troubleshooting #6) — so there are no parameter-tuning heuristics for this node.
 

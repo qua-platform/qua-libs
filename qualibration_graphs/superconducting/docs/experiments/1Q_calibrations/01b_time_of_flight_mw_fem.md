@@ -73,12 +73,16 @@ No other QUAM attribute is touched — there is no offset write here at all, mat
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Pulse edge is visible but the fitted `tof_to_add` looks systematically early/late by exactly a few ns** → the fit rounds to the nearest 4 ns (`np.round(delay / 4) * 4`), which is a granularity limit, not a bug; don't expect sub-4-ns precision from this node regardless of SNR.
 2. **You expected an analog-input DC offset correction and it's not there** → this node genuinely does not calibrate one; the MW-FEM path has no separate analog I/Q inputs to correct (see Purpose). If you're seeing a real baseline offset problem on MW-FEM hardware, it isn't addressed by this node at all — look at MW-FEM-specific gain/offset settings outside this calibration.
 3. **You're unsure which of `01a_time_of_flight`/`01b_time_of_flight_mw_fem` to run** → check the QUAM resonator's channel type: OPX+/LF-FEM resonators have separate `opx_input_I`/`opx_input_Q` analog inputs (use `01a`); MW-FEM resonators have a single `opx_input` with a `port_id` (use `01b`, this node). Running the wrong one for the hardware either fails outright (missing attribute) or silently calibrates nothing meaningful.
 4. **Downstream nodes show a systematically wrong readout right after this node reports success** → confirm the *reverted* readout pulse length/power actually configured after `update_state` runs matches your intended real-measurement settings — this node's own overrides during the TOF measurement (tuned for a clean edge fit, not for real readout SNR) are explicitly not what persists; only `time_of_flight` itself does.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 1. **Repeated default runs don't converge the way you'd expect (`time_of_flight` doesn't seem to accumulate a correction, or jumps back to ~28 ns territory every time)** → this is the default-`28`-vs-default-`None` distinction: with `time_of_flight_in_ns` left at its default `28`, every successful run **replaces** `time_of_flight` with `28 + tof_to_add`, discarding whatever value was there before. If you intend to iteratively refine an existing calibrated TOF, pass `time_of_flight_in_ns=None` explicitly to switch to increment mode.
 2. **Fit fails (`success=False`) with no obvious reason in the trace** → since this variant has no offset-magnitude success gate, a `False` outcome here means `tof_to_add` itself came out NaN — almost always because the Savitzky–Golay-filtered trace never crosses the computed threshold (e.g. the pulse never rises clearly above baseline). Increase `readout_amplitude_in_dBm` and/or `readout_length_in_ns` and re-run.

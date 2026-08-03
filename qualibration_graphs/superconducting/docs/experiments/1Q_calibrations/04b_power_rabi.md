@@ -84,12 +84,16 @@ Applied only when the fit succeeds — failed qubits are skipped entirely:
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Fitted `opt_amp` seems implausible / gets rejected as "failed" despite a clean-looking fringe pattern** → the amplitude-limit check uses `limits[0]` — the *first* qubit's channel-type hardware limit — for every qubit in a multiplexed run. In a mixed-hardware batch (IQ vs. MW-FEM channels, which have different `max_x180_wf_amplitude`), this can misjudge later qubits. Re-run the suspect qubit alone to get a correctly-scoped check.
 2. **Set `update_x90=False` expecting x90's amplitude to stay untouched, but it still gets overwritten** → expected given the current source: `update_x90` is never read (see Parameters callout); the x90 write fires whenever `operation == "x180"` succeeds, full stop. The only way to avoid it is to not run with `operation="x180"` on that pass, or to manually restore `qubit.xy.operations["x90"].amplitude` afterward.
 3. **Error-amplification run (`max_number_pulses_per_sweep > 1`) with `operation="x180"` and `use_state_discrimination=True` throws a shape/buffering error** → use an **even** `max_number_pulses_per_sweep`. Odd values create a mismatch between the QUA stream buffer size (`ceil(max_number_pulses_per_sweep/2)`) and the actual number of swept pulse counts (`len(arange(1, max_number_pulses_per_sweep, 2))`) — see the Mechanism callout. The shipped graphs use `100`, which is safe.
 4. **Calibrating `x90` (or `-x90`/`y90`/`-y90`) directly, not as half of `x180`** → set `operation` accordingly. In that case the state update writes *only* `qubit.xy.operations[operation].amplitude` — the `x180`-derived x90 write never fires unless `operation` is exactly `"x180"`. This is the pattern the shipped graphs use for their `power_rabi_error_amplification_x90` stage.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 1. **No Rabi oscillation visible anywhere in the amplitude sweep** → since `amps` scales the operation's *existing* configured amplitude, if that seed amplitude is near zero, no prefactor in `[min_amp_factor, max_amp_factor]` produces meaningful drive strength. Set a reasonable nonzero seed on `qubit.xy.operations[operation]` (e.g. via `04a_rabi_chevron` first) before running this node.
 2. **Fitted `opt_amp` sits right at the edge of the swept range** (near `min_amp_factor`× or `max_amp_factor`×current) → the true $\pi$-point likely lies outside the current window. Widen `min_amp_factor`/`max_amp_factor` (mindful of the QUA `amplitude_scale` hard limit of `[-2, 2)`) rather than trusting an edge-pinned fit.

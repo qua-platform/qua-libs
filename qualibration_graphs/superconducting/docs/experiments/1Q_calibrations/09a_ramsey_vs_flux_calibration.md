@@ -99,6 +99,8 @@ Any other value of `qubit.z.flux_point` raises `RuntimeError("Unknown flux_point
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Every qubit reports `"successful"`, even ones whose parabola plot clearly looks wrong** → `success` is hardcoded `True` in `fit_raw_data`; there is no automated NaN/quality guard in this node (`_extract_relevant_fit_parameters` is an unused stub). Always visually check `plot_parabolas_with_fit`'s dashed lines against a believable vertex before trusting an unattended re-run; use `load_data_id` to re-inspect a suspicious run's `ds_fit` without re-measuring.
 2. **`flux_offset`/`freq_offset`/`quad_term` come out `NaN`, or the node throws during the parabola fit** → `frequency.where(frequency > 0, drop=True)` silently discards any (qubit, flux) point whose fitted oscillation frequency came out negative (common at low SNR or when the idle-time span doesn't cover a full period at that flux point); a degree-2 polyfit needs at least 3 surviving points per qubit. Inspect `ds_fit.fit_results.sel(fit_vals="f")` across `flux_bias` for the affected qubit (see Parameter Tuning Heuristics #1 for the remedy once too many points are negative).
 3. **`t2_star` looks off by roughly 1000× from what `06a_ramsey` reports for the same qubit** → this is very likely the units mislabeling noted in Outputs, not a real coherence change: the raw numeric `t2_star` is in ns despite the dataset attrs claiming `"uSec"`. Compare the raw number, not the attrs-implied unit.
@@ -108,6 +110,8 @@ Any other value of `qubit.z.flux_point` raises `RuntimeError("Unknown flux_point
 7. **Setting `reset_type="active"` (or any other value) doesn't change anything about SNR or run time** → expected; this node's QUA program never calls a reset at all (see Mechanism callout) — it relies entirely on the init/current-state XOR scheme instead of thermal or active reset between shots.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 1. **Too many (qubit, flux) points came out with a negative fitted frequency (see Troubleshooting #2), leaving `flux_offset`/`freq_offset`/`quad_term` as `NaN` or too few points for the degree-2 fit** → raise `num_shots` or reduce `flux_span`.
 2. **Oscillation looks like pure exponential decay with no visible fringes** → per **[GRTW2021]**, a near-zero real detuning is indistinguishable from pure $T_2$ decay in a Ramsey trace. `frequency_detuning_in_mhz` (default 1.0 MHz) supplies the needed artificial detuning via the virtual-Z rotation; if fringes are still invisible, increase it — but keep it well under the Nyquist limit set by `wait_time_step_in_ns`.

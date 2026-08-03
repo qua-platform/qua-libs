@@ -44,7 +44,7 @@ Inherits the common parameter set — see [Common node parameters](_common_param
 | Parameter | Type | Default | Unit | Description | Effect |
 |---|---|---|---|---|---|
 | `num_shots` | `int` | 100 | – | Averages per detuning point. | Smooths the mean $I,Q$ per point; note this is much lower than `07_iq_blobs`'s default of 2000, since this node needs a clean average per frequency, not per-shot histogram statistics. |
-| `frequency_span_in_mhz` | `float` | 10.0 | MHz | Full width of the frequency sweep, centered on the qubit's currently configured readout frequency. | Must be wide enough to contain the actual $D$-maximizing frequency; too narrow forces the fit toward the span edge (see Parameter Tuning Heuristics #4). Directly bounds how far `optimal_frequency` can land from the starting point. |
+| `frequency_span_in_mhz` | `float` | 10.0 | MHz | Full width of the frequency sweep, centered on the qubit's currently configured readout frequency. | Must be wide enough to contain the actual $D$-maximizing frequency; too narrow forces the fit toward the span edge (see [General Parameter Tuning Heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) #2). Directly bounds how far `optimal_frequency` can land from the starting point. |
 | `frequency_step_in_mhz` | `float` | 0.1 | MHz | Step size of the frequency sweep. | Finer steps resolve the $D(\text{detuning})$ peak more precisely, but also shrink the *effective* smoothing window relative to the fixed 5-point rolling mean (see Mechanism) — very coarse steps can make that window too wide relative to real spectral features. |
 
 ## Outputs
@@ -73,6 +73,8 @@ Setting `qubit.resonator.RF_frequency` also updates the resonator's `intermediat
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Outcome is `"successful"` but the applied `optimal_frequency`/`optimal_detuning` looks implausible (e.g. detuned by more than a resonator linewidth from the previous `02a`/`02c` frequency)** → do not rely on the `"successful"` flag to catch this: the source's 400 MHz sanity check is a no-op due to a `np.abs(np.isnan(...))` bug (see Mechanism), so an aberrant `optimal_detuning` is still marked successful and written to `qubit.resonator.RF_frequency`. Always sanity-check the logged detuning/chi by eye, especially after widening `frequency_span_in_mhz`.
 2. **$D$ barely rises anywhere across the whole sweep — no real separation achievable at any frequency in range** → check that the `x180` pulse is actually driving full population transfer (independently verify via `04b_power_rabi`) before assuming the frequency sweep itself is at fault; also consider that with an unfavorable device $\chi/\kappa$ ratio, no single frequency choice compensates for $\kappa$ that's much larger than $\chi$ **[GRTW2021]** — that requires resonator/coupling redesign, not a wider sweep.
 3. **Node run right after other flux/power drift, and the sweep is centered somewhere clearly off from the resonator's true response** → the sweep is centered on the qubit's *currently configured* `RF_frequency`; if `02a`/`02c` resonator spectroscopy is stale, the whole span is off-target. Re-run resonator spectroscopy first.
@@ -80,10 +82,11 @@ Setting `qubit.resonator.RF_frequency` also updates the resonator's `intermediat
 
 ## Parameter Tuning Heuristics
 
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
+
 1. **$D(\text{detuning})$ is flat, with no clear peak anywhere in the swept span** → `frequency_span_in_mhz` (default 10 MHz) is likely too narrow to contain the full separation between the state-dependent lineshapes. Per the $\chi=\kappa$ framing, if $2\chi$ is comparable to or larger than the span, you're only sampling part of one state's resonance. Widen the span and re-run.
 2. **`chi` comes out anomalously small (or noisy run-to-run) despite a visibly clear splitting in the `figures["iq_abs"]` plot** → the `idxmin`-based estimate is sensitive to noise in `IQ_abs_g`/`IQ_abs_e` at low `num_shots`; a single noisy sample near the true minimum can shift the detected minimum's position. Increase `num_shots` for cleaner traces before trusting a surprising `chi` value.
 3. **`optimal_frequency` visibly doesn't sit at the peak of `D` in `figures["distances"]`, especially at coarse `frequency_step_in_mhz`** → the fixed 5-point rolling-mean window (see Mechanism) becomes too wide relative to the true peak width when `frequency_step_in_mhz` is large. Reduce the step size rather than trying to compensate with `frequency_span_in_mhz`.
-4. **`optimal_frequency` lands at or very near the edge of the swept span** → the true $D$-maximizing frequency may lie outside the window. Re-run with a wider `frequency_span_in_mhz` rather than accepting an edge value — an edge result should be treated as "inconclusive," not "optimal."
 
 ## Next Steps
 

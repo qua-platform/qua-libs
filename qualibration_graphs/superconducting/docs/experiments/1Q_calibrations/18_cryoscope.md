@@ -110,6 +110,8 @@ As in `17_pi_vs_flux_long_distortions`, the write is `list.extend(...)` rather t
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **`ZeroDivisionError` in `create_qua_program`, before any hardware runs** → `freq_vs_flux_01_quad_term` is still `0.0` for the target qubit. Run `09a_ramsey_vs_flux_calibration` first — there is no other handling for this case.
 2. **`AttributeError: 'NoneType' object has no attribute 'extend'` when `update_state=True`** → `z.opx_output.exponential_filter` has never been initialized (still `None`, the QUAM default). Either run `17_pi_vs_flux_long_distortions` with `update_state=True` first (its `update_state` action initializes `None` to `[]` before extending), or initialize the field manually before running this node.
 3. **`AttributeError` on `exponential_filter` generally, independent of #2** → the qubit's Z line is wired through an OPX+ analog output, not an OPX1000 LF-FEM channel; the field only exists on `LFFEMAnalogOutputPort` (QOP ≥ 3.3.0).
@@ -121,7 +123,7 @@ As in `17_pi_vs_flux_long_distortions`, the write is `list.extend(...)` rather t
 
 ## Parameter Tuning Heuristics
 
-1. **Extracted step response looks noisy or the phase fit is unstable at short durations** → `num_frames` (default 17) may be too coarse to resolve the cosine in `fit_oscillation` at every duration point, or `num_shots` (default 5000) may need to be even higher for a low-SNR qubit. Increase whichever is cheaper for your run-time budget first.
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. No node-specific heuristics beyond the general ones above.
 
 ## Next Steps
 

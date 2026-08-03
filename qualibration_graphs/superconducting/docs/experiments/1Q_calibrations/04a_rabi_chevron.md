@@ -77,6 +77,8 @@ There is no `update_pulses_amplitude`-style flag, no automatic frequency write, 
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Every qubit reports `"failed"`, every time** → expected, not a bug: `FitParameters.success` is hardcoded to `False` in `calibration_utils/rabi_chevron/analysis.py` regardless of the data collected. Don't chase this as a calibration failure or wire a graph edge that expects `"successful"` from this node.
 2. **Chevron is visible but its vertex (widest fringe, i.e. resonance) isn't at zero detuning** → the qubit's currently configured intermediate frequency (from `03a`/`03b`) is off from the true resonance by that offset. Re-run `03a_qubit_spectroscopy` (or `03b_qubit_spectroscopy_vs_flux` for flux-tunable qubits) to refresh `f_01` before trusting a duration read off this chevron.
 3. **The duration picked off the zero-detuning row doesn't give a clean $\pi$ pulse when later run through `04b_power_rabi`** → expected if the seed `x180` amplitude used for this chevron was far from correct: this node fixes amplitude and only locates a *duration*, so the visible "period" is specific to that stale amplitude, not a calibrated target. Always run `04b_power_rabi` with the picked duration afterward to solve for the correct amplitude — don't treat the chevron's raw duration as a finished calibration by itself.
@@ -87,8 +89,9 @@ There is no `update_pulses_amplitude`-style flag, no automatic frequency write, 
 
 ## Parameter Tuning Heuristics
 
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
+
 1. **No visible chevron pattern — flat, featureless map** → most likely the `x180` amplitude currently in state is too small to produce a visible Rabi oscillation within `min_wait_time_in_ns`–`max_wait_time_in_ns` (16–250 ns default). Set a reasonable rough amplitude on `qubit.xy.operations["x180"]` first (datasheet estimate, prior device value, or a quick manual test), then re-run.
-2. **Chevron vertex looks like it's cut off at the edge of the detuning window** → `frequency_span_in_mhz` (default 100 MHz) is too narrow to contain the fringe's full width at the current drive amplitude; widen it and re-run rather than reading off a partial fringe.
 
 ## Next Steps
 

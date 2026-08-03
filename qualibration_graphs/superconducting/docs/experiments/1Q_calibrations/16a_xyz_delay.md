@@ -70,17 +70,18 @@ Applied only when the fit succeeds — failed qubits are skipped entirely:
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **`qubit.z.opx_output.delay` keeps changing by small amounts on successive re-runs of an already-aligned qubit** → this is expected, not drift: the update is additive (`+=`), not a replace. Check the currently configured `opx_output.delay` before re-running, the same way a joint-flux-point qubit's `joint_offset` must be checked in `03b_qubit_spectroscopy_vs_flux`.
-2. **Fit degrades specifically when run with `multiplexed=True` but is clean with `multiplexed=False`** → concurrently baked flux pulses on other qubits' Z lines can crosstalk onto this qubit during the scan. Re-run the same qubit alone to confirm, then treat it as a crosstalk-compensation issue rather than a delay-calibration bug.
-3. **Fits look worse than expected after switching `reset_type` to `"active"` or `"active_gef"`** → unlike some other nodes in this library, this node *does* honor `reset_type` — an uncalibrated active-reset method will silently degrade the $|g\rangle$/$|e\rangle$ contrast this fit depends on. Verify the active-reset calibration first, or fall back to `"thermal"`.
-4. **A previously-good `flux_delay` fit stops making sense after changing the $x180$ pulse length or amplitude** → both the baked-segment duration and the fit's edge/SNR checks are computed from `qubit.xy.operations["x180"].length` *at run time*. Re-run this node after any change to the $x180$ calibration.
+2. **A previously-good `flux_delay` fit stops making sense after changing the $x180$ pulse length or amplitude** → both the baked-segment duration and the fit's edge/SNR checks are computed from `qubit.xy.operations["x180"].length` *at run time*. Re-run this node after any change to the $x180$ calibration.
 
 ## Parameter Tuning Heuristics
 
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
+
 1. **Fit fails outright, or the `difference` trace looks flat/noisy with no visible triangle** → `z_pulse_amplitude` (default 0.1 V) is likely too small to produce a detectable detuning-driven population difference between the $|e\rangle$ and $|g\rangle$ preparations. Increase it and re-check the raw trace before touching anything else.
 2. **Fit fails with the peak reported very close to a scan edge** → the true delay falls close to or outside `± zeros_before_after_pulse`. Widen `zeros_before_after_pulse`; remember this both extends the scan range *and* proportionally increases the number of baked segments and total run time.
-3. **Fit succeeds but `flux_delay_std` is large, or the fitted value is inconsistent across repeated runs at the same settings** → the SNR is marginal even though it cleared the `> 3` threshold. Increase `num_shots` before concluding the line has genuinely drifted.
-4. **You changed `z_pulse_amplitude` and now the previously-triangular `difference` trace looks asymmetric or has a shoulder** → a large flux pulse can shift the qubit far enough that the $x180$ drive itself becomes partially off-resonant even where the two pulses do overlap, distorting the expected triangle-of-cross-correlation shape assumed by `triangle_peak`. Reduce the amplitude back toward the point where the trace is cleanly triangular.
+3. **You changed `z_pulse_amplitude` and now the previously-triangular `difference` trace looks asymmetric or has a shoulder** → a large flux pulse can shift the qubit far enough that the $x180$ drive itself becomes partially off-resonant even where the two pulses do overlap, distorting the expected triangle-of-cross-correlation shape assumed by `triangle_peak`. Reduce the amplitude back toward the point where the trace is cleanly triangular.
 
 ## Next Steps
 

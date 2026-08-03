@@ -75,6 +75,8 @@ Because this is an increment rather than a replace, and because there is current
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **`GEF_frequency_shift` keeps drifting further with each re-run, even though the separation already looked good** → expected given the current source, not a sign of anything wrong with your setup: the update is `+=`, and `success` is unconditionally `True`, so *every* run applies another increment regardless of fit quality. Always check the `fitted_distances` plot's peak location relative to `df = 0` before re-running; if it's not converging toward zero detuning, the thing to fix is the underlying readout/EF calibration, not this node's output.
 2. **Flat or noisy `Distance` curve for one qubit specifically when run with `multiplexed=True`, but clean when run alone** → this is the verified frequency-sweep bug (see Mechanism): only the last-initialized qubit in a multiplexed batch actually has its resonator frequency swept per detuning point. Re-run with `multiplexed=False`.
 3. **Node crashes with a `TypeError` involving `NoneType` during `update_state`, in a multiplexed run** → a consequence of the same bug: the Python-side `if GEF_frequency_shift is None: GEF_frequency_shift = 0` guard inside `create_qua_program` also only reliably executes for the one qubit whose `update_frequency` call actually ran. Other qubits in the batch can reach `update_state`'s `+= optimal_detuning` with `GEF_frequency_shift` still `None`. Run `multiplexed=False`, or manually initialize `GEF_frequency_shift = 0` on all qubits first.
@@ -84,8 +86,9 @@ Because this is an increment rather than a replace, and because there is current
 
 ## Parameter Tuning Heuristics
 
-1. **Optimal detuning jumps around between re-runs at nominally the same conditions** → `num_shots=100` averaged over three blocks per detuning point may be insufficient at `frequency_step_in_mhz=0.01`'s fine resolution; increase `num_shots`, or accept a coarser (but noisier-tolerant) step.
-2. **Choosing `operation="readout"` instead of the default `readout_GEF`** → no error, but the auto-created, longer `readout_GEF` pulse (built once per qubit, shared with `15`) simply goes unused for this run; you lose the extra integration time it was sized for. Prefer the default unless deliberately comparing operations.
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
+
+1. **Choosing `operation="readout"` instead of the default `readout_GEF`** → no error, but the auto-created, longer `readout_GEF` pulse (built once per qubit, shared with `15`) simply goes unused for this run; you lose the extra integration time it was sized for. Prefer the default unless deliberately comparing operations.
 
 ## Next Steps
 

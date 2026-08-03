@@ -92,6 +92,8 @@ Note the asymmetry with `02a`: there, the fitted frequency *replaces* `f_01`/`RF
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **`optimal_power` looks physically implausible, or the crossing point in the plot doesn't match visual intuition about where the line starts to bend** → the source code itself flags this analysis as not fully robust (`# TODO: requires manual setting of the readout power since the analysis isn't robust enough...`). Treat the automatic result as a first pass; inspect `plot_raw_data_with_fit` rather than trusting it as a black-box answer.
 2. **Detected crossing power shifts noticeably when `derivative_smoothing_window_num_points` or `moving_average_filter_window_num_points` are changed, even though the raw data looks the same** → these two windows interact (the edge-correction loop runs over exactly `moving_average_filter_window_num_points` leading points of the *already-smoothed* trace) — changing one without the other can distort the leading edge of the derivative trace disproportionately. Change them together, or leave the edge-correction window at its default (10) while only tuning the smoothing window.
 3. **Resonance frequency barely moves across the whole power sweep, no clear crossing** → per **[GRTW2021]**, a resonator dispersively coupled to a qubit should show a measurable, power-dependent frequency shift between the few-photon and many-photon regimes; if it doesn't, first re-check `02a`'s bright-state/low-power comparison — you may be probing a resonator not actually coupled to a qubit, which this node cannot diagnose or fix on its own.
@@ -99,6 +101,8 @@ Note the asymmetry with `02a`: there, the fitted frequency *replaces* `f_01`/`RF
 5. **After running this node, `02a`'s stored `RF_frequency` seems to drift progressively larger/smaller across repeated bring-up attempts** → because the state update here is an *increment* (`+=`) rather than a replace, repeated runs at different powers accumulate frequency_shift corrections rather than resetting. Re-run `02a_resonator_spectroscopy` (which replaces `RF_frequency` outright) before re-running this node if you want a clean baseline.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 1. **If, after inspecting the plot (Troubleshooting #1), the automatically chosen `optimal_power` still looks wrong** → override by re-running with a narrower `min_power_dbm`/`max_power_dbm` bracket around the region you trust, or set the readout power manually via `qubit.resonator.set_output_power(...)` afterward.
 2. **Outcome is `"failed"` with `optimal_power` as `NaN`** → the derivative never dropped below `derivative_crossing_threshold_in_hz_per_dbm` anywhere in the swept range. Either the true nonlinear onset lies above `max_power_dbm` (raise it, checking `max_amp` can still reach it) or the threshold itself is too strict — try a less negative `derivative_crossing_threshold_in_hz_per_dbm` (e.g. −20 000 instead of −50 000 Hz/dBm) to trigger on a gentler slope.

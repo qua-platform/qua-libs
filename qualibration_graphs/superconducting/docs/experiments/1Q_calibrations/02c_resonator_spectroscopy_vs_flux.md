@@ -95,6 +95,8 @@ Applied only when the fit succeeds — failed qubits are skipped entirely (no pa
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **No visible flux-dependent curve at all — the dip position looks flat across all flux points** → either the qubit's flux line isn't actually coupled to this resonator's environment strongly enough to shift $\tilde\omega_R$ measurably, or (more mundanely) `qubit.z` isn't wired/configured correctly. Cross-check against `03b_qubit_spectroscopy_vs_flux` if available — if the qubit's own $f_{01}$ *does* move with the same flux sweep but the resonator doesn't, that's consistent with weak dispersive coupling rather than a flux-line fault; if neither moves, suspect the flux line itself.
 2. **`node.parameters.update_flux_min` was left at its default `False`, and `qubit.z.min_offset` looks stale after a successful run** → this is expected, not a bug: `min_offset` is computed either way (visible in `fit_results`/the plot) but only written back to state when `update_flux_min=True`. Set it explicitly if you want this node to also refresh the anti-sweet-spot bias.
 3. **`qubit.z.joint_offset` gets updated even though you expected `qubit.z.flux_point` to route elsewhere (e.g. `"min"` or `"arbitrary"`)** → per the State Updates note above, the code's `else` branch treats every non-`"independent"` flux point as if it were `"joint"`. This is a real gap in the node, not a misconfiguration on your part — verify `flux_point` is exactly `"independent"` or `"joint"` before running this node if precise routing matters.
@@ -102,6 +104,8 @@ Applied only when the fit succeeds — failed qubits are skipped entirely (no pa
 5. **The chosen sweet spot from this node disagrees with the one later found by `03b_qubit_spectroscopy_vs_flux`** → this node infers the sweet spot indirectly, from the resonator's flux-pulled response, while `03b` measures the qubit's $f_{01}(\Phi)$ directly. A persistent disagreement between the two is a useful cross-check on dispersive coupling strength and flux-crosstalk assumptions — treat `03b`'s result as authoritative for the qubit's own operating point, and use this node primarily for the earlier, coarser bring-up step of narrowing where to look next **[GRTW2021]**.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 1. **Fit fails (outcome = `"failed"`) at most or all flux points** → `frequency_span_in_mhz` is likely too narrow to keep the flux-pulled resonator dip inside the window as flux moves it — the dip walks out of the swept band at some flux points, and `IQ_abs.idxmin` then locks onto noise or the window edge. Widen the span first; it directly targets the span-relative success criterion.
 2. **Fitted `idle_offset` sits at or very near the edge of `[min_flux_offset_in_v, max_flux_offset_in_v]`** → the swept window may not contain a full extremum of the flux dispersion; the true sweet spot could be just outside the scanned range. Since these bounds are **absolute**, not centered on the current bias, widen them directly (e.g. push `min_flux_offset_in_v` more negative and/or `max_flux_offset_in_v` more positive) rather than assuming they're already centered correctly.

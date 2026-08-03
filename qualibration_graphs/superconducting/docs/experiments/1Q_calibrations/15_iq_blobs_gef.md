@@ -82,18 +82,19 @@ Applied to every targeted qubit (in practice, since a qubit that reaches this st
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Node crashes with a `scipy` `RuntimeError` (e.g. "Optimal parameters not found") during `analyse_data`** → one of the six marginal I/Q histograms doesn't look like a clean single Gaussian to `find_biggest_gaussian` — commonly, heavily overlapping $e$/$f$ blobs along one quadrature, too few shots, or a `GEF_frequency_shift` that isn't actually optimized yet. Confirm `14_gef_readout_frequency_optimization` has run, or inspect a re-run with `load_data_id` to see which stream is problematic before it crashes again.
 2. **`readout_state_gef`-based discrimination performs much worse in practice (e.g. in `13`'s `use_state_discrimination=True` path, or a CZ leakage node) than `plot_confusion_matrices` suggested** → that plot classifies with Euclidean nearest-center distance, but the actual runtime code (`readout_state_gef`) classifies with Manhattan (L1) distance — different decision boundaries. Don't treat this node's printed confusion matrix as a guarantee of real-time fidelity.
 3. **Discrimination is systematically biased toward one state** (e.g. shots that should read $|f\rangle$ consistently read as $|e\rangle$ or $|g\rangle$) even though the IQ blobs plot looks well-separated → suspect the verified units mismatch in `gef_centers`: if `operation != "readout"` (the default `readout_GEF` is 1.5× longer), the persisted centers are scaled by `operation.length / readout.length` relative to the raw units `readout_state_gef` expects. Check `qubit.resonator.operations["readout_GEF"].length / qubit.resonator.operations["readout"].length` — if it's not `1.0`, treat `gef_centers` as suspect and consider manually rescaling, or aligning the two conversions in source.
 4. **Node raises `ValueError("Only 'thermal' reset is supported")` immediately** → `reset_type` was set to something other than `"thermal"`. This node cannot use `"active"` or `"active_gef"` at all; set `reset_type="thermal"`.
 5. **The $|f\rangle$ blob sits suspiciously close to the $|e\rangle$ blob (weak separation, not a fitting crash)** → this is a state-preparation problem, not a readout problem: check `EF_x180`'s amplitude (`13_power_rabi_ef`) and `anharmonicity` (`12_Qubit_Spectroscopy_E_to_F`) — this node only measures whatever population distribution those pulses actually prepare.
-6. **A qubit's fit "succeeds" but the plotted blobs are visibly overlapping garbage** → `success` is hardcoded `True` for any qubit that doesn't outright crash the Gaussian fit; there is currently no automatic rejection of a bad-but-technically-fittable result. Always visually inspect `plot_iq_blobs`/`plot_confusion_matrices` before trusting `gef_centers`.
-7. **Run feels much slower than `07_iq_blobs` at the same `num_shots`** → expected: each shot here comprises three measurement blocks (g/e/f), each with its own `2 × thermalization_time` wait, vs. `07`'s two blocks — roughly 1.5× the per-shot time.
-8. **`readout_GEF` doesn't seem to reflect a recently-changed `readout` pulse length** → `readout_GEF` is a one-time snapshot created (by whichever of `14`/`15` ran first for that qubit) at 1.5× whatever `readout.length` was *then* — it does not automatically track later changes to `readout`. Manually delete/replace the qubit's `readout_GEF` entry in QUAM state to force a fresh clone at the current `readout` length.
+6. **Run feels much slower than `07_iq_blobs` at the same `num_shots`** → expected: each shot here comprises three measurement blocks (g/e/f), each with its own `2 × thermalization_time` wait, vs. `07`'s two blocks — roughly 1.5× the per-shot time.
+7. **`readout_GEF` doesn't seem to reflect a recently-changed `readout` pulse length** → `readout_GEF` is a one-time snapshot created (by whichever of `14`/`15` ran first for that qubit) at 1.5× whatever `readout.length` was *then* — it does not automatically track later changes to `readout`. Manually delete/replace the qubit's `readout_GEF` entry in QUAM state to force a fresh clone at the current `readout` length.
 
 ## Parameter Tuning Heuristics
 
-1. **A `scipy` `RuntimeError` crash during `analyse_data` (see Troubleshooting #1) traces to too few shots feeding a noisy marginal histogram** → increase `num_shots` so `find_biggest_gaussian` has a cleaner Gaussian to fit.
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. No node-specific heuristics beyond the general ones above.
 
 ## Next Steps
 

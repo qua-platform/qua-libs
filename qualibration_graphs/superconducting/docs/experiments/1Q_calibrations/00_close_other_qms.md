@@ -35,6 +35,8 @@ Inherits the common parameter set — see [Common node parameters](_common_param
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **A calibration node hangs at "Opening QM" / eventually raises `TimeoutError` from `qm_session`** → another QM (yours from a crashed kernel, or a colleague's) is still holding the OPX resources, so `qmm.open_qm(...)` keeps retrying inside `qm_session`'s poll loop until `timeout` (default 120 s, `CommonNodeParameters.timeout`) elapses. Run `00_close_other_qms` first, then retry the original node.
 2. **You're about to run this on a shared cluster and worry about impact on colleagues** → `qmm.close_all_qms()` closes **every** open QM on the cluster indiscriminately, not just ones owned by your session. If someone else has a job running, this will interrupt it. Coordinate before running this on shared hardware; on a dedicated single-user OPX this is a non-issue.
 3. **`qmm.connect()` itself raises a connection error (e.g. cannot reach cluster host/port)** → this is a network/QOP-availability problem, not something `close_all_qms()` can fix. Verify the network config in the QUAM state (host, cluster name, port) and that the QOP software is up before re-running.
@@ -43,6 +45,8 @@ Inherits the common parameter set — see [Common node parameters](_common_param
 6. **This node appears to do nothing (no error, no visible effect) when nothing was actually stuck** → this is expected and harmless: `close_all_qms()` on an already-clean cluster is a no-op. It is safe to run defensively at the start of every session regardless of whether anything is actually stuck.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 This node has no sweep/acquisition parameters and nothing to tune — it is a single unconditional `qmm.close_all_qms()` call with no node-specific `Parameters` — so there are no parameter-tuning heuristics for this node.
 

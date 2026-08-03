@@ -79,6 +79,8 @@ There is no EF-equivalent `x90` write — this node calibrates `EF_x180` only.
 
 ## Troubleshooting
 
+See also: [General troubleshooting](_general_troubleshooting.md#general-troubleshooting) for issues common to most nodes in this library. Below are issues specific to this node.
+
 1. **Node raises `ValueError` immediately on start, before any hardware or simulation activity** → `reset_type="active"` was passed. Use `"thermal"` (default) or `"active_gef"` instead — this node explicitly rejects `"active"`.
 2. **Node raises a Python `TypeError` while building the QUA program** (not during execution) → `use_state_discrimination=True` was set but `qubit.resonator.GEF_frequency_shift` is still `None`. Run `14_gef_readout_frequency_optimization` at least once first, or set `use_state_discrimination=False` to fall back to `qubit.chi`.
 3. **No Rabi oscillation visible anywhere in the amplitude sweep** → first confirm `x180` is genuinely populating $|e\rangle$ (re-check `04b_power_rabi`); if that's fine, check that the anharmonicity used to compute the EF drive frequency (`12_Qubit_Spectroscopy_E_to_F`) is accurate — a large error there means the drive isn't landing on the e↔f transition at all, and no amplitude will produce a clean oscillation.
@@ -88,6 +90,8 @@ There is no EF-equivalent `x90` write — this node calibrates `EF_x180` only.
 7. **Sequence takes noticeably longer per shot than `04b_power_rabi`** → expected: for `reset_type="thermal"`, the per-shot wait is `2 × thermalization_time` (the reset's own wait plus the extra EF-specific wait added in step 4 of the Mechanism), roughly double `04b`'s per-shot overhead.
 
 ## Parameter Tuning Heuristics
+
+See also: [General parameter tuning heuristics](_general_troubleshooting.md#general-parameter-tuning-heuristics) for guidance common to most nodes in this library. Below is guidance specific to this node.
 
 1. **Fitted `opt_amp` is clearly nonphysical (far larger than a sane $\pi$-pulse amplitude, or negative in an unexpected way)** → the cosine fit likely locked onto the wrong phase/period; inspect the raw `IQ_abs` vs. amplitude-prefactor plot for more than one visible oscillation period within `[min_amp_factor, max_amp_factor]`, and narrow the range to isolate a single period if the effective Rabi frequency is high.
 
