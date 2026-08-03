@@ -22,7 +22,7 @@ def _damped_rabi(
 ) -> np.ndarray:
     x = np.asarray(x, dtype=float)
     envelope = np.exp(-decay * np.abs(x - center))
-    return 0.5 + 0.45 * envelope * np.sin(2.0 * np.pi * frequency * (x - center)) ** 2
+    return 0.5 + 0.45 * envelope * np.sin(2.0 * np.pi * frequency * (x - center))
 
 
 def _assign_stream(
@@ -69,7 +69,8 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     data_vars: dict[str, tuple[tuple[str, ...], np.ndarray]] = {}
 
     for index, qubit in enumerate(qubits):
-        t_pi = 1000.0 + 20.0 * (index % 4)
+        # Use a short-enough pi-time so the Rabi frequency clears the FFT peak-fit lower clip in analysis.
+        t_pi = 180.0 + 20.0 * (index % 4)
         probability = _damped_rabi(
             durations_ns,
             center=0.0,

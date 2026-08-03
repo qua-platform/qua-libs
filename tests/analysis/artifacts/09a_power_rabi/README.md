@@ -4,27 +4,46 @@
 
 
         POWER RABI
-This sequence involves parking the qubit at the manipulation bias point, playing the qubit pulse (such as x180) and
-measuring the state of the resonator across different qubit pulse amplitudes, exhibit Rabi oscillations.
-The results are then analyzed to determine the qubit pulse amplitude suitable for the selected gate duration.
+This sequence parks the qubit at the manipulation bias point, plays the selected qubit operation (e.g. x180) at
+different amplitude prefactors, and measures the spin state. Joint-outcome streams are averaged and reduced to
+conditional expectations for analysis. Rabi oscillations in the analysis signal versus amplitude prefactor are
+fitted to extract the π-pulse amplitude prefactor.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
     - Having calibrated the qubit frequency.
     - Having set the qubit gate duration.
 
+Datasets:
+    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (conditional expectations and fitted traces). Used by
+      ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``opt_amp``: amplitude prefactor for a π rotation at the selected gate duration.
+    - ``rabi_frequency`` [rad / unit amplitude]: fitted Rabi frequency in the amplitude domain.
+    - ``decay_rate`` [1 / unit amplitude]: fitted decay envelope versus amplitude prefactor.
+
+Figures (``node.results["figures"]``):
+    - ``"rabi"``: conditional expectation vs pulse amplitude with damped-sinusoid fit overlay.
+    - ``"fft"``: FFT magnitude spectrum with peak fit per qubit.
+
 State update:
-    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...).
+    - The amplitude prefactor of the selected operation (``node.parameters.operation``).
+    - When calibrating x180, x90 is also updated to half the x180 prefactor.
 
 
 ## Parameters
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `analysis_signal` | `E_p2_given_p1_0` | Which conditional expectation to use for fitting.
-E_p2_given_p1_0: P(second=1 | first=0) — post-select on empty dot.
-E_p2_given_p1_1: P(second=1 | first=1) — post-select on loaded dot. |
-| `parity_pre_measurement` | `False` | Whether to use parity pre measurement. Default is False. |
+| `analysis_signal` | `E_p1_given_p0_0` | Which conditional expectation to use for fitting.
+E_p1_given_p0_0: P(second=1 | first=0) — post-select on empty dot.
+E_p1_given_p0_1: P(second=1 | first=1) — post-select on loaded dot. |
+| `parity_measurement` | `False` | Whether or not to perform parity measurement. |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
@@ -32,10 +51,15 @@ quadratures 'I' and 'Q'. Default is False. |
 | `reset_type` | `thermal` | The qubit reset method to use. Must be implemented as a method of Quam.qubit. Can be "thermal", "active", or
 "active_gef". Default is "thermal". |
 | `qubits` | `['q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
-| `num_shots` | `4` | Number of averages to perform. Default is 100. |
+| `target_state` | `None` | The state you want to initialize into for heralded initialization. |
+| `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
+| `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |
+| `num_shots` | `8` | Number of averages to perform. Default is 100. |
 | `min_amp_factor` | `0.001` | Minimum amplitude factor for the operation. Default is 0.001. |
 | `max_amp_factor` | `1.99` | Maximum amplitude factor for the operation. Default is 1.99. |
-| `amp_factor_step` | `0.00995` | Step size for the amplitude factor. Default is 0.005. |
+| `amp_factor_step` | `0.01` | Step size for the amplitude factor. Default is 0.01. |
+| `operation` | `x180` | The operation to perform to drive the qubit. |
+| `use_simulated_data` | `False` | Whether to generate simulated data instead of measuring via the OPX. Default False. |
 | `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `50000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
@@ -47,7 +71,7 @@ quadratures 'I' and 'Q'. Default is False. |
 
 | Qubit | f_res (GHz) | t_pi (ns) | Omega_R (rad/ns) | gamma (1/ns) | T2* (ns) | success |
 |-------|-------------|----------|--------------|----------|----------|--------|
-| q1 | 0.0000 | nan | 4.978721 | 0.00000 | 7196963860761722 | True |
+| q1 | 0.0000 | nan | 20.095538 | 0.04136 | 24 | True |
 
 ## Updated State
 
@@ -57,7 +81,8 @@ quadratures 'I' and 'Q'. Default is False. |
 
 ## Analysis Output
 
-![Analysis simulation](simulation.png)
+![rabi](rabi.png)
+![fft](fft.png)
 
 ---
 *Generated by analysis test infrastructure (virtual_qpu)*

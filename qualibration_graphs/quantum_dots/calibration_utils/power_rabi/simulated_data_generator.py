@@ -13,16 +13,28 @@ if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
 
-def _damped_rabi(
-    x: np.ndarray,
+def _power_rabi_probability(
+    amp_prefactor: np.ndarray,
     *,
-    center: float,
-    frequency: float,
+    rabi_frequency: float,
+    amplitude: float,
     decay: float,
 ) -> np.ndarray:
-    x = np.asarray(x, dtype=float)
-    envelope = np.exp(-decay * np.abs(x - center))
-    return 0.5 + 0.45 * envelope * np.sin(2.0 * np.pi * frequency * (x - center)) ** 2
+    """Excited-state probability for a resonant power-Rabi amplitude sweep.
+
+    At resonance the population follows Rabi's formula
+
+        P(a) = sin²(Ω · a / 2),
+
+    where the drive amplitude prefactor ``a`` is proportional to the Rabi
+    frequency Ω (fixed pulse duration).  A weak exponential envelope mimics
+    slow calibration drift.  ``rabi_frequency`` is Ω/(2π) in cycles per
+    unit amplitude prefactor.
+    """
+    a = np.asarray(amp_prefactor, dtype=float)
+    omega = 2.0 * np.pi * rabi_frequency
+    envelope = np.exp(-decay * a)
+    return np.clip(amplitude * envelope * np.sin(0.5 * omega * a) ** 2, 0.0, 1.0)
 
 
 def _assign_stream(
@@ -70,11 +82,11 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     data_vars: dict[str, tuple[tuple[str, ...], np.ndarray]] = {}
 
     for index, qubit in enumerate(qubits):
-        probability = _damped_rabi(
+        probability = _power_rabi_probability(
             amps,
-            center=1.0 + 0.015 * (index % 4),
-            frequency=3.2 + 0.2 * (index % 3),
-            decay=0.6 + 0.1 * (index % 2),
+            rabi_frequency=3.2 + 0.2 * (index % 3),
+            amplitude=0.98 - 0.02 * (index % 2),
+            decay=0.04 + 0.01 * (index % 2),
         )
         _assign_stream(
             data_vars,
