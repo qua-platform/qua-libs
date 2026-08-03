@@ -3,62 +3,66 @@
 ## Description
 
 
-        HAHN ECHO (SPIN ECHO) T2 MEASUREMENT - using standard QUA (pulse > 16ns and 4ns granularity)
-The goal of this script is to measure the spin-spin relaxation time T2 using the Hahn echo (spin echo) technique.
-Unlike the Ramsey experiment which measures T2* (sensitive to low-frequency noise and inhomogeneous broadening),
-the Hahn echo refocuses static dephasing, yielding the intrinsic T2 coherence time which is always >= T2*.
+        HAHN ECHO (SPIN ECHO) T2 MEASUREMENT
+This node measures the spin-spin relaxation time T2 using the Hahn echo (spin echo) technique.
+Unlike Ramsey (T2*), the Hahn echo refocuses static dephasing and yields the intrinsic T2 coherence
+time, which is always >= T2*.
 
-The QUA program is divided into three sections:
-    1) step between the initialization point and the operation point using sticky elements.
-    2) apply the Hahn echo pulse sequence: pi/2 - tau - pi - tau - pi/2.
-    3) measure the state of the qubit using RF reflectometry via parity readout.
-
-The Hahn echo sequence works by:
-    - First pi/2 pulse (x90): Creates superposition, placing qubit on Bloch sphere equator.
-    - First wait period (tau): Qubit dephases due to noise and field inhomogeneities.
-    - Pi pulse (x180): Flips the qubit state, reversing the accumulated phase.
-    - Second wait period (tau): Previously accumulated phase is undone (refocused).
-    - Final pi/2 pulse (x90): Projects the refocused state for measurement.
-
-The echo amplitude decays as exp(-2*tau/T2), where T2 reflects irreversible dephasing from
-high-frequency noise that cannot be refocused. This is the simplest dynamical decoupling sequence
-and forms the basis for more advanced sequences (CPMG, XY-n) that extend coherence further.
-
-The measurement sweeps per-arm idle time τ (joint-outcome streams).
-The fitting uses profiled differential evolution: a 1-D global search over T2_echo with
-the linear parameters (offset, amplitude) solved analytically at each step via least-squares.
+The sequence is x90 - tau - y180 - tau - x90. The swept parameter tau is the duration
+of each of the two idle gaps (after the first x90 and after the y180 refocusing pulse).
+Total free evolution is 2*tau. The echo amplitude decays as exp(-2*tau/T2_echo).
 
 Prerequisites:
-    - Having run the Ramsey node to calibrate the qubit frequency and T2*, and the corresponding prerequisites.
-    - Having calibrated pi and pi/2 pulse parameters from Rabi measurements.
+    - Ramsey node (qubit frequency and T2*) and its prerequisites.
+    - Calibrated x90 and y180 pulses from Rabi measurements.
 
-Before proceeding to the next node:
-    - Extract T2 from exponential fit of the echo decay curve.
-    - Compare T2 to T2* to assess the contribution of low-frequency noise.
-    - Consider dynamical decoupling sequences if longer coherence is needed.
+Datasets:
+    - ``ds_raw``: raw parity streams from the OPX (``p_{qubit}`` or joint-outcome streams).
+      Never modified after acquisition.
+    - ``ds_fit``: processed conditional expectations, fitted decay curves, and per-qubit
+      summary scalars on the ``qubit`` coordinate. Used by ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with
+      ``asdict``). Used by logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][<qubit>]``):
+    - ``success``: whether the exponential fit converged to a physical result.
+    - ``T2_echo`` [ns]: Hahn echo coherence time.
+    - ``amplitude``: echo contrast.
+    - ``offset``: baseline level.
+    - ``decay_rate`` [1/ns]: effective rate 2 / T2_echo.
+
+Figures (``node.results["figures"]``):
+    - ``"decay"``: horizontal subplots of conditional readout vs idle delay tau
+      (each pi/2-pi segment; 2 tau total evolution) with exponential fit overlay.
 
 State update:
-    - T2echo
+    - ``qubit.T2echo`` from fitted ``T2_echo`` (successful qubits only).
 
 
 ## Parameters
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `analysis_signal` | `E_p2_given_p1_0` | Which conditional expectation to use for fitting.
-E_p2_given_p1_0: P(second=1 | first=0) — post-select on empty dot.
-E_p2_given_p1_1: P(second=1 | first=1) — post-select on loaded dot. |
+| `analysis_signal` | `E_p1_given_p0_0` | Which conditional expectation to use for fitting.
+E_p1_given_p0_0: P(second=1 | first=0) — post-select on empty dot.
+E_p1_given_p0_1: P(second=1 | first=1) — post-select on loaded dot. |
+| `parity_measurement` | `False` | Whether to use parity pre measurement. Default is False. |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
 quadratures 'I' and 'Q'. Default is False. |
-| `reset_wait_time` | `5000` | The wait time for qubit reset. |
+| `reset_type` | `thermal` | The qubit reset method to use. Must be implemented as a method of Quam.qubit. Can be "thermal", "active", or
+"active_gef". Default is "thermal". |
 | `qubits` | `['q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
+| `target_state` | `None` | The state you want to initialize into for heralded initialization. |
+| `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
+| `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |
 | `num_shots` | `1` | Number of averages to perform. Default is 100. |
-| `tau_min` | `100` | Minimum per-arm idle time in nanoseconds. Must be >= 4 clock cycles. Default is 16 ns. |
-| `tau_max` | `1000` | Maximum per-arm idle time in nanoseconds. Default is 10000 ns (10 µs). |
-| `tau_step` | `500` | Step size for the per-arm idle time sweep in nanoseconds. Default is 16 ns. |
-| `operation` | `x180` | Name of the qubit pi-pulse operation. Default is 'x180'. |
+| `tau_min` | `100` | Minimum Hahn echo idle delay τ in nanoseconds (each x90–y180 segment; total evolution 2τ). Must be a multiple of 4 ns (1 QUA clock cycle). Default is 16 ns. |
+| `tau_max` | `1000` | Maximum Hahn echo idle delay τ in nanoseconds (each x90–y180 segment; total evolution 2τ). Default is 10 000 ns (10 µs per segment; 20 µs total evolution). |
+| `tau_step` | `500` | Step size for the τ sweep in nanoseconds. Default is 100 ns (25 QUA clock cycles). |
+| `use_simulated_data` | `False` | Whether to generate simulated data instead of measuring via the OPX. |
+| `sim_noise_std` | `0.03` | Gaussian noise std dev on simulated traces before clipping to [0, 1]. |
 | `simulate` | `True` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `40000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
@@ -76,9 +80,9 @@ quadratures 'I' and 'Q'. Default is False. |
 
 | Controller | Port | Mean Voltage (V) |
 |------------|------|------------------|
-| con1 | 1-1-1 | -2.499277e-09 |
-| con1 | 5-1 | -6.676116e-06 |
-| con1 | 5-2 | -6.676116e-06 |
+| con1 | 1-1-1 | 6.304657e-04 |
+| con1 | 5-1 | -2.176344e-07 |
+| con1 | 5-2 | -2.176344e-07 |
 | con1 | 5-3 | 0.000000e+00 |
 | con1 | 5-4 | 0.000000e+00 |
-| con1 | 5-5 | 1.380063e-16 |
+| con1 | 5-5 | 1.336797e-16 |
