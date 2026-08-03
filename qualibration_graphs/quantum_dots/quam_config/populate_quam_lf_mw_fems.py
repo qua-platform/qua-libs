@@ -115,7 +115,8 @@ assert np.all(np.abs(xy_if) <= 400 * u.MHz), (
 #################################
 for i, q in enumerate(machine.qubits.values()):
     # MW FEM LO on this XY line (shared port → same value each iteration is fine).
-    q.xy.opx_output.upconverter_frequency = q.larmor_frequency = larmor_center_hz
+    q.xy.opx_output.upconverter_frequency = larmor_center_hz
+    q.larmor_frequency = xy_freq[i]
     q.xy.opx_output.band = get_band(xy_freq[i])  # Qubit drive band for the up-conversion
     q.xy.opx_output.full_scale_power_dbm = xy_full_scale  # Max drive power in dBm
 
@@ -135,7 +136,8 @@ for i, q in enumerate(machine.qubits.values()):
     q.T2echo = 2e-6
 
     # Set all qubit to be active
-    machine.active_qubit_names.append(q.name)
+    if q.name not in machine.active_qubit_names:
+        machine.active_qubit_names.append(q.name)
 
 
 ##############################
