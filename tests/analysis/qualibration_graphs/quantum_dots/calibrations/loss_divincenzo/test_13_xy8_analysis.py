@@ -49,9 +49,9 @@ def test_13_xy8_analysis_and_plot_actions(analysis_runner):
 
         t2_xy8 = float(fit["T2_xy8"])
         assert t2_xy8 > 0 and np.isfinite(t2_xy8)
-        assert abs(t2_xy8 - DEFAULT_T2_XY8_NS) < 0.3 * DEFAULT_T2_XY8_NS, (
-            f"{qname} T2_xy8 should be near {DEFAULT_T2_XY8_NS:.0f} ns, got {t2_xy8:.1f} ns"
-        )
+        assert (
+            abs(t2_xy8 - DEFAULT_T2_XY8_NS) < 0.3 * DEFAULT_T2_XY8_NS
+        ), f"{qname} T2_xy8 should be near {DEFAULT_T2_XY8_NS:.0f} ns, got {t2_xy8:.1f} ns"
 
         assert float(fit["decay_rate"]) > 0
         assert float(fit["amplitude"]) > 0

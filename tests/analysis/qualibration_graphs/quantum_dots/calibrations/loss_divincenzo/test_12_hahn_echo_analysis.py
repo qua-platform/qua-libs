@@ -49,9 +49,9 @@ def test_12_hahn_echo_analysis_and_plot_actions(analysis_runner):
 
         t2_echo = float(fit["T2_echo"])
         assert t2_echo > 0 and np.isfinite(t2_echo)
-        assert abs(t2_echo - DEFAULT_T2_ECHO_NS) < 0.3 * DEFAULT_T2_ECHO_NS, (
-            f"{qname} T2_echo should be near {DEFAULT_T2_ECHO_NS:.0f} ns, got {t2_echo:.1f} ns"
-        )
+        assert (
+            abs(t2_echo - DEFAULT_T2_ECHO_NS) < 0.3 * DEFAULT_T2_ECHO_NS
+        ), f"{qname} T2_echo should be near {DEFAULT_T2_ECHO_NS:.0f} ns, got {t2_echo:.1f} ns"
 
         assert float(fit["decay_rate"]) > 0
         assert float(fit["amplitude"]) > 0
