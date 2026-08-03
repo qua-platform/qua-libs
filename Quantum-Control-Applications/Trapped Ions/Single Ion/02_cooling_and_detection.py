@@ -8,7 +8,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.units import unit
 
-from configuration import config, detection_threshold, qop_ip, cluster_name
+from configuration import config, qop_ip, cluster_name
 from macros import doppler_cool, state_preparation, measure_state, plot_state_and_histogram
 
 u = unit(coerce_to_integer=True)

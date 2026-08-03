@@ -9,14 +9,14 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.units import unit
 
-from configuration import config, detection_threshold, pi_len, qop_ip, cluster_name
+from configuration import config, pi_len, qop_ip, cluster_name
 from macros import doppler_cool, state_preparation, measure_state, plot_state_and_histogram
 
 u = unit(coerce_to_integer=True)
 
 num_shots = 100
-# Pulse durations in clock cycles (4 ns), scanned up to the nominal pi pulse
-durations = np.arange(4, pi_len // 4 + 1, 12)
+
+durations = np.arange(0, 2*pi_len // 4 + 1, 12)
 durations_ns = 4 * durations
 
 with program() as pi_half_pulse:
