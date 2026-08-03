@@ -12,8 +12,6 @@ from matplotlib.figure import Figure
 
 from calibration_utils.power_rabi import generate_simulated_dataset
 
-from .analysis_test_stubs import ensure_optional_analysis_import_stubs
-
 NODE_NAME = "09a_power_rabi"
 QUBIT_NAME = "q1"
 
@@ -21,8 +19,6 @@ QUBIT_NAME = "q1"
 @pytest.mark.analysis
 def test_09a_power_rabi_analysis_and_plot_actions(analysis_runner):
     """Run analyse/plot/update on synthetic power-Rabi data."""
-    ensure_optional_analysis_import_stubs()
-
     node = analysis_runner(
         node_name=NODE_NAME,
         simulated_data_generator=generate_simulated_dataset,
