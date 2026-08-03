@@ -3,29 +3,52 @@
 ## Description
 
 
-        Power Rabi with Error Amplification
-This sequence is a power Rabi sequence augmented with error-amplification. It involves parking the qubit at the
-manipulation bias point, playing a pulse sequence with N pulses, and measuring the state of the resonator across
-different qubit pulse amplitudes, showing Rabi oscillations. With error amplification, small amplitude errors accumulate
-rapidly, allowing for a more precise calibration of the pulse amplitude. The results are then analyzed to determine the
-qubit pulse amplitude suitable for the selected gate duration.
+        POWER RABI WITH ERROR AMPLIFICATION
+This sequence performs a 2D power-Rabi measurement with error amplification: for each amplitude prefactor, an even
+number of π pulses is played and the spin state is measured. Joint-outcome streams are averaged and reduced to
+conditional expectations. Small amplitude errors accumulate over many pulses, enabling a precise refinement of
+the π-pulse amplitude prefactor in a narrow window around the value from node 09a.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
-    - Having calibrated the qubit frequency.
-    - Having set the qubit gate duration.
+    - Having calibrated the qubit frequency and gate duration.
+    - Having run node 09a_power_rabi to obtain a coarse π-pulse amplitude prefactor.
+
+Datasets:
+    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed 2D sweeps plus analysis outputs (conditional expectations and mean-signal diagnostics).
+      Used by ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``opt_amp``: refined amplitude prefactor for a π rotation.
+    - ``rabi_frequency`` [rad / (unit amplitude · pulse)]: fitted Rabi frequency from the mean-signal model.
+    - ``decay_rate`` [1 / pulse]: exponential decay rate per pulse in the error-amplification sequence.
+    - ``gauss_decay_rate`` [1 / pulse]: Gaussian decay contribution per pulse.
+    - ``n_eff``: effective number of pulses before the contrast envelope decays to 1/e.
+
+Figures (``node.results["figures"]``):
+    - ``"heatmap"``: 2D map of the analysis signal vs amplitude prefactor and number of pulses.
+    - ``"resonance"``: n_pulses-averaged signal vs amplitude with analytic fit overlay.
 
 State update:
-    - The qubit pulse amplitude corresponding to the specified operation (x180, x90...).
+    - The amplitude prefactor of the selected operation (``node.parameters.operation``).
+    - When calibrating x180, x90 is also updated to half the x180 prefactor.
 
 
 ## Parameters
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `analysis_signal` | `E_p2_given_p1_0` | Which conditional expectation to use for fitting.
-E_p2_given_p1_0: P(second=1 | first=0) — post-select on empty dot.
-E_p2_given_p1_1: P(second=1 | first=1) — post-select on loaded dot. |
+| `analysis_signal` | `E_p1_given_p0_0` | Which conditional expectation to use for fitting.
+E_p1_given_p0_0: P(second=1 | first=0) — post-select on empty dot.
+E_p1_given_p0_1: P(second=1 | first=1) — post-select on loaded dot. |
+| `parity_measurement` | `False` | Whether or not to perform parity measurement. |
+| `target_state` | `None` | The state you want to initialize into for heralded initialization. |
+| `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
+| `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
@@ -34,11 +57,12 @@ quadratures 'I' and 'Q'. Default is False. |
 "active_gef". Default is "thermal". |
 | `qubits` | `['q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
 | `num_shots` | `1` | Number of averages to perform. Default is 100. |
-| `min_amp_factor` | `1.0` | Minimum amplitude factor for the operation. Default is 0.001. |
-| `max_amp_factor` | `1.99` | Maximum amplitude factor for the operation. Default is 1.99. |
-| `amp_factor_step` | `0.5` | Step size for the amplitude factor. Default is 0.005. |
-| `operation` | `x180` | Type of operation to perform. Default is "x180". |
+| `min_amp_factor` | `1.0` | Minimum amplitude prefactor. Narrow window around expected a_π after node 09a. |
+| `max_amp_factor` | `1.15` | Maximum amplitude prefactor. Narrow window around expected a_π after node 09a. |
+| `amp_factor_step` | `0.5` | Step size for the amplitude prefactor sweep. Default is 0.001. |
 | `max_n_pulses` | `6` | Number of pulses in the error-amplified power Rabi pulse sequence. |
+| `operation` | `x180` | The operation to perform to drive the qubit. |
+| `use_simulated_data` | `False` | Whether to generate simulated data instead of measuring via the OPX. Default False. |
 | `simulate` | `True` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `40000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
@@ -56,9 +80,9 @@ quadratures 'I' and 'Q'. Default is False. |
 
 | Controller | Port | Mean Voltage (V) |
 |------------|------|------------------|
-| con1 | 1-1-1 | -1.562048e-09 |
-| con1 | 5-1 | -2.377235e-05 |
-| con1 | 5-2 | -2.377235e-05 |
+| con1 | 1-1-1 | 9.418960e-04 |
+| con1 | 5-1 | -4.901496e-03 |
+| con1 | 5-2 | -4.901496e-03 |
 | con1 | 5-3 | 0.000000e+00 |
 | con1 | 5-4 | 0.000000e+00 |
-| con1 | 5-5 | 3.709232e-16 |
+| con1 | 5-5 | 2.344296e-06 |
