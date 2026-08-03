@@ -4,7 +4,7 @@ Opcodes match :func:`~calibration_utils.two_qubit_rb.circuit_utils.get_layer_int
 and :func:`~calibration_utils.two_qubit_rb.qua_utils.play_gate` (0–38 encoding).
 
 Single-qubit layers use ``g_control * 6 + g_target`` with
-``g ∈ {0:sx/X90, 1:x/X180, 2:rz(π/2)/Z90, 3:rz(π)/Z180, 4:rz(3π/2)/Z270, 5:idle}``.
+``g ∈ {0:sx/X90, 1:x/X180, 2:rz(x90)/Z90, 3:rz(π)/Z180, 4:rz(3π/2)/Z270, 5:idle}``.
 Z rotations are virtual (``frame_rotation`` in QUA), not physical Y pulses.
 """
 

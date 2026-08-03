@@ -31,14 +31,8 @@ if str(SIMULATION_ROOT) not in sys.path:
     sys.path.insert(0, str(SIMULATION_ROOT))
 
 
-
 # ── Shared helpers ─────────────────────────────────────────────────────
-_SHARED_DIR = (
-    Path(__file__).resolve().parents[5]
-    / "qualibration_graphs"
-    / "quantum_dots"
-    / "calibrations"
-)
+_SHARED_DIR = Path(__file__).resolve().parents[5] / "qualibration_graphs" / "quantum_dots" / "calibrations"
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
 
@@ -59,6 +53,7 @@ from tests.shared_fixtures import (  # noqa: E402
 from quam_builder.architecture.quantum_dots.qpu import LossDiVincenzoQuam
 
 from tests.quam_test_machine import regenerate_state_directory  # noqa: E402
+
 # from quam_factory import (
 #     create_ld_quam,
 # )  # noqa: F401  — re-export for test_quam_factory_state
@@ -70,13 +65,7 @@ patch_qualibrate_logger(_cache_base)
 
 # ── Paths and defaults ─────────────────────────────────────────────────
 
-CALIBRATION_LIBRARY_ROOT = (
-    REPO_ROOT
-    / "qualibration_graphs"
-    / "quantum_dots"
-    / "calibrations"
-    / "loss_divincenzo"
-)
+CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "loss_divincenzo"
 ARTIFACTS_BASE = SIMULATION_ROOT / "artifacts"
 
 
@@ -206,9 +195,7 @@ def _make_simulate_and_plot_fn(override_qmm=None):
         from qm.simulate import SimulationConfig
 
         active_qmm = override_qmm if override_qmm is not None else qmm
-        simulation_config = SimulationConfig(
-            duration=node_parameters.simulation_duration_ns // 4
-        )
+        simulation_config = SimulationConfig(duration=node_parameters.simulation_duration_ns // 4)
         job = active_qmm.simulate(config, program, simulation_config)
         job.wait_until("Done", 240)
 
@@ -300,11 +287,7 @@ def simulation_runner(minimal_quam_factory, save_simulation_plot, markdown_gener
             ):
                 result = node.run(simulate=True)
 
-        sim_result = (
-            getattr(node, "results", {}).get("simulation")
-            if hasattr(node, "results")
-            else None
-        )
+        sim_result = getattr(node, "results", {}).get("simulation") if hasattr(node, "results") else None
         job = sim_result or result
         if job is None and hasattr(node, "namespace"):
             job = node.namespace.get("job")
@@ -350,7 +333,5 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     for item in items:
-        if "tests/simulation/" in str(item.fspath) and not item.get_closest_marker(
-            "simulation"
-        ):
+        if "tests/simulation/" in str(item.fspath) and not item.get_closest_marker("simulation"):
             item.add_marker(pytest.mark.simulation)
