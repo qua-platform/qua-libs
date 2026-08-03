@@ -269,8 +269,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     or not node.parameters.perform_edge_analysis
 )
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: v.to_dict() for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
@@ -282,7 +282,10 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     for tracked_resonator in node.namespace.get("tracked_resonators", []):
         tracked_resonator.revert_changes()
 
-    ds_plot = node.results["ds_raw"].copy()
+    if "ds_fit" in node.results:
+        ds_plot = node.results["ds_fit"]
+    else:
+        ds_plot = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
 
     point_kwargs = {}
     if node.parameters.plot_points and "voltage_points" in node.namespace:
