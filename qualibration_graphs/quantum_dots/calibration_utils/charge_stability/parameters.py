@@ -83,14 +83,16 @@ class OPXQDACParameters(
     DCControlParameters,
     NodeSpecificParameters,
 ):
+    """05b: 2D charge-stability map with per-axis OPX or QDAC control."""
+
     x_from_qdac: bool = False
-    "Sweep the x axis of the 2D map using the QDAC instead of the OPX. Default is False."
+    """Sweep the X axis via QDAC dc_list instead of OPX ramps. Default is False."""
     y_from_qdac: bool = False
-    "Sweep the y axis of the 2D map using the QDAC instead of the OPX. Default is False."
+    """Sweep the Y axis via QDAC dc_list instead of OPX ramps. Default is False."""
     post_trigger_wait_ns: int = 10000
-    """The pause in the QUA program to allow the QDAC to get to the correct level. Default is 10000ns."""
+    """Pause after each QDAC trigger, allowing the DAC to settle before readout [ns]. Default is 10000."""
     qdac_dwell_time_us: float = 200
-    """The dwell time in microseconds for the QDAC. Default is 200us."""
+    """Dwell time programmed into each QDAC dc_list step [µs]. Default is 200."""
 
 
 class SimulationParameters(
