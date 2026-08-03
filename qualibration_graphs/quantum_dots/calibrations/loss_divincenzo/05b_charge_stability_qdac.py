@@ -518,12 +518,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=not node.parameters.perform_edge_analysis)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    # TODO: Implement analysis - remove pass when complete
-    # Process raw dataset (convert ADC to volts, compute amplitude)
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-
-    # Perform charge stability analysis
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
 
     # Convert FitParameters to dictionaries for storage (JSON serializable)
     node.results["fit_results"] = {k: v.to_dict() for k, v in fit_results.items()}
@@ -536,15 +532,19 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by sensors.grid_location."""
+    if "ds_fit" in node.results:
+        ds_plot = node.results["ds_fit"]
+    else:
+        ds_plot = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
 
     fig_amplitude = plot_raw_amplitude(
-        node.results["ds_raw"],
+        ds_plot,
         node.namespace["sensors"],
         x_axis_name=node.namespace["axes_names"]["x_axis"],
         y_axis_name=node.namespace["axes_names"]["y_axis"],
     )
     fig_phase = plot_raw_phase(
-        node.results["ds_raw"],
+        ds_plot,
         node.namespace["sensors"],
         x_axis_name=node.namespace["axes_names"]["x_axis"],
         y_axis_name=node.namespace["axes_names"]["y_axis"],
@@ -556,7 +556,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     }
     if node.parameters.perform_edge_analysis and "fit_results" in node.results:
         for sensor in node.namespace["sensors"]:
-            sensor_data = node.results["ds_raw"].sel(sensors=sensor.id)
+            sensor_data = ds_plot.sel(sensors=sensor.id)
             fit_params = node.results["fit_results"].get(sensor.id, {})
             fig_cp = plot_change_point_overlays(sensor_data, fit_params, sensor.id)
             node.results["figures"][f"{sensor.id}_change_points"] = fig_cp
