@@ -101,9 +101,9 @@ def test_02a_resonator_spectroscopy_analysis_and_plot_actions(analysis_runner):
     assert fit["success"], f"Resonator fit should succeed, got: {fit}"
 
     fitted_shift = float(fit["frequency_shift"])
-    assert abs(fitted_shift - expected_dip_shift_hz) < 0.8e6, (
-        f"Expected dip near {expected_dip_shift_hz:.0f} Hz, got {fitted_shift:.0f} Hz"
-    )
+    assert (
+        abs(fitted_shift - expected_dip_shift_hz) < 0.8e6
+    ), f"Expected dip near {expected_dip_shift_hz:.0f} Hz, got {fitted_shift:.0f} Hz"
 
     fwhm = float(fit["fwhm"])
     assert np.isfinite(fwhm) and fwhm > 0.0, f"Expected positive finite FWHM, got {fwhm}"

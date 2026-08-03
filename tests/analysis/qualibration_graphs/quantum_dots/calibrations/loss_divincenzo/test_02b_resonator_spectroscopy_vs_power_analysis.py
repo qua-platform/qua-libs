@@ -111,15 +111,13 @@ def test_02b_resonator_spectroscopy_vs_power_analysis_and_plot_actions(analysis_
     assert fit["success"], f"Resonator vs power fit should succeed, got: {fit}"
 
     optimal_power = float(fit["optimal_power"])
-    assert min_power_dbm <= optimal_power <= max_power_dbm, (
-        f"optimal_power {optimal_power:.2f} dBm outside sweep range"
-    )
+    assert min_power_dbm <= optimal_power <= max_power_dbm, f"optimal_power {optimal_power:.2f} dBm outside sweep range"
 
     fitted_shift = float(fit["frequency_shift"])
     expected_dip_hz = _expected_dip_center_hz(FREQUENCY_SPAN_MHZ)
-    assert abs(fitted_shift - expected_dip_hz) < 1.0e6, (
-        f"Expected frequency shift near {expected_dip_hz:.0f} Hz, got {fitted_shift:.0f} Hz"
-    )
+    assert (
+        abs(fitted_shift - expected_dip_hz) < 1.0e6
+    ), f"Expected frequency shift near {expected_dip_hz:.0f} Hz, got {fitted_shift:.0f} Hz"
 
     figures = node.results.get("figures")
     assert isinstance(figures, dict)
@@ -137,6 +135,6 @@ def test_02b_resonator_spectroscopy_vs_power_analysis_and_plot_actions(analysis_
 
     readout_amp = float(resonator.operations["readout"].amplitude)
     expected_amp = unit(coerce_to_integer=True).dBm2volts(optimal_power, Z=50)
-    assert np.isclose(readout_amp, expected_amp, rtol=0.0, atol=1e-6), (
-        f"Readout amplitude should match optimal_power {optimal_power:.2f} dBm"
-    )
+    assert np.isclose(
+        readout_amp, expected_amp, rtol=0.0, atol=1e-6
+    ), f"Readout amplitude should match optimal_power {optimal_power:.2f} dBm"
