@@ -1,31 +1,47 @@
-[tool.poetry]
+[project]
 name = "qua-libs"
 version = "0.0.0"
 description = "A collection of examples to be used with QUA language"
-authors = ["Quantum Machines <info@quantum-machines.co>"]
-license = "BSD-3-Clause"
-package-mode = false
+authors = [{ name = "Quantum Machines", email = "info@quantum-machines.co" }]
+license = { text = "BSD-3-Clause" }
+requires-python = ">=3.8,<3.12"
+dependencies = [
+    "qm-qua>=1.2.0",
+    "qualang-tools>=0.3.3",
+    "jinja2>=2.11.2",
+    "sqlalchemy>=1.3.18",
+    "colorama>=0.4.3",
+    "matplotlib>=3.2.2",
+    "numpy>=1.18.5",
+    "pandas>=1.2.4",
+    "scipy>=1.7.0",
+    "seaborn>=0.11.1",
+    "scikit-learn>=0.24.2",
+    "networkx>=2.5.1",
+    "h5py>=3.2.1",
+    "cma>=3.0.3",
+    "PyVISA>=1.11.3",
+    "qcodes>=0.23.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.8,<3.12"
-qm-qua = {version = ">=1.2.0", allow-prereleases = true}
+[dependency-groups]
+dev = [
+    "black>=24.3.0",
+    "poethepoet>=0.10.0",
+    "flake8>=3.9.1",
+]
 
-[tool.poetry.dev-dependencies]
-black = "^24.3.0"
-poethepoet = "^0.10.0"
-flake8 = "^3.9.1"
+[tool.uv]
+package = false
+prerelease = "allow"
 
 [tool.black]
 line-length = 120
-#force-exclude = '''Two-Flux-Tunable-Transmons/Use Case 4 - Single- and Two-Qubit State and Process Tomography/helper_functions.py'''
-#include = '(examples)/.+\.pyi?$'
-#include = '(Quantum Control Applications)/.+\.pyi?$'
-#include = '(Tutorials)/.+\.pyi?$'
 
 [tool.poe.tasks]
-format="black examples"
-check_format="black --check ."
+format = "black examples"
+check_format = "black --check ."
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
