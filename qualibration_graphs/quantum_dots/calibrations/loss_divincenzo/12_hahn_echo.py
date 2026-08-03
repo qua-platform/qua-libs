@@ -243,7 +243,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     Processes raw streams, fits each qubit, and stores ``ds_fit`` (with fitted
     curves and summary scalars) and ``fit_results``.
     """
-    ds_processed = process_raw_dataset(node.results["ds_raw"], node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = fit_results
     log_fitted_results(fit_results, log_callable=node.log)
