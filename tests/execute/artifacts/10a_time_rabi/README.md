@@ -3,115 +3,120 @@
 ## Description
 
 
-        TIME RABI PARITY DIFFERENCE
-This sequence performs a time Rabi measurement with parity difference to characterize qubit coherence and
-coupling. The measurement involves sweeping the duration of a qubit control pulse (typically an X180 pulse)
-while measuring the parity state before and after the pulse using charge sensing via RF reflectometry or DC
-current sensing.
+        TIME RABI
+After heralded initialization to the target spin state, this sequence optionally records a pre-measurement
+outcome (when ``parity_measurement`` is True), applies an XY drive pulse whose duration is swept, and
+measures the dot again afterward. Each shot contributes to joint-outcome streams (e.g. ``p0_p0``, ``p1_p0``,
+``p0_p1``, ``p1_p1``) that are averaged on the OPX and fetched as ``ds_raw``.
 
-The sequence uses voltage gate sequences to navigate through a triangle in voltage space (empty -
-initialization - measurement) using OPX channels on the fast lines of the bias-tees. At each pulse duration,
-the parity is measured before (P1) and after (P2) the qubit pulse, and the parity difference (P_diff) is
-calculated. When P1 == P2, P_diff = 0; otherwise P_diff = 1.
-
-The parity difference signal reveals Rabi oscillations as a function of pulse duration, which can be used
-to extract the qubit coupling strength, coherence time, and optimal pulse parameters.
+In ``analyse_data``, those streams are converted to conditional expectations. By default the analysis signal is
+``E_p1_given_p0_0`` (spin-up probability given the dot was empty before the manipulation window). Rabi
+oscillations in that signal versus pulse duration are fitted to extract the π-pulse duration. The node does not form a parity-difference (XOR) scalar from the two measurements.
 
 Prerequisites:
-    - Having calibrated the resonators coupled to the SensorDot components.
-    - Having calibrated the voltage points (empty - initialization - measurement).
-    - Qubit pulse calibration (X180 pulse amplitude and frequency).
+    - Having calibrated the resonators coupled to the sensor dots.
+    - Having calibrated the voltage points (empty, initialization, measurement).
+    - Having a rough qubit XY drive calibration (frequency and amplitude).
+
+Datasets:
+    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (conditional expectations and fitted traces). Used by
+      ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
+      logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the fit passed sanity checks and the state update is applied.
+    - ``optimal_duration`` [ns]: π-pulse duration extracted from the Rabi oscillation.
+    - ``rabi_frequency`` [rad / ns]: fitted Rabi frequency in the time domain.
+    - ``decay_rate`` [1 / ns]: fitted decay rate of the Rabi envelope (γ ≈ 1/T₂*).
+
+The default ``analysis_signal`` is ``E_p1_given_p0_0``; set ``E_p1_given_p0_1`` to post-select on a loaded dot.
+
+Figures (``node.results["figures"]``):
+    - ``"rabi"``: conditional expectation vs pulse duration with damped-sinusoid fit overlay.
+    - ``"fft"``: FFT magnitude spectrum with peak fit per qubit.
 
 State update:
-    - The qubit x180 operation duration.
+    - The pulse duration of the selected operation (``node.parameters.operation``).
 
 
 ## Parameters
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `analysis_signal` | `E_p2_given_p1_0` | Which conditional expectation to use for fitting.
-E_p2_given_p1_0: P(second=1 | first=0) — post-select on empty dot.
-E_p2_given_p1_1: P(second=1 | first=1) — post-select on loaded dot. |
+| `analysis_signal` | `E_p1_given_p0_0` | Which conditional expectation to use for fitting.
+E_p1_given_p0_0: P(second=1 | first=0) — post-select on empty dot.
+E_p1_given_p0_1: P(second=1 | first=1) — post-select on loaded dot. |
+| `parity_measurement` | `False` | Whether or not to perform parity measurement. |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
 quadratures 'I' and 'Q'. Default is False. |
-| `reset_wait_time` | `5000` | The wait time for qubit reset. |
+| `reset_type` | `thermal` | The qubit reset method to use. Must be implemented as a method of Quam.qubit. Can be "thermal", "active", or
+"active_gef". Default is "thermal". |
 | `qubits` | `['q1', 'q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
-| `num_shots` | `10` | Number of averages to perform. Default is 100. |
+| `target_state` | `None` | The state you want to initialize into for heralded initialization. |
+| `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
+| `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |
+| `num_shots` | `1` | Number of averages to perform. Default is 100. |
 | `min_wait_time_in_ns` | `16` | Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns. |
 | `max_wait_time_in_ns` | `10000` | Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us). |
 | `time_step_in_ns` | `100` | Step size for the pulse duration sweep in nanoseconds. Default is 52 ns. |
-| `operation` | `x180` | Name of the qubit operation to perform. Default is 'x180'. |
+| `operation` | `x180` | The operation to perform to drive the qubit. |
+| `use_simulated_data` | `False` | Whether to generate simulated data instead of measuring via the OPX. Default False. |
 | `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `40000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
-| `timeout` | `120` | Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s. |
+| `timeout` | `500` | Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s. |
 | `load_data_id` | `None` | Optional QUAlibrate node run index for loading historical data. Default is None. |
 
 ## Execution Output
 
-![Figure](figure.png)
+![Snapshot82 Rabi](snapshot82_rabi.png)
+![Snapshot82 Fft](snapshot82_fft.png)
 
 
 ## Fit Results
 
-### virtual_dot_1
+### q1
 | Parameter | Value |
 |-----------|-------|
-| `optimal_duration` | `nan` |
-| `rabi_frequency` | `nan` |
-| `decay_rate` | `nan` |
-| `success` | `False` |
-| `_fft_diag` | `{'fft_freqs': array([0.    , 0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007,
-       0.0008, 0.0009, 0.001 , 0.0011, 0.0012, 0.0013, 0.0014, 0.0015,
-       0.0016, 0.0017, 0.0018, 0.0019, 0.002 , 0.0021, 0.0022, 0.0023,
-       0.0024, 0.0025, 0.0026, 0.0027, 0.0028, 0.0029, 0.003 , 0.0031,
-       0.0032, 0.0033, 0.0034, 0.0035, 0.0036, 0.0037, 0.0038, 0.0039,
-       0.004 , 0.0041, 0.0042, 0.0043, 0.0044, 0.0045, 0.0046, 0.0047,
-       0.0048, 0.0049, 0.005 ]), 'fft_magnitude': array([nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan,
-       nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan,
-       nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan,
-       nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan, nan]), 'peak_curve': None}` |
-| `_sinusoid_fit` | `None` |
+| `optimal_duration` | `217.15137800917168` |
+| `rabi_frequency` | `0.014467293196072206` |
+| `decay_rate` | `0.026158595484081663` |
+| `success` | `True` |
 
-### virtual_dot_2
+### q2
 | Parameter | Value |
 |-----------|-------|
-| `optimal_duration` | `nan` |
-| `rabi_frequency` | `nan` |
-| `decay_rate` | `nan` |
-| `success` | `False` |
-| `_fft_diag` | `{'fft_freqs': array([0.    , 0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007,
-       0.0008, 0.0009, 0.001 , 0.0011, 0.0012, 0.0013, 0.0014, 0.0015,
-       0.0016, 0.0017, 0.0018, 0.0019, 0.002 , 0.0021, 0.0022, 0.0023,
-       0.0024, 0.0025, 0.0026, 0.0027, 0.0028, 0.0029, 0.003 , 0.0031,
-       0.0032, 0.0033, 0.0034, 0.0035, 0.0036, 0.0037, 0.0038, 0.0039,
-       0.004 , 0.0041, 0.0042, 0.0043, 0.0044, 0.0045, 0.0046, 0.0047,
-       0.0048, 0.0049, 0.005 ]), 'fft_magnitude': array([2.66453526e-15, 2.89827849e+00, 3.94514378e+00, 1.75253594e+00,
-       2.87829045e+00, 4.05774760e-01, 1.16976297e+00, 2.11369105e+00,
-       3.96115788e+00, 1.24109593e+00, 2.25117390e+00, 4.38980690e+00,
-       7.74684755e-01, 3.66091484e+00, 4.26970833e+00, 2.15016197e+00,
-       2.36571241e+00, 4.05647729e-01, 1.71389073e+00, 2.33753977e+00,
-       2.35162294e+00, 1.64973495e+00, 1.01413691e+00, 1.96049883e+00,
-       1.86125006e+00, 1.61614128e+00, 2.11030772e+00, 2.32566903e+00,
-       1.62517238e+00, 3.70438298e-01, 2.13741346e+00, 8.06043688e-01,
-       3.01868998e+00, 1.93914495e+00, 1.61100366e+00, 5.00368610e-01,
-       1.05728072e+00, 1.64099449e+00, 3.41481639e+00, 1.33735372e+00,
-       1.51895057e+00, 9.78149640e-01, 2.69473660e+00, 1.67969410e+00,
-       2.07139185e+00, 3.56196537e+00, 1.85954502e+00, 4.67220553e-01,
-       1.56425553e+00, 8.73190517e-01, 2.15952381e+00]), 'peak_curve': None}` |
-| `_sinusoid_fit` | `None` |
+| `optimal_duration` | `143.44948526415166` |
+| `rabi_frequency` | `0.02190034106992285` |
+| `decay_rate` | `0.052675894115467484` |
+| `success` | `True` |
+
+
+## State Updates
+
+| Parameter | Before | After |
+|-----------|--------|-------|
+| `qubits.q1.xy.operations.gaussian_x180.length` | `248` | `217.15137800917168` |
+| `qubits.q1.xy.operations.gaussian_x180.sigma` | `41.33333333333333` | `36.191896334861944` |
+| `qubits.q1.xy.operations.gaussian_x90.length` | `248` | `217.15137800917168` |
+| `qubits.q1.xy.operations.gaussian_x90.sigma` | `41.33333333333333` | `36.191896334861944` |
+| `qubits.q2.xy.operations.gaussian_x180.length` | `248` | `143.44948526415166` |
+| `qubits.q2.xy.operations.gaussian_x180.sigma` | `41.33333333333333` | `23.908247544025276` |
+| `qubits.q2.xy.operations.gaussian_x90.length` | `248` | `143.44948526415166` |
+| `qubits.q2.xy.operations.gaussian_x90.sigma` | `41.33333333333333` | `23.908247544025276` |
 
 
 ## Metadata
 
 | Key | Value |
 |-----|-------|
-| Timestamp | 2026-04-29T00:44:14 UTC |
+| Timestamp | 2026-08-03T11:29:10 UTC |
 | Node | 10a_time_rabi |
-| Duration | 9.6s |
+| Duration | 6.5s |
 | Status | completed |
 
 ---
