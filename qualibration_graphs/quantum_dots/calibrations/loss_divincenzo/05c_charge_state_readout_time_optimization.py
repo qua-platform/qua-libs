@@ -353,8 +353,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
@@ -368,23 +368,28 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot IQ histograms and SNR vs integration time."""
+    if "ds_fit" in node.results:
+        ds_plot = node.results["ds_fit"]
+    else:
+        ds_plot = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+
     fig_iq = plot_iq_histogram(
-        node.results["ds_raw"],
+        ds_plot,
         node.namespace["all_sensors"],
         node.namespace["quantum_dot_pairs"],
-        fit_results=node.results["fit_results"],
+        fit_results=node.results.get("fit_results"),
     )
     fig_snr = plot_snr_vs_integration_time(
-        node.results["ds_fit"],
+        ds_plot,
         node.namespace["all_sensors"],
         node.namespace["quantum_dot_pairs"],
-        fit_results=node.results["fit_results"],
+        fit_results=node.results.get("fit_results"),
     )
     fig_proj = plot_projected_histogram(
-        node.results["ds_raw"],
+        ds_plot,
         node.namespace["all_sensors"],
         node.namespace["quantum_dot_pairs"],
-        fit_results=node.results["fit_results"],
+        fit_results=node.results.get("fit_results"),
     )
     plt.show()
     node.results["figures"] = {
