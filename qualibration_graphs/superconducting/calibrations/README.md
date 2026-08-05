@@ -16,7 +16,7 @@ A typical calibration node performs the following workflow:
 
 ## Relevant QualibrationNode properties
 
-Each calibration script instantiates a `QualbirationNode` close to the top of the script. Here we note the most relevant properties and methods.
+Each calibration script instantiates a `QualibrationNode` close to the top of the script. Here we note the most relevant properties and methods.
 
 ### `QualibrationNode` attributes
 
@@ -68,7 +68,7 @@ While individual nodes can be run standalone or via the QUAlibrate UI for specif
 
 Creating a typical calibration graph involves:
 
-1.  **Define Paraemters:** Typically the only relevant parameter is the targets type, e.g. `qubits`
+1.  **Define Parameters:** Typically the only relevant parameter is the targets type, e.g. `qubits`
 2.  **Specifying Nodes:** Define which nodes will be used in the graph
 3.  **Connecting Nodes:** Defining the execution order by defining connections between nodes.
 4.  **Create the Graph:** Pass these parameters to create a `QualibrationGraph` instance
