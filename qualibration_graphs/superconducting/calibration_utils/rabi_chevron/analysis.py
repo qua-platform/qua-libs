@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 
 from qualibrate import QualibrationNode
-from qualibration_libs.data import convert_IQ_to_V
+from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 
 
 @dataclass
@@ -31,9 +31,49 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     pass
 
 
-def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    if not node.parameters.use_state_discrimination:
+def _promote_numbered_stream_variables(ds: xr.Dataset, qubits) -> xr.Dataset:
+    """Stack single-qubit ``I1``/``Q1``/``state1`` streams when fetcher left them ungrouped."""
+
+    qubit_names = [q.name for q in qubits]
+    promotions = {
+        "I": "I1",
+        "Q": "Q1",
+        "state": "state1",
+    }
+    for target, source in promotions.items():
+        if target in ds.data_vars or source not in ds.data_vars:
+            continue
+        promoted = ds[source]
+        if "qubit" not in promoted.dims:
+            promoted = promoted.expand_dims(qubit=qubit_names)
+        ds = ds.assign({target: promoted})
+    return ds
+
+
+def _prepare_plottable_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Ensure the dataset exposes a variable that downstream analysis and plotting can use."""
+
+    ds = _promote_numbered_stream_variables(ds, node.namespace["qubits"])
+    has_state = "state" in ds.data_vars
+    has_iq = "I" in ds.data_vars and "Q" in ds.data_vars
+
+    if node.parameters.use_state_discrimination and has_state:
+        return ds
+    if has_iq:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+        return add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=False)
+    if has_state:
+        return ds
+
+    raise ValueError(
+        "Rabi chevron dataset must contain on-the-fly 'state' or demodulated 'I'/'Q' streams. "
+        f"Found data variables: {list(ds.data_vars)}. "
+        "Set use_state_discrimination=False for IQ-based readout during early bring-up."
+    )
+
+
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+    ds = _prepare_plottable_dataset(ds, node)
     full_freq = np.array([ds.detuning + q.xy.RF_frequency for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}

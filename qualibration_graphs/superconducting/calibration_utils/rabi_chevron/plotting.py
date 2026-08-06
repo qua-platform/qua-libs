@@ -13,13 +13,17 @@ u = unit(coerce_to_integer=True)
 def _plot_data_variable(ds: xr.Dataset) -> str:
     """Return the dataset variable used for rabi-chevron 2D plots."""
 
-    if "IQ_abs" in ds:
-        return "IQ_abs"
-    if "I" in ds:
-        return "I"
-    if "state" in ds:
-        return "state"
-    raise RuntimeError("The dataset must contain 'IQ_abs', 'I', or 'state' for the plotting function to work.")
+    for name in ("IQ_abs", "state", "I"):
+        if name in ds.data_vars:
+            return name
+    raise RuntimeError(
+        "The dataset must contain 'IQ_abs', 'I', or 'state' for the plotting function to work. "
+        f"Found data variables: {list(ds.data_vars)}"
+    )
+
+
+def _plot_scale(data: str) -> float:
+    return 1.0 if data == "state" else u.mV
 
 
 def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
@@ -75,17 +79,19 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], f
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    data = _plot_data_variable(ds)
+    plot_source = fit if fit is not None else ds
+    data = _plot_data_variable(plot_source)
+    scale = _plot_scale(data)
 
     # Create a first x-axis for full_freq_GHz
-    (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz)[data] / u.mV).plot(
+    (plot_source.assign_coords(full_freq_GHz=plot_source.full_freq / u.GHz)[data] / scale).plot(
         ax=ax, y="pulse_duration", x="full_freq_GHz", add_colorbar=False
     )
     ax.set_xlabel("RF frequency [GHz]")
     ax.set_ylabel("Pulse duration [ns]")
     # Create a second x-axis for detuning_MHz
     ax2 = ax.twiny()
-    (fit.assign_coords(detuning_MHz=fit.detuning / u.MHz)[data] / u.mV).plot(
+    (plot_source.assign_coords(detuning_MHz=plot_source.detuning / u.MHz)[data] / scale).plot(
         ax=ax2, y="pulse_duration", x="detuning_MHz", add_colorbar=False
     )
     ax2.set_xlabel("Detuning [MHz]")
