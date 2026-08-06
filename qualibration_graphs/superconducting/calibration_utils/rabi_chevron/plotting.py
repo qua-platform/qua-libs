@@ -10,6 +10,18 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 u = unit(coerce_to_integer=True)
 
 
+def _plot_data_variable(ds: xr.Dataset) -> str:
+    """Return the dataset variable used for rabi-chevron 2D plots."""
+
+    if "IQ_abs" in ds:
+        return "IQ_abs"
+    if "I" in ds:
+        return "I"
+    if "state" in ds:
+        return "state"
+    raise RuntimeError("The dataset must contain 'IQ_abs', 'I', or 'state' for the plotting function to work.")
+
+
 def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
@@ -63,12 +75,7 @@ def plot_individual_data_with(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], f
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    if hasattr(ds, "I"):
-        data = "I"
-    elif hasattr(ds, "state"):
-        data = "state"
-    else:
-        raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
+    data = _plot_data_variable(ds)
 
     # Create a first x-axis for full_freq_GHz
     (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz)[data] / u.mV).plot(
