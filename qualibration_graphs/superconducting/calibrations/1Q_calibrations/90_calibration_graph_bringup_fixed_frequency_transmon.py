@@ -19,13 +19,21 @@ g = QualibrationGraph(
         "resonator_spectroscopy": library.nodes["02a_resonator_spectroscopy"].copy(name="resonator_spectroscopy"),
         # "resonator_spectroscopy_vs_power": library.nodes["02b_resonator_spectroscopy_vs_power"].copy(name="resonator_spectroscopy_vs_power"),
         "qubit_spectroscopy": library.nodes["03a_qubit_spectroscopy"].copy(name="qubit_spectroscopy"),
-        "rabi_chevron": library.nodes["04a_rabi_chevron"].copy(name="rabi_chevron"),
-        "power_rabi": library.nodes["04b_power_rabi"].copy(name="power_rabi"),
+        "rabi_chevron": library.nodes["04a_rabi_chevron"].copy(
+            name="rabi_chevron",
+            use_state_discrimination=False,
+        ),
+        "power_rabi": library.nodes["04b_power_rabi"].copy(
+            name="power_rabi",
+            use_state_discrimination=False,
+        ),
         "readout_power_optimization": library.nodes["08b_readout_power_optimization"].copy(
-            name="readout_power_optimization"
+            name="readout_power_optimization",
+            use_state_discrimination=False,
         ),
         "readout_frequency_optimization": library.nodes["08a_readout_frequency_optimization"].copy(
-            name="readout_frequency_optimization"
+            name="readout_frequency_optimization",
+            use_state_discrimination=False,
         ),
         "IQ_blobs": library.nodes["07_iq_blobs"].copy(name="IQ_blobs"),
         "power_rabi_error_amplification_x180": library.nodes["04b_power_rabi"].copy(
