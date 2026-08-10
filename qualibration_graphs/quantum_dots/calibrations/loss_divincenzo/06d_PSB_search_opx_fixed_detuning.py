@@ -8,54 +8,68 @@ import xarray as xr
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import progress_counter_with_log
+from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from qualibrate.core.models.outcome import Outcome
+from quam_config import QubitQuam as Quam
 
-from quam_config import Quam
-
-from calibration_utils.iq_blobs import fit_raw_data, log_fitted_results
 from calibration_utils.psb_search_fixed_detuning import (
     Parameters,
-    build_labeled_dataset,
-    fit_gmm_labeled,
-    plot_labeled_histogram_barthel,
-    plot_labeled_histogram_gmm,
+    assemble_labeled_ds_raw,
+    fit_fixed_detuning_raw_data,
+    generate_simulated_dataset,
+    log_fitted_results,
+    modify_and_track_point,
+    plot_all,
+    process_raw_dataset,
     resolve_qubits_and_dot_pairs,
 )
-from calibration_utils.common_utils.annotation import annotate_node_figures
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 
 
 # %% {Node initialisation}
 description = """
-        PAULI SPIN BLOCKADE SEARCH - Fixed Configuration, Labeled Two-State Readout
-Acquires labeled shot-by-shot IQ data at the configured measure point for each qubit by measuring
-twice per shot: once without a pi pulse (loading ``init_state_label``) and once with a pi pulse
-(loading the complementary state). The two streams are used to fit either the Barthel 1D readout
-model or a 2-component Gaussian mixture model.
+PAULI SPIN BLOCKADE SEARCH - Fixed detuning, labeled two-state readout (OPX)
 
-Qubit pairs are resolved automatically from ``qubit.preferred_readout_quantum_dot``; no explicit
-``qubit_pairs`` parameter is required.
+This node acquires labeled shot-by-shot IQ data at a fixed PSB measurement point for each
+selected qubit. Each shot is measured twice: first without a pi pulse and then with an
+``x180`` pulse, so the two arms prepare complementary spin states according to
+``init_state_label``.
 
-Prerequisites:
-    - Initialized Quam, calibrated sensor resonators, x180 pulse calibrated on each qubit.
-    - Empty / initialize / measure voltages defined; optional ``detuning`` override for this run.
+The resulting labeled IQ data can be analyzed with either the physics-based Barthel 1D
+readout model or a two-component Gaussian mixture model. Qubit/readout dot pairs are
+resolved automatically from ``qubit.preferred_readout_quantum_dot``.
 
-Node parameters:
-    init_state_label : 'decay' | 'no_decay'
-        Which physical state is prepared WITHOUT the pi pulse.
-        'decay'    → no pi  = T (triplet, decays during measurement); pi = S (singlet)
-        'no_decay' → no pi  = S (singlet);                            pi = T (triplet)
-    analysis_model : 'barthel' | 'gmm'
-        'barthel' – physics-based Barthel 1D model (MCMC, recommended).
-        'gmm'     – 2-component Gaussian mixture model via PCA + sklearn.
+Prerequisites
+-------------
+- QUAM configured and loaded (``quam_config/populate_quam_state_*.py``).
+- Sensor-dot readout calibrated (resonator calibration nodes completed).
+- ``x180`` pulse calibrated on each selected qubit.
+- Fixed readout point defined on the corresponding dot pair; this node can optionally
+  override the measure-point detuning temporarily via ``parameters.detuning``.
 
-State update:
-    Reverts any temporary detuning override, then (if the fit succeeded) updates the
-    integration-weights angle and discrimination threshold on the sensor dot.
+Datasets
+--------
+- ``ds_raw``: shot-level ``I_no_pi``, ``Q_no_pi``, ``I_pi``, ``Q_pi`` (dims: ``qubit``, ``n_runs``).
+- ``ds_processed``: labeled ``Ig``, ``Qg``, ``Ie``, ``Qe`` used by the analysis/plotting pipeline.
+- ``ds_fit``: model-specific fitted dataset returned by the selected Barthel or GMM analysis.
+- ``fit_results``: per-qubit scalar results (serialized dataclass) for logging and state updates.
+
+Results
+-------
+For each qubit, the node extracts the readout-axis rotation and discrimination threshold
+used for PSB state discrimination at the fixed measurement point.
+
+Figures
+-------
+- Raw IQ and rotated IQ with the state-update threshold
+- Labeled S/T histograms with either the Barthel analytic fit or GMM Gaussian components
+
+State update
+------------
+Reverts any temporary detuning override, then (if the fit succeeded) updates the
+integration-weights angle and discrimination threshold on the corresponding sensor dot.
 """
 
 
@@ -68,100 +82,116 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    node.parameters.qubits = ["q1", "q2"]
-    node.parameters.simulate = False
-    node.parameters.simulation_duration_ns = 60_000
-    node.parameters.num_shots = 1000
-    node.parameters.init_state_label = "decay"
-    node.parameters.analysis_model = "barthel"
+    """Local debugging-only parameter overrides."""
+    # You can get type hinting in your IDE by typing node.parameters.
+    pass
 
 
 node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Fixed-point PSB IQ acquisition with two labeled arms (no-pi and pi-pulse)."""
+    """Build the fixed-point labeled-IQ QUA program."""
+
+    # ── Experiment parameters (Python side) ──────────────────────────────
+
+    # Select which qubits participate and resolve the paired PSB readout dots
     qubits, qubit_dot_pairs = resolve_qubits_and_dot_pairs(node)
-
-    dot_pairs = [dp for _, dp in qubit_dot_pairs]
-    for gate_set_id in {dp.voltage_sequence.gate_set.id for dp in dot_pairs}:
-        node.machine.reset_voltage_sequence(gate_set_id)
-    for dp in dot_pairs:
-        if len(dp.sensor_dots) != 1:
-            raise ValueError(f"06d expects exactly one sensor dot per pair; {dp.id!r} has {len(dp.sensor_dots)}.")
-
     node.namespace["qubits"] = qubits
     node.namespace["qubit_dot_pairs"] = qubit_dot_pairs
 
-    node.namespace["tracked_original_detunings"] = {}
-    for dp in dot_pairs:
-        if node.parameters.detuning is not None:
-            gate_set = dp.voltage_sequence.gate_set
-            point_name = dp._create_point_name("measure")
-            point = gate_set.get_macros()[point_name]
-            node.namespace["tracked_original_detunings"][dp.name] = point.voltages.get(dp.name)
-            point.voltages[dp.name] = node.parameters.detuning
+    # Number of shots at the fixed measurement point
+    n_avg = node.parameters.num_shots
 
+    # Temporary detuning override tracking (reverted in update_state)
+    node.namespace["tracked_original_detunings"] = {}
+    for _, dot_pair in qubit_dot_pairs:
+        modify_and_track_point(dot_pair, node.parameters.detuning, node.namespace["tracked_original_detunings"])
+
+    # The only streamed axis is the shot index.
     node.namespace["sweep_axes"] = {
-        "n_runs": xr.DataArray(np.arange(node.parameters.num_shots), attrs={"long_name": "shot"}),
+        "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
     }
 
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
+
+        # Allocate real-time variables on the OPX:
+        #   I_no_pi_st, Q_no_pi_st : buffers collecting the I/Q of the no-pi-pulse arm before transfer to PC
+        #   I_pi_st, Q_pi_st : buffers collecting the I/Q of the pi-pulse arm before transfer to PC
+        #   n            : shot counter
+        #   n_st         : stream reporting shot index to PC (progress bar)
         n = declare(int)
         n_st = declare_output_stream()
-
         I_no_pi_st = {q.name: declare_output_stream() for q in qubits}
         Q_no_pi_st = {q.name: declare_output_stream() for q in qubits}
         I_pi_st = {q.name: declare_output_stream() for q in qubits}
         Q_pi_st = {q.name: declare_output_stream() for q in qubits}
 
-        with for_(n, 0, n < node.parameters.num_shots, n + 1):
-            save(n, n_st)
+        # ── OUTER LOOP: repeat the full sweep n_avg times ──
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st) # tell the PC which shot we are on
 
             for qubit, dot_pair in qubit_dot_pairs:
-                # --- Arm 1: no pi pulse ---
-                dot_pair.initialize(
-                    qubit_name=qubit.name,
-                    target_state=node.parameters.target_state,
-                    max_loops=node.parameters.max_loops,
-                    conditional_drive=True,
-                )
+                # ── ARM 1: measure without a pi pulse ─────────────────────
+
+                # Perform the initialize macro
+                dot_pair.initialize()
                 align()
-                (i_no_pi, q_no_pi, _) = dot_pair.measure(return_iq=True)
+
+                # Perform the measure macro (ramps to the measure point)
+                i_no_pi, q_no_pi, _ = dot_pair.measure(return_iq=True)
+
+                # Add this run to the no-pi-pulse stream buffer
                 save(i_no_pi, I_no_pi_st[qubit.name])
                 save(q_no_pi, Q_no_pi_st[qubit.name])
+
+                # Make sure the outputs are ramped to zero at the end of the arm
                 align()
                 dot_pair.voltage_sequence.ramp_to_zero()
 
-                # --- Arm 2: pi pulse ---
-                dot_pair.initialize(
-                    qubit_name=qubit.name,
-                    target_state=node.parameters.target_state,
-                    max_loops=node.parameters.max_loops,
-                    conditional_drive=True,
-                )
+                # ── ARM 2: measure after an x180 pulse ─────────────────────
+
+                # Perform the initialize macro
+                dot_pair.initialize()
+
+                # Perform the x180 macro
                 align()
                 qubit.x180()
                 align()
-                (i_pi, q_pi, _) = dot_pair.measure(return_iq=True)
+
+                # Perform the measure macro (ramps to the measure point)
+                i_pi, q_pi, _ = dot_pair.measure(return_iq=True)
+
+                # Add this run to the pi-pulse stream buffer
                 save(i_pi, I_pi_st[qubit.name])
                 save(q_pi, Q_pi_st[qubit.name])
+
+                # Make sure the outputs are ramped to zero at the end of the arm
                 align()
                 dot_pair.voltage_sequence.ramp_to_zero()
 
+        # ── Post-processing on the OPX before data reaches the PC ──────────
         with stream_processing():
-            n_st.save("n")
-            for q in qubits:
-                I_no_pi_st[q.name].buffer(node.parameters.num_shots).save(f"I_no_pi_{q.name}")
-                Q_no_pi_st[q.name].buffer(node.parameters.num_shots).save(f"Q_no_pi_{q.name}")
-                I_pi_st[q.name].buffer(node.parameters.num_shots).save(f"I_pi_{q.name}")
-                Q_pi_st[q.name].buffer(node.parameters.num_shots).save(f"Q_pi_{q.name}")
+            n_st.save("n") # expose shot counter as "n" in the fetched dataset
+            for qubit in qubits:
+                # Each save() above is one run.
+                # .buffer(n_avg) : group points along the repetitions axis
+                # Result : 1D trace I(n_avg), Q(n_avg) per qubit pair
+                I_no_pi_st[qubit.name].buffer(n_avg).save(f"I_no_pi_{qubit.name}")
+                Q_no_pi_st[qubit.name].buffer(n_avg).save(f"Q_no_pi_{qubit.name}")
+                I_pi_st[qubit.name].buffer(n_avg).save(f"I_pi_{qubit.name}")
+                Q_pi_st[qubit.name].buffer(n_avg).save(f"Q_pi_{qubit.name}")
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
+    or node.parameters.use_simulated_data
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
@@ -170,36 +200,38 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate a synthetic labeled two-arm ``ds_raw`` for offline analysis."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated fixed-detuning PSB dataset generated successfully.")
+
+
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Execute QUA and assemble ``ds_raw`` with ``I_no_pi``, ``Q_no_pi``, ``I_pi``, ``Q_pi``."""
+    """Execute QUA, fetch the shot streams, and assemble the labeled-arm ``ds_raw`` dataset."""
+    # Connect to the QOP
     qmm = node.machine.connect()
+    # Get the config from the machine
     config = node.machine.generate_config()
     qubits = node.namespace["qubits"]
-    qnames = [q.name for q in qubits]
 
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter_with_log(
-                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
-            )
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
+        # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
 
-    def _concat(prefix):
-        arrays = [dataset[f"{prefix}_{n}"] for n in qnames]
-        return xr.concat(arrays, dim="qubit").assign_coords(qubit=qnames)
-
-    node.results["ds_raw"] = xr.Dataset(
-        {
-            "I_no_pi": _concat("I_no_pi"),
-            "Q_no_pi": _concat("Q_no_pi"),
-            "I_pi": _concat("I_pi"),
-            "Q_pi": _concat("Q_pi"),
-        }
-    )
+    node.results["ds_raw"] = assemble_labeled_ds_raw(dataset, qubits)
 
 
 # %% {Load_historical_data}
@@ -212,96 +244,43 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     qubits, qubit_dot_pairs = resolve_qubits_and_dot_pairs(node)
     node.namespace["qubits"] = qubits
     node.namespace["qubit_dot_pairs"] = qubit_dot_pairs
+    node.namespace["tracked_original_detunings"] = {}
+
+
+# %% {Process_raw_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def process_raw_data(node: QualibrationNode[Parameters, Quam]):
+    """Convert raw no-pi/pi IQ streams into the labeled dataset used downstream."""
+    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Fit labeled IQ shots with the selected model (Barthel or GMM)."""
-    qubits = node.namespace["qubits"]
-    ds_labeled = build_labeled_dataset(node.results["ds_raw"], node.parameters.init_state_label)
+    """Fit the labeled IQ shots with the selected Barthel or GMM model."""
+    node.results["ds_fit"], fit_results = fit_fixed_detuning_raw_data(node)
+    node.results["fit_results"] = {str(name): asdict(result) for name, result in fit_results.items()}
 
-    if node.parameters.analysis_model == "barthel":
-        ds_fit, fit_results = fit_raw_data(ds_labeled, node)
-        node.results["ds_fit"] = ds_fit
-        # fit_raw_data reports confusion-matrix fidelity; replace with the analytic
-        # model optimum stored in ds_fit.fidelity_opt (same as fit_barthel_mixed_iq).
-        for q in qubits:
-            fit_results[q.name].readout_fidelity = 100.0 * float(ds_fit["fidelity_opt"].sel(qubit=q.name))
-    else:  # "gmm"
-        fit_results, ds_gmm_fit = fit_gmm_labeled(ds_labeled, qubits)
-        node.results["ds_gmm_fit"] = ds_gmm_fit
-
-    node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qname: (Outcome.SUCCESSFUL if fr["success"] else Outcome.FAILED)
-        for qname, fr in node.results["fit_results"].items()
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Raw + rotated IQ scatter (matching the state-update angle & threshold) + model histogram."""
-    qubits = node.namespace["qubits"]
-    ds_labeled = build_labeled_dataset(node.results["ds_raw"], node.parameters.init_state_label)
-    fit_results = node.results.get("fit_results", {})
-    figures = {}
-
-    # --- IQ scatter: raw (left) + rotated with state-update threshold (right) ---
-    n_qubits = len(list(qubits))
-    fig_iq, axes = plt.subplots(n_qubits, 2, figsize=(11, 4.5 * n_qubits), squeeze=False)
-    for idx, q in enumerate(qubits):
-        ax_raw, ax_rot = axes[idx, 0], axes[idx, 1]
-        Ig = ds_labeled["Ig"].sel(qubit=q.name).values
-        Qg = ds_labeled["Qg"].sel(qubit=q.name).values
-        Ie = ds_labeled["Ie"].sel(qubit=q.name).values
-        Qe = ds_labeled["Qe"].sel(qubit=q.name).values
-        fr = fit_results.get(q.name, {})
-        iw_angle = fr.get("iw_angle", 0.0)
-        I_thr = fr.get("I_threshold")
-
-        ax_raw.plot(Ig * 1e3, Qg * 1e3, ".", alpha=0.4, markersize=2, label="S", color="C0")
-        ax_raw.plot(Ie * 1e3, Qe * 1e3, ".", alpha=0.4, markersize=2, label="T", color="C1")
-        ax_raw.set_xlabel("I [mV]")
-        ax_raw.set_ylabel("Q [mV]")
-        ax_raw.set_title(f"{q.name} — raw IQ")
-        ax_raw.legend(fontsize=7)
-
-        ca, sa = np.cos(iw_angle), np.sin(iw_angle)
-        Ig_r, Qg_r = Ig * ca + Qg * sa, -Ig * sa + Qg * ca
-        Ie_r, Qe_r = Ie * ca + Qe * sa, -Ie * sa + Qe * ca
-        ax_rot.plot(Ig_r * 1e3, Qg_r * 1e3, ".", alpha=0.4, markersize=2, label="S", color="C0")
-        ax_rot.plot(Ie_r * 1e3, Qe_r * 1e3, ".", alpha=0.4, markersize=2, label="T", color="C1")
-        if I_thr is not None and np.isfinite(I_thr):
-            ax_rot.axvline(
-                I_thr * 1e3,
-                color="C3",
-                ls="--",
-                lw=1.5,
-                label=f"I_threshold = {I_thr * 1e3:.2f} mV",
-            )
-        ax_rot.set_xlabel("I_rot [mV]")
-        ax_rot.set_ylabel("Q_rot [mV]")
-        ax_rot.set_title(f"{q.name} — rotated (\u0394angle = {np.degrees(iw_angle):.1f}\u00b0)")
-        ax_rot.legend(fontsize=7)
-
-    fig_iq.suptitle("PSB IQ blobs — raw + rotated (state-update angle & threshold)")
-    fig_iq.tight_layout()
-    figures["iq_blobs"] = fig_iq
-
-    # --- Model-specific histogram ---
-    if node.parameters.analysis_model == "barthel" and "ds_fit" in node.results:
-        fig_hist = plot_labeled_histogram_barthel(ds_labeled, node.results["ds_fit"], list(qubits))
-        figures["histogram"] = fig_hist
-    elif "ds_gmm_fit" in node.results:
-        fig_hist = plot_labeled_histogram_gmm(node.results["ds_gmm_fit"], list(qubits))
-        figures["histogram"] = fig_hist
-
-    plt.show()
-    node.results["figures"] = figures
-    annotate_node_figures(node)
+    """Generate all node figures via the fixed-detuning plotting API."""
+    node.results["figures"] = plot_all(
+        node.results["ds_processed"],
+        node.namespace["qubits"],
+        node.results["ds_fit"],
+        fit_results=node.results["fit_results"],
+        analysis_model=node.parameters.analysis_model,
+    )
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
@@ -315,14 +294,18 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             point = gate_set.get_macros()[point_name]
             point.voltages[dot_pair.name] = node.namespace["tracked_original_detunings"][dot_pair.name]
 
+    fit_results = node.results.get("fit_results")
+    if not fit_results:
+        return
+
     with node.record_state_updates():
         for qubit, dot_pair in node.namespace["qubit_dot_pairs"]:
-            fit_result = node.results["fit_results"].get(qubit.name)
+            fit_result = fit_results.get(qubit.name)
             if fit_result is None or not fit_result["success"]:
                 continue
 
             sensor_dot = dot_pair.sensor_dots[0]
-            op_name = "readout" + f"_{dot_pair.name}"
+            op_name = f"readout_{dot_pair.name}"
             operation = sensor_dot.readout_resonator.operations[op_name]
             operation.integration_weights_angle -= float(fit_result["iw_angle"])
 
@@ -334,4 +317,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist node results to storage."""
     node.save()
