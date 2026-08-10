@@ -78,8 +78,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.use_simulated_data = True
-    node.parameters.qubit_pairs = ["q1_q2"]
     pass
 
 
@@ -172,6 +170,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Align the start of the resonator's wait command to the END of the initialization macro
                         align(rr.id, dot_pair.physical_channel.id)
 
+                        # ── STEP 2 - RAMP & WAIT: Ramp to the readout point and wait for a buffer duration ──────────
+
                         # Ramp to the requested detuning / barrier point and wait for the buffer duration and the readout length
                         dot_pair.ramp_to_voltages(
                             {
@@ -181,6 +181,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             ramp_duration=node.parameters.ramp_duration,
                             duration=readout_length + buffer_cc * 4,
                         )
+
+                        # ── STEP 3 - MEASURE: Send the readout pulse and demodulate ──────────
 
                         # Resonator will be sat idle during the ramp + buffer. wait() function argument is in clock cycles, hence the division by 4
                         rr.wait(node.parameters.ramp_duration // 4 + buffer_cc)
