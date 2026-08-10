@@ -29,7 +29,9 @@ def _rotate_iq(I: np.ndarray, Q: np.ndarray, angle: float) -> tuple[np.ndarray, 
     return I * ca + Q * sa, -I * sa + Q * ca
 
 
-def _weighted_hist_density(values: np.ndarray, bin_edges: np.ndarray, area: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _weighted_hist_density(
+    values: np.ndarray, bin_edges: np.ndarray, area: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Build histogram bars whose total area matches a target mixture weight.
 
     Matplotlib's ``density=True`` normalizes each histogram independently to unit area.

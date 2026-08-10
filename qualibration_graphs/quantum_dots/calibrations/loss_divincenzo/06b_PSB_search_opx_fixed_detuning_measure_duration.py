@@ -170,7 +170,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # Loop over the qubit_pairs
             for i, qubit_pair in enumerate(qubit_pairs):
-                align() # Initial global align
+                align()  # Initial global align
 
                 # ── STEP 1 - SETUP & INITIALIZE: Setup the sweep and initialize ──────────
                 # Extract the underlying quantum_dot_pair and its readout name
@@ -196,11 +196,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 )
 
                 # Resonator will be sat idle during the ramp + buffer. wait() function argument is in clock cycles, hence the division by 4
-                rr.wait((node.parameters.ramp_duration + node.parameters.buffer_duration)//4)
-
+                rr.wait((node.parameters.ramp_duration + node.parameters.buffer_duration) // 4)
 
                 # ── STEP 3 - MEASURE: Perform the measurement ──────────
-                
+
                 # Play the "readout_{quantum_dot_pair.name}" pulse and cumulatively integrate I/Q
                 # measure_accumulated returns differently depending on ReadoutResonator type:
                 #      ReadoutResonatorSingle - returns a single IQ pair, since we have a single analog input
