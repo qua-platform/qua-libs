@@ -1,38 +1,26 @@
-"""Analysis utilities for fixed-point PSB readout (06d): labeled-stream GMM fitting and helpers."""
+"""Analysis utilities for fixed-point PSB readout (06d)."""
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import Dict, Sequence, Tuple
 
 import numpy as np
 import xarray as xr
 from scipy.stats import norm as _scipy_norm
 
-from qualibration_libs.parameters import get_qubits
-from calibration_utils.iq_blobs.analysis import FitParameters
+from qualibrate.core import QualibrationNode
+from calibration_utils.iq_utils.iq_blobs import fit_raw_data, log_fitted_results
+from calibration_utils.iq_utils.iq_blobs.analysis import FitParameters
 
-
-def resolve_qubits_and_dot_pairs(node):
-    """Return list of (qubit, dot_pair) tuples resolved from qubit.preferred_readout_quantum_dot."""
-    machine = node.machine
-    qubits = get_qubits(node)
-    pairs = []
-    for qubit in qubits:
-        preferred_dot_id = getattr(qubit, "preferred_readout_quantum_dot", None)
-        if preferred_dot_id is None:
-            raise ValueError(
-                f"Qubit {qubit.id!r} has no preferred_readout_quantum_dot set; "
-                "configure it to the partner dot used for PSB readout."
-            )
-        pair_name = machine.find_quantum_dot_pair(qubit.quantum_dot.id, preferred_dot_id)
-        if pair_name is None:
-            raise ValueError(
-                f"No QuantumDotPair registered for dots {qubit.quantum_dot.id!r} and "
-                f"{preferred_dot_id!r} (qubit {qubit.id!r})."
-            )
-        pairs.append((qubit, machine.quantum_dot_pairs[pair_name]))
-    return qubits, pairs
-
+__all__ = [
+    "build_labeled_dataset",
+    "fit_fixed_detuning_raw_data",
+    "fit_gmm_labeled",
+    "gmm_analytic_fidelity",
+    "log_fitted_results",
+    "process_raw_dataset",
+]
 
 def build_labeled_dataset(ds_raw: xr.Dataset, init_state_label: str) -> xr.Dataset:
     """Map I_no_pi/Q_no_pi/I_pi/Q_pi → Ig/Qg/Ie/Qe based on init_state_label."""
@@ -46,7 +34,7 @@ def build_labeled_dataset(ds_raw: xr.Dataset, init_state_label: str) -> xr.Datas
                 "Qe": ds_raw["Q_no_pi"],
             }
         )
-    else:  # "no_decay"
+    if init_state_label == "no_decay":
         # No pi pulse loads S (ground); pi pulse loads T (excited)
         return xr.Dataset(
             {
@@ -56,9 +44,16 @@ def build_labeled_dataset(ds_raw: xr.Dataset, init_state_label: str) -> xr.Datas
                 "Qe": ds_raw["Q_pi"],
             }
         )
+    raise ValueError(f"Unsupported init_state_label={init_state_label!r}; expected 'decay' or 'no_decay'.")
 
 
-def gmm_analytic_fidelity(means, stds, weights, t_grid=None):
+def process_raw_dataset(ds_raw: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Convert 06d raw no-pi/pi streams into labeled S/T datasets for analysis and plotting."""
+
+    return build_labeled_dataset(ds_raw, node.parameters.init_state_label)
+
+
+def gmm_analytic_fidelity(means, stds, _weights, t_grid=None):
     """Compute optimal analytic fidelity F = 0.5*(FS + FT) for a 2-component GMM.
 
     Uses the same convention as Barthel1DMetricCurves (utils.py:334):
@@ -83,6 +78,52 @@ def gmm_analytic_fidelity(means, stds, weights, t_grid=None):
     return float(fidelity_curve[best_idx]), float(t_grid[best_idx])
 
 
+def fit_fixed_detuning_raw_data(
+    node: QualibrationNode,
+) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+    """Fit 06d labeled IQ shots with the selected Barthel or GMM model."""
+
+    ds_for_fit = node.results.get("ds_processed", node.results["ds_raw"])
+    qubits = node.namespace["qubits"]
+
+    if node.parameters.analysis_model == "barthel":
+        with _barthel_clip_compat():
+            ds_fit, fit_results = fit_raw_data(ds_for_fit, node)
+        # fit_raw_data reports confusion-matrix fidelity; replace with the analytic
+        # model optimum stored in ds_fit.fidelity_opt (same as fit_barthel_mixed_iq).
+        for qubit in qubits:
+            fit_results[qubit.name].readout_fidelity = 100.0 * float(ds_fit["fidelity_opt"].sel(qubit=qubit.name))
+        return ds_fit, fit_results
+
+    if node.parameters.analysis_model == "gmm":
+        fit_results, ds_fit = fit_gmm_labeled(ds_for_fit, qubits)
+        return ds_fit, fit_results
+
+    raise ValueError(f"Unsupported analysis_model={node.parameters.analysis_model!r}.")
+
+
+@contextmanager
+def _barthel_clip_compat():
+    """Adapt the shared Barthel stack to JAX versions that expect ``min``/``max`` instead of ``a_min``/``a_max``."""
+
+    from calibration_utils.iq_utils.iq_blobs.readout_barthel import analytic
+
+    original_clip = analytic.jnp.clip
+
+    def compat_clip(a, a_min=None, a_max=None, min=None, max=None):
+        if min is None:
+            min = a_min
+        if max is None:
+            max = a_max
+        return original_clip(a, min=min, max=max)
+
+    analytic.jnp.clip = compat_clip
+    try:
+        yield
+    finally:
+        analytic.jnp.clip = original_clip
+
+
 def fit_gmm_labeled(
     ds_labeled: xr.Dataset,
     qubits: Sequence,
@@ -102,7 +143,7 @@ def fit_gmm_labeled(
     """
     import jax.numpy as jnp
     from sklearn.mixture import GaussianMixture
-    from calibration_utils.iq_blobs.readout_barthel.pca import pca_project_1d
+    from calibration_utils.iq_utils.iq_blobs.readout_barthel.pca import pca_project_1d
 
     fit_results = {}
     qnames = [q.name for q in qubits]
@@ -111,7 +152,7 @@ def fit_gmm_labeled(
     gmm_mean_S_list, gmm_mean_T_list = [], []
     gmm_std_S_list, gmm_std_T_list = [], []
     gmm_weight_S_list, gmm_weight_T_list = [], []
-    ge_threshold_list, readout_fidelity_list = [], []
+    ge_threshold_list, I_threshold_list, readout_axis_offset_list, readout_fidelity_list = [], [], [], []
 
     for q in qubits:
         qname = q.name
@@ -170,6 +211,7 @@ def fit_gmm_labeled(
         mu = np.asarray(proj.mean)
         ca, sa = np.cos(iw_angle), np.sin(iw_angle)
         I_threshold = float(threshold + mu[0] * ca + mu[1] * sa)
+        readout_axis_offset = float(mu[0] * ca + mu[1] * sa)
 
         gg = float(np.mean(y_g <= threshold))
         ge = float(np.mean(y_g > threshold))
@@ -194,6 +236,8 @@ def fit_gmm_labeled(
         gmm_weight_S_list.append(float(weights_st[0]))
         gmm_weight_T_list.append(float(weights_st[1]))
         ge_threshold_list.append(threshold)
+        I_threshold_list.append(I_threshold)
+        readout_axis_offset_list.append(readout_axis_offset)
         readout_fidelity_list.append(readout_fidelity / 100.0)
 
     # Pad y_g / y_e to a common length for storage in xr.Dataset
@@ -217,6 +261,8 @@ def fit_gmm_labeled(
             "gmm_weight_S": ("qubit", np.array(gmm_weight_S_list)),
             "gmm_weight_T": ("qubit", np.array(gmm_weight_T_list)),
             "ge_threshold": ("qubit", np.array(ge_threshold_list)),
+            "I_threshold": ("qubit", np.array(I_threshold_list)),
+            "readout_axis_offset": ("qubit", np.array(readout_axis_offset_list)),
             "readout_fidelity": ("qubit", np.array(readout_fidelity_list)),
         },
     )

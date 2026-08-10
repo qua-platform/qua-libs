@@ -20,6 +20,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Which model to use for fitting the labeled IQ shots.
     'barthel' – physics-based Barthel 1D readout model with MCMC (``fit_raw_data``).
     'gmm'     – 2-component Gaussian mixture model via PCA projection + sklearn GMM."""
+    use_simulated_data: bool = False
+    """If True, skip QUA compile/execute and build synthetic labeled two-arm IQ shots. Default False."""
 
 
 class Parameters(

@@ -124,7 +124,7 @@ def _run_06d_analysis(
     )
 
     # Resolve qubits from the machine
-    from calibration_utils.common_utils.experiment import get_qubits
+    from qualibration_libs.parameters.experiment import get_qubits
     node.namespace["qubits"] = qubits = get_qubits(node)
 
     # Resolve (qubit, dot_pair) tuples via preferred_readout_quantum_dot
@@ -140,6 +140,7 @@ def _run_06d_analysis(
 
     node.results["ds_raw"] = ds_raw
 
+    call_node_action(node, "process_raw_data")
     call_node_action(node, "analyse_data")
     call_node_action(node, "plot_data")
     if "fit_results" in node.results:
