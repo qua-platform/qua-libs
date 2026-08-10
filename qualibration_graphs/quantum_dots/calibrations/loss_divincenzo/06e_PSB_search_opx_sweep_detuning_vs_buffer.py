@@ -105,7 +105,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["detuning_array"] = detuning_array
     node.namespace["buffer_ns_array"] = buffer_ns_array
 
-
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
         "buffer_duration": xr.DataArray(
@@ -182,7 +181,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             ramp_duration=node.parameters.ramp_duration,
                             duration=readout_length + buffer_cc * 4,
                         )
-                        
+
                         # Resonator will be sat idle during the ramp + buffer. wait() function argument is in clock cycles, hence the division by 4
                         rr.wait(node.parameters.ramp_duration // 4 + buffer_cc)
                         # Resonator will measure after waiting for ramp + buffer, means that this corresponds to the readout_length wait time in line 178
@@ -192,7 +191,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Add this run to the stream buffers
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
-
 
                         # Apply the compensation pulse via the voltage sequence. This both steps to 0 before, and goes back to 0 after
                         # Compensation begins after the ramp + buffer + readout_length, so all should be synchronised nicely
