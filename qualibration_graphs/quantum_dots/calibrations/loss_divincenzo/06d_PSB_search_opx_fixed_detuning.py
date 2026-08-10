@@ -82,7 +82,6 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    """Local debugging-only parameter overrides."""
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
@@ -93,7 +92,7 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Build the fixed-point labeled-IQ QUA program."""
+    """Build the sweep axes and the QUA pulse sequence."""
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
@@ -193,7 +192,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program."""
+    """Connect to the QOP and simulate the QUA program"""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
@@ -203,7 +202,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
-    """Generate a synthetic labeled two-arm ``ds_raw`` for offline analysis."""
     node.results["ds_raw"] = generate_simulated_dataset(node)
     node.log("[sim] Simulated fixed-detuning PSB dataset generated successfully.")
 
@@ -213,7 +211,7 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Execute QUA, fetch the shot streams, and assemble the labeled-arm ``ds_raw`` dataset."""
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -250,14 +248,14 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Process_raw_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Convert raw no-pi/pi IQ streams into the labeled dataset used downstream."""
+    """Process raw dataset into a plotting/analysis-ready dataset (keeps ds_raw immutable)."""
     node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Fit the labeled IQ shots with the selected Barthel or GMM model."""
+    """Fit the labeled readout model using the processed dataset."""
     node.results["ds_fit"], fit_results = fit_fixed_detuning_raw_data(node)
     node.results["fit_results"] = {str(name): asdict(result) for name, result in fit_results.items()}
 
@@ -271,7 +269,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Generate all node figures via the fixed-detuning plotting API."""
+    """Plot all node figures via the shared plotting API."""
     node.results["figures"] = plot_all(
         node.results["ds_processed"],
         node.namespace["qubits"],
@@ -286,7 +284,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Revert detuning override; persist readout angle and threshold on the sensor dot."""
+    """Revert temporary patches, then persist fixed-point readout calibration."""
     for _, dot_pair in node.namespace["qubit_dot_pairs"]:
         if dot_pair.name in node.namespace.get("tracked_original_detunings", {}):
             gate_set = dot_pair.voltage_sequence.gate_set
@@ -317,5 +315,4 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    """Persist node results to storage."""
     node.save()
