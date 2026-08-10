@@ -301,6 +301,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     node.results["figures"] = plot_all(
         node.results["ds_fit"],
         metric_name=node.parameters.pca_metric,
+        fit_results=node.results["fit_results"],
     )
     node.results["figure"] = node.results["figures"]["detuning_vs_buffer_pca_map"]
     if not node.modes.external:
