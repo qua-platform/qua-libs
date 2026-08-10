@@ -22,6 +22,7 @@ __all__ = [
     "process_raw_dataset",
 ]
 
+
 def build_labeled_dataset(ds_raw: xr.Dataset, init_state_label: str) -> xr.Dataset:
     """Map I_no_pi/Q_no_pi/I_pi/Q_pi → Ig/Qg/Ie/Qe based on init_state_label."""
     if init_state_label == "decay":

@@ -132,7 +132,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st) # tell the PC which shot we are on
+            save(n, n_st)  # tell the PC which shot we are on
 
             for qubit, dot_pair in qubit_dot_pairs:
                 # ── ARM 1: measure without a pi pulse ─────────────────────
@@ -157,7 +157,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Perform the initialize macro
                 dot_pair.initialize()
 
-                # Perform the x180 macro
+                # Perform the x180 macro
                 align()
                 qubit.x180()
                 align()
@@ -175,7 +175,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # ── Post-processing on the OPX before data reaches the PC ──────────
         with stream_processing():
-            n_st.save("n") # expose shot counter as "n" in the fetched dataset
+            n_st.save("n")  # expose shot counter as "n" in the fetched dataset
             for qubit in qubits:
                 # Each save() above is one run.
                 # .buffer(n_avg) : group points along the repetitions axis
