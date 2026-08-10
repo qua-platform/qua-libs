@@ -2,8 +2,9 @@ from typing import Literal, Optional
 
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import QubitPairExperimentNodeParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
+
+from calibration_utils.iq_utils import IQSweepParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -43,6 +44,9 @@ class NodeSpecificParameters(RunnableParameters):
     initialization_macro: Literal["empty", "initialize"] = "empty"
     """Preparation macro applied before the sweep point."""
 
+    use_simulated_data: bool = False
+    """If True, skip QUA compile/execute and build synthetic shot-by-shot I/Q data."""
+
     pca_metric: Literal["pc1_std", "iq_trace"] = "pc1_std"
     """Map quantity to highlight in plots; analysis computes both."""
 
@@ -50,7 +54,8 @@ class NodeSpecificParameters(RunnableParameters):
 class Parameters(
     NodeParameters,
     CommonNodeParameters,
-    NodeSpecificParameters,
     QubitPairExperimentNodeParameters,
+    IQSweepParameters,
+    NodeSpecificParameters,
 ):
     """Parameter set for 06e_PSB_search_opx_sweep_detuning_vs_buffer."""
