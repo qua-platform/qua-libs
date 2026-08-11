@@ -177,7 +177,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # Make sure to align the measure command to be AFTER the ramp + wait
                     align(rr.id, dot_pair.physical_channel.id)
-                    rr.measure(op_name, qua_vars=(I[qubit_pair.name], Q[qubit_pair.name]))
+                    rr.measure(op_name, qua_vars=(I[i], Q[i]))
 
                     # Append this sweep point's I/Q to the stream buffer
                     save(I[i], I_st[i])
