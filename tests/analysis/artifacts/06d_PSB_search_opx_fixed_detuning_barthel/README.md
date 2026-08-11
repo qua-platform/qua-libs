@@ -53,7 +53,7 @@ integration-weights angle and discrimination threshold on the corresponding sens
 | `load_data_id` | `None` |
 | `max_loops` | `100` |
 | `multiplexed` | `False` |
-| `num_shots` | `1000` |
+| `num_shots` | `200` |
 | `qubits` | `['q1']` |
 | `reset_type` | `thermal` |
 | `return_n_loops` | `False` |
@@ -69,7 +69,7 @@ integration-weights angle and discrimination threshold on the corresponding sens
 
 | qubit | I_threshold | iw_angle | F (%) | success |
 |-------|-------------|----------|-------|---------|
-| q1 | -0.02759 | -2.789 | 99.7 | True |
+| q1 | -0.02803 | -2.781 | 99.2 | True |
 
 ## Figures
 
