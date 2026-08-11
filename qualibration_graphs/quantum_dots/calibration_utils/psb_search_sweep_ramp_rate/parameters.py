@@ -17,6 +17,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Step between ramp durations (ns). Must be a multiple of 4."""
     buffer_duration: int = 16
     """Hold duration at the measurement point before readout (ns)."""
+    reset_wait_time: int = 16
+    """Settling time at zero volts between consecutive sweep points (ns)."""
     detuning: Optional[float] = None
     """If set, temporarily overrides the measure macro detuning voltage (V) for this node only."""
     initialization_macro: Literal["empty", "initialize"] = "empty"
