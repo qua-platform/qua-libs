@@ -62,16 +62,22 @@ def get_durations_and_chirp_rates(node: QualibrationNode, operation: str = "x180
     qubits = get_qubits(node)
     operation_len = node.parameters.operation_len_in_ns
 
-    # If no operation_len is given, get a dict of the operation lengths
-    if operation_len is None: 
-        pulse_name = resolve_operation_name(node, operation)
-        for q in qubits: 
-            default_length = q.xy.operations[pulse_name].length
-            operation_lengths_by_qubit[q.name] = default_length
-    # If an operation_len is given, standardise them in the same dict
-    else: 
-        for q in qubits: 
-            operation_lengths_by_qubit[q.name] = operation_len
+    
+
+    for q in qubits: 
+        # If no operation_len is given, get a dict of the operation lengths
+        if operation_len is None: 
+            pulse_name = resolve_operation_name(node, operation)
+            op_len = q.xy.operations[pulse_name].length
+        # If an operation_len is given, standardise them in the same dict
+        else: 
+            op_len = operation_len
+
+        if op_len % 4 != 0:
+            raise ValueError(
+                f"Operation length for qubit {q.name} must be a multiple of 4 ns, got {op_len} ns."
+            )
+        operation_lengths_by_qubit[q.name] = op_len
 
     # Once we have the desired durations per qubit, work out the required chirp rates based on each duration
     for q in qubits: 

@@ -17,7 +17,7 @@ def plot_raw_data_with_fit(
     fits: xr.Dataset = None,
     threshold_results: dict = None,
     signal_threshold: float = None,
-    analysis_signal: str = "E_p2_given_p1_0",
+    analysis_signal: str = "E_p1_given_p0_0",
 ):
     """
     Plots the chirp qubit spectroscopy signal with optional threshold and peak-fit overlays.
@@ -26,7 +26,7 @@ def plot_raw_data_with_fit(
     ----------
     ds : xr.Dataset
         The processed dataset containing ``{analysis_signal}_{qname}`` variables
-        (1-D over ``detuning``) as produced by ``process_parity_streams``.
+        (1-D over ``detuning``) as produced by ``process_raw_dataset``.
     qubits : list
         A list of qubits to plot.
     fits : xr.Dataset, optional
@@ -36,7 +36,7 @@ def plot_raw_data_with_fit(
     signal_threshold : float, optional
         The signal threshold value to draw as a horizontal line.
     analysis_signal : str, optional
-        Which processed signal variable to plot (default ``"E_p2_given_p1_0"``).
+        Which processed signal variable to plot (default ``"E_p1_given_p0_0"``).
 
     Returns
     -------
@@ -74,7 +74,7 @@ def plot_individual_data_with_fit(
     fit: xr.Dataset = None,
     threshold_result: dict = None,
     signal_threshold: float = None,
-    analysis_signal: str = "E_p2_given_p1_0",
+    analysis_signal: str = "E_p1_given_p0_0",
 ):
     """
     Plots individual qubit data on a given axis with optional peak fit and threshold overlay.
@@ -96,7 +96,7 @@ def plot_individual_data_with_fit(
     signal_threshold : float, optional
         Threshold level to draw as a horizontal line.
     analysis_signal : str, optional
-        Which processed signal variable to plot (default ``"E_p2_given_p1_0"``).
+        Which processed signal variable to plot (default ``"E_p1_given_p0_0"``).
     """
     signal_var = f"{analysis_signal}_{qubit_name}"
     if signal_var not in ds.data_vars:
@@ -156,3 +156,29 @@ def plot_individual_data_with_fit(
             pass
 
     ax2.legend(fontsize=7, loc="upper right")
+
+
+def plot_all(
+    ds: xr.Dataset,
+    qubits: List,
+    *,
+    fits: Optional[xr.Dataset] = None,
+    threshold_results: Optional[dict] = None,
+    signal_threshold: Optional[float] = None,
+    analysis_signal: str = "E_p1_given_p0_0",
+    show: bool = True,
+) -> dict[str, Figure]:
+    """Build and return all 08a chirp spectroscopy figures."""
+    figures = {
+        "qubit_spectroscopy_chirp": plot_raw_data_with_fit(
+            ds,
+            qubits,
+            fits=fits,
+            threshold_results=threshold_results,
+            signal_threshold=signal_threshold,
+            analysis_signal=analysis_signal,
+        )
+    }
+    if show:
+        plt.show()
+    return figures

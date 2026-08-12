@@ -1,9 +1,6 @@
 # %% {Imports}
-from calibration_utils.common_utils.parity_streams import process_parity_streams
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from dataclasses import asdict
 
 from qm.qua import *
 
@@ -16,20 +13,17 @@ from qualibrate.core import QualibrationNode
 from quam_config import QubitQuam as Quam
 
 from calibration_utils.measurement_utils import (
-    save_measurement, 
-    buffer_streams, 
+    save_measurement,
     declare_streams,
-    process_streams,
 )
 from calibration_utils.qubit_spectroscopy_chirp import (
     Parameters,
-    fit_raw_data,
-    find_frequency_by_threshold,
-    log_fitted_results,
-    plot_raw_data_with_fit,
+    analyse_raw_data,
     generate_simulated_dataset,
     resolve_operation_name,
     get_durations_and_chirp_rates,
+    plot_all,
+    process_raw_dataset,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -38,19 +32,27 @@ from qualibration_libs.parameters import get_qubits
 
 # %% {Node initialisation}
 description = """
-        CHIRPED QUBIT SPECTROSCOPY
-This sequence involves parking the qubit at the manipulation bias point, and probing the qubit. This node is designed
-to roughly estimate the qubit frequency by chirping through a series of frequency bands and measuring the parity. When
-the qubit frequency is within the chirped frequency band, the qubit is partially driven, and the measured parity is used
-to estimate the Larmor frequency.
+CHIRPED QUBIT SPECTROSCOPY
+
+This node sweeps the qubit drive frequency around the current RF estimate by
+chirping across narrow frequency bands and measuring the resulting response via
+PSB. When the qubit frequency falls within one of the chirped bands, the signal
+is elevated and can be used to estimate the qubit Larmor frequency.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
     - Having calibrated the PSB readout scheme.
+    - Having a reasonable initial RF frequency estimate for the selected qubits.
 
+Data:
+    - `ds_raw`: averaged parity streams versus chirp-band centre detuning.
+    - `ds_fit`: optional peak-fit traces, fitted curves, resonance positions, and linewidths.
+
+Plots:
+    - `qubit_spectroscopy_chirp`: parity-difference trace with optional peak-fit overlays for each qubit.
 
 State update:
-    - The approximate qubit frequency (and optionally the corresponding LO/IF plan) for the specified qubit operation.
+    - Update the qubit Larmor frequency from the threshold-based chirp analysis.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -67,6 +69,10 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.use_simulated_data = True
+    node.parameters.frequency_span_in_mhz = 50
+    node.parameters.frequency_step_in_mhz = 0.1
+    node.parameters.fit_peak = True
     pass
 
 
@@ -124,9 +130,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Streams: 
         # measurement_streams : stores the per-qubit assigned value, parity difference if node.parameters.parity_measurement = True
         # n_st : stores the shot counter n, allowing the PC to track the progress
-        n_st = declare_stream()
         p1, p0, measurement_streams = declare_streams(node, qubits)
-        
+        n_st = declare_stream()
+
         # Python loop over the qubits specified in the node parameters
         for qubit in qubits:
             # Extract the qubit's intermediate frequency. Stored as an attribute of the qubit's XY drive object
@@ -161,6 +167,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ── STEP 2: Drive ────────────────
 
                     # Align and play the x180 pulse
+                    # The duration and chirp rates are pulled from a python dictionary. Since we are using an outer python loop for the qubits, this works just fine
                     align()
                     qubit.xy.play(operation_name, amplitude_scale = operation_amp_factor, duration = op_len_per_qubit[qubit.name] // 4, chirp=(chirp_rate_per_qubit[qubit.name], "Hz/nsec"))
                     align()
@@ -217,7 +224,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
+    """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -281,54 +288,27 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Process_raw_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Compute conditional expectations from joint-outcome parity streams."""
-    node.results["ds_raw"] = process_streams(
-        node.results["ds_raw"],
-        [q.name for q in node.namespace["qubits"]],
-        parity_pre_measurement=node.parameters.parity_pre_measurement,
-        sweep_dims=("detuning",),
-    )
+    """Build the conditional parity expectations from the explicitly named raw streams."""
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data using threshold detection, and optionally peak fitting."""
-    # Always run threshold-based frequency detection
-    threshold_results = find_frequency_by_threshold(node.results["ds_raw"], node)
-    node.results["fit_results"] = {k: asdict(v) for k, v in threshold_results.items()}
-    log_fitted_results(node.results["fit_results"], log_callable=node.log, label="Threshold")
-
-    # Optionally run peak fitting and compare
-    if node.parameters.fit_peak:
-        node.results["ds_fit"], peak_results = fit_raw_data(node.results["ds_raw"], node)
-        node.results["peak_fit_results"] = {k: asdict(v) for k, v in peak_results.items()}
-        log_fitted_results(node.results["peak_fit_results"], log_callable=node.log, label="Peak fit")
-
-        for q_name, thr in node.results["fit_results"].items():
-            peak = node.results["peak_fit_results"].get(q_name, {})
-            if not (thr.get("success") and peak.get("success")):
-                continue
-            tolerance = thr["fwhm"] / 2 if thr["fwhm"] > 0 else np.inf
-            diff = abs(peak["frequency"] - thr["frequency"])
-            if diff > tolerance:
-                node.log(
-                    f"WARNING {q_name}: peak fit ({1e-9 * peak['frequency']:.4f} GHz) and "
-                    f"threshold ({1e-9 * thr['frequency']:.4f} GHz) disagree by "
-                    f"{1e-3 * diff:.1f} kHz (tolerance: {1e-3 * tolerance:.1f} kHz)"
-                )
-
-    node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
-        for qubit_name, fit_result in node.results["fit_results"].items()
-    }
+    """Fit the spectroscopy response and store both the fitted dataset and fit summary."""
+    (
+        node.results["ds_fit"],
+        node.results["fit_results"],
+        node.results["peak_fit_results"],
+        node.outcomes,
+    ) = analyse_raw_data(node.results["ds_raw"], node, log_callable=node.log)
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(
+    """Build the node figures from the processed dataset and the fitted results."""
+    node.results["figures"] = plot_all(
         node.results["ds_raw"],
         node.namespace["qubits"],
         fits=node.results.get("ds_fit"),
@@ -336,10 +316,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         signal_threshold=node.parameters.signal_threshold,
         analysis_signal=node.parameters.analysis_signal,
     )
-    plt.show()
-    node.results["figures"] = {
-        "qubit_spectroscopy_chirp": fig_raw_fit,
-    }
 
 
 # %% {Update_state}
@@ -358,4 +334,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()
