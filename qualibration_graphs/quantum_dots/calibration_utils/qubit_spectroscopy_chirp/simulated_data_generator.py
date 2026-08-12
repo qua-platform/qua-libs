@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
 from qualang_tools.units import unit
-from calibration_utils.common_utils.experiment import get_qubits
+from qualibration_libs.parameters import get_qubits
 
 u = unit(coerce_to_integer=True)
 

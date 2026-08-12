@@ -1,52 +1,57 @@
 # %% {Imports}
-import logging
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from dataclasses import asdict
-
-logger = logging.getLogger(__name__)
 
 from qm.qua import *
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
-from calibration_utils.common_utils.experiment import plot_heralded_n_loops
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import QubitQuam as Quam
-from calibration_utils.common_utils.experiment import get_qubits
-from calibration_utils.common_utils.parity_streams import (
-    declare_parity_streams,
-    save_parity_measurement,
-    buffer_parity_streams,
-    process_parity_streams,
-)
-from calibration_utils.qubit_spectroscopy_parity_diff import (
+from calibration_utils.measurement_utils import declare_streams, save_measurement
+from calibration_utils.qubit_spectroscopy import (
     Parameters,
     fit_raw_data,
+    generate_simulated_dataset,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_all,
+    process_raw_dataset,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.parameters import get_qubits
+from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
 description = """
-        QUBIT SPECTROSCOPY PARITY DIFFERENCE
-This sequence involves parking the qubit at the manipulation bias point, and playing pulses of varying frequency
-to drive the qubit. When the pulse frequency is the Larmor frequency, the qubit is driven, and the parity is measured
-via PSB.
+QUBIT SPECTROSCOPY
+
+This node sweeps the qubit drive frequency around the current RF estimate and
+measures the resulting response via PSB. When the drive frequency crosses
+the Larmor frequency, the signal as measured via PSB develops a resonant feature
+that is fitted to extract the updated qubit frequency. Optionally can perform a parity
+measurement, which includes a pre-shot measurement. 
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
     - Having calibrated the PSB readout scheme.
+    - Having a reasonable initial RF frequency estimate for the selected qubits.
 
+Data:
+    - `ds_raw`: averaged parity streams and averaged raw I/Q traces versus detuning.
+    - `ds_fit`: fitted spectroscopy traces, fitted curves, resonance positions, and linewidths.
+
+Plots:
+    - `qubit_spectroscopy`: parity-difference trace and fitted curve for each qubit.
+    - `iq_scatter`: averaged raw I and Q traces versus drive detuning for each qubit.
 
 State update:
-    - The qubit frequency (and optionally the corresponding LO/IF plan) for the specified qubit operation.
+    - Update the qubit Larmor frequency from the fitted primary peak.
+    - When two peaks are resolved, also update the preferred-readout qubit frequency.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -63,6 +68,9 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.use_simulated_data = True
+    node.parameters.frequency_span_in_mhz = 400
+    node.parameters.operation_amplitude_factor = 1.5
     pass
 
 
@@ -71,11 +79,18 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+
+    u = unit(coerce_to_integer=True)
+
+    # ── Experiment parameters (Python side) ──────────────────────────────
+
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
+
+    n_avg = node.parameters.num_shots  # The number of averages
 
     # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
     operation_len = node.parameters.operation_len_in_ns
@@ -83,14 +98,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
     operation_amp_factor = node.parameters.operation_amplitude_factor
 
+    # Change the qubit's amplitude and pulse duration as a tracked change, optionally approved as a node update later
+    node.namespace["tracked_qubits"] = []
     for qubit in qubits:
-        qubit.x.update(
-            amplitude_scale=operation_amp_factor,
-            duration=operation_len,
-        )
-
-    u = unit(coerce_to_integer=True)
-    n_avg = node.parameters.num_shots  # The number of averages
+        with tracked_updates(qubit, auto_revert = False, dont_assign_to_none = True) as q: 
+            q.x.update(
+                amplitude_scale=operation_amp_factor,
+                duration=operation_len,
+            )
+            node.namespace["tracked_qubits"].append(q)
 
     # Qubit detuning sweep with respect to their resonance frequencies
     span = node.parameters.frequency_span_in_mhz * u.MHz
@@ -103,81 +119,119 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "detuning": xr.DataArray(dfs, attrs={"long_name": "drive frequency", "units": "Hz"}),
     }
 
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
-        df = declare(int)
+
+        # Real-time variables:
+        # n  : shot counter
+        # p1 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
+        # p0 : pre-manipulation measurement outcome (only used when parity_measurement=True, otherwise None)
+        # df : integer frequency detuning value
         n = declare(int)
+        df = declare(int)
 
-        p2, p1, parity_streams = declare_parity_streams(node, qubits)
-
+        # Streams: 
+        # measurement_streams : stores the per-qubit assigned value, parity difference if node.parameters.parity_measurement = True
+        # i_st : stores the per-qubit raw I value from the measurement
+        # q_st : stores the per-qubit raw Q value from the measurement
+        # n_st : stores the shot counter n, allowing the PC to track the progress
+        p1, p0, measurement_streams = declare_streams(node, qubits, stream_fn=declare_output_stream)
         i_st = {qubit.name: declare_output_stream() for qubit in qubits}
         q_st = {qubit.name: declare_output_stream() for qubit in qubits}
-
-        if node.parameters.return_n_loops:
-            n_loops_st = {qubit.name: declare_output_stream() for qubit in qubits}
-
         n_st = declare_output_stream()
 
+        # Python loop over the qubits specified in the node parameters
         for qubit in qubits:
+            # Extract the qubit's intermediate frequency. Stored as an attribute of the qubit's XY drive object
             intermediate_frequency = qubit.xy.intermediate_frequency
+
+            # ── OUTER LOOP: average over shots ───────────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)
+                save(n, n_st) # tell the PC which shot we are on
+
+                # ── INNER LOOP: sweep frequency detuning ────────────────
                 with for_(*from_array(df, dfs)):
-                    qubit.xy.update_frequency(intermediate_frequency)
-
+                    # Global align at the start of each shot
                     align()
+                    
+                    # ── STEP 1: Preparation & Initialization ────────────────
 
-                    if node.parameters.parity_pre_measurement:
+                    # Optional pre-measurement at the empty bias point (parity readout)
+                    if node.parameters.parity_measurement:
                         qubit.empty()
                         a1 = qubit.measure()
 
-                    n_init = qubit.initialize(
-                        return_n_loops=node.parameters.return_n_loops,
+                    # Perform the initialize macro
+                    qubit.initialize(
                         target_state=node.parameters.target_state,
                         max_loops=node.parameters.max_loops,
-                        conditional_drive=True,
                     )
 
                     align()
+
+                    # Detune the IF of the qubit's XY component
                     qubit.xy.update_frequency(intermediate_frequency + df)
 
+                    # ── STEP 2: Drive ────────────────
+
+                    # Align and play the x180 pulse
                     align()
                     qubit.x180()
                     align()
 
+                    # ── STEP 3: Measure the resulting state ────────────────
+
+                    # Measure the resulting state, returning the raw IQ values instead of just the thresholded state value
                     (i, q, a2) = qubit.measure(return_iq=True)
 
+                    # Set any remaining offset to zero. TODO: Consider whether necessary
                     qubit.voltage_sequence.ramp_to_zero()
 
                     align()
 
-                    if node.parameters.parity_pre_measurement:
-                        assign(p1, Cast.to_int(a1))
+                    # If performing a parity measurement, assign the thresholded bool to an integer (0 or 1) for averaging
+                    if node.parameters.parity_measurement:
+                        assign(p0, Cast.to_int(a1))
 
-                    assign(p2, Cast.to_int(a2))
+                    # Assign the thresholded bool to an integer (0 or 1) for averaging
+                    assign(p1, Cast.to_int(a2))
 
-                    save_parity_measurement(node, qubit.name, p1, p2, parity_streams)
+                    # Save the measurement QUA variables to the relevant streams
+                    save_measurement(node, qubit.name, p0, p1, measurement_streams,)
                     save(i, i_st[qubit.name])
                     save(q, q_st[qubit.name])
-                    if node.parameters.return_n_loops:
-                        save(n_init, n_loops_st[qubit.name])
 
-            qubit.xy.update_frequency(intermediate_frequency)
+                    # Set the frequency to the value stored in the Quam state
+                    # This is so that for each shot, the initialisation macro uses the previosuly assigned (correct) frequency
+                    qubit.xy.update_frequency(intermediate_frequency)
 
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
             n_dfs = len(dfs)
             for qubit in qubits:
-                buffer_parity_streams(node, qubit.name, parity_streams, n_dfs)
-                i_st[qubit.name].buffer(n_dfs).average().save(f"I_{qubit.name}")
-                q_st[qubit.name].buffer(n_dfs).average().save(f"Q_{qubit.name}")
-                if node.parameters.return_n_loops:
-                    n_loops_st[qubit.name].buffer(n_dfs).average().save(f"n_loops_{qubit.name}")
+                # Each save() is one frequency point.
+                # .buffer(n_dfs) : group points along the frequency axis
+                # .average()      : average over all shots (n_avg repetitions)
+                # Result: 1D measured counts vs frequency detuning per qubit
+                # Stream shapes depends on whether parity streams are being used. 
+                if node.parameters.parity_measurement:
+                    for key in ("p0_p0", "p0_p1", "p1_p0", "p1_p1"):
+                        measurement_streams[key][qubit.name].buffer(n_dfs).average().save(
+                            f"{key}_{qubit.name}_parity_diff"
+                        )
+                else:
+                    measurement_streams["p"][qubit.name].buffer(n_dfs).average().save(
+                        f"p_{qubit.name}_parity_diff"
+                    )
+                i_st[qubit.name].buffer(n_dfs).average().save(f"I_{qubit.name}_raw")
+                q_st[qubit.name].buffer(n_dfs).average().save(f"Q_{qubit.name}_raw")
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_simulated_data)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
+    """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -188,12 +242,12 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        "samples": samples,
+        # "samples": samples,
     }
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -208,12 +262,20 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(
-                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start, node=node
+                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
+
+
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated spectroscopy data so the full analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
 
 
 # %% {Load_historical_data}
@@ -231,19 +293,14 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Process_raw_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Compute conditional expectations from joint-outcome parity streams."""
-    node.results["ds_raw"] = process_parity_streams(
-        node.results["ds_raw"],
-        [q.name for q in node.namespace["qubits"]],
-        parity_pre_measurement=node.parameters.parity_pre_measurement,
-        sweep_dims=("detuning",),
-    )
+    """Build the conditional parity expectations from the explicitly named raw streams."""
+    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
 
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Fit the spectroscopy response and store both the fitted dataset and fit summary."""
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
@@ -258,58 +315,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    qubits = node.namespace["qubits"]
-    ds_raw = node.results["ds_raw"]
-
-    fig_raw_fit = plot_raw_data_with_fit(
-        ds_raw,
-        qubits,
+    """Build the node figures from the processed dataset and the fitted results."""
+    node.results["figures"] = plot_all(
+        node.results["ds_raw"],
+        node.namespace["qubits"],
         node.results["ds_fit"],
         analysis_signal=node.parameters.analysis_signal,
     )
-
-    # IQ vs frequency — one subplot per qubit, I and Q as separate lines
-    qubit_names = [q.name for q in qubits]
-    n = len(qubit_names)
-    fig_iq, axes = plt.subplots(1, n, figsize=(7 * n, 5), squeeze=False)
-    for idx, qname in enumerate(qubit_names):
-        ax = axes[0, idx]
-        i_key = f"I_{qname.rstrip('0123456789')}"
-        q_key = f"Q_{qname.rstrip('0123456789')}"
-        i_vals = ds_raw[i_key].sel(qubit=qname).values
-        q_vals = ds_raw[q_key].sel(qubit=qname).values
-        detuning_mhz = ds_raw["detuning"].values / 1e6
-        ax_q = ax.twinx()
-        (line_i,) = ax.plot(detuning_mhz, i_vals, color="C0", label="I", zorder=3)
-        (line_q,) = ax_q.plot(detuning_mhz, q_vals, color="C1", label="Q", zorder=2)
-        ax.set_xlabel("Detuning [MHz]")
-        ax.set_ylabel("I", color="C0")
-        ax_q.set_ylabel("Q", color="C1")
-        ax.tick_params(axis="y", labelcolor="C0")
-        ax_q.tick_params(axis="y", labelcolor="C1")
-        ax.set_title(f"IQ vs frequency — {qname}")
-        ax.legend(handles=[line_i, line_q])
-    fig_iq.suptitle("Raw IQ signal")
-    fig_iq.tight_layout()
-
-    fig_n_loops = None
-    if node.parameters.return_n_loops:
-        fig_n_loops = plot_heralded_n_loops(
-            ds_raw,
-            qubit_names,
-            item_dim="qubit",
-            sweep_key="detuning",
-            sweep_scale=1e6,
-            sweep_xlabel="Detuning [MHz]",
-        )
-
-    node.results["figures"] = {
-        "qubit_spectroscopy": fig_raw_fit,
-        "iq_scatter": fig_iq,
-    }
-    if fig_n_loops is not None:
-        node.results["figures"]["n_loops"] = fig_n_loops
 
 
 # %% {Update_state}
@@ -320,6 +332,11 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     When two peaks are found, the closest to centre updates the qubit under
     study and the second peak updates the preferred-readout qubit.
     """
+    # Revert the qubit's pulse changes first 
+    for q in node.namespace.get("tracked_qubits", []): 
+        q.revert_changes()
+    
+    # Update the state
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
@@ -329,8 +346,13 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             try:
                 q.larmor_frequency = opt_frequency
                 q.x.update(frequency=opt_frequency)
+
+                q.x.update(
+                    amplitude_scale=node.parameters.operation_amplitude_factor,
+                    duration=node.parameters.operation_len_in_ns,
+                )
             except ValueError as exc:
-                logger.warning("%s: skipping state update — %s", q.name, exc)
+                node.log(f"{q.name}: skipping state update - {exc}")
                 node.outcomes[q.name] = "failed"
                 continue
 
@@ -343,17 +365,18 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                     )
                     readout_qubit.larmor_frequency = readout_freq
                     readout_qubit.x.update(frequency=readout_freq)
-                    logger.info(
-                        "%s: updated readout qubit %s frequency to %.3f GHz",
-                        q.name,
-                        readout_qubit.name,
-                        readout_freq * 1e-9,
+                    node.log(
+                        f"{q.name}: updated readout qubit "
+                        f"{readout_qubit.name} frequency to {readout_freq * 1e-9:.3f} GHz"
                     )
+
+
                 except Exception as exc:
-                    logger.warning("%s: could not update readout qubit — %s", q.name, exc)
+                    node.log(f"{q.name}: could not update readout qubit - {exc}")
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()
