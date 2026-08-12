@@ -106,7 +106,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Change the qubit's amplitude and pulse duration as a tracked change, optionally approved as a node update later
     node.namespace["tracked_qubits"] = []
     for qubit in qubits:
-        with tracked_updates(qubit, auto_revert = False, dont_assign_to_none = True) as q: 
+        with tracked_updates(qubit, auto_revert=False, dont_assign_to_none=True) as q:
             q.x.update(
                 amplitude_scale=operation_amp_factor,
                 duration=operation_len,
@@ -130,9 +130,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n = declare(int)
         df = declare(int)
 
-        # Streams: 
+        # Streams:
         # measurement_streams : stores the per-qubit assigned value, parity difference if node.parameters.parity_measurement = True
-        # i_st : stores the per-qubit raw I value from the measurement
+        # i_st : stores the per-qubit raw I value from the measurement
         # q_st : stores the per-qubit raw Q value from the measurement
         # n_st : stores the shot counter n, allowing the PC to track the progress
         p1, p0, measurement_streams = declare_streams(node, qubits, stream_fn=declare_output_stream)
@@ -147,13 +147,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # ── OUTER LOOP: average over shots ───────────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st) # tell the PC which shot we are on
+                save(n, n_st)  # tell the PC which shot we are on
 
                 # ── INNER LOOP: sweep frequency detuning ────────────────
                 with for_(*from_array(df, dfs)):
                     # Global align at the start of each shot
                     align()
-                    
+
                     # ── STEP 1: Preparation & Initialization ────────────────
 
                     # Optional pre-measurement at the empty bias point (parity readout)
@@ -195,7 +195,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     assign(p1, Cast.to_int(a2))
 
                     # Save the measurement QUA variables to the relevant streams
-                    save_measurement(node, qubit.name, p0, p1, measurement_streams,)
+                    save_measurement(
+                        node,
+                        qubit.name,
+                        p0,
+                        p1,
+                        measurement_streams,
+                    )
                     save(i, i_st[qubit.name])
                     save(q, q_st[qubit.name])
 
@@ -212,22 +218,24 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # .buffer(n_dfs) : group points along the frequency axis
                 # .average()      : average over all shots (n_avg repetitions)
                 # Result: 1D measured counts vs frequency detuning per qubit
-                # Stream shapes depends on whether parity streams are being used. 
+                # Stream shapes depends on whether parity streams are being used.
                 if node.parameters.parity_measurement:
                     for key in ("p0_p0", "p0_p1", "p1_p0", "p1_p1"):
                         measurement_streams[key][qubit.name].buffer(n_dfs).average().save(
                             f"{key}_{qubit.name}_parity_diff"
                         )
                 else:
-                    measurement_streams["p"][qubit.name].buffer(n_dfs).average().save(
-                        f"p_{qubit.name}_parity_diff"
-                    )
+                    measurement_streams["p"][qubit.name].buffer(n_dfs).average().save(f"p_{qubit.name}_parity_diff")
                 i_st[qubit.name].buffer(n_dfs).average().save(f"I_{qubit.name}_raw")
                 q_st[qubit.name].buffer(n_dfs).average().save(f"Q_{qubit.name}_raw")
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_simulated_data)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
+    or node.parameters.use_simulated_data
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
@@ -245,7 +253,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -259,9 +269,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start
-            )
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset
@@ -330,10 +338,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     When two peaks are found, the closest to centre updates the qubit under
     study and the second peak updates the preferred-readout qubit.
     """
-    # Revert the qubit's pulse changes first 
-    for q in node.namespace.get("tracked_qubits", []): 
+    # Revert the qubit's pulse changes first
+    for q in node.namespace.get("tracked_qubits", []):
         q.revert_changes()
-    
+
     # Update the state
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
@@ -367,7 +375,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                         f"{q.name}: updated readout qubit "
                         f"{readout_qubit.name} frequency to {readout_freq * 1e-9:.3f} GHz"
                     )
-
 
                 except Exception as exc:
                     node.log(f"{q.name}: could not update readout qubit - {exc}")

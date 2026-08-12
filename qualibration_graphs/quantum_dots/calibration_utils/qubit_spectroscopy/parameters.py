@@ -13,6 +13,7 @@ from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 
 class NodeSpecificParameters(RunnableParameters):
     """Parameters for node Qubit Spectroscopy Parity Diff"""
+
     num_shots: int = 300
     """Number of averages to perform. Default is 100."""
     frequency_span_in_mhz: float = 4
@@ -27,6 +28,7 @@ class NodeSpecificParameters(RunnableParameters):
     """The number of pi rotations to perform. By default, this is a pi pulse. For higher integers, this will scale the amplitude as a tracked change."""
     use_simulated_data: bool = False
     """Whether to generate simulated data instead of measuring via the OPX. Default False."""
+
 
 class Parameters(
     NodeParameters,

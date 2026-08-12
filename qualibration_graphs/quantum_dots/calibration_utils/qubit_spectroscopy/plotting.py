@@ -42,9 +42,7 @@ def plot_raw_data_with_fit(
     for i, qname in enumerate(qubit_names):
         ax = axes[0, i]
         fit = fits.sel(qubit=qname)
-        plot_individual_data_with_fit(
-            ax, ds, qname, fit, analysis_signal=analysis_signal
-        )
+        plot_individual_data_with_fit(ax, ds, qname, fit, analysis_signal=analysis_signal)
 
     fig.suptitle(f"Qubit spectroscopy ({analysis_signal} + fit)")
     fig.tight_layout()
@@ -74,17 +72,13 @@ def plot_individual_data_with_fit(
     analysis_signal : str
         Label for the vertical axis (which conditional expectation ``pdiff`` encodes).
     """
-    (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz).pdiff).plot(
-        ax=ax, x="full_freq_GHz"
-    )
+    (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz).pdiff).plot(ax=ax, x="full_freq_GHz")
     ax.set_xlabel("RF frequency [GHz]")
     ax.set_ylabel(analysis_signal)
     ax.set_title(f"qubit={qubit_name}", pad=30)
 
     ax2 = ax.twiny()
-    (fit.assign_coords(detuning_MHz=fit.detuning / u.MHz).pdiff).plot(
-        ax=ax2, x="detuning_MHz", label=""
-    )
+    (fit.assign_coords(detuning_MHz=fit.detuning / u.MHz).pdiff).plot(ax=ax2, x="detuning_MHz", label="")
     ax2.set_xlabel("Detuning [MHz]")
 
     if fit is not None and "fit_curve" in fit.data_vars:

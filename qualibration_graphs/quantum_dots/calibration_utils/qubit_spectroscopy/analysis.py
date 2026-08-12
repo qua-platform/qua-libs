@@ -78,20 +78,20 @@ def _guess_peaks(x: np.ndarray, y: np.ndarray, n: int):
         for j, idx in enumerate(idxs):
             amp_sign = 1.0 if sign_label == "peak" else -1.0
             w = peak_widths(data, [idx], rel_height=0.5)[0][0] * dx
-            candidates.append((
-                amp_sign * data[idx],
-                x[idx],
-                max(w / 2.0, dx),
-                props["prominences"][j],
-            ))
+            candidates.append(
+                (
+                    amp_sign * data[idx],
+                    x[idx],
+                    max(w / 2.0, dx),
+                    props["prominences"][j],
+                )
+            )
 
     candidates.sort(key=lambda c: c[3], reverse=True)
     return [(a, c, h) for a, c, h, _ in candidates[:n]]
 
 
-def _fit_lorentzians(
-    x: np.ndarray, y: np.ndarray, n_peaks: int
-) -> Tuple[np.ndarray, float]:
+def _fit_lorentzians(x: np.ndarray, y: np.ndarray, n_peaks: int) -> Tuple[np.ndarray, float]:
     """Fit *n_peaks* Lorentzians + offset using ``curve_fit`` with
     initial guesses from ``find_peaks``.
 
@@ -128,7 +128,8 @@ def _fit_lorentzians(
 
 
 def _select_model(
-    x: np.ndarray, y: np.ndarray,
+    x: np.ndarray,
+    y: np.ndarray,
     min_secondary_amp_ratio: float = 0.5,
 ) -> Tuple[int, np.ndarray, float]:
     """Fit 1-peak and 2-peak models and select by BIC.
@@ -164,11 +165,13 @@ def _parse_peaks(params: np.ndarray, n_peaks: int) -> Tuple[float, list]:
     peaks = []
     for i in range(n_peaks):
         idx = 1 + 3 * i
-        peaks.append(LorentzianPeak(
-            amplitude=params[idx],
-            center=params[idx + 1],
-            hwhm=params[idx + 2],
-        ))
+        peaks.append(
+            LorentzianPeak(
+                amplitude=params[idx],
+                center=params[idx + 1],
+                hwhm=params[idx + 2],
+            )
+        )
     return offset, peaks
 
 
@@ -213,9 +216,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     return ds.rename(rename_map) if rename_map else ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """Fit the qubit Larmor frequency for each qubit using Lorentzian model selection.
 
     Fits 1 and 2 Lorentzian models via differential evolution and selects the
@@ -234,8 +235,7 @@ def fit_raw_data(
         var = f"{analysis_signal}_{qname}"
         if var not in ds.data_vars:
             raise KeyError(
-                f"Expected variable {var!r} not found in dataset. "
-                "Did you call process_streams before fit_raw_data?"
+                f"Expected variable {var!r} not found in dataset. " "Did you call process_streams before fit_raw_data?"
             )
         arrays.append(ds[var].values)
 
@@ -290,10 +290,7 @@ def fit_raw_data(
         positions.append(qubit_detuning)
         widths.append(primary.fwhm)
 
-        peak_dicts = [
-            {"amplitude": p.amplitude, "center": p.center, "hwhm": p.hwhm}
-            for p in peaks
-        ]
+        peak_dicts = [{"amplitude": p.amplitude, "center": p.center, "hwhm": p.hwhm} for p in peaks]
 
         fit_results[qname] = FitParameters(
             frequency=qubit_freq,
@@ -306,11 +303,13 @@ def fit_raw_data(
             peaks=peak_dicts,
         )
 
-    ds_fit = ds_fit.assign({
-        "fit_curve": (["qubit", "detuning"], fit_curve_data),
-        "position": ("qubit", np.array(positions)),
-        "width": ("qubit", np.array(widths)),
-    })
+    ds_fit = ds_fit.assign(
+        {
+            "fit_curve": (["qubit", "detuning"], fit_curve_data),
+            "position": ("qubit", np.array(positions)),
+            "width": ("qubit", np.array(widths)),
+        }
+    )
     ds_fit.attrs = {"long_name": "frequency", "units": "Hz"}
 
     return ds_fit, fit_results
