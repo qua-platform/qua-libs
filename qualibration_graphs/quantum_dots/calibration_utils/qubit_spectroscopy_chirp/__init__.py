@@ -21,5 +21,5 @@ __all__ = [
     "plot_raw_data_with_fit",
     "generate_simulated_dataset",
     "resolve_operation_name",
-    "get_durations_and_chirp_rates", 
+    "get_durations_and_chirp_rates",
 ]

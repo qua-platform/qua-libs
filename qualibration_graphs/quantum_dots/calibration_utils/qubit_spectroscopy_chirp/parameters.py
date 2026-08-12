@@ -13,6 +13,7 @@ from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 
 class NodeSpecificParameters(RunnableParameters):
     """Parameters for node Qubit Spectroscopy Chirp Parity Diff"""
+
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     frequency_span_in_mhz: float = 500

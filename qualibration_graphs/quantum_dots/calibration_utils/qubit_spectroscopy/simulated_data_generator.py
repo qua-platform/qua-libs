@@ -110,16 +110,8 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
                 coords=coords,
             )
 
-        i_trace = (
-            0.02 * index
-            + 0.18 * resonance
-            + rng.normal(scale=0.004, size=len(dfs))
-        )
-        q_trace = (
-            -0.015 * index
-            + 0.10 * quadrature
-            + rng.normal(scale=0.004, size=len(dfs))
-        )
+        i_trace = 0.02 * index + 0.18 * resonance + rng.normal(scale=0.004, size=len(dfs))
+        q_trace = -0.015 * index + 0.10 * quadrature + rng.normal(scale=0.004, size=len(dfs))
 
         data_vars[f"I_{qname}_raw"] = xr.DataArray(
             i_trace,

@@ -68,8 +68,12 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
             # p1 branch carries no information: 50/50
             data_vars[f"p0_p0_{q.name}_parity_diff"] = xr.DataArray(1.0 - signal, dims=["detuning"], coords=det_coord)
             data_vars[f"p0_p1_{q.name}_parity_diff"] = xr.DataArray(signal, dims=["detuning"], coords=det_coord)
-            data_vars[f"p1_p0_{q.name}_parity_diff"] = xr.DataArray(np.full_like(signal, 0.5), dims=["detuning"], coords=det_coord)
-            data_vars[f"p1_p1_{q.name}_parity_diff"] = xr.DataArray(np.full_like(signal, 0.5), dims=["detuning"], coords=det_coord)
+            data_vars[f"p1_p0_{q.name}_parity_diff"] = xr.DataArray(
+                np.full_like(signal, 0.5), dims=["detuning"], coords=det_coord
+            )
+            data_vars[f"p1_p1_{q.name}_parity_diff"] = xr.DataArray(
+                np.full_like(signal, 0.5), dims=["detuning"], coords=det_coord
+            )
         else:
             data_vars[f"p_{q.name}_parity_diff"] = xr.DataArray(signal, dims=["detuning"], coords=det_coord)
 

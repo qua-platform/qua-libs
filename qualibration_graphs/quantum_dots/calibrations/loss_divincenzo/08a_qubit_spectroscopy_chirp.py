@@ -28,6 +28,7 @@ from calibration_utils.qubit_spectroscopy_chirp import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
+
 # from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
@@ -126,8 +127,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # df : integer frequency detuning centre value
         n = declare(int)
         df = declare(int)
-        
-        # Streams: 
+
+        # Streams:
         # measurement_streams : stores the per-qubit assigned value, parity difference if node.parameters.parity_measurement = True
         # n_st : stores the shot counter n, allowing the PC to track the progress
         p1, p0, measurement_streams = declare_streams(node, qubits)
@@ -140,7 +141,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # ── OUTER LOOP: average over shots ───────────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)# tell the PC which shot we are on
+                save(n, n_st)  # tell the PC which shot we are on
 
                 # ── INNER LOOP: sweep frequency detuning ────────────────
                 with for_(*from_array(df, dfs)):
@@ -148,7 +149,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                     # ── STEP 1: Preparation & Initialization ────────────────
-                
+
                     # Optional pre-measurement at the empty bias point (parity readout)
                     if node.parameters.parity_measurement:
                         qubit.empty()
@@ -169,7 +170,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Align and play the x180 pulse
                     # The duration and chirp rates are pulled from a python dictionary. Since we are using an outer python loop for the qubits, this works just fine
                     align()
-                    qubit.xy.play(operation_name, amplitude_scale = operation_amp_factor, duration = op_len_per_qubit[qubit.name] // 4, chirp=(chirp_rate_per_qubit[qubit.name], "Hz/nsec"))
+                    qubit.xy.play(
+                        operation_name,
+                        amplitude_scale=operation_amp_factor,
+                        duration=op_len_per_qubit[qubit.name] // 4,
+                        chirp=(chirp_rate_per_qubit[qubit.name], "Hz/nsec"),
+                    )
                     align()
 
                     # ── STEP 3: Measure the resulting state ────────────────
@@ -181,7 +187,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.voltage_sequence.ramp_to_zero()
 
                     align()
-                    
+
                     # If performing a parity measurement, assign the thresholded bool to an integer (0 or 1) for averaging
                     if node.parameters.parity_measurement:
                         assign(p0, Cast.to_int(a1))
@@ -205,16 +211,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # .buffer(n_dfs) : group points along the frequency axis
                 # .average()      : average over all shots (n_avg repetitions)
                 # Result: 1D measured counts vs frequency detuning per qubit
-                # Stream shapes depends on whether parity streams are being used. 
+                # Stream shapes depends on whether parity streams are being used.
                 if node.parameters.parity_measurement:
                     for key in ("p0_p0", "p0_p1", "p1_p0", "p1_p1"):
                         measurement_streams[key][qubit.name].buffer(n_dfs).average().save(
                             f"{key}_{qubit.name}_parity_diff"
                         )
                 else:
-                    measurement_streams["p"][qubit.name].buffer(n_dfs).average().save(
-                        f"p_{qubit.name}_parity_diff"
-                    )
+                    measurement_streams["p"][qubit.name].buffer(n_dfs).average().save(f"p_{qubit.name}_parity_diff")
 
 
 # %% {Simulate}
@@ -256,9 +260,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
-            progress_counter(
-                data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start
-            )
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset

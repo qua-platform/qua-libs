@@ -69,9 +69,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     return ds.rename(rename_map) if rename_map else ds
 
 
-def find_frequency_by_threshold(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Dict[str, FitParameters]:
+def find_frequency_by_threshold(ds: xr.Dataset, node: QualibrationNode) -> Dict[str, FitParameters]:
     """Find the qubit frequency by locating the above-threshold region of the signal.
 
     For each qubit, reads ``{analysis_signal}_{qname}`` directly from the
@@ -139,9 +137,7 @@ def find_frequency_by_threshold(
     return fit_results
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """Fit the qubit Larmor frequency and FWHM for each qubit in the dataset.
 
     Expects ``ds`` to already contain ``{analysis_signal}_{qname}`` variables
@@ -215,12 +211,8 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fit.fwhm.attrs = {"long_name": "qubit fwhm", "units": "Hz"}
 
     # Assess whether the fit was successful or not
-    freq_success = (
-        np.abs(res_freq) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
-    )
-    fwhm_success = (
-        np.abs(fwhm) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
-    )
+    freq_success = np.abs(res_freq) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
+    fwhm_success = np.abs(fwhm) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
     success_criteria = freq_success & fwhm_success
     fit = fit.assign({"success": success_criteria})
 
