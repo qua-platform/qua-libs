@@ -1,11 +1,12 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 import numpy as np
 import xarray as xr
 
 from qualibrate.core import QualibrationNode
 from qualibration_libs.analysis import peaks_dips
+from calibration_utils.measurement_utils import process_streams
 
 
 @dataclass
@@ -45,6 +46,29 @@ def log_fitted_results(fit_results: Dict, log_callable=None, label: str = ""):
         log_callable(s_qubit + s_freq + s_fwhm)
 
 
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Build the conditional parity expectations from the explicitly named raw streams."""
+    qubits = node.namespace["qubits"]
+    stream_item_names = [f"{q.name}_parity_diff" for q in qubits]
+    ds = process_streams(
+        ds,
+        stream_item_names,
+        parity_measurement=node.parameters.parity_measurement,
+        sweep_dims=("detuning",),
+    )
+
+    rename_map = {}
+    for qubit in qubits:
+        stream_name = f"{qubit.name}_parity_diff"
+        for prefix in ("E_p1_given_p0_0", "E_p1_given_p0_1"):
+            source_name = f"{prefix}_{stream_name}"
+            target_name = f"{prefix}_{qubit.name}"
+            if source_name in ds.data_vars:
+                rename_map[source_name] = target_name
+
+    return ds.rename(rename_map) if rename_map else ds
+
+
 def find_frequency_by_threshold(
     ds: xr.Dataset, node: QualibrationNode
 ) -> Dict[str, FitParameters]:
@@ -60,7 +84,7 @@ def find_frequency_by_threshold(
     ----------
     ds : xr.Dataset
         Processed dataset containing ``{analysis_signal}_{qname}`` variables
-        (1-D over ``detuning``) as produced by ``process_parity_streams``.
+        (1-D over ``detuning``) as produced by ``process_raw_dataset``.
     node : QualibrationNode
         Node whose ``parameters.signal_threshold`` and
         ``parameters.analysis_signal`` are used.
@@ -121,7 +145,7 @@ def fit_raw_data(
     """Fit the qubit Larmor frequency and FWHM for each qubit in the dataset.
 
     Expects ``ds`` to already contain ``{analysis_signal}_{qname}`` variables
-    (1-D over ``detuning``) as produced by ``process_parity_streams``.
+    (1-D over ``detuning``) as produced by ``process_raw_dataset``.
 
     Parameters:
     -----------
@@ -148,7 +172,7 @@ def fit_raw_data(
         if var not in ds.data_vars:
             raise KeyError(
                 f"Expected variable {var!r} not found in dataset. "
-                "Did you call process_parity_streams before fit_raw_data?"
+                "Did you call process_raw_dataset before fit_raw_data?"
             )
         arrays.append(ds[var].values)
 
@@ -210,3 +234,41 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         for q in fit.qubit.values
     }
     return fit, fit_results
+
+
+def analyse_raw_data(
+    ds: xr.Dataset,
+    node: QualibrationNode,
+    *,
+    log_callable=None,
+) -> tuple[Optional[xr.Dataset], dict, Optional[dict], dict]:
+    """Run the chirp analysis flow and return the datasets, fit results, and outcomes."""
+    threshold_results = find_frequency_by_threshold(ds, node)
+    fit_results = {k: vars(v) for k, v in threshold_results.items()}
+    log_fitted_results(fit_results, log_callable=log_callable, label="Threshold")
+
+    ds_fit: Optional[xr.Dataset] = None
+    peak_fit_results: Optional[dict] = None
+    if node.parameters.fit_peak:
+        ds_fit, peak_results = fit_raw_data(ds, node)
+        peak_fit_results = {k: vars(v) for k, v in peak_results.items()}
+        log_fitted_results(peak_fit_results, log_callable=log_callable, label="Peak fit")
+
+        for q_name, thr in fit_results.items():
+            peak = peak_fit_results.get(q_name, {})
+            if not (thr.get("success") and peak.get("success")):
+                continue
+            tolerance = thr["fwhm"] / 2 if thr["fwhm"] > 0 else np.inf
+            diff = abs(peak["frequency"] - thr["frequency"])
+            if diff > tolerance and log_callable is not None:
+                log_callable(
+                    f"WARNING {q_name}: peak fit ({1e-9 * peak['frequency']:.4f} GHz) and "
+                    f"threshold ({1e-9 * thr['frequency']:.4f} GHz) disagree by "
+                    f"{1e-3 * diff:.1f} kHz (tolerance: {1e-3 * tolerance:.1f} kHz)"
+                )
+
+    outcomes = {
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in fit_results.items()
+    }
+    return ds_fit, fit_results, peak_fit_results, outcomes

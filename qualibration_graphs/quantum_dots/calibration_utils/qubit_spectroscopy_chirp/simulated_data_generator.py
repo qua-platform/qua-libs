@@ -23,11 +23,12 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     everything else near zero.
 
     The returned dataset has the same variable layout as real OPX data after
-    buffering — i.e. the four joint-outcome streams per qubit
-    (``p0_p0_{qname}``, ``p0_p1_{qname}``, ``p1_p0_{qname}``,
-    ``p1_p1_{qname}``) when ``parity_pre_measurement`` is ``True``, or a
-    single ``p_{qname}`` when ``False``.  This ensures
-    ``process_parity_streams`` and the rest of the analysis pipeline run
+    buffering — i.e. the explicitly named parity streams per qubit
+    (``p0_p0_{qname}_parity_diff``, ``p0_p1_{qname}_parity_diff``,
+    ``p1_p0_{qname}_parity_diff``, ``p1_p1_{qname}_parity_diff``) when
+    ``parity_measurement`` is ``True``, or a single
+    ``p_{qname}_parity_diff`` when ``False``. This ensures
+    ``process_raw_dataset`` and the rest of the analysis pipeline run
     unchanged.
 
     Parameters
@@ -41,34 +42,35 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span // 2, +span // 2, step)
+    detuning_centers = dfs + step / 2
 
-    parity_pre_measurement = node.parameters.parity_pre_measurement
+    parity_measurement = node.parameters.parity_measurement
     rng = np.random.default_rng(seed=42)
 
     data_vars: dict[str, xr.DataArray] = {}
-    det_coord = {"detuning": dfs}
+    det_coord = {"detuning": detuning_centers}
 
     for q in qubits:
         true_detuning = q.larmor_frequency - q.xy.RF_frequency
 
         # Build the signal (E_p2_given_p1_0 equivalent)
         signal = rng.uniform(0.02, 0.08, size=len(dfs))
-        nearest_idx = int(np.argmin(np.abs(dfs - true_detuning)))
+        nearest_idx = int(np.argmin(np.abs(detuning_centers - true_detuning)))
         n_peak = rng.integers(1, 3)  # 1 to 4 inclusive
         half = n_peak // 2
         start = max(0, nearest_idx - half)
         end = min(len(dfs), start + n_peak)
         signal[start:end] = rng.uniform(0.4, 0.8, size=end - start)
 
-        if parity_pre_measurement:
+        if parity_measurement:
             # signal = E[p2=1 | p1=0] = p0_p1 / (p0_p0 + p0_p1)
             # Set p0_p0 + p0_p1 = 1  =>  p0_p1 = signal, p0_p0 = 1 - signal
             # p1 branch carries no information: 50/50
-            data_vars[f"p0_p0_{q.name}"] = xr.DataArray(1.0 - signal, dims=["detuning"], coords=det_coord)
-            data_vars[f"p0_p1_{q.name}"] = xr.DataArray(signal, dims=["detuning"], coords=det_coord)
-            data_vars[f"p1_p0_{q.name}"] = xr.DataArray(np.full_like(signal, 0.5), dims=["detuning"], coords=det_coord)
-            data_vars[f"p1_p1_{q.name}"] = xr.DataArray(np.full_like(signal, 0.5), dims=["detuning"], coords=det_coord)
+            data_vars[f"p0_p0_{q.name}_parity_diff"] = xr.DataArray(1.0 - signal, dims=["detuning"], coords=det_coord)
+            data_vars[f"p0_p1_{q.name}_parity_diff"] = xr.DataArray(signal, dims=["detuning"], coords=det_coord)
+            data_vars[f"p1_p0_{q.name}_parity_diff"] = xr.DataArray(np.full_like(signal, 0.5), dims=["detuning"], coords=det_coord)
+            data_vars[f"p1_p1_{q.name}_parity_diff"] = xr.DataArray(np.full_like(signal, 0.5), dims=["detuning"], coords=det_coord)
         else:
-            data_vars[f"p_{q.name}"] = xr.DataArray(signal, dims=["detuning"], coords=det_coord)
+            data_vars[f"p_{q.name}_parity_diff"] = xr.DataArray(signal, dims=["detuning"], coords=det_coord)
 
     return xr.Dataset(data_vars)
