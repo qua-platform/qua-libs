@@ -7,6 +7,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks, peak_widths
 
 from qualibrate.core import QualibrationNode
+from calibration_utils.measurement_utils import process_streams
 
 logger = logging.getLogger(__name__)
 
@@ -190,27 +191,26 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Restructure the per-qubit pdiff variables into a single DataArray with a qubit dimension."""
+    """Compute the conditional parity expectations from the explicitly named raw streams."""
     qubits = node.namespace["qubits"]
-    qubit_names = [q.name for q in qubits]
+    stream_item_names = [f"{q.name}_parity_diff" for q in qubits]
+    ds = process_streams(
+        ds,
+        stream_item_names,
+        parity_measurement=node.parameters.parity_measurement,
+        sweep_dims=("detuning",),
+    )
 
-    pdiff_vars = sorted([v for v in ds.data_vars if v.startswith("pdiff_")])
+    rename_map = {}
+    for qubit in qubits:
+        stream_name = f"{qubit.name}_parity_diff"
+        for prefix in ("E_p1_given_p0_0", "E_p1_given_p0_1"):
+            source_name = f"{prefix}_{stream_name}"
+            target_name = f"{prefix}_{qubit.name}"
+            if source_name in ds.data_vars:
+                rename_map[source_name] = target_name
 
-    first = ds[pdiff_vars[0]]
-    if "qubit" in first.dims:
-        pdiff = first.assign_coords(qubit=qubit_names)
-    else:
-        pdiff = xr.DataArray(
-            np.array([ds[v].values for v in pdiff_vars]),
-            dims=["qubit", "detuning"],
-            coords={"qubit": qubit_names, "detuning": ds.detuning},
-        )
-    ds = ds.assign({"pdiff": pdiff})
-
-    full_freq = np.array([ds.detuning + q.xy.RF_frequency for q in qubits])
-    ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
-    ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
-    return ds
+    return ds.rename(rename_map) if rename_map else ds
 
 
 def fit_raw_data(
@@ -235,7 +235,7 @@ def fit_raw_data(
         if var not in ds.data_vars:
             raise KeyError(
                 f"Expected variable {var!r} not found in dataset. "
-                "Did you call process_parity_streams before fit_raw_data?"
+                "Did you call process_streams before fit_raw_data?"
             )
         arrays.append(ds[var].values)
 
