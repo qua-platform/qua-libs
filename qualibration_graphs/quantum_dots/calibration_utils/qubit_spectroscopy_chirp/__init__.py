@@ -6,6 +6,7 @@ from .analysis import (
 )
 from .plotting import plot_raw_data_with_fit
 from .simulated_data_generator import generate_simulated_dataset
+from .helper_utils import resolve_operation_name, get_durations_and_chirp_rates
 
 __all__ = [
     "Parameters",
@@ -14,4 +15,6 @@ __all__ = [
     "log_fitted_results",
     "plot_raw_data_with_fit",
     "generate_simulated_dataset",
+    "resolve_operation_name",
+    "get_durations_and_chirp_rates", 
 ]

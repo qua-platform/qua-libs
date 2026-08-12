@@ -68,9 +68,9 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.use_simulated_data = True
-    node.parameters.frequency_span_in_mhz = 400
-    node.parameters.operation_amplitude_factor = 1.5
+    # node.parameters.use_simulated_data = True
+    # node.parameters.frequency_span_in_mhz = 400
+    # node.parameters.operation_amplitude_factor = 1.5
     pass
 
 
@@ -92,6 +92,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     n_avg = node.parameters.num_shots  # The number of averages
 
+    # Build the detuning sweep
+    span = node.parameters.frequency_span_in_mhz * u.MHz
+    step = node.parameters.frequency_step_in_mhz * u.MHz
+    dfs = np.arange(-span // 2, +span // 2, step)
+
     # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
     operation_len = node.parameters.operation_len_in_ns
 
@@ -107,11 +112,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 duration=operation_len,
             )
             node.namespace["tracked_qubits"].append(q)
-
-    # Qubit detuning sweep with respect to their resonance frequencies
-    span = node.parameters.frequency_span_in_mhz * u.MHz
-    step = node.parameters.frequency_step_in_mhz * u.MHz
-    dfs = np.arange(-span // 2, +span // 2, step)
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -166,8 +166,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         target_state=node.parameters.target_state,
                         max_loops=node.parameters.max_loops,
                     )
-
-                    align()
 
                     # Detune the IF of the qubit's XY component
                     qubit.xy.update_frequency(intermediate_frequency + df)
