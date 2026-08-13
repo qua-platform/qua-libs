@@ -18,6 +18,9 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import jax
+
+from ..bayesian_change_point import BayesianCP
 
 try:
     from skimage.morphology import skeletonize
@@ -53,6 +56,53 @@ class SegmentFit:
     intercept: float
     proj_min: float
     proj_max: float
+
+
+def analyze_sensor_edge_map(
+    amplitude_map: np.ndarray,
+    *,
+    threshold: float = 0.25,
+    hazard: float = 1 / 200.0,
+    standardize: bool = True,
+    show: bool = False,
+) -> Dict[str, object]:
+    """
+    Run Bayesian change-point analysis followed by line-segment extraction.
+
+    The input should be a 2D amplitude map ordered on physical `x_volts`/`y_volts`
+    coordinates. Change-point detection is run along both axes, their posteriors are
+    averaged into a 2D edge map, and that edge map is then reduced into fitted line
+    segments and candidate intersections.
+    """
+    zs = np.asarray(amplitude_map, dtype=float)
+    model = BayesianCP(hazard=hazard, standardize=standardize)
+    cp, _ = jax.vmap(model.fit)(zs)
+    cp2, _ = jax.vmap(model.fit)(zs.T)
+    mean_cp = (cp[1:] + cp2[1:].T) / 2.0
+
+    edge_base = zs[1:, 1:] if zs.shape[0] > 1 and zs.shape[1] > 1 else zs
+    edge_analysis = analyze_edge_map(
+        np.array(mean_cp),
+        threshold=threshold,
+        base_image=edge_base,
+        show=show,
+    )
+    intersections = (
+        np.vstack(edge_analysis["intersections"])
+        if edge_analysis["intersections"]
+        else np.empty((0, 2))
+    )
+
+    return {
+        "cp": np.asarray(cp),
+        "cp2": np.asarray(cp2),
+        "mean_cp": np.asarray(mean_cp),
+        "edge_threshold": float(threshold),
+        "binary_mask": edge_analysis["binary_mask"],
+        "skeleton": edge_analysis["skeleton"],
+        "segments": edge_analysis["segments"],
+        "intersections": intersections,
+    }
 
 
 def threshold_edge_map(edge_map: np.ndarray, threshold: float) -> np.ndarray:

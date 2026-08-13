@@ -7,8 +7,36 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from quam_builder.architecture.quantum_dots.components import SensorDot
-from calibration_utils.iq_blobs.readout_barthel import pca_project_1d
 from .analysis import process_raw_dataset
+
+
+# TODO: Replace this with the real pca_project_1d after merging in release/nightly
+try:
+    from calibration_utils.iq_utils.iq_blobs.readout_barthel import pca_project_1d
+except ImportError:
+    def pca_project_1d(X, labels=None, orient: str = "auto"):
+        """Fallback 2D->1D PCA projection used only when the shared helper is unavailable."""
+        X = np.asarray(X, dtype=float)
+        if X.ndim != 2 or X.shape[1] != 2:
+            raise ValueError("X must be shape (N, 2) IQ array")
+
+        mu = X.mean(axis=0)
+        Xc = X - mu
+        _, _, vt = np.linalg.svd(Xc, full_matrices=False)
+        pc1 = vt[0]
+
+        y_tmp = Xc @ pc1
+        sign = 1.0
+        if labels is not None:
+            labels = np.asarray(labels)
+            m0 = y_tmp[labels == 0].mean() if np.any(labels == 0) else 0.0
+            m1 = y_tmp[labels == 1].mean() if np.any(labels == 1) else 0.0
+            sign = 1.0 if m1 >= m0 else -1.0
+        elif orient == "auto":
+            q5, q95 = np.percentile(y_tmp, [5.0, 95.0])
+            sign = 1.0 if abs(q95) >= abs(q5) else -1.0
+
+        return y_tmp * sign, None
 
 
 def _sort_for_plot(da: xr.DataArray) -> xr.DataArray:

@@ -28,12 +28,12 @@ from calibration_utils.common_utils.experiment import (
 description = """
 2D OPX CHARGE STABILITY MAP
 
-This sequence measures a 2D charge-stability diagram by sweeping two virtual-gate
-axes directly with the OPX and performing RF reflectometry on one or more sensor
+This sequence measures a 2D charge-stability diagram by sweeping two virtual or physical 
+gate axes directly with the OPX and performing readout on one or more sensor
 dots at each (Vx, Vy) point. Charge transitions appear as edges in the
 demodulated I/Q response.
 
-The OPX controls both sweep axes here. When ``dc_control=True``, the sweep center
+Both axes are OPX outputs. When ``dc_control=True``, the sweep center
 is held on the external DAC (VirtualDCSet) while the OPX performs the relative
 sweep around that center. When ``dc_control=False``, the center is applied as an
 OPX offset directly on the swept axes.
@@ -42,6 +42,7 @@ Prerequisites:
     - IQ mixer/Octave calibrated on the readout line (01a_mixer_calibration).
     - Time of flight, offsets, and gains calibrated (01a_time_of_flight).
     - Sensor resonators calibrated (02a_resonator_spectroscopy, 02b_resonator_spectroscopy_vs_power).
+    - SensorDot tuned (nodes 03a/03b)
     - QUAM initialized with readout amplitude/duration, QuantumDot and SensorDot elements.
 
 Datasets:
@@ -351,20 +352,11 @@ from calibration_utils.run_video_mode import create_video_mode
 
 @node.run_action(skip_if=node.parameters.run_in_video_mode is False)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
+    """Run Video Mode directly from Qualibrate by checking the bool 'run_in_video_mode'."""
     node.machine.track_integrated_voltage = True
-    if node.parameters.virtual_gate_set_id is None:
-        x_obj, y_obj = node.machine.get_component(
-            node.parameters.x_axis_name
-        ), node.machine.get_component(node.parameters.y_axis_name)
-        if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
-            raise ValueError(
-                f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
-            )
-        vgs_id = x_obj.voltage_sequence.gate_set.id
-    else:
-        vgs_id = node.parameters.virtual_gate_set_id
-    x_axis_name = node.parameters.x_axis_name
-    y_axis_name = node.parameters.y_axis_name
+    # TODO: Remove gate_set_id from video mode params
+    x_axis_name, y_axis_name, vgs_id = get_axis_names_and_validate(node)
+    node.machine.reset_voltage_sequence(vgs_id)
     x_span, x_points = node.parameters.x_span, node.parameters.x_points
     y_span, y_points = node.parameters.y_span, node.parameters.y_points
 
@@ -382,6 +374,7 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
         y_span=y_span,
         y_points=y_points,
         virtual_gate_id=vgs_id,
+        result_type=node.parameters.video_mode_result_type,
         dc_control=node.parameters.dc_control,
         readout_pulses=[
             node.machine.sensor_dots[name].readout_resonator.operations["readout"]
@@ -389,7 +382,8 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
         ],
         save_path=str(quam_state_path),
         port = node.parameters.video_mode_port,
-        point_duration = node.parameters.hold_duration,
+        #point_duration = node.parameters.hold_duration,
+        mid_scan_compensation = node.parameters.per_line_compensation,
     )
 
 

@@ -33,12 +33,6 @@ from .scan_modes import (
     SwitchRasterScan,
 )
 
-try:
-    from .edge_line_analysis import analyze_edge_map, SegmentFit
-except ImportError:  # pragma: no cover - optional dependency guard
-    analyze_edge_map = None
-    SegmentFit = None
-
 __all__ = [
     "Parameters",
     "NodeSpecificParameters",
@@ -59,8 +53,6 @@ __all__ = [
     "fit_individual_raw_data",
     "log_fitted_results",
     "FitParameters",
-    "analyze_edge_map",
-    "SegmentFit",
     "ScanMode",
     "RasterScan",
     "SwitchRasterScan",
