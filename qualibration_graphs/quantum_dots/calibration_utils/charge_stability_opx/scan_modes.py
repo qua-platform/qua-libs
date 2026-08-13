@@ -54,7 +54,7 @@ class ScanMode(ABC):
         return ds
 
     @abstractmethod
-    def qua_scan(self, sequence, x_obj, y_obj, x_volts, y_volts, params):
+    def qua_scan(self, sequence, x_name, y_name, x_volts, y_volts, params):
         """Generator yielding (x, y, save_now) QUA variables.
 
         save_now must evaluate to 1 when buffered points should be saved
@@ -89,7 +89,7 @@ class RasterScan(ScanMode):
         y_idxs = np.repeat(np.arange(y_points), x_points)
         return x_idxs, y_idxs
 
-    def qua_scan(self, seq, x_obj, y_obj, x_volts, y_volts, params):
+    def qua_scan(self, seq, x_name, y_name, x_volts, y_volts, params):
         x = declare(fixed)
         y = declare(fixed)
         save_now = declare(int)
@@ -100,7 +100,7 @@ class RasterScan(ScanMode):
             if params.per_line_wait > 0:
                 assign(x, float(x_volts[0]))
                 seq.ramp_to_voltages(
-                    {x_obj.name: x, y_obj.name: y},
+                    {x_name: x, y_name: y},
                     duration=params.per_line_wait,
                     ramp_duration=params.ramp_duration,
                 )
@@ -244,7 +244,7 @@ class SpiralScan(ScanMode):
             result[var] = xr.DataArray(out, dims=ds[var].dims, coords=ds[var].coords)
         return result
 
-    def qua_scan(self, seq, x_obj, y_obj, x_volts, y_volts, params):
+    def qua_scan(self, seq, x_name, y_name, x_volts, y_volts, params):
         """Generate spiral scan points with mode-selectable implementation."""
         x = declare(fixed)
         y = declare(fixed)

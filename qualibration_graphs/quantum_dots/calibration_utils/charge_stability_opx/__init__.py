@@ -1,14 +1,14 @@
 from .parameters import (
-    DCControlParameters,
     NodeSpecificParameters,
-    OPXQDACParameters,
-    OPXuDACParameters,
     Parameters,
+)
+from .helper_utils import (
+    get_axis_names_and_validate,
     get_voltage_arrays,
-    prepare_dc_lists,
-    get_axis_names,
+    set_dac_offsets,
 )
 from .plotting import (
+    plot_all,
     plot_raw_amplitude,
     plot_raw_phase,
     pca_plotter,
@@ -19,6 +19,7 @@ from .plotting import (
     plot_line_fit_overlays,
 )
 from .analysis import (
+    analyse_raw_data,
     process_raw_dataset,
     fit_raw_data,
     fit_individual_raw_data,
@@ -38,17 +39,12 @@ except ImportError:  # pragma: no cover - optional dependency guard
     analyze_edge_map = None
     SegmentFit = None
 
-OPXParameters = Parameters
-
 __all__ = [
     "Parameters",
     "NodeSpecificParameters",
-    "OPXParameters",
-    "OPXQDACParameters",
-    "OPXuDACParameters",
-    "DCControlParameters",
+    "Parameters",
     "get_voltage_arrays",
-    "prepare_dc_lists",
+    "plot_all",
     "plot_raw_amplitude",
     "plot_raw_phase",
     "pca_plotter",
@@ -57,6 +53,7 @@ __all__ = [
     "overlay_voltage_points",
     "plot_change_point_overlays",
     "plot_line_fit_overlays",
+    "analyse_raw_data",
     "process_raw_dataset",
     "fit_raw_data",
     "fit_individual_raw_data",
@@ -67,5 +64,6 @@ __all__ = [
     "ScanMode",
     "RasterScan",
     "SwitchRasterScan",
-    "get_axis_names",
+    "get_axis_names_and_validate",
+    "set_dac_offsets",
 ]
