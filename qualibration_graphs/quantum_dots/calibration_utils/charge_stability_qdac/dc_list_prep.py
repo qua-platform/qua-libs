@@ -5,6 +5,7 @@ from quam_builder.architecture.quantum_dots.components import VirtualDCSet
 
 __all__ = ["prepare_dc_lists"]
 
+
 def _find_physical_dc_lists(
     virtual_dc_set: VirtualDCSet,
     axis_name: str,
@@ -53,14 +54,10 @@ def prepare_dc_lists(
                 trigger = trig
                 break
     if trigger is None:
-        raise ValueError(
-            f"No trigger found for the physical outputs associated with the axis {axis_name}"
-        )
+        raise ValueError(f"No trigger found for the physical outputs associated with the axis {axis_name}")
 
     for name, voltages in physical_dc_lists.items():
-        dc_list = node.machine.qdac.channel(
-            virtual_dc_set.channels[name].qdac_spec.qdac_output_port
-        ).dc_list(
+        dc_list = node.machine.qdac.channel(virtual_dc_set.channels[name].qdac_spec.qdac_output_port).dc_list(
             voltages=voltages,
             dwell_s=node.parameters.qdac_dwell_time_us / 1e6,
             stepped=True,

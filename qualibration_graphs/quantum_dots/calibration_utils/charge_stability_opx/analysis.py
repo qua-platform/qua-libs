@@ -28,10 +28,7 @@ class FitParameters:
             """Convert a stored segment to a serializable dictionary."""
             if isinstance(seg, dict):
                 return seg
-            if all(
-                hasattr(seg, attr)
-                for attr in ("start", "end", "centroid", "direction", "slope", "intercept")
-            ):
+            if all(hasattr(seg, attr) for attr in ("start", "end", "centroid", "direction", "slope", "intercept")):
                 return {
                     "start": np.asarray(seg.start).tolist(),
                     "end": np.asarray(seg.end).tolist(),
@@ -45,23 +42,11 @@ class FitParameters:
         return {
             "cp": np.asarray(self.cp).tolist() if self.cp is not None else [],
             "cp2": np.asarray(self.cp2).tolist() if self.cp2 is not None else [],
-            "mean_cp": (
-                np.asarray(self.mean_cp).tolist() if self.mean_cp is not None else []
-            ),
-            "edge_binary": (
-                np.asarray(self.edge_binary).tolist()
-                if self.edge_binary is not None
-                else []
-            ),
-            "skeleton": (
-                np.asarray(self.skeleton).tolist() if self.skeleton is not None else []
-            ),
+            "mean_cp": (np.asarray(self.mean_cp).tolist() if self.mean_cp is not None else []),
+            "edge_binary": (np.asarray(self.edge_binary).tolist() if self.edge_binary is not None else []),
+            "skeleton": (np.asarray(self.skeleton).tolist() if self.skeleton is not None else []),
             "segments": [serialize_segment(s) for s in (self.segments or [])],
-            "intersections": (
-                np.asarray(self.intersections).tolist()
-                if self.intersections is not None
-                else []
-            ),
+            "intersections": (np.asarray(self.intersections).tolist() if self.intersections is not None else []),
             "edge_threshold": float(self.edge_threshold),
             "success": self.success,
         }
@@ -83,12 +68,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_sensor = f"Results for sensor {q}: "
-        num_segments = (
-            f"\tLine segments fitted: {len(fit_results[q].get('segments', []))}\n"
-        )
-        num_intersections = (
-            f"\tIntersections found: {len(fit_results[q].get('intersections', []))}\n"
-        )
+        num_segments = f"\tLine segments fitted: {len(fit_results[q].get('segments', []))}\n"
+        num_intersections = f"\tIntersections found: {len(fit_results[q].get('intersections', []))}\n"
         if fit_results[q]["success"]:
             s_sensor += " SUCCESS!\n"
         else:
@@ -140,15 +121,12 @@ def analyse_raw_data(
     fit_results_dict = {k: v.to_dict() for k, v in fit_results.items()}
     log_fitted_results(fit_results_dict, log_callable=log_callable)
     outcomes = {
-        name: ("successful" if fit_result["success"] else "failed")
-        for name, fit_result in fit_results_dict.items()
+        name: ("successful" if fit_result["success"] else "failed") for name, fit_result in fit_results_dict.items()
     }
     return ds_fit, fit_results_dict, outcomes
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Perform charge stability analysis for each sensor in the dataset.
 
@@ -184,9 +162,7 @@ def fit_raw_data(
     return ds_fit, fit_results
 
 
-def fit_individual_raw_data(
-    data: xr.Dataset, sensor_id: str, node: QualibrationNode
-) -> FitParameters:
+def fit_individual_raw_data(data: xr.Dataset, sensor_id: str, node: QualibrationNode) -> FitParameters:
     """
     Perform charge stability analysis for a single sensor.
 

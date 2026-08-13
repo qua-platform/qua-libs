@@ -70,12 +70,14 @@ node = QualibrationNode[Parameters, Quam](
     name="05a_charge_stability_opx", description=description, parameters=Parameters()
 )
 
+
 # Any parameters that should change for debugging purposes only should go in here
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.run_in_video_mode = False
     pass
 
 
@@ -104,13 +106,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Extract the existing voltage points in the gate set, and add to the namespace
     node.namespace["voltage_points"] = node.machine.virtual_gate_sets[vgs_id].get_macros()
 
-    # Constructs the voltage arrays from node.parameters (span, points, offset). 
-    # If node.parameters.dc_control = True, then the offset is not included in the OPX sweep. 
-    # If node.parameters.dc_control = False, then the offset will be included in the OPX sweep. 
-    x_volts, y_volts = get_voltage_arrays(node)  # This sets the centers of x_volts and y_volts automatically based on the dc_control parameter. 
+    # Constructs the voltage arrays from node.parameters (span, points, offset).
+    # If node.parameters.dc_control = True, then the offset is not included in the OPX sweep.
+    # If node.parameters.dc_control = False, then the offset will be included in the OPX sweep.
+    x_volts, y_volts = get_voltage_arrays(
+        node
+    )  # This sets the centers of x_volts and y_volts automatically based on the dc_control parameter.
 
-    # Reorder the axis values based on the desired scan mode. 
-    # If using a spiral scan mode, then optionally pre-compute the scan in Python. 
+    # Reorder the axis values based on the desired scan mode.
+    # If using a spiral scan mode, then optionally pre-compute the scan in Python.
     node.namespace["scan_mode"] = scan_mode = ScanMode.from_name(
         node.parameters.scan_pattern,
         use_precomputed_scan=node.parameters.spiral_use_precomputed_scan,
@@ -133,7 +137,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
-        # Fetch the VoltageSequence (run-time helper) to be used for stepping/ramping. 
+        # Fetch the VoltageSequence (run-time helper) to be used for stepping/ramping.
         seq = node.machine.voltage_sequences[vgs_id]
 
         # Real-time variables:
@@ -150,9 +154,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # i_st : stores the per-qubit raw I value from the measurement
         # q_st : stores the per-qubit raw Q value from the measurement
         # n_st : stores the shot counter n, allowing the PC to track the progress
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-            num_IQ_pairs=num_sensors
-        )
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
 
         # Scan mode defines when buffered points should be saved.
         n_buf = scan_mode.get_save_buffer_size(x_volts, y_volts)
@@ -161,19 +163,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         I_buf = [declare(fixed, size=n_buf) for _ in range(num_sensors)]
         Q_buf = [declare(fixed, size=n_buf) for _ in range(num_sensors)]
 
-        # Loop over the multiplexed sensors in this outer array. The full 2D map will be repeated for each batch. 
+        # Loop over the multiplexed sensors in this outer array. The full 2D map will be repeated for each batch.
         for multiplexed_sensors in sensors.batch():
 
-            # This defines the TOTAL HOLD DURATION on each pixel, INCLUDING the readout time. 
+            # This defines the TOTAL HOLD DURATION on each pixel, INCLUDING the readout time.
             # So the duration for each pixel becomes hold_duration + longest readout time in this batch of multiplexed sensors
-            pixel_hold_duration = node.parameters.hold_duration + max(s.readout_resonator.operations["readout"].length for s in multiplexed_sensors.values())
-            
-            align() # Start with a global align
+            pixel_hold_duration = node.parameters.hold_duration + max(
+                s.readout_resonator.operations["readout"].length for s in multiplexed_sensors.values()
+            )
+
+            align()  # Start with a global align
 
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st) # Tell the PC which shot we are on 
-                assign(buf_idx, 0) # Start filling the buffer array from 0
+                save(n, n_st)  # Tell the PC which shot we are on
+                assign(buf_idx, 0)  # Start filling the buffer array from 0
 
                 # ── INNER 2D LOOP: step the voltages to each pixel and measure ────────────────
 
@@ -186,7 +190,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     y_volts,
                     node.parameters,
                 ):
-                    
+
                     # Ramp to a particular pixel, and wait for the desired time
                     seq.ramp_to_voltages(
                         {x_axis_name: x, y_axis_name: y},
@@ -199,7 +203,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Select the resonator tied to the sensor
                         rr = sensor.readout_resonator
                         # Resonator should wait until after the ramp + hold
-                        rr.wait((node.parameters.ramp_duration + node.parameters.hold_duration)//4)
+                        rr.wait((node.parameters.ramp_duration + node.parameters.hold_duration) // 4)
                         # Measure using said resonator
                         rr.measure("readout", qua_vars=(I[i], Q[i]))
                         assign(I_buf[i][buf_idx], I[i])
@@ -226,18 +230,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX and simulate the QUA program."""
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -248,24 +248,22 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.run_in_video_mode
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.run_in_video_mode
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Skip the dacs if we don't need dc_control anyway
-    qmm = node.machine.connect(skip_dacs = not node.parameters.dc_control)
-    
-    if node.parameters.dc_control: 
+    qmm = node.machine.connect(skip_dacs=not node.parameters.dc_control)
+
+    if node.parameters.dc_control:
         # If dc_control is requested, then we must apply the offsets provided. If None is provided, then it will default to the already applied value
         set_dac_offsets(
-            node, 
-            dc_set_id = node.namespace["axes_names"]["gate_set_id"], 
-            voltages = {
-                node.namespace["axes_names"]["x_axis"] : node.parameters.x_offset, 
-                node.namespace["axes_names"]["y_axis"] : node.parameters.y_offset
-            }
+            node,
+            dc_set_id=node.namespace["axes_names"]["gate_set_id"],
+            voltages={
+                node.namespace["axes_names"]["x_axis"]: node.parameters.x_offset,
+                node.namespace["axes_names"]["y_axis"]: node.parameters.y_offset,
+            },
         )
 
     # Get the config from the machine
@@ -281,7 +279,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -300,16 +297,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the sensors from the loaded node parameters
-    node.namespace["sensors"] = [
-        node.machine.sensor_dots[name] for name in node.parameters.sensor_names
-    ]
+    node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
 # %% {Analyse Data}
 @node.run_action(
-    skip_if=node.parameters.simulate
-    or node.parameters.run_in_video_mode
-    or not node.parameters.perform_edge_analysis
+    skip_if=node.parameters.simulate or node.parameters.run_in_video_mode or not node.parameters.perform_edge_analysis
 )
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
@@ -326,9 +319,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Build the node figures from the raw and fitted charge-stability data."""
     point_kwargs = {}
     if node.parameters.plot_points and "voltage_points" in node.namespace:
-        pair_prefix = node.machine.find_quantum_dot_pair(
-            node.parameters.x_axis_name, node.parameters.y_axis_name
-        )
+        pair_prefix = node.machine.find_quantum_dot_pair(node.parameters.x_axis_name, node.parameters.y_axis_name)
         point_kwargs = dict(
             voltage_points=node.namespace["voltage_points"],
             x_axis_name=node.parameters.x_axis_name,
@@ -381,9 +372,9 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
             for name in node.parameters.sensor_names
         ],
         save_path=str(quam_state_path),
-        port = node.parameters.video_mode_port,
-        #point_duration = node.parameters.hold_duration,
-        mid_scan_compensation = node.parameters.per_line_compensation,
+        port=node.parameters.video_mode_port,
+        # point_duration = node.parameters.hold_duration,
+        mid_scan_compensation=node.parameters.per_line_compensation,
     )
 
 

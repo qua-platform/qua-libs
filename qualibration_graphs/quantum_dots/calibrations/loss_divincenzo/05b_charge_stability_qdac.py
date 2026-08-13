@@ -113,9 +113,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── Experiment parameters (Python side) ──────────────────────────────
 
     # Virtual-gate components defining the X/Y sweep axes (must share a VirtualGateSet)
-    x_obj, y_obj = node.machine.get_component(
-        node.parameters.x_axis_name
-    ), node.machine.get_component(node.parameters.y_axis_name)
+    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
+        node.parameters.y_axis_name
+    )
     node.namespace["axes_names"] = {"x_axis": x_obj.name, "y_axis": y_obj.name}
     if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
         raise ValueError(
@@ -153,11 +153,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         if node.parameters.y_center is None:
             node.parameters.y_center = dc_set.get_voltage(node.parameters.y_axis_name)
 
-        
         if not x_external:
             # OPX-swept X axis: park the QDAC at the center so the OPX performs the relative sweep
             dc_set.set_voltages({node.parameters.x_axis_name: node.parameters.x_center})
-        
+
         if not y_external:
             # OPX-swept Y axis: park the QDAC at the center so the OPX performs the relative sweep
             dc_set.set_voltages({node.parameters.y_axis_name: node.parameters.y_center})
@@ -190,7 +189,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             virtual_dc_set_id=vgs_id,
             axis_name=node.parameters.x_axis_name,
             axis_values=(
-                np.repeat(x_array, len(y_volts))  # Both X and Y axes are applied by the QDAC with a single trigger from the OPX
+                np.repeat(
+                    x_array, len(y_volts)
+                )  # Both X and Y axes are applied by the QDAC with a single trigger from the OPX
                 if y_external
                 else scan_mode.get_outer_loop(x_array)  # mixed: X slow, Y on OPX
             ),
@@ -203,7 +204,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             virtual_dc_set_id=vgs_id,
             axis_name=node.parameters.y_axis_name,
             axis_values=(
-                np.tile(y_array, len(x_volts))  # Both X and Y axes are applied by the QDAC with a single trigger from the OPX
+                np.tile(
+                    y_array, len(x_volts)
+                )  # Both X and Y axes are applied by the QDAC with a single trigger from the OPX
                 if x_external
                 else scan_mode.get_outer_loop(y_array)  # mixed: Y slow, X on OPX
             ),
@@ -213,19 +216,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sweep_axes"] = {
         "sensors": xr.DataArray(sensors.get_names()),
         "x_volts": xr.DataArray(
-            (
-                x_volts
-                if (not node.parameters.dc_control and not x_external)
-                else x_volts + node.parameters.x_center
-            ),
+            (x_volts if (not node.parameters.dc_control and not x_external) else x_volts + node.parameters.x_center),
             attrs={"long_name": "voltage", "units": "V"},
         ),
         "y_volts": xr.DataArray(
-            (
-                y_volts
-                if (not node.parameters.dc_control and not y_external)
-                else y_volts + node.parameters.y_center
-            ),
+            (y_volts if (not node.parameters.dc_control and not y_external) else y_volts + node.parameters.y_center),
             attrs={"long_name": "voltage", "units": "V"},
         ),
     }
@@ -243,16 +238,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             #   I[i], Q[i]       : demodulated quadratures for sensor i
             #   I_st[i], Q_st[i] : stream buffers before transfer to PC
             #   n, n_st          : shot counter exposed for the progress bar
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-                num_IQ_pairs=num_sensors
-            )
-            x = declare(fixed) # values on the x axis
-            y = declare(fixed) # values on the y axis
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+            x = declare(fixed)  # values on the x axis
+            y = declare(fixed)  # values on the y axis
             for multiplexed_sensors in sensors.batch():
                 align()
                 # ── OUTER LOOP: average over shots ───────────────────────
                 with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st) # update the progress bar
+                    save(n, n_st)  # update the progress bar
                     # ── MIDDLE LOOP: slow axis (x) ─────────────────────────
                     with for_(*from_array(x, x_volts)):
                         if node.parameters.per_line_wait > 0:
@@ -274,9 +267,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             if node.parameters.pre_measurement_delay > 0:
                                 # Additional delay before the measurement pulse
                                 # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                                seq.step_to_voltages(
-                                    {}, duration=node.parameters.pre_measurement_delay
-                                )
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
                             align()
 
                             # Perform muliplexed measurements on the sensors
@@ -287,7 +278,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 # Measure using the selected resonator
                                 rr.measure("readout", qua_vars=(I[i], Q[i]))
                                 # Post-measurement wait (Optional)
-                                rr.wait(500) # TODO: Make this a parameter
+                                rr.wait(500)  # TODO: Make this a parameter
 
                                 # Save the I/Q data to the streams
                                 save(I[i], I_st[i])
@@ -298,18 +289,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     seq.ramp_to_zero()
             # ── Post-processing on the OPX before data reaches the PC ──
             with stream_processing():
-                n_st.save("n") # save the shot counter for the progress bar
+                n_st.save("n")  # save the shot counter for the progress bar
                 for i in range(num_sensors):
                     # The averaged data for each (x, y) pixel is saved to the streams
-                    # Individual shots are not retained. 
+                    # Individual shots are not retained.
                     # .buffer(len(y)).buffer(len(x)) : group into 2D grid (y fast, x slow)
                     # .average() : average over all shots (n_avg repetitions)
-                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"I{i}"
-                    )
-                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"Q{i}"
-                    )
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
     # Case 2: X on QDAC (slow), Y on OPX (fast)
     elif x_external and not y_external:
@@ -320,17 +307,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             #   I[i], Q[i]       : demodulated quadratures for sensor i
             #   I_st[i], Q_st[i] : stream buffers before transfer to PC
             #   n, n_st          : shot counter exposed for the progress bar
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-                num_IQ_pairs=num_sensors
-            )
-            x = declare(fixed) # values on the x axis
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
+            x = declare(fixed)  # values on the x axis
             # y = declare(fixed) # values on the y axis
 
             for multiplexed_sensors in sensors.batch():
                 align()
                 # ── OUTER LOOP: average over shots ───────────────────────
                 with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st) # update the progress bar
+                    save(n, n_st)  # update the progress bar
                     # ── MIDDLE LOOP: slow axis (x) ─────────────────────────
                     with for_(*from_array(x, x_volts)):
                         # one QDAC trigger per x_volts step (dc_list advances X)
@@ -345,9 +330,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             )
                         # Wait for QDAC to settle at the new X voltage
                         # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                        seq.step_to_voltages(
-                            {}, duration=node.parameters.post_trigger_wait_ns
-                        )
+                        seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
                         # ── INNER LOOP: fast axis (y) ──────────────────────
                         # OPX ramps Y through y_volts (scan_mode sets order)
                         for y in scan_mode.inner_loop(y_volts):
@@ -360,11 +343,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             if node.parameters.pre_measurement_delay > 0:
                                 # Additional delay before the measurement pulse
                                 # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                                seq.step_to_voltages(
-                                    {}, duration=node.parameters.pre_measurement_delay
-                                )
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
                             align()
-                            
+
                             # Perform muliplexed measurements on the sensors
                             # A python for loop is used so that the measurements are performed in parallel.
                             for i, sensor in multiplexed_sensors.items():
@@ -373,7 +354,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 # Measure using the selected resonator
                                 rr.measure("readout", qua_vars=(I[i], Q[i]))
                                 # Post-measurement wait (Optional)
-                                rr.wait(500) # TODO: Make this a parameter
+                                rr.wait(500)  # TODO: Make this a parameter
 
                                 # Save data
                                 save(I[i], I_st[i])
@@ -384,18 +365,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     seq.ramp_to_zero()
             # ── Post-processing on the OPX before data reaches the PC ──
             with stream_processing():
-                n_st.save("n") # save the shot counter for the progress bar
+                n_st.save("n")  # save the shot counter for the progress bar
                 for i in range(num_sensors):
                     # The averaged data for each (x, y) pixel is saved to the streams
-                    # Individual shots are not retained. 
+                    # Individual shots are not retained.
                     # .buffer(len(y)).buffer(len(x)) : group into 2D grid (y fast, x slow)
                     # .average() : average over all shots (n_avg repetitions)
-                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"I{i}"
-                    )
-                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"Q{i}"
-                    )
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
     # Case 3: Y on QDAC (slow), X on OPX (fast)
     elif not x_external and y_external:
@@ -419,7 +396,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 attrs={"long_name": "voltage", "units": "V"},
             ),
         }
-        
+
         with program() as node.namespace["qua_program"]:
             seq = node.machine.voltage_sequences[vgs_id]
 
@@ -427,16 +404,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             #   I[i], Q[i]       : demodulated quadratures for sensor i
             #   I_st[i], Q_st[i] : stream buffers before transfer to PC
             #   n, n_st          : shot counter exposed for the progress bar
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-                num_IQ_pairs=num_sensors
-            )
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
             y = declare(fixed)
 
             for multiplexed_sensors in sensors.batch():
                 align()
                 # ── OUTER LOOP: average over shots ───────────────────────
                 with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st) # update the progress bar
+                    save(n, n_st)  # update the progress bar
                     # ── MIDDLE LOOP: slow axis (y) ─────────────────────────
                     # one QDAC trigger per y_volts step (dc_list advances Y)
                     with for_(*from_array(y, y_volts)):
@@ -450,9 +425,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 ramp_duration=node.parameters.ramp_duration,
                             )
                         # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                        seq.step_to_voltages(
-                            {}, duration=node.parameters.post_trigger_wait_ns
-                        )
+                        seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
                         # ── INNER LOOP: fast axis (x) ──────────────────────
                         # OPX ramps X through x_volts (scan_mode sets order)
                         for x in scan_mode.inner_loop(x_volts):
@@ -465,9 +438,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             if node.parameters.pre_measurement_delay > 0:
                                 # Additional delay before the measurement pulse
                                 # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                                seq.step_to_voltages(
-                                    {}, duration=node.parameters.pre_measurement_delay
-                                )
+                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
                             align()
 
                             # Perform muliplexed measurements on the sensors
@@ -478,7 +449,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 # Measure using the selected resonator
                                 rr.measure("readout", qua_vars=(I[i], Q[i]))
                                 # Post-measurement wait (Optional)
-                                rr.wait(500) # TODO: Make this a parameter
+                                rr.wait(500)  # TODO: Make this a parameter
 
                                 # Save the I/Q data to the streams
                                 save(I[i], I_st[i])
@@ -489,18 +460,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     seq.ramp_to_zero()
             # ── Post-processing on the OPX before data reaches the PC ──
             with stream_processing():
-                n_st.save("n") # save the shot counter for the progress bar
+                n_st.save("n")  # save the shot counter for the progress bar
                 for i in range(num_sensors):
                     # The averaged data for each (x, y) pixel is saved to the streams
-                    # Individual shots are not retained. 
+                    # Individual shots are not retained.
                     # .buffer(len(x)).buffer(len(y)) : group into 2D grid (x fast, y slow)
                     # .average() : average over all shots (n_avg repetitions)
-                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(
-                        f"I{i}"
-                    )
-                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(
-                        f"Q{i}"
-                    )
+                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"Q{i}")
 
     # Case 4: both axes on the QDAC — OPX only triggers and reads out
     elif x_external and y_external:
@@ -511,16 +478,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             #   I[i], Q[i]       : demodulated quadratures for sensor i
             #   I_st[i], Q_st[i] : stream buffers before transfer to PC
             #   n, n_st          : shot counter exposed for the progress bar
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-                num_IQ_pairs=num_sensors
-            )
+            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
             trig_counter = declare(int)
 
             for multiplexed_sensors in sensors.batch():
                 align()
                 # ── OUTER LOOP: average over shots ───────────────────────
                 with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st) # update the progress bar
+                    save(n, n_st)  # update the progress bar
 
                     # ── INNER LOOP: trigger counter ──────────────────────
                     # One trigger pair per pixel; dc_lists advance both X and Y
@@ -545,40 +510,32 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Measure using said resonator
                             rr.measure("readout", qua_vars=(I[i], Q[i]))
                             # Post-measurement wait (Optional)
-                            rr.wait(500) # TODO: Make this a parameter
+                            rr.wait(500)  # TODO: Make this a parameter
 
                             # Save the I/Q data to the streams
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
             with stream_processing():
-                n_st.save("n") # save the shot counter for the progress bar
+                n_st.save("n")  # save the shot counter for the progress bar
                 for i in range(num_sensors):
                     # The averaged data for each (x, y) pixel is saved to the streams
-                    # Individual shots are not retained. 
-                    # .buffer(len(y)).buffer(len(x)) : group into 2D grid 
+                    # Individual shots are not retained.
+                    # .buffer(len(y)).buffer(len(x)) : group into 2D grid
                     # .average() : average over all shots (n_avg repetitions)
-                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"I{i}"
-                    )
-                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(
-                        f"Q{i}"
-                    )
+                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
+                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
 
 
 # %% {Simulate}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or not node.parameters.simulate
-    or node.parameters.use_validation
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_validation
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX and simulate the QUA program."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -588,10 +545,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program, and fetch raw I/Q into ``ds_raw``."""
     qmm = node.machine.connect()
@@ -616,10 +570,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate validation data}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or not node.parameters.use_validation
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation)
 def simulate_data(node: QualibrationNode[Parameters, Quam]):
     """Generate synthetic charge-stability data for pipeline validation (placeholder)."""
     pass
@@ -634,9 +585,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the sensors from the loaded node parameters
-    node.namespace["sensors"] = [
-        node.machine.sensor_dots[name] for name in node.parameters.sensor_names
-    ]
+    node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
 # %% {Analyse_data}

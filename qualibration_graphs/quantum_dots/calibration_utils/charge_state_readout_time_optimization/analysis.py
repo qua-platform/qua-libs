@@ -18,9 +18,9 @@ class FitParameters:
     integration_times: List[float]
     optimal_integration_time: float
     threshold_snr: float
-    iw_angle: float          # rotation angle for integration weights; (1,1) maps to higher I
-    I_threshold: float       # discrimination threshold in the rotated I frame
-    aspect_ratio_02: float   # elongation of the (0,2) blob; > _ELONGATION_THRESHOLD triggers double-Gaussian
+    iw_angle: float  # rotation angle for integration weights; (1,1) maps to higher I
+    I_threshold: float  # discrimination threshold in the rotated I frame
+    aspect_ratio_02: float  # elongation of the (0,2) blob; > _ELONGATION_THRESHOLD triggers double-Gaussian
     used_double_gaussian: bool
     success: bool
 
@@ -241,9 +241,7 @@ def _fit_components_for_plot(
     }
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """
     For each (dot_pair, sensor), compute SNR vs integration time, then:
     1. Find the optimal integration time from the SNR threshold crossing.

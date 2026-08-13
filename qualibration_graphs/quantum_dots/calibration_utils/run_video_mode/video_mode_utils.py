@@ -97,13 +97,13 @@ def launch_video_mode(
             "Spiral_Scan": scan_modes.SpiralScan(),
         }
 
-    # Optionally skip the dacs, if DC control is False. 
-    qmm = machine.connect(skip_dacs = not dc_control)
+    # Optionally skip the dacs, if DC control is False.
+    qmm = machine.connect(skip_dacs=not dc_control)
 
     voltage_control_tab, voltage_control_component = None, None
     # Get the DC Set
     dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
-    if dc_control: 
+    if dc_control:
         # Only build the voltage control component if the DC Set is not None AND the user wants dc_control
         if dc_set is not None:
             voltage_control_component = VoltageControlComponent(

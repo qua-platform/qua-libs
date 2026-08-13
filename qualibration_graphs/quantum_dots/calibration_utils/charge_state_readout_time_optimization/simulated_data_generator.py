@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from qualibration_libs.parameters.experiment import _make_batchable_list_from_multiplexed
 
+
 def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     """Generate simulated IQ charge-sensing data and populate the node namespace.
 
@@ -32,26 +33,19 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     # -- Set up namespace (mirrors create_qua_program) -----------------------
     quantum_dots = [node.machine.get_component(k) for k in node.parameters.quantum_dots]
     if len(quantum_dots) < 2:
-        raise ValueError(
-            f"At least 2 Quantum Dots required. Received {len(quantum_dots)}"
-        )
+        raise ValueError(f"At least 2 Quantum Dots required. Received {len(quantum_dots)}")
 
     quantum_dot_pair_names = [
         pair
         for dot1, dot2 in combinations(node.parameters.quantum_dots, 2)
         if (pair := node.machine.find_quantum_dot_pair(dot1, dot2)) is not None
     ]
-    node.log(
-        f"[sim] Found {len(quantum_dot_pair_names)} quantum dot pairs: "
-        f"{quantum_dot_pair_names}"
-    )
+    node.log(f"[sim] Found {len(quantum_dot_pair_names)} quantum dot pairs: " f"{quantum_dot_pair_names}")
     node.namespace["quantum_dot_pairs"] = quantum_dot_pairs = [
         node.machine.get_component(k) for k in quantum_dot_pair_names
     ]
     node.namespace["all_sensors"] = all_sensors = {
-        pair.name: _make_batchable_list_from_multiplexed(
-            pair.sensor_dots, node.parameters.multiplexed
-        )
+        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, node.parameters.multiplexed)
         for pair in quantum_dot_pairs
     }
 

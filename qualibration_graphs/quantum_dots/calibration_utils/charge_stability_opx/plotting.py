@@ -10,10 +10,11 @@ from quam_builder.architecture.quantum_dots.components import SensorDot
 from .analysis import process_raw_dataset
 
 
-# TODO: Replace this with the real pca_project_1d after merging in release/nightly
+# TODO: Replace this with the real pca_project_1d after merging in release/nightly
 try:
     from calibration_utils.iq_utils.iq_blobs.readout_barthel import pca_project_1d
 except ImportError:
+
     def pca_project_1d(X, labels=None, orient: str = "auto"):
         """Fallback 2D->1D PCA projection used only when the shared helper is unavailable."""
         X = np.asarray(X, dtype=float)
@@ -105,9 +106,7 @@ def pca_plotter(ds: xr.Dataset) -> Figure:
     return fig
 
 
-def _align_base_to_overlay(
-    base_array: np.ndarray, overlay_array: np.ndarray
-) -> np.ndarray:
+def _align_base_to_overlay(base_array: np.ndarray, overlay_array: np.ndarray) -> np.ndarray:
     """Align base array to overlay shape when change-point maps are offset by one pixel."""
     if base_array.shape == overlay_array.shape:
         return base_array
@@ -159,20 +158,14 @@ def plot_raw_amplitude(
     - Each subplot contains the amplitude heatmap.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(
-        1, num_sensors, figsize=(6 * num_sensors, 5), squeeze=False
-    )
+    fig, axes = plt.subplots(1, num_sensors, figsize=(6 * num_sensors, 5), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
         sensor_data = ds.sel(sensors=sensor.id)
-        plot_individual_raw_amplitude(
-            ax, sensor_data, sensor.id, x_axis_name=x_axis_name, y_axis_name=y_axis_name
-        )
+        plot_individual_raw_amplitude(ax, sensor_data, sensor.id, x_axis_name=x_axis_name, y_axis_name=y_axis_name)
         if voltage_points is not None:
-            overlay_voltage_points(
-                ax, voltage_points, x_axis_name, y_axis_name, pair_prefix
-            )
+            overlay_voltage_points(ax, voltage_points, x_axis_name, y_axis_name, pair_prefix)
 
     fig.suptitle("Charge Stability Map - Amplitude")
     fig.tight_layout()
@@ -217,20 +210,14 @@ def plot_raw_phase(
     - Each subplot contains the phase heatmap.
     """
     num_sensors = len(sensors)
-    fig, axes = plt.subplots(
-        1, num_sensors, figsize=(6 * num_sensors, 5), squeeze=False
-    )
+    fig, axes = plt.subplots(1, num_sensors, figsize=(6 * num_sensors, 5), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
         sensor_data = ds.sel(sensors=sensor.id)
-        plot_individual_raw_phase(
-            ax, sensor_data, sensor.id, x_axis_name=x_axis_name, y_axis_name=y_axis_name
-        )
+        plot_individual_raw_phase(ax, sensor_data, sensor.id, x_axis_name=x_axis_name, y_axis_name=y_axis_name)
         if voltage_points is not None:
-            overlay_voltage_points(
-                ax, voltage_points, x_axis_name, y_axis_name, pair_prefix
-            )
+            overlay_voltage_points(ax, voltage_points, x_axis_name, y_axis_name, pair_prefix)
 
     fig.suptitle("Charge Stability Map - Phase")
     fig.tight_layout()
@@ -343,9 +330,7 @@ def overlay_voltage_points(
         if pair_prefix is not None and not point_id.startswith(pair_prefix):
             continue
 
-        voltages = (
-            point.voltages if hasattr(point, "voltages") else point.get("voltages", {})
-        )
+        voltages = point.voltages if hasattr(point, "voltages") else point.get("voltages", {})
         if x_axis_name not in voltages or y_axis_name not in voltages:
             continue
 

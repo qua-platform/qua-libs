@@ -20,9 +20,7 @@ def plot_iq_histogram(
 ) -> Figure:
     """2D IQ histograms at the longest integration time for each sensor/dot-pair."""
     n_cols = sum(len(all_sensors[dp.name]) for dp in quantum_dot_pairs)
-    fig, axes = plt.subplots(
-        1, max(n_cols, 1), figsize=(6 * max(n_cols, 1), 5), squeeze=False
-    )
+    fig, axes = plt.subplots(1, max(n_cols, 1), figsize=(6 * max(n_cols, 1), 5), squeeze=False)
     axes = axes.flatten()
 
     col = 0
@@ -136,9 +134,7 @@ def plot_snr_vs_integration_time(
 ) -> Figure:
     """SNR vs integration time for each sensor/dot-pair."""
     n_cols = sum(len(all_sensors[dp.name]) for dp in quantum_dot_pairs)
-    fig, axes = plt.subplots(
-        1, max(n_cols, 1), figsize=(5 * max(n_cols, 1), 4), squeeze=False
-    )
+    fig, axes = plt.subplots(1, max(n_cols, 1), figsize=(5 * max(n_cols, 1), 4), squeeze=False)
     axes = axes.flatten()
 
     col = 0
@@ -154,11 +150,19 @@ def plot_snr_vs_integration_time(
             if fit_results is not None and key in fit_results:
                 fr = fit_results[key]
                 ax.axhline(
-                    fr["threshold_snr"], color="r", ls="--", lw=1, alpha=0.6,
+                    fr["threshold_snr"],
+                    color="r",
+                    ls="--",
+                    lw=1,
+                    alpha=0.6,
                     label=f"SNR threshold = {fr['threshold_snr']:.1f}",
                 )
                 ax.axvline(
-                    fr["optimal_integration_time"], color="g", ls=":", lw=1, alpha=0.6,
+                    fr["optimal_integration_time"],
+                    color="g",
+                    ls=":",
+                    lw=1,
+                    alpha=0.6,
                     label=f"Optimal @ {fr['optimal_integration_time']:.0f} ns",
                 )
             else:
@@ -189,9 +193,7 @@ def plot_projected_histogram(
     integration time.  Rotates using the fitted iw_angle so the plot frame matches what the
     hardware will see after the state update."""
     n_cols = sum(len(all_sensors[dp.name]) for dp in quantum_dot_pairs)
-    fig, axes = plt.subplots(
-        1, max(n_cols, 1), figsize=(6 * max(n_cols, 1), 4), squeeze=False
-    )
+    fig, axes = plt.subplots(1, max(n_cols, 1), figsize=(6 * max(n_cols, 1), 4), squeeze=False)
     axes = axes.flatten()
 
     col = 0
@@ -225,7 +227,10 @@ def plot_projected_histogram(
             ax.hist(proj_11, bins=bins, alpha=0.6, color="cyan", label="(1,1)")
             ax.hist(proj_02, bins=bins, alpha=0.6, color="lime", label="(0,2)")
             ax.axvline(
-                threshold_mV, color="red", ls="--", lw=1.5,
+                threshold_mV,
+                color="red",
+                ls="--",
+                lw=1.5,
                 label=f"threshold = {threshold_mV:.2f} mV",
             )
 
