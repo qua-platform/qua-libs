@@ -2,12 +2,13 @@
 import matplotlib.pyplot as plt
 import xarray as xr
 import numpy as np
-from typing import Dict, List
+from typing import Dict, List, Optional
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from quam_builder.architecture.quantum_dots.components import SensorDot
 from calibration_utils.iq_blobs.readout_barthel import pca_project_1d
+from .analysis import process_raw_dataset
 
 
 def _sort_for_plot(da: xr.DataArray) -> xr.DataArray:
@@ -567,3 +568,59 @@ def plot_line_fit_overlays(
 
     # constrained_layout is already enabled in subplots; avoid tight_layout clashes with colorbars
     return fig
+
+
+def plot_all(
+    ds_raw: xr.Dataset,
+    sensors: List[SensorDot],
+    *,
+    ds_fit: Optional[xr.Dataset] = None,
+    fit_results: Optional[dict] = None,
+    voltage_points=None,
+    x_axis_name: str = None,
+    y_axis_name: str = None,
+    pair_prefix: str = None,
+    perform_edge_analysis: bool = False,
+    show: bool = True,
+) -> dict[str, Figure]:
+    """Build and return all 05a charge-stability figures."""
+    ds_plot = ds_fit if ds_fit is not None else process_raw_dataset(ds_raw.copy(deep=True))
+
+    figures = {
+        "amplitude": plot_raw_amplitude(
+            ds_plot,
+            sensors,
+            voltage_points=voltage_points,
+            x_axis_name=x_axis_name,
+            y_axis_name=y_axis_name,
+            pair_prefix=pair_prefix,
+        ),
+        "phase": plot_raw_phase(
+            ds_plot,
+            sensors,
+            voltage_points=voltage_points,
+            x_axis_name=x_axis_name,
+            y_axis_name=y_axis_name,
+            pair_prefix=pair_prefix,
+        ),
+    }
+
+    if perform_edge_analysis and fit_results is not None:
+        for sensor in sensors:
+            sensor_data = ds_plot.sel(sensors=sensor.id)
+            sensor_fit = fit_results.get(sensor.id, {})
+            figures[f"{sensor.id}_change_points"] = plot_change_point_overlays(
+                sensor_data,
+                sensor_fit,
+                sensor.id,
+            )
+            if sensor_fit.get("segments"):
+                figures[f"{sensor.id}_line_fits"] = plot_line_fit_overlays(
+                    sensor_data,
+                    sensor_fit,
+                    sensor.id,
+                )
+
+    if show:
+        plt.show()
+    return figures

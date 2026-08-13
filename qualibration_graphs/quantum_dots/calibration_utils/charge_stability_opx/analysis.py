@@ -144,7 +144,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable(s_sensor + num_segments + num_intersections)
 
 
-def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+def process_raw_dataset(ds: xr.Dataset, node: Optional[QualibrationNode] = None):
     """
     Process the raw charge stability dataset.
 
@@ -171,6 +171,24 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     ds.phase.attrs = {"long_name": "IQ phase", "units": "rad"}
 
     return ds
+
+
+def analyse_raw_data(
+    ds_raw: xr.Dataset,
+    node: QualibrationNode,
+    *,
+    log_callable=None,
+) -> tuple[xr.Dataset, dict, dict]:
+    """Process the raw dataset, run edge analysis, and return fit outputs and outcomes."""
+    ds_processed = process_raw_dataset(ds_raw.copy(deep=True), node)
+    ds_fit, fit_results = fit_raw_data(ds_processed, node)
+    fit_results_dict = {k: v.to_dict() for k, v in fit_results.items()}
+    log_fitted_results(fit_results_dict, log_callable=log_callable)
+    outcomes = {
+        name: ("successful" if fit_result["success"] else "failed")
+        for name, fit_result in fit_results_dict.items()
+    }
+    return ds_fit, fit_results_dict, outcomes
 
 
 def fit_raw_data(
@@ -207,12 +225,6 @@ def fit_raw_data(
 
     # Add success criteria to the dataset
     ds_fit = ds_fit.assign_coords(success=("sensors", success_list))
-
-    # Set node outcomes
-    node.outcomes = {
-        sensor.id: "successful" if fit_results[sensor.id].success else "fail"
-        for sensor in sensors
-    }
 
     return ds_fit, fit_results
 
