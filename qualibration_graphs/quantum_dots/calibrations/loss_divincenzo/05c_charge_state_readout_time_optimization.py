@@ -74,10 +74,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
@@ -86,9 +83,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["quantum_dots"] = quantum_dots = get_dots(node)
 
     if len(quantum_dots) < 2:
-        raise ValueError(
-            f"At least 2 Quantum Dots required. Received {len(quantum_dots)}"
-        )
+        raise ValueError(f"At least 2 Quantum Dots required. Received {len(quantum_dots)}")
 
     # Find all the existing quantum dot pair names within the list of quantum dots provided.
     quantum_dot_pair_names = [
@@ -96,18 +91,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for dot1, dot2 in combinations([k.id for k in quantum_dots], 2)
         if (pair := node.machine.find_quantum_dot_pair(dot1, dot2)) is not None
     ]
-    node.log(
-        f"Found {len(quantum_dot_pair_names)} quantum dot pairs: {quantum_dot_pair_names}"
-    )
+    node.log(f"Found {len(quantum_dot_pair_names)} quantum dot pairs: {quantum_dot_pair_names}")
     node.namespace["quantum_dot_pairs"] = quantum_dot_pairs = [
         node.machine.get_component(k) for k in quantum_dot_pair_names
     ]
 
     # Extract the sensors from the quantum dot pairs
     node.namespace["all_sensors"] = all_sensors = {
-        pair.name: _make_batchable_list_from_multiplexed(
-            pair.sensor_dots, node.parameters.multiplexed
-        )
+        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, node.parameters.multiplexed)
         for pair in quantum_dot_pairs
     }
 
@@ -118,12 +109,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     unique_sensors = {s.name: s for pair in quantum_dot_pairs for s in pair.sensor_dots}
     for s in unique_sensors.values():
         for pair in quantum_dot_pairs:
-            with tracked_updates(
-                s.readout_resonator, auto_revert=False, dont_assign_to_none=True
-            ) as resonator:
-                resonator.operations[f"readout_{pair.name}"].length = (
-                    node.parameters.integration_time_stop
-                )
+            with tracked_updates(s.readout_resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
+                resonator.operations[f"readout_{pair.name}"].length = node.parameters.integration_time_stop
                 node.namespace["tracked_resonators"].append(resonator)
 
     # Extract the sweep parameters and axes from the node parameters
@@ -154,22 +141,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n = declare(int)
         idx = declare(int)
 
-        I_st_11 = {
-            dp.name: {s.name: declare_stream() for s in dp.sensor_dots}
-            for dp in quantum_dot_pairs
-        }
-        Q_st_11 = {
-            dp.name: {s.name: declare_stream() for s in dp.sensor_dots}
-            for dp in quantum_dot_pairs
-        }
-        I_st_02 = {
-            dp.name: {s.name: declare_stream() for s in dp.sensor_dots}
-            for dp in quantum_dot_pairs
-        }
-        Q_st_02 = {
-            dp.name: {s.name: declare_stream() for s in dp.sensor_dots}
-            for dp in quantum_dot_pairs
-        }
+        I_st_11 = {dp.name: {s.name: declare_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
+        Q_st_11 = {dp.name: {s.name: declare_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
+        I_st_02 = {dp.name: {s.name: declare_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
+        Q_st_02 = {dp.name: {s.name: declare_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
         n_st = declare_stream()
 
         for dot_pair in quantum_dot_pairs:
@@ -199,9 +174,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Requires the dot pair object to have the initialize macro, in addition to the qubits
 
                 align()
-                dot_pair.voltage_sequence.step_to_voltages(
-                    voltages={}, duration=node.parameters.integration_time_stop
-                )
+                dot_pair.voltage_sequence.step_to_voltages(voltages={}, duration=node.parameters.integration_time_stop)
 
                 for batch in all_sensors[dot_pair.name].batch():
                     for batch_idx, s in batch.items():
@@ -220,14 +193,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ---------------------------------------------------------
                 # Step 3b: Wait - ensure that it is a singlet state.
                 # ---------------------------------------------------------
-                dot_pair.voltage_sequence.step_to_voltages(
-                    voltages={}, duration=node.parameters.wait_time
-                )
+                dot_pair.voltage_sequence.step_to_voltages(voltages={}, duration=node.parameters.wait_time)
                 align()
 
-                dot_pair.voltage_sequence.step_to_voltages(
-                    voltages={}, duration=node.parameters.integration_time_stop
-                )
+                dot_pair.voltage_sequence.step_to_voltages(voltages={}, duration=node.parameters.integration_time_stop)
                 for batch in all_sensors[dot_pair.name].batch():
                     for batch_idx, s in batch.items():
                         I_02, Q_02 = s.readout_resonator.measure_accumulated(
@@ -237,9 +206,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 align()
 
-                dot_pair.voltage_sequence.apply_compensation_pulse(
-                    return_to_zero=True, go_to_zero=True
-                )
+                dot_pair.voltage_sequence.apply_compensation_pulse(return_to_zero=True, go_to_zero=True)
 
                 align()
 
@@ -256,18 +223,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for dp in quantum_dot_pairs:
                 for batch in all_sensors[dp.name].batch():
                     for batch_idx, s in batch.items():
-                        I_st_11[dp.name][s.name].buffer(array_size).buffer(n_reps).save(
-                            f"I_11_{dp.name}_{s.name}"
-                        )
-                        Q_st_11[dp.name][s.name].buffer(array_size).buffer(n_reps).save(
-                            f"Q_11_{dp.name}_{s.name}"
-                        )
-                        I_st_02[dp.name][s.name].buffer(array_size).buffer(n_reps).save(
-                            f"I_02_{dp.name}_{s.name}"
-                        )
-                        Q_st_02[dp.name][s.name].buffer(array_size).buffer(n_reps).save(
-                            f"Q_02_{dp.name}_{s.name}"
-                        )
+                        I_st_11[dp.name][s.name].buffer(array_size).buffer(n_reps).save(f"I_11_{dp.name}_{s.name}")
+                        Q_st_11[dp.name][s.name].buffer(array_size).buffer(n_reps).save(f"Q_11_{dp.name}_{s.name}")
+                        I_st_02[dp.name][s.name].buffer(array_size).buffer(n_reps).save(f"I_02_{dp.name}_{s.name}")
+                        Q_st_02[dp.name][s.name].buffer(array_size).buffer(n_reps).save(f"Q_02_{dp.name}_{s.name}")
 
 
 # %% {Simulate}
@@ -282,9 +241,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -295,13 +252,11 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
-    qmm = node.machine.connect(timeout = 500)
+    qmm = node.machine.connect(timeout=500)
     # Get the config from the machine
     config = node.machine.generate_config()
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
@@ -342,9 +297,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
     quantum_dot_pairs = node.namespace["quantum_dot_pairs"]
     node.namespace["all_sensors"] = {
-        pair.name: _make_batchable_list_from_multiplexed(
-            pair.sensor_dots, node.parameters.multiplexed
-        )
+        pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, node.parameters.multiplexed)
         for pair in quantum_dot_pairs
     }
 
@@ -421,9 +374,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
                 op_name = "readout" + f"_{dp.name}"
                 operation = sensor.readout_resonator.operations.get(op_name, None)
-                if operation is None: 
+                if operation is None:
                     operation = sensor.readout_resonator.operations["readout"]
-                
+
                 operation.length = optimal_time
                 operation.integration_weights_angle -= float(fit_result["iw_angle"])
                 pair_ids = {

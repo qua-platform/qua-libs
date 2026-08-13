@@ -21,7 +21,7 @@ class NodeSpecificParameters(RunnableParameters):
     """Sweep the X axis via QDAC dc_list instead of OPX ramps. Default is False."""
     y_from_qdac: bool = False
     """Sweep the Y axis via QDAC dc_list instead of OPX ramps. Default is False."""
-    
+
     x_points: int = 121
     """The number of measurement points on the X axis. Default is 121."""
     y_points: int = 121

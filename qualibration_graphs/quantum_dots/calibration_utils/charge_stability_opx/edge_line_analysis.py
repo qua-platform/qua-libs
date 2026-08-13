@@ -25,9 +25,7 @@ from ..bayesian_change_point import BayesianCP
 try:
     from skimage.morphology import skeletonize
 except ImportError as exc:  # pragma: no cover - dependency guard
-    raise ImportError(
-        "scikit-image is required for skeletonization. Install with `pip install scikit-image`."
-    ) from exc
+    raise ImportError("scikit-image is required for skeletonization. Install with `pip install scikit-image`.") from exc
 
 
 _NEIGHBORS: Tuple[Tuple[int, int], ...] = (
@@ -87,11 +85,7 @@ def analyze_sensor_edge_map(
         base_image=edge_base,
         show=show,
     )
-    intersections = (
-        np.vstack(edge_analysis["intersections"])
-        if edge_analysis["intersections"]
-        else np.empty((0, 2))
-    )
+    intersections = np.vstack(edge_analysis["intersections"]) if edge_analysis["intersections"] else np.empty((0, 2))
 
     return {
         "cp": np.asarray(cp),
@@ -160,9 +154,7 @@ def _extract_branches(
     visited_edges = set()
     branches: List[np.ndarray] = []
 
-    def _edge_key(
-        a: Tuple[int, int], b: Tuple[int, int]
-    ) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    def _edge_key(a: Tuple[int, int], b: Tuple[int, int]) -> Tuple[Tuple[int, int], Tuple[int, int]]:
         return tuple(sorted([a, b]))
 
     for start in starts:
@@ -213,9 +205,7 @@ def _rdp_indices(points: np.ndarray, epsilon: float) -> List[int]:
 
         start = points[start_idx]
         end = points[end_idx]
-        dists = np.array(
-            [_perp_dist(points[i], start, end) for i in range(start_idx + 1, end_idx)]
-        )
+        dists = np.array([_perp_dist(points[i], start, end) for i in range(start_idx + 1, end_idx)])
 
         if len(dists) == 0:
             return [start_idx, end_idx]
@@ -235,9 +225,7 @@ def _rdp_indices(points: np.ndarray, epsilon: float) -> List[int]:
     return sorted(dict.fromkeys(keep))
 
 
-def _split_branch(
-    branch: np.ndarray, epsilon: float, min_points: int
-) -> List[np.ndarray]:
+def _split_branch(branch: np.ndarray, epsilon: float, min_points: int) -> List[np.ndarray]:
     """Split a branch at kinks found by RDP and return the sub-polylines."""
     if len(branch) < max(3, min_points):
         return []
@@ -274,9 +262,7 @@ def _orthogonal_fit(points: np.ndarray) -> SegmentFit:
     end = centroid + proj_max * direction
 
     slope = np.inf if abs(direction[0]) < 1e-9 else direction[1] / direction[0]
-    intercept = (
-        np.nan if not np.isfinite(slope) else float(centroid[1] - slope * centroid[0])
-    )
+    intercept = np.nan if not np.isfinite(slope) else float(centroid[1] - slope * centroid[0])
 
     return SegmentFit(
         points=pts,
@@ -358,19 +344,13 @@ def analyze_edge_map(
     skel = skeletonize_mask(binary)
 
     adjacency, endpoints, junctions = _pixel_graph(skel)
-    branches = [
-        b
-        for b in _extract_branches(adjacency, endpoints, junctions)
-        if len(b) >= min_branch_points
-    ]
+    branches = [b for b in _extract_branches(adjacency, endpoints, junctions) if len(b) >= min_branch_points]
 
     segment_points: List[np.ndarray] = []
     for branch in branches:
         segment_points.extend(_split_branch(branch, rdp_epsilon, min_segment_points))
 
-    segments = [
-        _orthogonal_fit(seg) for seg in segment_points if len(seg) >= min_segment_points
-    ]
+    segments = [_orthogonal_fit(seg) for seg in segment_points if len(seg) >= min_segment_points]
 
     intersections: List[np.ndarray] = []
     for i in range(len(segments)):
@@ -418,9 +398,7 @@ def _plot_results(
     ax0 = axes[0]
     im0 = ax0.imshow(background, origin="lower", cmap="magma")
     fig.colorbar(im0, ax=ax0, fraction=0.046, pad=0.04, label="sensor")
-    ax0.imshow(
-        np.ma.masked_where(binary == 0, binary), cmap="Reds", alpha=0.4, origin="lower"
-    )
+    ax0.imshow(np.ma.masked_where(binary == 0, binary), cmap="Reds", alpha=0.4, origin="lower")
     ax0.set_title("Edge threshold + skeleton")
     ax0.set_xlabel("col (V2)")
     ax0.set_ylabel("row (V1)")

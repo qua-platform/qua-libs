@@ -64,6 +64,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
+
 # Instantiate the QUAM class from the state file
 node.machine = Quam.load()
 
@@ -80,9 +81,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["axes_names"] = {"x_axis": x_name}
     virtual_gate_set_name = "main_qpu"
 
-    x_volts, y_volts = get_voltage_arrays(
-        node
-    )
+    x_volts, y_volts = get_voltage_arrays(node)
     num_sensors = len(sensors)
 
     node.namespace["dac_values"] = y_volts
@@ -104,56 +103,57 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         ),
     }
     sensor = node.parameters.sensor_names[0]
-    readout_time = node.machine.sensor_dots[sensor].readout_resonator.operations['readout'].length
-    settle_time = 1000 #40000
+    readout_time = node.machine.sensor_dots[sensor].readout_resonator.operations["readout"].length
+    settle_time = 1000  # 40000
 
     # node.namespace["sweep"]
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         seq = node.machine.voltage_sequences[virtual_gate_set_name]
 
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(
-            num_IQ_pairs=num_sensors
-        )
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
         y_idxs = declare(int)
         x = declare(fixed)
 
-        with for_(y_idxs, 0, y_idxs<len(y_volts), y_idxs + 1): 
+        with for_(y_idxs, 0, y_idxs < len(y_volts), y_idxs + 1):
             if not node.parameters.simulate:
                 pause()
-            if node.parameters.per_line_wait > 0: 
-                seq.step_to_voltages({}, duration = node.parameters.per_line_wait)
-            with for_(n, 0, n<node.parameters.num_shots, n+1):
+            if node.parameters.per_line_wait > 0:
+                seq.step_to_voltages({}, duration=node.parameters.per_line_wait)
+            with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
 
                 with for_(*from_array(x, x_volts)):
                     align()
-                    seq.ramp_to_voltages({x_name: x}, duration = readout_time + settle_time, ramp_duration = node.parameters.ramp_duration)                    
+                    seq.ramp_to_voltages(
+                        {x_name: x}, duration=readout_time + settle_time, ramp_duration=node.parameters.ramp_duration
+                    )
                     for i, s in sensors.batch()[0].items():
                         rr = s.readout_resonator
                         rr.wait(node.parameters.ramp_duration + settle_time)
-                        I[i], Q[i] = rr.measure(
-                            "readout"
-                        )
+                        I[i], Q[i] = rr.measure("readout")
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
                     align()
-                if node.parameters.per_line_compensation: 
-                    seq.apply_compensation_pulse(go_to_zero = True, return_to_zero = True, max_voltage = node.parameters.max_compensation_voltage)
+                if node.parameters.per_line_compensation:
+                    seq.apply_compensation_pulse(
+                        go_to_zero=True, return_to_zero=True, max_voltage=node.parameters.max_compensation_voltage
+                    )
                 seq.ramp_to_zero()
 
         with stream_processing():
             n_st.save("n")
             for i in range(num_sensors):
-                I_st[i].buffer(len(x_volts)).buffer(node.parameters.num_shots).map(FUNCTIONS.average()).buffer(len(y_volts)).save(f"I{i}")
-                Q_st[i].buffer(len(x_volts)).buffer(node.parameters.num_shots).map(FUNCTIONS.average()).buffer(len(y_volts)).save(f"Q{i}")
-                
+                I_st[i].buffer(len(x_volts)).buffer(node.parameters.num_shots).map(FUNCTIONS.average()).buffer(
+                    len(y_volts)
+                ).save(f"I{i}")
+                Q_st[i].buffer(len(x_volts)).buffer(node.parameters.num_shots).map(FUNCTIONS.average()).buffer(
+                    len(y_volts)
+                ).save(f"Q{i}")
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX and simulate the QUA program"""
     qmm = node.machine.connect()
@@ -163,9 +163,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     print(serialised_programme)
 
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -175,10 +173,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     qmm = node.machine.connect()
@@ -216,9 +211,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qm = qmm.open_qm(config)
     node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
     for i, y_value in enumerate(node.namespace["dac_values"]):
-        while not job.is_paused(): 
+        while not job.is_paused():
             time.sleep(0.1)
-        
+
         dac_value_to_play = dac_offset + y_value
 
         print(f"Applying {dac_value_to_play} to the DAC ({100*i/len(node.namespace["dac_values"])} %)")
@@ -245,7 +240,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = dataset
 
     gate.set_voltage(dac_offset)
-    
+
     # Close the DAC here if your lab-specific driver supports it
 
 
@@ -258,16 +253,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the sensors from the loaded node parameters
-    node.namespace["sensors"] = [
-        node.machine.sensor_dots[name] for name in node.parameters.sensor_names
-    ]
+    node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
 # %% {Analyse Data}
-@node.run_action(
-    skip_if=node.parameters.simulate
-    or not node.parameters.perform_edge_analysis
-)
+@node.run_action(skip_if=node.parameters.simulate or not node.parameters.perform_edge_analysis)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
@@ -289,9 +279,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     point_kwargs = {}
     if node.parameters.plot_points and "voltage_points" in node.namespace:
-        pair_prefix = node.machine.find_quantum_dot_pair(
-            node.parameters.x_axis_name, node.parameters.y_axis_name
-        )
+        pair_prefix = node.machine.find_quantum_dot_pair(node.parameters.x_axis_name, node.parameters.y_axis_name)
         point_kwargs = dict(
             voltage_points=node.namespace["voltage_points"],
             x_axis_name=node.parameters.x_axis_name,
@@ -299,9 +287,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
             pair_prefix=pair_prefix,
         )
 
-    fig_amplitude = plot_raw_amplitude(
-        ds_plot, node.namespace["sensors"], **point_kwargs
-    )
+    fig_amplitude = plot_raw_amplitude(ds_plot, node.namespace["sensors"], **point_kwargs)
     fig_pca = None
     if node.parameters.plot_pca:
         fig_pca = pca_plotter(ds_plot)
