@@ -1,24 +1,10 @@
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 import xarray as xr
-import jax
-import jax.numpy as jnp
-from jax import lax
-
 from qualibrate.core import QualibrationNode
-
-from ..bayesian_change_point import BayesianCP
-
-try:
-    from .edge_line_analysis import analyze_edge_map, SegmentFit
-
-    _edge_line_import_error: Optional[Exception] = None
-except ImportError as exc:  # pragma: no cover - optional dependency guard
-    analyze_edge_map = None
-    SegmentFit = None
-    _edge_line_import_error = exc
 
 
 @dataclass
@@ -39,10 +25,13 @@ class FitParameters:
         """Convert FitParameters to a JSON-serializable dictionary."""
 
         def serialize_segment(seg: Any):
-            """Convert SegmentFit or dict to serializable dict."""
+            """Convert a stored segment to a serializable dictionary."""
             if isinstance(seg, dict):
                 return seg
-            if SegmentFit is not None and isinstance(seg, SegmentFit):
+            if all(
+                hasattr(seg, attr)
+                for attr in ("start", "end", "centroid", "direction", "slope", "intercept")
+            ):
                 return {
                     "start": np.asarray(seg.start).tolist(),
                     "end": np.asarray(seg.end).tolist(),
@@ -76,43 +65,6 @@ class FitParameters:
             "edge_threshold": float(self.edge_threshold),
             "success": self.success,
         }
-
-
-def peak_mask(cp, window=5, threshold=0.0):
-    """
-    Args:
-      cp: 1D array of shape [T] (posterior at each boundary)
-      window: odd int >= 3, peak must be the max in this window
-      threshold: keep peaks >= this value
-    Returns:
-      mask: boolean array [T] where True marks a peak
-    """
-    x = jnp.asarray(cp)
-    w = int(window)
-    assert w >= 3 and w % 2 == 1
-    pad = w // 2
-
-    # local max within window
-    local_max = lax.reduce_window(
-        x,
-        -jnp.inf,
-        lax.max,
-        window_dimensions=(w,),
-        window_strides=(1,),
-        padding=((pad, pad),),  # "same"
-    )
-
-    # mark points that are the unique (or leftmost in a tie) local max and over threshold
-    is_local_max = (x >= threshold) & (x == local_max)
-
-    # break plateaus: keep only where slope from left is positive
-    left_pos_slope = jnp.concatenate([jnp.array([False]), x[1:] > x[:-1]])
-    mask = is_local_max & left_pos_slope
-
-    # also guard the right edge plateau case
-    mask = mask.at[-1].set(is_local_max[-1] & (x[-1] > x[-2]))
-
-    return mask
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
@@ -179,8 +131,11 @@ def analyse_raw_data(
     *,
     log_callable=None,
 ) -> tuple[xr.Dataset, dict, dict]:
-    """Process the raw dataset, run edge analysis, and return fit outputs and outcomes."""
+    """Process the raw dataset and, when enabled, run edge analysis."""
     ds_processed = process_raw_dataset(ds_raw.copy(deep=True), node)
+    if not node.parameters.perform_edge_analysis:
+        return ds_processed, {}, {}
+
     ds_fit, fit_results = fit_raw_data(ds_processed, node)
     fit_results_dict = {k: v.to_dict() for k, v in fit_results.items()}
     log_fitted_results(fit_results_dict, log_callable=log_callable)
@@ -256,44 +211,24 @@ def fit_individual_raw_data(
     amplitude = amplitude.sortby("x_volts").sortby("y_volts")
     zs = amplitude.values
 
-    # Bayesian change point detection
-    model = BayesianCP(hazard=1 / 200.0, standardize=True)
-    cp, _ = jax.vmap(model.fit)(zs)  # cp has length T-1 (probability at each boundary)
-    cp2, _ = jax.vmap(model.fit)(zs.T)
+    from .edge_line_analysis import analyze_sensor_edge_map
 
-    mean_cp = (cp[1:] + cp2[1:].T) / 2.0
-    edge_threshold = 0.25
-
-    if analyze_edge_map is None:
-        raise ImportError(
-            "Line fitting requires scikit-image; install it to enable edge analysis."
-        ) from _edge_line_import_error
-
-    # Line-segment fitting on the edge map
-    edge_base = zs[1:, 1:] if zs.shape[0] > 1 and zs.shape[1] > 1 else zs
-    edge_analysis = analyze_edge_map(
-        np.array(mean_cp),
-        threshold=edge_threshold,
-        base_image=edge_base,
+    edge_results = analyze_sensor_edge_map(
+        zs,
+        threshold=0.25,
         show=False,
     )
 
-    intersections = (
-        np.vstack(edge_analysis["intersections"])
-        if edge_analysis["intersections"]
-        else np.empty((0, 2))
-    )
-
-    success = len(edge_analysis["segments"]) > 0
+    success = len(edge_results["segments"]) > 0
 
     return FitParameters(
-        cp=cp,
-        cp2=cp2,
-        mean_cp=mean_cp,
-        edge_binary=edge_analysis["binary_mask"],
-        skeleton=edge_analysis["skeleton"],
-        segments=edge_analysis["segments"],
-        intersections=intersections,
-        edge_threshold=edge_threshold,
+        cp=edge_results["cp"],
+        cp2=edge_results["cp2"],
+        mean_cp=edge_results["mean_cp"],
+        edge_binary=edge_results["binary_mask"],
+        skeleton=edge_results["skeleton"],
+        segments=edge_results["segments"],
+        intersections=edge_results["intersections"],
+        edge_threshold=edge_results["edge_threshold"],
         success=success,
     )
