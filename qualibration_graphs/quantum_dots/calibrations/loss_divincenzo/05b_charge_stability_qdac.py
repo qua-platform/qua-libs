@@ -13,10 +13,16 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.charge_stability import (
-    OPXQDACParameters as Parameters,
+from calibration_utils.charge_stability_opx import (
+    get_axis_names_and_validate,
+)
+from calibration_utils.charge_stability_qdac import (
+    Parameters,
     get_voltage_arrays,
+    set_dac_offsets, 
+    axis_source_bools,
     prepare_dc_lists,
+    build_qua_program_with_mixed_axes,
     ScanMode,
     process_raw_dataset,
     fit_raw_data,
@@ -112,365 +118,53 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # Virtual-gate components defining the X/Y sweep axes (must share a VirtualGateSet)
-    x_obj, y_obj = node.machine.get_component(node.parameters.x_axis_name), node.machine.get_component(
-        node.parameters.y_axis_name
-    )
-    node.namespace["axes_names"] = {"x_axis": x_obj.name, "y_axis": y_obj.name}
-    if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
-        raise ValueError(
-            f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
-        )
-    vgs_id = x_obj.voltage_sequence.gate_set.id
+    # Gets the axis names and validates that the axis exists in the GateSet, and that the elements are in the same GateSet
+    # Additionally adds keys 'x_axis', 'y_axis', 'gate_set_id' in the node.namespace['axes_names']
+    x_axis_name, y_axis_name, vgs_id = get_axis_names_and_validate(node)
 
     # Relative sweep coordinates centered at zero; absolute values are set below
     x_volts, y_volts = get_voltage_arrays(node)
 
+    # Extract the sensors relevant for this measurement
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
-    n_avg = node.parameters.num_shots  # repetitions averaged at each (Vx, Vy) point
 
-    # Register the QDAC driver so dc_lists can be preloaded before execution
-    node.machine.connect_to_external_source(external_qdac=True)
+    # Number of averages
+    n_avg = node.parameters.num_shots  # repetitions averaged at each (Vx, Vy) point
 
     # The scan mode is used to determine the DC lists
     scan_mode = ScanMode.from_name(node.parameters.scan_pattern)
 
     # Determine which axis is on the QDAC (external)
-    x_external, y_external = node.parameters.x_from_qdac, node.parameters.y_from_qdac
+    x_ext, y_ext = axis_source_bools(node)
+    if not x_ext and not y_ext: 
+        raise ValueError("Neither X nor Y axis is via the QDAC. If you would like an OPX vs OPX sweep, please run node 05a")
 
-    # ── Sweep center: VirtualDCSet (dc_control) vs OPX offset ────────────
-    #
-    # dc_control=True  → center held on external DAC; QDAC axes add center to dc_list values
-    # dc_control=False → center applied as OPX offset on axes swept by the OPX
-
-    if node.parameters.dc_control:
-        # Sweep center is on the external QDAC
-        dc_set = node.machine.virtual_dc_sets[vgs_id]
-        # If None, then default to current virtual values.
-        if node.parameters.x_center is None:
-            node.parameters.x_center = dc_set.get_voltage(node.parameters.x_axis_name)
-        if node.parameters.y_center is None:
-            node.parameters.y_center = dc_set.get_voltage(node.parameters.y_axis_name)
-
-        if not x_external:
-            # OPX-swept X axis: park the QDAC at the center so the OPX performs the relative sweep
-            dc_set.set_voltages({node.parameters.x_axis_name: node.parameters.x_center})
-
-        if not y_external:
-            # OPX-swept Y axis: park the QDAC at the center so the OPX performs the relative sweep
-            dc_set.set_voltages({node.parameters.y_axis_name: node.parameters.y_center})
-
-    else:
-        # Sweep center is on the OPX
-        if node.parameters.x_center is None:
-            # If None, then default to zero.
-            node.parameters.x_center = 0
-        if node.parameters.y_center is None:
-            # If None, then default to zero.
-            node.parameters.y_center = 0
-        # When dc_control is False, the center is applied as an OPX offset on axes swept by the OPX.
-        # This means that, for these axes, the x/y_volts array needs to be mutated to include the center offset.
-        if not x_external:
-            x_volts = x_volts + node.parameters.x_center
-        if not y_external:
-            y_volts = y_volts + node.parameters.y_center
-
-    # ── QDAC dc_lists (Python side, before QUA runs) ───────────────────────
-    #
-    # For each QDAC-swept axis, resolve virtual → physical voltages and preload dc_lists.
-    # All lists share one external trigger; the OPX fires it once per slow-axis step.
-    # QDAC/QDAC 2D maps do not require additional triggers.
-
-    if x_external:
-        x_array = x_volts + node.parameters.x_center  # absolute QDAC voltages must include the center offset
-        prepare_dc_lists(
-            node=node,
-            virtual_dc_set_id=vgs_id,
-            axis_name=node.parameters.x_axis_name,
-            axis_values=(
-                np.repeat(
-                    x_array, len(y_volts)
-                )  # Both X and Y axes are applied by the QDAC with a single trigger from the OPX
-                if y_external
-                else scan_mode.get_outer_loop(x_array)  # mixed: X slow, Y on OPX
-            ),
-        )
-
-    if y_external:
-        y_array = y_volts + node.parameters.y_center  # absolute QDAC voltages must include the center offset
-        prepare_dc_lists(
-            node=node,
-            virtual_dc_set_id=vgs_id,
-            axis_name=node.parameters.y_axis_name,
-            axis_values=(
-                np.tile(
-                    y_array, len(x_volts)
-                )  # Both X and Y axes are applied by the QDAC with a single trigger from the OPX
-                if x_external
-                else scan_mode.get_outer_loop(y_array)  # mixed: Y slow, X on OPX
-            ),
-        )
-
-    # Metadata for data fetching: labels the saved I/Q arrays when results come back from the OPX
-    node.namespace["sweep_axes"] = {
-        "sensors": xr.DataArray(sensors.get_names()),
-        "x_volts": xr.DataArray(
-            (x_volts if (not node.parameters.dc_control and not x_external) else x_volts + node.parameters.x_center),
-            attrs={"long_name": "voltage", "units": "V"},
-        ),
-        "y_volts": xr.DataArray(
-            (y_volts if (not node.parameters.dc_control and not y_external) else y_volts + node.parameters.y_center),
-            attrs={"long_name": "voltage", "units": "V"},
-        ),
-    }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
-    #
-    # Four variants depending on which axes are QDAC-swept (x_external / y_external).
+    # Two variants depending on which axes are QDAC-swept (x_external / y_external).
+    # Case 1: We have one slow axis and one fast axis
+    if x_ext and not y_ext:
+        build_qua_program_with_mixed_axes(
+            node,
+            x_axis_name,
+            y_axis_name, 
+            x_volts, # Values here don't matter - just the length, since we will just be sending triggers
+            y_volts, # OPX values for Y axis
+            scan_mode = scan_mode,
+        )
+    elif y_ext and not x_ext: 
+        build_qua_program_with_mixed_axes(
+            node,
+            y_axis_name,
+            x_axis_name, 
+            y_volts, # Values here don't matter - just the length, since we will just be sending triggers
+            x_volts, # OPX values for Y axis
+            scan_mode = scan_mode,
+        )
 
-    # Case 1: both axes on the OPX — standard nested raster over (x, y)
-    if not x_external and not y_external:
-        with program() as node.namespace["qua_program"]:
-            seq = node.machine.voltage_sequences[vgs_id]
-
-            # Allocate real-time variables on the OPX:
-            #   I[i], Q[i]       : demodulated quadratures for sensor i
-            #   I_st[i], Q_st[i] : stream buffers before transfer to PC
-            #   n, n_st          : shot counter exposed for the progress bar
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
-            x = declare(fixed)  # values on the x axis
-            y = declare(fixed)  # values on the y axis
-            for multiplexed_sensors in sensors.batch():
-                align()
-                # ── OUTER LOOP: average over shots ───────────────────────
-                with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st)  # update the progress bar
-                    # ── MIDDLE LOOP: slow axis (x) ─────────────────────────
-                    with for_(*from_array(x, x_volts)):
-                        if node.parameters.per_line_wait > 0:
-                            # Optional settle time at the start of each scan line
-                            # Set the y value to the first value on the y axis
-                            assign(y, float(y_volts[0]))
-                            seq.ramp_to_voltages(
-                                {x_obj.name: x, y_obj.name: y},
-                                duration=node.parameters.per_line_wait,
-                                ramp_duration=node.parameters.ramp_duration,
-                            )
-                        # ── INNER LOOP: fast axis (y) ──────────────────────
-                        with for_(*from_array(y, y_volts)):
-                            seq.ramp_to_voltages(
-                                {x_obj.name: x, y_obj.name: y},
-                                duration=node.parameters.hold_duration,
-                                ramp_duration=node.parameters.ramp_duration,
-                            )
-                            if node.parameters.pre_measurement_delay > 0:
-                                # Additional delay before the measurement pulse
-                                # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
-                            align()
-
-                            # Perform muliplexed measurements on the sensors
-                            # A python for loop is used so that the measurements are performed in parallel.
-                            for i, sensor in multiplexed_sensors.items():
-                                # Select the resonator tied to the sensor
-                                rr = sensor.readout_resonator
-                                # Measure using the selected resonator
-                                rr.measure("readout", qua_vars=(I[i], Q[i]))
-                                # Post-measurement wait (Optional)
-                                rr.wait(500)  # TODO: Make this a parameter
-
-                                # Save the I/Q data to the streams
-                                save(I[i], I_st[i])
-                                save(Q[i], Q_st[i])
-                        if node.parameters.per_line_compensation:
-                            seq.ramp_to_zero()
-                            # TODO: Add a compensation pulse
-                    seq.ramp_to_zero()
-            # ── Post-processing on the OPX before data reaches the PC ──
-            with stream_processing():
-                n_st.save("n")  # save the shot counter for the progress bar
-                for i in range(num_sensors):
-                    # The averaged data for each (x, y) pixel is saved to the streams
-                    # Individual shots are not retained.
-                    # .buffer(len(y)).buffer(len(x)) : group into 2D grid (y fast, x slow)
-                    # .average() : average over all shots (n_avg repetitions)
-                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
-                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
-
-    # Case 2: X on QDAC (slow), Y on OPX (fast)
-    elif x_external and not y_external:
-        with program() as node.namespace["qua_program"]:
-            seq = node.machine.voltage_sequences[vgs_id]
-
-            # Allocate real-time variables on the OPX:
-            #   I[i], Q[i]       : demodulated quadratures for sensor i
-            #   I_st[i], Q_st[i] : stream buffers before transfer to PC
-            #   n, n_st          : shot counter exposed for the progress bar
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
-            x = declare(fixed)  # values on the x axis
-            # y = declare(fixed) # values on the y axis
-
-            for multiplexed_sensors in sensors.batch():
-                align()
-                # ── OUTER LOOP: average over shots ───────────────────────
-                with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st)  # update the progress bar
-                    # ── MIDDLE LOOP: slow axis (x) ─────────────────────────
-                    with for_(*from_array(x, x_volts)):
-                        # one QDAC trigger per x_volts step (dc_list advances X)
-                        x_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
-                        if node.parameters.per_line_wait > 0:
-                            # Optional settle time at the start of each scan line
-                            # Set the y value to the first value on the y axis
-                            seq.ramp_to_voltages(
-                                {y_obj.id: float(y_volts[0])},
-                                duration=node.parameters.per_line_wait,
-                                ramp_duration=node.parameters.ramp_duration,
-                            )
-                        # Wait for QDAC to settle at the new X voltage
-                        # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                        seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
-                        # ── INNER LOOP: fast axis (y) ──────────────────────
-                        # OPX ramps Y through y_volts (scan_mode sets order)
-                        for y in scan_mode.inner_loop(y_volts):
-                            seq.ramp_to_voltages(
-                                {y_obj.id: y},
-                                duration=node.parameters.hold_duration,
-                                ramp_duration=node.parameters.ramp_duration,
-                            )
-                            align()
-                            if node.parameters.pre_measurement_delay > 0:
-                                # Additional delay before the measurement pulse
-                                # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
-                            align()
-
-                            # Perform muliplexed measurements on the sensors
-                            # A python for loop is used so that the measurements are performed in parallel.
-                            for i, sensor in multiplexed_sensors.items():
-                                # Select the resonator tied to the sensor
-                                rr = sensor.readout_resonator
-                                # Measure using the selected resonator
-                                rr.measure("readout", qua_vars=(I[i], Q[i]))
-                                # Post-measurement wait (Optional)
-                                rr.wait(500)  # TODO: Make this a parameter
-
-                                # Save data
-                                save(I[i], I_st[i])
-                                save(Q[i], Q_st[i])
-                        if node.parameters.per_line_compensation:
-                            seq.ramp_to_zero()
-                            # TODO: Add a compensation pulse
-                    seq.ramp_to_zero()
-            # ── Post-processing on the OPX before data reaches the PC ──
-            with stream_processing():
-                n_st.save("n")  # save the shot counter for the progress bar
-                for i in range(num_sensors):
-                    # The averaged data for each (x, y) pixel is saved to the streams
-                    # Individual shots are not retained.
-                    # .buffer(len(y)).buffer(len(x)) : group into 2D grid (y fast, x slow)
-                    # .average() : average over all shots (n_avg repetitions)
-                    I_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"I{i}")
-                    Q_st[i].buffer(len(y_volts)).buffer(len(x_volts)).average().save(f"Q{i}")
-
-    # Case 3: Y on QDAC (slow), X on OPX (fast)
-    elif not x_external and y_external:
-        # Transpose the measurement order so that the slow (Y) axis is on the outer loop and the fast (X) axis is on the inner loop
-        node.namespace["sweep_axes"] = {
-            "sensors": xr.DataArray(sensors.get_names()),
-            "y_volts": xr.DataArray(
-                (
-                    y_volts
-                    if (not node.parameters.dc_control and not y_external)
-                    else y_volts + node.parameters.y_center
-                ),
-                attrs={"long_name": "voltage", "units": "V"},
-            ),
-            "x_volts": xr.DataArray(
-                (
-                    x_volts
-                    if (not node.parameters.dc_control and not x_external)
-                    else x_volts + node.parameters.x_center
-                ),
-                attrs={"long_name": "voltage", "units": "V"},
-            ),
-        }
-
-        with program() as node.namespace["qua_program"]:
-            seq = node.machine.voltage_sequences[vgs_id]
-
-            # Allocate real-time variables on the OPX:
-            #   I[i], Q[i]       : demodulated quadratures for sensor i
-            #   I_st[i], Q_st[i] : stream buffers before transfer to PC
-            #   n, n_st          : shot counter exposed for the progress bar
-            I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
-            y = declare(fixed)
-
-            for multiplexed_sensors in sensors.batch():
-                align()
-                # ── OUTER LOOP: average over shots ───────────────────────
-                with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st)  # update the progress bar
-                    # ── MIDDLE LOOP: slow axis (y) ─────────────────────────
-                    # one QDAC trigger per y_volts step (dc_list advances Y)
-                    with for_(*from_array(y, y_volts)):
-                        y_obj.physical_channel.qdac_spec.opx_trigger_out.play("trigger")
-                        if node.parameters.per_line_wait > 0:
-                            # Optional settle time at the start of each scan line
-                            # Set the x value to the first value on the x axis
-                            seq.ramp_to_voltages(
-                                {x_obj.id: float(x_volts[0])},
-                                duration=node.parameters.per_line_wait,
-                                ramp_duration=node.parameters.ramp_duration,
-                            )
-                        # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                        seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
-                        # ── INNER LOOP: fast axis (x) ──────────────────────
-                        # OPX ramps X through x_volts (scan_mode sets order)
-                        for x in scan_mode.inner_loop(x_volts):
-                            seq.ramp_to_voltages(
-                                {x_obj.id: x},
-                                duration=node.parameters.hold_duration,
-                                ramp_duration=node.parameters.ramp_duration,
-                            )
-                            align()
-                            if node.parameters.pre_measurement_delay > 0:
-                                # Additional delay before the measurement pulse
-                                # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
-                                seq.step_to_voltages({}, duration=node.parameters.pre_measurement_delay)
-                            align()
-
-                            # Perform muliplexed measurements on the sensors
-                            # A python for loop is used so that the measurements are performed in parallel.
-                            for i, sensor in multiplexed_sensors.items():
-                                # Select the resonator tied to the sensor
-                                rr = sensor.readout_resonator
-                                # Measure using the selected resonator
-                                rr.measure("readout", qua_vars=(I[i], Q[i]))
-                                # Post-measurement wait (Optional)
-                                rr.wait(500)  # TODO: Make this a parameter
-
-                                # Save the I/Q data to the streams
-                                save(I[i], I_st[i])
-                                save(Q[i], Q_st[i])
-                        if node.parameters.per_line_compensation:
-                            seq.ramp_to_zero()
-                            # TODO: Add a compensation pulse
-                    seq.ramp_to_zero()
-            # ── Post-processing on the OPX before data reaches the PC ──
-            with stream_processing():
-                n_st.save("n")  # save the shot counter for the progress bar
-                for i in range(num_sensors):
-                    # The averaged data for each (x, y) pixel is saved to the streams
-                    # Individual shots are not retained.
-                    # .buffer(len(x)).buffer(len(y)) : group into 2D grid (x fast, y slow)
-                    # .average() : average over all shots (n_avg repetitions)
-                    I_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"I{i}")
-                    Q_st[i].buffer(len(x_volts)).buffer(len(y_volts)).average().save(f"Q{i}")
-
-    # Case 4: both axes on the QDAC — OPX only triggers and reads out
-    elif x_external and y_external:
+    # Case 2: Y on QDAC (slow), X on OPX (fast)
+    elif x_ext and y_ext:
         with program() as node.namespace["qua_program"]:
             seq = node.machine.voltage_sequences[vgs_id]
 
@@ -549,6 +243,31 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program, and fetch raw I/Q into ``ds_raw``."""
     qmm = node.machine.connect()
+
+    # Set the voltages based on whether a) A desired offset is supplied and b) whether the axis is external. If both are satisfied, the offset is applied.  
+    voltages_to_set = {
+        node.namespace["axes_names"]["x_axis"]: node.parameters.x_offset if node.parameters.x_from_qdac else None,
+        node.namespace["axes_names"]["y_axis"]: node.parameters.y_offset if node.parameters.y_from_qdac else None,
+    }
+    set_dac_offsets(
+        node,
+        dc_set_id=node.namespace["axes_names"]["gate_set_id"],
+        voltages=voltages_to_set,
+    )
+
+    # Prepare the DC lists here, so that we ensure that the QMM has been connected at least once, and the DC set & dacs dict exist. 
+
+    # ── QDAC dc_lists (Python side, before QUA runs) ───────────────────────
+    #
+    # For each QDAC-swept axis, resolve virtual → physical voltages and preload dc_lists.
+    # All lists share one external trigger; the OPX fires it once per slow-axis step.
+    # QDAC/QDAC 2D maps do not require additional triggers.
+    
+    prepare_dc_lists(node)
+    for axis_name, resolved_offset in node.namespace.get("resolved_offsets", {}).items():
+        da = node.namespace["sweep_axes"][axis_name]
+        node.namespace["sweep_axes"][axis_name] = da + resolved_offset
+    
     config = node.machine.generate_config()
     # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:

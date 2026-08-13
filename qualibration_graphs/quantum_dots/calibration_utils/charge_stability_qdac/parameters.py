@@ -17,10 +17,15 @@ class NodeSpecificParameters(RunnableParameters):
     y_axis_name: Optional[str] = "virtual_dot_2"
     """The name of the element swept on the Y axis."""
 
-    x_from_qdac: bool = False
+    x_from_qdac: bool = True
     """Sweep the X axis via QDAC dc_list instead of OPX ramps. Default is False."""
     y_from_qdac: bool = False
     """Sweep the Y axis via QDAC dc_list instead of OPX ramps. Default is False."""
+
+    x_offset: Optional[float] = None
+    """The center of the X axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
+    y_offset: Optional[float] = None
+    """The center of the Y axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
 
     x_points: int = 121
     """The number of measurement points on the X axis. Default is 121."""
@@ -34,10 +39,7 @@ class NodeSpecificParameters(RunnableParameters):
     """The ramp duration to each pixel. Set to zero for a step instead of a ramp. Default is 100ns."""
     hold_duration: int = 100
     """The hold time on each pixel, after the ramp but before the readout pulse is sent."""
-    x_offset: Optional[float] = None
-    """The center of the X axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
-    y_offset: Optional[float] = None
-    """The center of the Y axis sweep. If dc_control = True, then this will be applied to the external source. Else, it will be applied by the OPX."""
+    
     per_line_compensation: bool = True
     """Send a compensation pulse at the end of each scan line. Default is True."""
     max_compensation_voltage: float = 0.05

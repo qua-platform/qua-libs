@@ -4,48 +4,23 @@ from typing import Dict
 from qualibrate.core import QualibrationNode
 
 __all__ = [
-    "get_axis_names_and_validate",
     "get_voltage_arrays",
     "set_dac_offsets",
 ]
 
-
-def get_axis_names_and_validate(node: QualibrationNode):
-    """In the case that x_axis_name or y_axis_name is None, assign the first and second elements of QDs."""
-
-    quantum_dots = list(node.machine.quantum_dots.keys())
-    x_axis_name = node.parameters.x_axis_name
-    y_axis_name = node.parameters.y_axis_name
-
-    if node.parameters.x_axis_name is None:
-        x_axis_name = quantum_dots[0]
-
-    if node.parameters.y_axis_name is None:
-        y_axis_name = quantum_dots[1]
-
-    x_obj = node.machine.get_component(x_axis_name)
-    y_obj = node.machine.get_component(y_axis_name)
-
-    if x_obj.voltage_sequence.gate_set.id != y_obj.voltage_sequence.gate_set.id:
-        raise ValueError(
-            f"X axis and Y axis elements belong to different VirtualGateSet. x: {x_obj.voltage_sequence.gate_set.id}, y: {y_obj.voltage_sequence.gate_set.id}"
-        )
-    vgs_id = x_obj.voltage_sequence.gate_set.id
-
-    node.namespace["axes_names"] = {"x_axis": x_axis_name, "y_axis": y_axis_name, "gate_set_id": vgs_id}
-
-    return x_axis_name, y_axis_name, vgs_id
-
+def axis_source_bools(node: QualibrationNode): 
+    return node.parameters.x_from_qdac, node.parameters.y_from_qdac
 
 def get_voltage_arrays(node: QualibrationNode):
     """
     Get the voltage arrays that are to be outputted via the OPX.
 
-    This depends on if node.parameters.dc_control is True or False.
-        - True: The offset is applied via the DC controller, and the OPX sweep is centred around the OPX's effective 0.
-        - False: The offset is applied via the OPX, and the DC controller is not even connected.
+    This depends on if whether X or Y axis is sourced from the QDAC. If not, then the offset (if not None) will be applied to the sweep axis from the OPX. 
     """
 
+    x_ext, y_ext = axis_source_bools(node)
+
+    # First construct the non-offset arrays
     x_span = node.parameters.x_span
     x_points = node.parameters.x_points
     y_span = node.parameters.y_span
@@ -57,13 +32,12 @@ def get_voltage_arrays(node: QualibrationNode):
     x_volts = np.linspace(-x_span / 2, x_span / 2, x_points)
     y_volts = np.linspace(-y_span / 2, y_span / 2, y_points)
 
-    # DC control: offsets will be via the DAC
-    # Non-DC Control: offsets will be via the OPX
-    if not node.parameters.dc_control:
+    if not x_ext: # X offset to come from the OPX
         if x_offset is not None:
             if abs(x_offset) > 2.5:
                 raise ValueError(f"X offset greater than OPX output limit of 2.5. Requested {x_offset}")
             x_volts = x_volts + x_offset
+    if not y_ext: # Y offset to come from the OPX
         if y_offset is not None:
             if abs(y_offset) > 2.5:
                 raise ValueError(f"Y offset greater than OPX output limit of 2.5. Requested {y_offset}")
