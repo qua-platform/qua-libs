@@ -2,20 +2,25 @@ import numpy as np
 from typing import Dict
 
 from qualibrate.core import QualibrationNode
+import xarray as xr
 
 __all__ = [
     "get_voltage_arrays",
     "set_dac_offsets",
+    "build_sweep_axes",
+    "refresh_sweep_axes",
 ]
 
-def axis_source_bools(node: QualibrationNode): 
+
+def axis_source_bools(node: QualibrationNode):
     return node.parameters.x_from_qdac, node.parameters.y_from_qdac
+
 
 def get_voltage_arrays(node: QualibrationNode):
     """
     Get the voltage arrays that are to be outputted via the OPX.
 
-    This depends on if whether X or Y axis is sourced from the QDAC. If not, then the offset (if not None) will be applied to the sweep axis from the OPX. 
+    This depends on if whether X or Y axis is sourced from the QDAC. If not, then the offset (if not None) will be applied to the sweep axis from the OPX.
     """
 
     x_ext, y_ext = axis_source_bools(node)
@@ -32,12 +37,12 @@ def get_voltage_arrays(node: QualibrationNode):
     x_volts = np.linspace(-x_span / 2, x_span / 2, x_points)
     y_volts = np.linspace(-y_span / 2, y_span / 2, y_points)
 
-    if not x_ext: # X offset to come from the OPX
+    if not x_ext:  # X offset to come from the OPX
         if x_offset is not None:
             if abs(x_offset) > 2.5:
                 raise ValueError(f"X offset greater than OPX output limit of 2.5. Requested {x_offset}")
             x_volts = x_volts + x_offset
-    if not y_ext: # Y offset to come from the OPX
+    if not y_ext:  # Y offset to come from the OPX
         if y_offset is not None:
             if abs(y_offset) > 2.5:
                 raise ValueError(f"Y offset greater than OPX output limit of 2.5. Requested {y_offset}")
@@ -59,3 +64,81 @@ def set_dac_offsets(node: QualibrationNode, dc_set_id: str, voltages: Dict[str, 
         node.log(f"Setting DC Voltages via VirtualDCSet. {gate_name} : {voltages[gate_name]}V")
 
     dc_set.set_voltages(voltages)
+
+
+def _voltage_data_array(values) -> xr.DataArray:
+    return xr.DataArray(np.asarray(values), attrs={"long_name": "voltage", "units": "V"})
+
+
+def build_sweep_axes(
+    node: QualibrationNode,
+    x_volts,
+    y_volts,
+    *,
+    slow_axis_name: str,
+    fast_axis_name: str,
+    scan_mode=None,
+) -> None:
+    """
+    Register canonical sweep axes for XarrayDataFetcher while preserving insertion order.
+
+    The fetcher uses the order of the supplied sweep-axis keys when reconstructing the
+    buffered stream shape, so mixed OPX/QDAC programs still need to decide whether the
+    canonical axes should be ordered as (x, y) or (y, x). This helper keeps that logic
+    out of the node while always exposing the public dataset coordinates as
+    ``x_volts`` / ``y_volts``.
+    """
+    if scan_mode is None:
+        scan_mode = node.namespace["scan_mode"]
+
+    ordered_axes = {
+        "x_volts": _voltage_data_array(scan_mode.get_x_axis_order(x_volts)),
+        "y_volts": _voltage_data_array(scan_mode.get_y_axis_order(y_volts)),
+    }
+
+    axis_order = ["y_volts", "x_volts"]
+    x_axis_name = node.namespace["axes_names"]["x_axis"]
+    y_axis_name = node.namespace["axes_names"]["y_axis"]
+    if (slow_axis_name, fast_axis_name) == (x_axis_name, y_axis_name):
+        axis_order = ["x_volts", "y_volts"]
+    elif (slow_axis_name, fast_axis_name) == (y_axis_name, x_axis_name):
+        axis_order = ["y_volts", "x_volts"]
+    else:
+        raise ValueError("Slow/fast axis names must match the node x/y axes when building sweep axes.")
+
+    sweep_axes = {"sensors": xr.DataArray(node.namespace["sensors"].get_names())}
+    for axis_key in axis_order:
+        sweep_axes[axis_key] = ordered_axes[axis_key]
+    node.namespace["sweep_axes"] = sweep_axes
+
+
+def refresh_sweep_axes(node: QualibrationNode) -> None:
+    """
+    Refresh the canonical sweep axes after any QDAC offsets have been resolved.
+
+    This keeps the existing XarrayDataFetcher axis-key order exactly as originally
+    registered while updating the coordinate values to the absolute voltages used for
+    the acquisition.
+    """
+    if "sweep_axes" not in node.namespace:
+        raise KeyError("node.namespace['sweep_axes'] must be initialized before refresh.")
+
+    x_volts, y_volts = get_voltage_arrays(node)
+    resolved_offsets = node.namespace.get("resolved_offsets", {})
+    x_axis_name = node.namespace["axes_names"]["x_axis"]
+    y_axis_name = node.namespace["axes_names"]["y_axis"]
+
+    if node.parameters.x_from_qdac:
+        x_volts = x_volts + resolved_offsets.get(x_axis_name, 0.0)
+    if node.parameters.y_from_qdac:
+        y_volts = y_volts + resolved_offsets.get(y_axis_name, 0.0)
+
+    axis_order = [key for key in node.namespace["sweep_axes"] if key != "sensors"]
+    updated_axes = {
+        "x_volts": _voltage_data_array(node.namespace["scan_mode"].get_x_axis_order(x_volts)),
+        "y_volts": _voltage_data_array(node.namespace["scan_mode"].get_y_axis_order(y_volts)),
+    }
+    sweep_axes = {"sensors": node.namespace["sweep_axes"]["sensors"]}
+    for axis_key in axis_order:
+        sweep_axes[axis_key] = updated_axes[axis_key]
+    node.namespace["sweep_axes"] = sweep_axes

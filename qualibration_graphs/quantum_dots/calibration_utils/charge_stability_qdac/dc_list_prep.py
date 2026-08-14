@@ -1,12 +1,13 @@
 import numpy as np
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Sequence
 
 from quam_builder.architecture.quantum_dots.components import VirtualDCSet
 from qualibrate.core import QualibrationNode
 
-from calibration_utils.charge_stability_opx import get_axis_names_and_validate
+from calibration_utils.charge_stability_opx import get_axis_names_and_validate, ScanMode
 from calibration_utils.charge_stability_qdac import get_voltage_arrays
-__all__ = ["prepare_dc_lists"]
+
+__all__ = ["prepare_dc_lists", "select_scan_trigger"]
 
 
 def _find_physical_dc_lists(
@@ -34,22 +35,61 @@ def _find_physical_dc_lists(
     return physical_lists
 
 
+def _find_physical_dc_list_per_pixel(
+    virtual_dc_set: VirtualDCSet,
+    x_axis_name: str,
+    y_axis_name: str,
+    x_axis_values: Sequence[float],
+    y_axis_values: Sequence[float],
+    scan_mode: ScanMode,
+):
+    """
+    Find a dictionary of physical dc lists to output from the QDAC, in the event that the desired outputs are both
+    from the QDAC (not mixed).
+
+    This reproduces the scan pattern and resolves each pixel, appending the value to a dictionary of physical outputs required.
+
+    In order to not saturate the memory of the QDAC, we also check (to a tolerance) whether the produced physical DC list of all
+    channel are actually varying or not.
+    """
+    x_idxs, y_idxs = scan_mode.get_idxs(len(x_axis_values), len(y_axis_values))
+    x_path = np.asarray(x_axis_values)[x_idxs]
+    y_path = np.asarray(y_axis_values)[y_idxs]
+
+    physical_dc_lists = {ch: [] for ch in list(virtual_dc_set.channels.keys())}
+
+    for x, y in zip(x_path, y_path):
+        voltages_dict = {x_axis_name: x, y_axis_name: y}
+
+        resolved_pixel_voltage = virtual_dc_set.resolve_voltages(voltages_dict)
+
+        for name, value in resolved_pixel_voltage.items():
+            physical_dc_lists[name].append(value)
+
+    # Check if the physical list is constant or not
+    physical_lists = {
+        name: arr for name, arr in physical_dc_lists.items() if len(arr) > 1 and not np.allclose(arr, arr[0], atol=1e-8)
+    }
+    return physical_lists
+
+
 def _get_offset(
-    axis_name: str, 
-    offset: None | float, 
-    virtual_dc_set : VirtualDCSet,
-): 
-    if offset is None: # This means that the user would like to centre their DAC sweep around the current value
-        current_dac_value = virtual_dc_set.get_voltage(axis_name, requery = True)
+    axis_name: str,
+    offset: None | float,
+    virtual_dc_set: VirtualDCSet,
+):
+    if offset is None:  # This means that the user would like to centre their DAC sweep around the current value
+        current_dac_value = virtual_dc_set.get_voltage(axis_name, requery=True)
         return current_dac_value
-    else: # User specified x_offset
+    else:  # User specified x_offset
         return offset
 
+
 def _find_trigger_in(
-    axis_name: str, 
-    physical_dc_lists: Dict[str, List[float]], 
+    axis_name: str,
+    physical_dc_lists: Dict[str, List[float]],
     virtual_dc_set: VirtualDCSet,
-) -> int: 
+) -> int:
     trigger = None
     for ch_name in physical_dc_lists.keys():
         spec = getattr(virtual_dc_set.channels[ch_name], "qdac_spec", None)
@@ -61,6 +101,7 @@ def _find_trigger_in(
     if trigger is None:
         raise ValueError(f"No trigger found for the physical outputs associated with the axis {axis_name}")
     return trigger
+
 
 def _load_physical_dc_lists(
     node: QualibrationNode,
@@ -79,9 +120,7 @@ def _load_physical_dc_lists(
             if dac_info is None:
                 raise ValueError(f"Dac {dac_name} not found. Please double check.")
 
-            qdac_channel = getattr(dac_info["driver"], dac_info["channel_method"])(
-                output_port
-            )
+            qdac_channel = getattr(dac_info["driver"], dac_info["channel_method"])(output_port)
 
             dc_list = qdac_channel.dc_list(
                 voltages=voltages,
@@ -90,9 +129,10 @@ def _load_physical_dc_lists(
             )
             dc_list.start_on_external(trigger=trig)
 
+
 def prepare_dc_lists(
-    node: QualibrationNode, 
-): 
+    node: QualibrationNode,
+):
     x_ext = node.parameters.x_from_qdac
     y_ext = node.parameters.y_from_qdac
 
@@ -104,7 +144,7 @@ def prepare_dc_lists(
     y_offset = node.parameters.y_offset
 
     # If x_ext, only prepare the X dc_list
-    if x_ext and not y_ext: 
+    if x_ext and not y_ext:
         resolved_x_offset = _get_offset(x_axis_name, x_offset, virtual_dc_set)
         node.namespace["resolved_offsets"] = node.namespace.get("resolved_offsets", {})
         node.namespace["resolved_offsets"][x_axis_name] = resolved_x_offset
@@ -114,7 +154,7 @@ def prepare_dc_lists(
         _load_physical_dc_lists(node, physical_dc_lists, virtual_dc_set, trig)
         return
 
-    if y_ext and not x_ext: 
+    if y_ext and not x_ext:
         resolved_y_offset = _get_offset(y_axis_name, y_offset, virtual_dc_set)
         node.namespace["resolved_offsets"] = node.namespace.get("resolved_offsets", {})
         node.namespace["resolved_offsets"][y_axis_name] = resolved_y_offset
@@ -124,6 +164,37 @@ def prepare_dc_lists(
         _load_physical_dc_lists(node, physical_dc_lists, virtual_dc_set, trig)
         return
 
-    if x_ext and y_ext: 
-        #TODO: Set up a per-pixel dc list 
-        return
+    if x_ext and y_ext:
+        resolved_x_offset = _get_offset(x_axis_name, x_offset, virtual_dc_set)
+        resolved_y_offset = _get_offset(y_axis_name, y_offset, virtual_dc_set)
+
+        node.namespace["resolved_offsets"] = node.namespace.get("resolved_offsets", {})
+        node.namespace["resolved_offsets"][x_axis_name] = resolved_x_offset
+        node.namespace["resolved_offsets"][y_axis_name] = resolved_y_offset
+
+        x_array = x_volts_no_offset + resolved_x_offset
+        y_array = y_volts_no_offset + resolved_y_offset
+
+        physical_dc_lists = _find_physical_dc_list_per_pixel(
+            virtual_dc_set, x_axis_name, y_axis_name, x_array, y_array, node.namespace["scan_mode"]
+        )
+        trig = _find_trigger_in(x_axis_name, physical_dc_lists, virtual_dc_set)
+        _load_physical_dc_lists(node, physical_dc_lists, virtual_dc_set, trig)
+
+
+def select_scan_trigger(
+    x_axis_name: str,
+    y_axis_name: str,
+    virtual_dc_set: VirtualDCSet,
+) -> tuple[int, str]:
+    """Probe X then Y with dummy values to find which physical channels each
+    touches, and return the trigger for whichever axis has one, plus which
+    axis it belongs to."""
+    for axis_name in (x_axis_name, y_axis_name):
+        probe_lists = _find_physical_dc_lists(virtual_dc_set, axis_name, [0.0, 1.0])
+        try:
+            trig = _find_trigger_in(probe_lists, virtual_dc_set)
+            return trig, axis_name
+        except ValueError:
+            continue
+    raise ValueError(f"No trigger found for physical channels touched by '{x_axis_name}' or '{y_axis_name}'.")
