@@ -39,7 +39,7 @@ class NodeSpecificParameters(RunnableParameters):
     """The ramp duration to each pixel. Set to zero for a step instead of a ramp. Default is 100ns."""
     hold_duration: int = 100
     """The hold time on each pixel, after the ramp but before the readout pulse is sent."""
-    
+
     per_line_compensation: bool = True
     """Send a compensation pulse at the end of each scan line. Default is True."""
     max_compensation_voltage: float = 0.05

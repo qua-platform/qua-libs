@@ -1,35 +1,25 @@
 import numpy as np
-import xarray as xr
 
 from calibration_utils.common_utils import get_sensors
-from calibration_utils.charge_stability_opx import scan_mode
+from calibration_utils.charge_stability_qdac.helper_utils import build_sweep_axes
 
 from qualang_tools.loops import from_array
-from qm.qua import (
-    program, 
-    declare, 
-    align, 
-    save, 
-    fixed, 
-    for_, 
-    stream_processing, 
-    int
-)
+from qm.qua import program, declare, align, save, fixed, for_, stream_processing, int
 from qualibrate.core import QualibrationNode
 
 __all__ = [
     "build_qua_program_with_mixed_axes",
 ]
 
+
 def build_qua_program_with_mixed_axes(
-    node: QualibrationNode, 
-    slow_axis_name: str, 
-    fast_axis_name: str, 
-    slow_axis_values: np.ndarray, 
+    node: QualibrationNode,
+    slow_axis_name: str,
+    fast_axis_name: str,
+    slow_axis_values: np.ndarray,
     fast_axis_values: np.ndarray,
     scan_mode,
-
-): 
+):
     slow_obj = node.machine.get_component(slow_axis_name)
     fast_obj = node.machine.get_component(fast_axis_name)
 
@@ -41,17 +31,14 @@ def build_qua_program_with_mixed_axes(
     n_avg = node.parameters.num_shots
     vgs_id = node.namespace["axes_names"]["gate_set_id"]
 
-    node.namespace["sweep_axes"] = {
-        "sensors": xr.DataArray(sensors.get_names()),
-        slow_axis_name: xr.DataArray(
-            slow_axis_values,
-            attrs={"long_name": "voltage", "units": "V"},
-        ),
-        fast_axis_name: xr.DataArray(
-            fast_axis_values,
-            attrs={"long_name": "voltage", "units": "V"},
-        ),
-    }
+    build_sweep_axes(
+        node,
+        x_volts=slow_axis_values if slow_axis_name == node.namespace["axes_names"]["x_axis"] else fast_axis_values,
+        y_volts=slow_axis_values if slow_axis_name == node.namespace["axes_names"]["y_axis"] else fast_axis_values,
+        slow_axis_name=slow_axis_name,
+        fast_axis_name=fast_axis_name,
+        scan_mode=scan_mode,
+    )
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
@@ -86,7 +73,7 @@ def build_qua_program_with_mixed_axes(
                             duration=node.parameters.per_line_wait,
                             ramp_duration=node.parameters.ramp_duration,
                         )
-                    
+
                     # Wait for QDAC to settle at the new X voltage
                     # ``seq.step_to_voltages`` is required to ensure that the compensation pulse for the bias tee is properly calculated.
                     seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
@@ -117,7 +104,7 @@ def build_qua_program_with_mixed_axes(
                             save(Q[i], Q_st[i])
 
                     if node.parameters.per_line_compensation:
-                        seq.apply_compensation_pulse(max_voltage = node.parameters.max_compensation_voltage)
+                        seq.apply_compensation_pulse(max_voltage=node.parameters.max_compensation_voltage)
                         seq.ramp_to_zero()
 
                 seq.ramp_to_zero()
@@ -131,4 +118,3 @@ def build_qua_program_with_mixed_axes(
                 # .average() : average over all shots (n_avg repetitions)
                 I_st[i].buffer(len(fast_axis_values)).buffer(len(slow_axis_values)).average().save(f"I{i}")
                 Q_st[i].buffer(len(fast_axis_values)).buffer(len(slow_axis_values)).average().save(f"Q{i}")
-
