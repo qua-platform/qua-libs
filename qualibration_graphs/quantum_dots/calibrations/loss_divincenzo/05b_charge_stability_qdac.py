@@ -279,7 +279,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
