@@ -71,10 +71,10 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
         fit.fit_data.sel(fit_vals="offset"),
         fit.fit_data.sel(fit_vals="decay"),
     )
-    if hasattr(fit, "state"):
+    if "state" in fit.data_vars:
         data = fit.state
         label = "qubit state"
-    elif hasattr(fit, "I"):
+    elif "I" in fit.data_vars:
         data = fit.I
         label = "I quadrature [mV]"
     else:

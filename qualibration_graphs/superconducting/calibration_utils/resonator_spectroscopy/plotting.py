@@ -1,44 +1,23 @@
 from typing import List
+
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
-from qualibration_libs.analysis import lorentzian_dip
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 u = unit(coerce_to_integer=True)
 
 
 def plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Figure:
-    """
-    Plots the raw phase data for the given qubits.
+    """Plot raw phase data for the given qubits."""
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubits : list
-        A list of qubits to plot.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each qubit.
-    - Each subplot contains two x-axes: one for the full frequency in GHz and one for the detuning in MHz.
-    """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax1, qubit in grid_iter(grid):
-        # Create a first x-axis for full_freq_GHz
         ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[qubit].phase.plot(ax=ax1, x="full_freq_GHz")
         ax1.set_xlabel("RF frequency [GHz]")
         ax1.set_ylabel("phase [rad]")
-        # Create a second x-axis for detuning_MHz
         ax2 = ax1.twiny()
         ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].phase.plot(ax=ax2, x="detuning_MHz")
         ax2.set_xlabel("Detuning [MHz]")
@@ -50,28 +29,8 @@ def plot_raw_phase(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Figure:
 
 
 def plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
-    """
-    Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
+    """Plot resonator spectroscopy amplitude with the fitted Lorentzian overlay."""
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubits : list of AnyTransmon
-        A list of qubits to plot.
-    fits : xr.Dataset
-        The dataset containing the fit parameters.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each qubit.
-    - Each subplot contains the raw data and the fitted curve.
-    """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         plot_individual_amplitude_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
@@ -83,43 +42,35 @@ def plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits:
 
 
 def plot_individual_amplitude_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
-    """
-    Plots individual qubit data on a given axis with optional fit.
+    """Plot one qubit's amplitude trace and fitted curve on the primary frequency axis."""
 
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axis on which to plot the data.
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    qubit : dict[str, str]
-        mapping to the qubit to plot.
-    fit : xr.Dataset, optional
-        The dataset containing the fit parameters (default is None).
-
-    Notes
-    -----
-    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
-    """
-    if fit:
-        fitted_data = lorentzian_dip(
-            ds.detuning,
-            float(fit.amplitude.values),
-            float(fit.position.values),
-            float(fit.width.values) / 2,
-            float(fit.base_line.mean().values),
-        )
-    else:
-        fitted_data = None
-
-    # Create a first x-axis for full_freq_GHz
-    (ds.assign_coords(full_freq_GHz=ds.full_freq / u.GHz).loc[qubit].IQ_abs / u.mV).plot(ax=ax, x="full_freq_GHz")
+    qubit_ds = ds.loc[qubit]
+    x_ghz = qubit_ds.full_freq / u.GHz
+    y_mv = qubit_ds.IQ_abs / u.mV
+    ax.plot(x_ghz, y_mv, color="C0", label="data")
     ax.set_xlabel("RF frequency [GHz]")
     ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
-    # Create a second x-axis for detuning_MHz
+
+    rf_hz = float(qubit_ds.full_freq.isel(detuning=0) - qubit_ds.detuning.isel(detuning=0))
+    if fit is not None and "fit_curve" in fit:
+        fit_y_mv = fit.fit_curve / u.mV
+        ax.plot(x_ghz, fit_y_mv, "r--", label="fit")
+        center_ghz = float(fit.res_freq / u.GHz)
+        ax.axvline(center_ghz, color="tab:orange", linestyle=":", linewidth=1.2, label="fit center")
+        feature = "peak" if bool(fit.feature_is_peak.values) else "dip"
+        ax.text(
+            0.02,
+            0.98,
+            f"{feature} | R²={float(fit.fit_r2.values):.3f}\nRMSE={1e3 * float(fit.fit_rmse.values):.2f} mV",
+            transform=ax.transAxes,
+            va="top",
+            ha="left",
+            fontsize=9,
+            bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "alpha": 0.8},
+        )
+        ax.legend(loc="lower right", fontsize=8)
+
     ax2 = ax.twiny()
-    (ds.assign_coords(detuning_MHz=ds.detuning / u.MHz).loc[qubit].IQ_abs / u.mV).plot(ax=ax2, x="detuning_MHz")
+    f0, f1 = ax.get_xlim()
+    ax2.set_xlim((f0 * u.GHz - rf_hz) / u.MHz, (f1 * u.GHz - rf_hz) / u.MHz)
     ax2.set_xlabel("Detuning [MHz]")
-    # Plot the fitted data
-    if fitted_data is not None:
-        ax2.plot(ds.detuning / u.MHz, fitted_data / u.mV, "r--")

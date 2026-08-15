@@ -62,11 +62,11 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    if hasattr(fit, "state"):
+    if "state" in fit.data_vars:
         fit.state.plot(ax=ax, x="alpha", y="nb_of_pulses")
         ax.set_ylabel("State Population")
         ax.set_title(qubit["qubit"] + " - state population")
-    elif hasattr(fit, "I"):
+    elif "I" in fit.data_vars:
         (fit.I * 1e3).plot(ax=ax, x="alpha", y="nb_of_pulses")
         ax.set_ylabel("Trans. amp. I [mV]")
         ax.set_title(qubit["qubit"] + " - I quadrature [mV]")

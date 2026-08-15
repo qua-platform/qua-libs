@@ -70,12 +70,12 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
         fit.fit_data.sel(fit_vals="decay"),
     )
 
-    if hasattr(fit, "state"):
+    if "state" in fit.data_vars:
         ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
         if fitted is not None:
             ax.plot(ds.idle_time, fitted, "r--")
         ax.set_ylabel("State")
-    elif hasattr(fit, "I"):
+    elif "I" in fit.data_vars:
         (ds.sel(qubit=qubit["qubit"]).I * 1e3).plot(ax=ax)
         if fitted is not None:
             ax.plot(ds.idle_time, fitted * 1e3, "r--")

@@ -64,7 +64,7 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
     pass
-    if fit:
+    if fit is not None:
         fitted_ramsey_data = oscillation_decay_exp(
             ds.idle_time,
             fit.sel(fit_vals="a"),
@@ -76,10 +76,10 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     else:
         fitted_ramsey_data = None
 
-    if hasattr(fit, "state"):
+    if "state" in fit.data_vars:
         plot_state(ax, fit, qubit, fitted_ramsey_data)
         ax.set_ylabel("State Population")
-    elif hasattr(fit, "I"):
+    elif "I" in fit.data_vars:
         plot_transmission_amplitude(ax, fit, qubit, fitted_ramsey_data)
         ax.set_ylabel("Trans. amp. I [mV]")
     else:

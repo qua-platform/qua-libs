@@ -11,6 +11,22 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 u = unit(coerce_to_integer=True)
 
 
+def _plot_data_variable(ds: xr.Dataset) -> str:
+    """Return the measured variable available in a power-Rabi dataset."""
+
+    for name in ("IQ_abs", "I", "state"):
+        if name in ds.data_vars:
+            return name
+    raise RuntimeError(
+        "The dataset must contain 'IQ_abs', 'I', or 'state' for the plotting function to work. "
+        f"Found data variables: {list(ds.data_vars)}"
+    )
+
+
+def _plot_scale(data: str) -> float:
+    return 1.0 if data == "state" else u.mV
+
+
 def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
@@ -68,7 +84,7 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     """
 
     if "nb_of_pulses" not in ds or len(ds.nb_of_pulses.data) == 1:
-        if fit:
+        if fit is not None:
             fitted_data = oscillation(
                 fit.amp_prefactor.data,
                 fit.fit.sel(fit_vals="a").data,
@@ -79,20 +95,18 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         else:
             fitted_data = None
 
-        if hasattr(ds, "IQ_abs"):
-            data = "IQ_abs"
+        data = _plot_data_variable(ds)
+        if data == "IQ_abs":
             label = "IQ amplitude [mV]"
-        elif hasattr(ds, "I"):
-            data = "I"
+        elif data == "I":
             label = "Rotated I quadrature [mV]"
-        elif hasattr(ds, "state"):
-            data = "state"
-            label = "Qubit state"
         else:
-            raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
+            label = "Qubit state"
 
-        (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit] * 1e3)[data].plot(ax=ax, x="amp_mV")
-        ax.plot(fit.full_amp * 1e3, 1e3 * fitted_data)
+        scale = _plot_scale(data)
+        ((ds.assign_coords(amp_mV=ds.full_amp / scale).loc[qubit])[data] / scale).plot(ax=ax, x="amp_mV")
+        if fitted_data is not None:
+            ax.plot(fit.full_amp / scale, fitted_data / scale)
         ax.set_ylabel(label)
         ax.set_xlabel("Pulse amplitude [mV]")
         ax2 = ax.twiny()
@@ -120,23 +134,19 @@ def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    if hasattr(ds, "I"):
-        data = "I"
-    elif hasattr(ds, "state"):
-        data = "state"
-    else:
-        raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
-    (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit])[data].plot(
+    data = _plot_data_variable(ds)
+    scale = _plot_scale(data)
+    ((ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit])[data] / scale).plot(
         ax=ax, add_colorbar=False, x="amp_mV", y="nb_of_pulses", robust=True
     )
     ax.set_ylabel(f"Number of pulses")
     ax.set_xlabel("Pulse amplitude [mV]")
     ax2 = ax.twiny()
-    (ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit])[data].plot(
+    ((ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit])[data] / scale).plot(
         ax=ax2, add_colorbar=False, x="amp_mV", y="nb_of_pulses", robust=True
     )
     ax2.set_xlabel("amplitude prefactor")
-    if fit.success:
+    if fit is not None and bool(fit.success):
         ax2.axvline(
             x=fit.opt_amp_prefactor,
             color="g",

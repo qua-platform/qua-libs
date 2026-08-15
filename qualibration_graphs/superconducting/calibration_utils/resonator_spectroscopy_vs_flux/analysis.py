@@ -101,24 +101,57 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return fit_dataset, fit_results
 
 
+def _measured_peak_freq_at(fit: xr.Dataset, flux_bias: xr.DataArray) -> xr.DataArray:
+    """Read the measured resonance frequency at the swept flux bias closest to ``flux_bias``."""
+
+    return fit.peak_freq.sel(flux_bias=flux_bias, method="nearest")
+
+
 def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     """Add metadata to the fit dataset and fit result dictionary."""
 
+    amplitude = fit.fit_results.sel(fit_vals="a", drop=True)
+    frequency = fit.fit_results.sel(fit_vals="f", drop=True)
+    phase = fit.fit_results.sel(fit_vals="phi", drop=True)
+    # The model is a * cos(2 * pi * f * x + phi) + offset, so -phi / (2 * pi * f) is the flux
+    # bias of the maximum only while a is positive. The optimiser is free to return the
+    # equivalent (-a, phi + pi), which describes the same curve but puts -phi / (2 * pi * f) on
+    # the minimum instead. Fold that degeneracy out before reading the phase.
+    phase = xr.where(amplitude < 0, phase + np.pi, phase)
     # Ensure that the phase is between -pi and pi
-    flux_idle = -fit.sel(fit_vals="phi")
+    flux_idle = -phase
     flux_idle = np.mod(flux_idle + np.pi, 2 * np.pi) - np.pi
     # converting the phase phi from radians to voltage
-    flux_idle = flux_idle / fit.sel(fit_vals="f") / 2 / np.pi
-    fit = fit.assign_coords(idle_offset=("qubit", flux_idle.fit_results.data))
-    fit.idle_offset.attrs = {"long_name": "idle flux bias", "units": "V"}
+    flux_idle = flux_idle / frequency / 2 / np.pi
     # finding the location of the minimum frequency flux point
-    flux_min = flux_idle + ((flux_idle < 0) - 0.5) / fit.sel(fit_vals="f")
+    flux_min = flux_idle + ((flux_idle < 0) - 0.5) / frequency
+
+    # Cross-check the fitted phase against the measured curve. The swept flux bias is the only
+    # place we have evidence, so if the half-quantum-away candidate is the one sitting on the
+    # measured maximum, the two offsets are the wrong way round and the operating point would
+    # otherwise land half a flux quantum from the sweet spot.
+    swept_min = fit.peak_freq.flux_bias.min()
+    swept_max = fit.peak_freq.flux_bias.max()
+    idle_swept = (flux_idle >= swept_min) & (flux_idle <= swept_max)
+    min_swept = (flux_min >= swept_min) & (flux_min <= swept_max)
+    measured_floor = fit.peak_freq.min(dim="flux_bias")
+    measured_span = fit.peak_freq.max(dim="flux_bias") - measured_floor
+    idle_on_maximum = idle_swept & ((_measured_peak_freq_at(fit, flux_idle) - measured_floor) > 0.5 * measured_span)
+    min_on_maximum = min_swept & ((_measured_peak_freq_at(fit, flux_min) - measured_floor) > 0.5 * measured_span)
+    swap = min_on_maximum & ~idle_on_maximum
+    flux_idle, flux_min = xr.where(swap, flux_min, flux_idle), xr.where(swap, flux_idle, flux_min)
+
+    fit = fit.assign_coords(idle_offset=("qubit", flux_idle.data))
+    fit.idle_offset.attrs = {"long_name": "idle flux bias", "units": "V"}
     flux_min = flux_min * (np.abs(flux_min) < 0.5) + 0.5 * (flux_min > 0.5) - 0.5 * (flux_min < -0.5)
-    fit = fit.assign_coords(flux_min=("qubit", flux_min.fit_results.data))
+    fit = fit.assign_coords(flux_min=("qubit", flux_min.data))
     fit.flux_min.attrs = {"long_name": "minimum frequency flux bias", "units": "V"}
     # finding the frequency as the sweet spot flux
     full_freq = np.array([q.resonator.RF_frequency for q in node.namespace["qubits"]])
-    freq_shift = fit.peak_freq.sel(flux_bias=flux_idle.fit_results, method="nearest")
+    # A flux bias outside the swept range was never measured; "nearest" would silently clamp it
+    # to the edge of the sweep and report the shift there as if it had been observed.
+    idle_offset_was_swept = ((flux_idle >= swept_min) & (flux_idle <= swept_max)).data
+    freq_shift = _measured_peak_freq_at(fit, flux_idle)
     fit = fit.assign_coords(freq_shift=("qubit", freq_shift.data))
     fit.freq_shift.attrs = {"long_name": "frequency shift", "units": "Hz"}
     fit = fit.assign_coords(sweet_spot_frequency=("qubit", freq_shift.data + full_freq))
@@ -128,17 +161,11 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     }
     # m_pH
     attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
-    m_pH = (
-        1e12
-        * 2.068e-15
-        / (1 / fit.sel(fit_vals="f"))
-        / node.parameters.input_line_impedance_in_ohm
-        * attenuation_factor
-    )
+    m_pH = 1e12 * 2.068e-15 / (1 / frequency) / node.parameters.input_line_impedance_in_ohm * attenuation_factor
     # Assess whether the fit was successful or not
     freq_success = np.abs(freq_shift.data) < node.parameters.frequency_span_in_mhz * 1e6
-    nan_success = np.isnan(freq_shift.data) | np.isnan(flux_min.fit_results.data) | np.isnan(flux_idle.fit_results.data)
-    success_criteria = freq_success & ~nan_success
+    nan_success = np.isnan(freq_shift.data) | np.isnan(flux_min.data) | np.isnan(flux_idle.data)
+    success_criteria = freq_success & ~nan_success & idle_offset_was_swept
     fit = fit.assign_coords(success=("qubit", success_criteria))
 
     fit_results = {
@@ -146,14 +173,14 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             success=fit.sel(qubit=q).success.values.__bool__(),
             resonator_frequency=float(fit.sweet_spot_frequency.sel(qubit=q).values),
             frequency_shift=float(freq_shift.sel(qubit=q).values),
-            min_offset=float(flux_min.sel(qubit=q).fit_results.data),
-            idle_offset=float(flux_idle.sel(qubit=q).fit_results.data),
-            dv_phi0=1 / fit.sel(fit_vals="f", qubit=q).fit_results.data,
+            min_offset=float(flux_min.sel(qubit=q).data),
+            idle_offset=float(flux_idle.sel(qubit=q).data),
+            dv_phi0=1 / frequency.sel(qubit=q).data,
             phi0_current=1
-            / fit.sel(fit_vals="f", qubit=q).fit_results.data
+            / frequency.sel(qubit=q).data
             * node.parameters.input_line_impedance_in_ohm
             * attenuation_factor,
-            m_pH=m_pH.sel(qubit=q).fit_results.data,
+            m_pH=m_pH.sel(qubit=q).data,
         )
         for q in fit.qubit.values
     }

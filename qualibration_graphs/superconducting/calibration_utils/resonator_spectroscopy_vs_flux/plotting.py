@@ -83,26 +83,40 @@ def plot_individual_raw_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str,
         ax=ax, add_colorbar=False, x="flux_bias", y="freq_GHz", robust=True
     )
     if fit.fit_results.success.values:
+        swept_low = float(ds.flux_bias.min())
+        swept_high = float(ds.flux_bias.max())
+
+        def offset_label(name: str, value: float) -> str:
+            # An offset outside the swept range is drawn off the visible axis, and the two
+            # dashed lines are then indistinguishable from one another. Spell the value out so
+            # the operating point cannot be read off whichever line happens to be in frame.
+            if swept_low <= value <= swept_high:
+                return f"{name} = {value:.4f} V"
+            return f"{name} = {value:.4f} V (outside swept range)"
+
+        idle_offset = float(fit.fit_results.idle_offset)
+        flux_min = float(fit.fit_results.flux_min)
         ax.axvline(
-            fit.fit_results.idle_offset,
+            idle_offset,
             linestyle="dashed",
             linewidth=2,
             color="r",
-            label="idle offset",
+            label=offset_label("idle offset", idle_offset),
         )
         ax.axvline(
-            fit.fit_results.flux_min,
+            flux_min,
             linestyle="dashed",
             linewidth=2,
             color="orange",
-            label="min offset",
+            label=offset_label("min offset", flux_min),
         )
         # Location of the current resonator frequency
         ax.plot(
-            fit.fit_results.idle_offset.values,
+            idle_offset,
             fit.fit_results.sweet_spot_frequency.values * 1e-9,
             "r*",
             markersize=10,
         )
+        ax.legend(loc="upper right", fontsize="small", framealpha=0.7)
     ax.set_title(qubit["qubit"])
     ax.set_xlabel("Flux (V)")

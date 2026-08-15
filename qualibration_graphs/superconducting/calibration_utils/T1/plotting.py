@@ -39,7 +39,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
 
 def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
     """Plot individual qubit data on a given axis."""
-    if fit:
+    if fit is not None:
         fitted = decay_exp(
             ds.idle_time,
             fit.fit_data.sel(fit_vals="a"),
@@ -49,12 +49,12 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     else:
         fitted = None
 
-    if hasattr(fit, "state"):
+    if "state" in fit.data_vars:
         ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
         if fitted is not None:
             ax.plot(ds.idle_time, fitted, "r--")
         ax.set_ylabel("State")
-    elif hasattr(fit, "I"):
+    elif "I" in fit.data_vars:
         (ds.sel(qubit=qubit["qubit"]).I * 1e3).plot(ax=ax)
         if fitted is not None:
             ax.plot(ds.idle_time, fitted * 1e3, "r--")

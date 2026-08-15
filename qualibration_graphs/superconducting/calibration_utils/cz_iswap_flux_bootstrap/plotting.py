@@ -137,7 +137,7 @@ def plot_individual_data_with_fit(
             )
             has_legend = True
 
-    if fit:
+    if fit is not None:
         decouple_flux = fit.get("optimal_decouple_offset", np.nan)
         if np.isfinite(decouple_flux):
             ax.axhline(

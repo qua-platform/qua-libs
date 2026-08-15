@@ -63,7 +63,7 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    if fit:
+    if fit is not None:
         fitted_data = lorentzian_peak(
             ds.detuning,
             float(fit.amplitude.values),
