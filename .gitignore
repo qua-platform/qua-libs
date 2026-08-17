@@ -10,3 +10,4 @@ tempCodeRunnerFile.python
 **/calibration_data
 **/quam_config/quam_state
 .rb_cache/
+.DS_Store
