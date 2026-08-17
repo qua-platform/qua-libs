@@ -249,3 +249,39 @@ def plot_projected_histogram(
     fig.suptitle("Projected IQ Distribution (Rotated I Frame, Optimal Integration Time)")
     fig.tight_layout()
     return fig
+
+
+def plot_all(
+    ds_raw: xr.Dataset,
+    all_sensors: Dict,
+    quantum_dot_pairs: List,
+    *,
+    ds_fit: xr.Dataset | None = None,
+    fit_results: Dict | None = None,
+    show: bool = True,
+) -> dict[str, Figure]:
+    """Build and return all 05d readout-time-optimization figures."""
+    ds_plot = ds_fit if ds_fit is not None else ds_raw
+    figures = {
+        "iq_histogram": plot_iq_histogram(
+            ds_plot,
+            all_sensors,
+            quantum_dot_pairs,
+            fit_results=fit_results,
+        ),
+        "snr_vs_integration_time": plot_snr_vs_integration_time(
+            ds_plot,
+            all_sensors,
+            quantum_dot_pairs,
+            fit_results=fit_results,
+        ),
+        "projected_histogram": plot_projected_histogram(
+            ds_plot,
+            all_sensors,
+            quantum_dot_pairs,
+            fit_results=fit_results or {},
+        ),
+    }
+    if show:
+        plt.show()
+    return figures

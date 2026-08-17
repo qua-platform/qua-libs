@@ -210,6 +210,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Save the I/Q data to the streams
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
+
+            # ── Post-processing on the OPX before data reaches the PC ─────────
             with stream_processing():
                 n_st.save("n")  # save the shot counter for the progress bar
                 for i in range(num_sensors):
