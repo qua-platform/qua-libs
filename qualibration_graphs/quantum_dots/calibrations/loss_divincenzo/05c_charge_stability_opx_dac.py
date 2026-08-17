@@ -166,9 +166,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         )
                         for i, s in multiplexed_sensors.items():
                             rr = s.readout_resonator
-                            rr.wait(
-                                (node.parameters.per_line_wait + node.parameters.opx_ramp_duration) // 4
-                            )
+                            rr.wait((node.parameters.per_line_wait + node.parameters.opx_ramp_duration) // 4)
 
                     # ── INNER LOOP: sweep the fast OPX axis ────────────────
                     with for_(*from_array(x, opx_array)):
@@ -179,9 +177,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         )
                         for i, s in multiplexed_sensors.items():
                             rr = s.readout_resonator
-                            rr.wait(
-                                (node.parameters.opx_ramp_duration + node.parameters.opx_hold_duration) // 4
-                            )
+                            rr.wait((node.parameters.opx_ramp_duration + node.parameters.opx_hold_duration) // 4)
                             rr.measure("readout", qua_vars=(I[i], Q[i]))
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
@@ -230,20 +226,19 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
 
-
     # Prepare DAC — this node performs a hybrid 2D scan: the X axis is swept by the OPX in
     # QUA, while the Y axis is stepped externally. The QUA program calls pause() at the start
     # of each Y line (see create_qua_program); the loop below resumes the job only after
     # the DAC voltage has been updated.
 
-    # Currently, the default behaviour uses the VirtualDCSet to resolve the offset and step the DAC. 
-    # What this means: 
-    # RESOLVING the offset: 
-    #   - If the offset is None, then the DAC offset should be the currently outputted value from the DAC. 
-    #   - If the offset is not None, then the DAC sweep should be centred on that value. 
-    # APPLY the offset: 
-    #   - Using the resolved offset, apply centre + sweep value to the DAC on each loop. 
-    # RESTORE the offset: 
+    # Currently, the default behaviour uses the VirtualDCSet to resolve the offset and step the DAC.
+    # What this means:
+    # RESOLVING the offset:
+    #   - If the offset is None, then the DAC offset should be the currently outputted value from the DAC.
+    #   - If the offset is not None, then the DAC sweep should be centred on that value.
+    # APPLY the offset:
+    #   - Using the resolved offset, apply centre + sweep value to the DAC on each loop.
+    # RESTORE the offset:
     #   - At the end of the 2D map, restore the offset to either what it was already outputting (if dac_offset = None) or the new offset
 
     # ── RESOLVE the offset, APPLY the offset and RESTORE the offset ─────────

@@ -13,11 +13,14 @@ __all__ = [
 def get_voltage_arrays(node: QualibrationNode):
     """Build the fast OPX sweep and slow external-DAC sweep arrays."""
     opx_offset = node.parameters.opx_offset or 0.0
-    opx_array = np.linspace(
-        -node.parameters.opx_span / 2,
-        node.parameters.opx_span / 2,
-        node.parameters.opx_points,
-    ) + opx_offset
+    opx_array = (
+        np.linspace(
+            -node.parameters.opx_span / 2,
+            node.parameters.opx_span / 2,
+            node.parameters.opx_points,
+        )
+        + opx_offset
+    )
 
     dac_array = np.linspace(
         -node.parameters.dac_span / 2,
@@ -54,7 +57,4 @@ def validate_opx_limit(
     max_physical = vgs.resolve_voltages({axis_name: max_value})
     max_resolved = float(np.max(np.abs(list(max_physical.values()))))
     if max_resolved > limit:
-        raise ValueError(
-            f"Resolved OPX sweep for {axis_name} exceeds the {limit} V limit ({max_resolved} V)."
-        )
-
+        raise ValueError(f"Resolved OPX sweep for {axis_name} exceeds the {limit} V limit ({max_resolved} V).")
