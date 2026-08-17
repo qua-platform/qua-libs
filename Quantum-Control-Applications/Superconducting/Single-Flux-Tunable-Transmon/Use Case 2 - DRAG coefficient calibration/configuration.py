@@ -64,8 +64,8 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
 # VARIABLES #
 #############
 
-qop_ip = "127.0.0.1"
-
+qop_ip = "172.16.33.101"  # Write the QM router IP address
+cluster_name = "CS_1"  # Write your cluster_name if version >= QOP220
 # Qubits
 qubit_IF = -95662718.5348127 - 1.3938737857566341e6
 qubit_ef_IF = -259.1453349274868e6

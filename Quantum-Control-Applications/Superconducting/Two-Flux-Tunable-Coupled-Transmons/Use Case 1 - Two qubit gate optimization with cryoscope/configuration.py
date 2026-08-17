@@ -71,8 +71,8 @@ def drag_cosine_pulse_waveforms(amplitude, length, alpha, anharmonicity, detunin
 # VARIABLES #
 #############
 
-qop_ip = "127.0.0.1"
-
+qop_ip = "172.16.33.101"  # Write the QM router IP address
+cluster_name = "CS_1"  # Write your cluster_name if version >= QOP220
 ###########################################
 # Qubits parameters
 ###########################################

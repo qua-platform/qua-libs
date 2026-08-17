@@ -29,9 +29,9 @@ def IQ_imbalance(g, phi):
 #############
 u = unit(coerce_to_integer=True)
 
-qop_ip = "127.0.0.1"
+qop_ip = "172.16.33.101"  # Write the QM router IP address
 qop_port = None
-cluster_name = "my_cluster_1"
+cluster_name = "CS_1"  # Write your cluster_name if version >= QOP220
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
