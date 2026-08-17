@@ -36,8 +36,8 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.101"  # Write the QM router IP address
+cluster_name = "CS_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
@@ -302,12 +302,14 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # I qubit1 XY
-                2: {"offset": 0.0},  # Q qubit1 XY
-                3: {"offset": 0.0},  # I qubit2 XY
-                4: {"offset": 0.0},  # Q qubit2 XY
-                5: {"offset": 0.0},  # I readout line
-                6: {"offset": 0.0},  # Q readout line
+                1: {"offset": 0.0},  # I readout / rr mix
+                2: {"offset": 0.0},  # Q readout / rr mix
+                3: {"offset": 0.0},  # I q1 XY / CR
+                4: {"offset": 0.0},  # Q q1 XY / CR
+                5: {"offset": 0.0},  # I readout line (spare)
+                6: {"offset": 0.0},  # Q readout line (spare)
+                7: {"offset": 0.0},  # I q2 XY / CR
+                8: {"offset": 0.0},  # Q q2 XY / CR
             },
             "digital_outputs": {
                 1: {},
