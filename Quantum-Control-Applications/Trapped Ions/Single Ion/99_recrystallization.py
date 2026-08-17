@@ -1,0 +1,1 @@
+"""Collect counts during Doppler cooling to determine if ion is crystallized. If not, apply recrystallization sequence until it is."""

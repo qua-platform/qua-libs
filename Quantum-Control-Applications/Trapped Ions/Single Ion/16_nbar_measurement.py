@@ -1,0 +1,1 @@
+"""Measure red and blue sideband to determine the average motional occupation number nbar."""

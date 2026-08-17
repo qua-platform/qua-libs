@@ -60,7 +60,7 @@ else:
         job = qm.execute(pi_pulse)
         results = fetching_tool(job, data_list=["counts", "state", "iteration"], mode="live")
 
-        fig, (ax_rabi, ax_hist) = plt.subplots(1, 3, figsize=(12, 4))
+        fig, (ax_rabi, ax_hist) = plt.subplots(1, 2, figsize=(12, 4))
         interrupt_on_close(fig, job)
 
         p1_per_t = []
