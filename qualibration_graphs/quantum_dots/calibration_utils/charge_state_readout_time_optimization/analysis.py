@@ -57,8 +57,7 @@ def analyse_raw_data(
     fit_results_dict = {k: r.__dict__ for k, r in fit_results.items()}
     log_fitted_results(fit_results_dict, log_callable=log_callable)
     outcomes = {
-        key: ("successful" if fit_result["success"] else "failed")
-        for key, fit_result in fit_results_dict.items()
+        key: ("successful" if fit_result["success"] else "failed") for key, fit_result in fit_results_dict.items()
     }
     return ds_fit, fit_results_dict, outcomes
 

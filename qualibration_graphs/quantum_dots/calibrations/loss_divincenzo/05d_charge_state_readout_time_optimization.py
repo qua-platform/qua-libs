@@ -94,7 +94,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Number of averages
     n_avg = node.parameters.num_shots
 
-    # Set up the integration time array
+    # Set up the integration time array
     integration_times = np.arange(
         node.parameters.integration_time_start,
         node.parameters.integration_time_stop,
@@ -102,7 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
     # measure_accumulated takes the number of samples, which is determined by the integration time step
     samples_per_chunk = node.parameters.integration_time_step // 4
-    array_size = len(integration_times) 
+    array_size = len(integration_times)
 
     # Temporarily set the readout pulse length to cover the full integration time range.
     # measure_accumulated chunks data within the readout pulse, so the pulse must be at
@@ -150,7 +150,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for dp_idx, dot_pair in enumerate(quantum_dot_pairs):
             seq = dot_pair.voltage_sequence
 
-            # TODO: Do we need to declare the QUA variables? 
+            # TODO: Do we need to declare the QUA variables?
             I_11 = {}
             Q_11 = {}
             I_02 = {}
@@ -160,10 +160,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                assign(progress, dp_idx * n_avg + n) # Update QUA variable for progress counter
-                save(progress, n_st) # Tell the PC which shot we are on
+                assign(progress, dp_idx * n_avg + n)  # Update QUA variable for progress counter
+                save(progress, n_st)  # Tell the PC which shot we are on
 
-                align() # Initial global align
+                align()  # Initial global align
 
                 # ── STEP 1: Initialize ───────────────────────
                 dot_pair.initialize(
