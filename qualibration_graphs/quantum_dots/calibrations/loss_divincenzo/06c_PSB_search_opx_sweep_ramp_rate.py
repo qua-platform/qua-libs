@@ -86,9 +86,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.use_simulated_data = True
-    node.parameters.plot_kde = False
-    node.parameters.num_shots = 10000
     pass
 
 
@@ -120,6 +117,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Build the ramp-duration sweep
     ramp_duration_array = validate_and_build_ramp_sweep(node)
+    ramp_durations_cc = ramp_duration_array // 4
+    buffer_duration_cc = node.parameters.buffer_duration // 4
 
     # The swept axes. Buffer order is (ramp_duration) then (n_runs).
     node.namespace["sweep_axes"] = {
@@ -146,51 +145,54 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)  # tell the PC which shot we are on
 
-            # ── INNER LOOP: sweep ramp duration ───────────────────────────
-            with for_(*from_array(ramp_d, ramp_duration_array)):
-                for i, qubit_pair in enumerate(qubit_pairs):
-                    dot_pair = qubit_pair.quantum_dot_pair
+            # Loop over the qubit pairs involved in this experiment
+            for i, qubit_pair in enumerate(qubit_pairs):
+                dot_pair = qubit_pair.quantum_dot_pair
+
+                # Use the first sensor associated to each dot pair
+                sensor = dot_pair.sensor_dots[0]
+                rr = sensor.readout_resonator
+
+                # Extract the readout pulse name and the readout length
+                op_name = f"readout_{dot_pair.name}"
+                readout_len = rr.operations[op_name].length
+
+                # ── INNER LOOP: sweep ramp duration ───────────────────────────
+                with for_(*from_array(ramp_d, ramp_durations_cc)):
 
                     # ── STEP 0 - RESET: ensure settling between sweep points ──────────
-                    dot_pair.voltage_sequence.step_to_voltages(
-                        voltages={},
-                        duration=node.parameters.reset_wait_time,
-                    )
-                    align()
+                    wait(node.parameters.reset_wait_time // 4)
+                    align() # Start loop with a global align after the reset time. This ensures that all the elements will start here
 
                     # ── STEP 1 - INITIALIZE: preparation macro (empty or initialize) ─
                     dot_pair.macros[node.parameters.initialization_macro].apply()
 
+                    # Align the readout resonator to the end of the initialize
+                    align(rr.id, dot_pair.physical_channel.id)
+
                     # ── STEP 2 - RAMP: ramp to measure with the swept duration ───────
                     dot_pair.ramp_to_point(
                         "measure",
-                        ramp_duration=ramp_d,
-                        duration=node.parameters.buffer_duration,
+                        ramp_duration = ramp_d * 4, # Convert back from clock cycles to nanoseconds
+                        duration = buffer_duration_cc * 4 + readout_len,
                     )
 
                     # ── STEP 3 - MEASURE: resonator readout at the PSB point ─────────
-                    sensor = dot_pair.sensor_dots[0]
-                    rr = sensor.readout_resonator
-                    op_name = f"readout_{dot_pair.name}"
-                    readout_length = rr.operations[op_name].length
-                    dot_pair.voltage_sequence.track_sticky_duration(readout_length)
+                    # Resonator sits idle for ramp duration + buffer duration
+                    rr.wait(ramp_d + buffer_duration_cc) # This wait command is in clock cycles
 
-                    # Make sure to align the measure command to be AFTER the ramp + wait
-                    align(rr.id, dot_pair.physical_channel.id)
+                    # Measure the demodulated measurement and save into the QUA variables
                     rr.measure(op_name, qua_vars=(I[i], Q[i]))
 
                     # Append this sweep point's I/Q to the stream buffer
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
-                    align(rr.id, dot_pair.physical_channel.id)
 
                     # Apply the compensation pulse via the voltage sequence
                     dot_pair.voltage_sequence.apply_compensation_pulse(
                         go_to_zero=True,
                         return_to_zero=True,
                     )
-                    dot_pair.voltage_sequence.ramp_to_zero()
-                    align()
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
