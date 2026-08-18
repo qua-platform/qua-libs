@@ -77,10 +77,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.simulate = True
-    node.parameters.ramp_duration = 1000
-    node.parameters.buffer_duration = 1000
-    node.parameters.qubit_to_pulse = "q1"
     pass
 
 
