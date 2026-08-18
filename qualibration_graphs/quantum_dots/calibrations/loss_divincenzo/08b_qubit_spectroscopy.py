@@ -161,7 +161,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Perform the initialize macro
                     qubit.initialize(
                         target_state=node.parameters.target_state,
-                        max_loops=1,
+                        max_loops=node.parameters.max_loops,
                     )
 
                     # Detune the IF of the qubit's XY component
