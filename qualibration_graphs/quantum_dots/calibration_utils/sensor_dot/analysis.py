@@ -215,7 +215,13 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         - Dataset containing the fit results
         - Dictionary of FitParameters for each sensor
     """
-    peak_results = peaks_dips(ds.amplitude, "bias_offsets")
+    peak_results = xr.concat(
+        [
+            peaks_dips(ds.amplitude.sel(sensors=sensor.name), "bias_offsets").expand_dims(sensors=[sensor.name])
+            for sensor in node.namespace["sensors"]
+        ],
+        dim="sensors",
+    )
 
     side = getattr(node.parameters, "peak_fit_side", "left")
     ds_fit, fit_results = _extract_relevant_fit_parameters(peak_results, ds, node, side=side)

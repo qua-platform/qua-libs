@@ -1,4 +1,4 @@
-from .parameters import Parameters, ExternalDacSweepParameters, VirtualDCSetParameters
+from .parameters import Parameters
 from .analysis import (
     process_raw_dataset,
     fit_raw_data,
@@ -13,8 +13,6 @@ from .simulated_data_generator import generate_simulated_dataset
 
 __all__ = [
     "Parameters",
-    "ExternalDacSweepParameters",
-    "VirtualDCSetParameters",
     "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",
