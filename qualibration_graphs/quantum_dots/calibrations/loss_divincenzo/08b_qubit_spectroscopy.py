@@ -68,9 +68,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.use_simulated_data = True
-    # node.parameters.frequency_span_in_mhz = 400
-    # node.parameters.operation_amplitude_factor = 1.5
     pass
 
 
@@ -164,7 +161,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Perform the initialize macro
                     qubit.initialize(
                         target_state=node.parameters.target_state,
-                        max_loops=node.parameters.max_loops,
+                        max_loops=1,
                     )
 
                     # Detune the IF of the qubit's XY component
