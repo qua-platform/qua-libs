@@ -251,7 +251,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        "samples": samples,
+        # "samples": samples,
     }
 
 
