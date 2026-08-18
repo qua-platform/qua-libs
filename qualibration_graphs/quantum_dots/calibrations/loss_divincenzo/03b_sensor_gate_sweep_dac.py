@@ -20,6 +20,7 @@ from calibration_utils.sensor_dot import (
     log_fitted_results,
     generate_simulated_dataset,
     plot_all,
+    apply_compensation_pulse,
 )
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
@@ -79,6 +80,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.sensor_names = ["virtual_sensor_1"]
     pass
 
 
@@ -138,11 +140,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for multiplexed_sensors in sensors.batch():
             align()  # sync all channels in this batch before starting
 
-            # Extract the VoltageSequence objects in this batch
-            sequences_in_batch = {
-                sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence for sensor in multiplexed_sensors.values()
-            }
-
             # ── OUTER LOOP: PAUSE the QUA program, and set the DAC voltage ──
             with for_(sensor_idx, 0, sensor_idx < len(bias_offsets), sensor_idx + 1):
                 pause()
@@ -184,12 +181,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # At the end of each 1D sweep, play a compensation pulse to account for any charge build-up in the bias tee
                     # This is only necessary in this program if a qubit pair was stepped. Otherwise, skip
                     if node.parameters.qubit_pair_to_step is not None:
-                        for seq in sequences_in_batch.values():
-                            seq.apply_compensation_pulse(
-                                max_voltage=node.parameters.max_compensation_voltage,
-                                go_to_zero=True,
-                                return_to_zero=True,
-                            )
+                        apply_compensation_pulse(multiplexed_sensors, node.parameters.max_compensation_pulse)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
@@ -232,7 +224,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
-    qmm = node.machine.connect()
+    qmm = node.machine.connect(skip_dacs = False)
 
     # Get the config from the machine
     config = node.machine.generate_config()

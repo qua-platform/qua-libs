@@ -20,6 +20,7 @@ from calibration_utils.sensor_dot import (
     log_fitted_results,
     generate_simulated_dataset,
     plot_all,
+    apply_compensation_pulse,
 )
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
@@ -125,11 +126,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         for multiplexed_sensors in sensors.batch():
             align()  # sync all channels in this batch before starting
 
-            # Extract the VoltageSequence objects in this batch
-            sequences_in_batch = {
-                sensor.voltage_sequence.gate_set.id: sensor.voltage_sequence for sensor in multiplexed_sensors.values()
-            }
-
             # ── OUTER LOOP: repeat the full sweep n_avg times ──
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)  # tell the PC which shot we are on
@@ -160,10 +156,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                 # At the end of each 1D sweep, play a compensation pulse to account for any charge build-up in the bias tee
-                for seq in sequences_in_batch.values():
-                    seq.apply_compensation_pulse(
-                        max_voltage=node.parameters.max_compensation_voltage, go_to_zero=True, return_to_zero=True
-                    )
+                apply_compensation_pulse(multiplexed_sensors, node.parameters.max_compensation_voltage)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
