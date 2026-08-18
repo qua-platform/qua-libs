@@ -165,7 +165,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         # Optionally drive a qubit using the x180 macro.
                         if node.parameters.qubit_to_pulse is not None:
-                            node.machine.qubits[node.parameters.qubit_to_pulse].x180()
+                            q = node.machine.qubits[node.parameters.qubit_to_pulse]
+
+                            # Since the qubit's xy component is a separate element in QUA, ensure that this is exactly aligned to the VoltageSequence
+                            align(q.xy.id, dot_pair.physical_channel.id)
+                            q.x180()
+                            align(q.xy.id, dot_pair.physical_channel.id)
 
                         # Align the start of the resonator's wait command to the END of the initialization macro
                         align(rr.id, dot_pair.physical_channel.id)
