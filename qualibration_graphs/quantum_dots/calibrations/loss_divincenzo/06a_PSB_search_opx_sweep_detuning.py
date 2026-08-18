@@ -187,8 +187,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Append this voltage point's I/Q to the stream buffer
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
-                    align()
-
                     # Apply the compensation pulse via the voltage sequence. This both steps to 0 before, and goes back to 0 after
                     dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
 
