@@ -203,6 +203,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Compensation begins after the ramp + buffer + readout_length, so all should be synchronised nicely
                         dot_pair.voltage_sequence.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
 
+                        align()
+
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")  # expose shot counter as "n" in the fetched dataset
