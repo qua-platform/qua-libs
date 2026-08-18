@@ -13,8 +13,8 @@ from qualang_tools.loops import from_array
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.sensor_dot import Parameters
 from calibration_utils.sensor_dot import (
+    Parameters,
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,

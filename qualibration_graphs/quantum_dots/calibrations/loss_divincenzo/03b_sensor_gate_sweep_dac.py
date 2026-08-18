@@ -13,7 +13,7 @@ from qualang_tools.loops import from_array
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.sensor_dot import VirtualDCSetParameters as Parameters
+from calibration_utils.sensor_dot_dac import Parameters
 from calibration_utils.sensor_dot import (
     process_raw_dataset,
     fit_raw_data,

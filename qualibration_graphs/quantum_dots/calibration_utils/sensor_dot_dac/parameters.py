@@ -26,6 +26,10 @@ class NodeSpecificParameters(RunnableParameters):
     """The maximum compensation pulse voltage."""
     ramp_duration: int = 16
     """Ramp duration of each voltage point."""
+    qubit_pair_to_step: List[str] | None = None
+    """Qubit pair to step to the measure point for OPX, during readout. Default to None, which will not step anything."""
+    dac_settling_time_s: float = 0.5
+    """Wait duration after setting the DAC voltage. Done in Python, not QUA."""
 
 
 class Parameters(
