@@ -77,6 +77,10 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
+    node.parameters.simulate = True
+    node.parameters.ramp_duration = 1000
+    node.parameters.buffer_duration = 1000
+    node.parameters.qubit_to_pulse = "q1"
     pass
 
 
@@ -135,8 +139,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 dot_pair = qubit_pair.quantum_dot_pair
                 op_name = "readout" + f"_{dot_pair.name}"
 
-                # Use the first sensor dot in the list of sensors associated with the quantum dot pair
+                # Use the first sensor dot in the list of sensors associated with the quantum dot pair, 
+                # so that we can extract the readout_resonator element and readout_len 
                 sensor = dot_pair.sensor_dots[0]
+                rr = sensor.readout_resonator
+                readout_len = rr.operations[op_name].length
 
                 # ── INNER LOOP: sweep sensor plunger gate voltage ──────────
                 with for_(*from_array(detuning, detuning_array)):
@@ -152,28 +159,31 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         dot_pair.macros[node.parameters.initialization_macro].apply()
 
                     if node.parameters.qubit_to_pulse is not None:
+                        # Optionally drive the qubit with an x180 pulse
                         q = node.machine.qubits[node.parameters.qubit_to_pulse]
+
+                        # Since the qubit's xy component is a separate element in QUA, ensure that this is exactly aligned to the VoltageSequence
+                        align(q.xy.id, dot_pair.physical_channel.id)
                         q.x180()
+                        align(q.xy.id, dot_pair.physical_channel.id)
+
+                    # Make sure to align the readout resonator to the end of the initialize, or the end of the qubit's pulse
+                    align(rr.id, dot_pair.physical_channel.id)
 
                     # ── STEP 2 - RAMP: Ramp to the correct detuning point ──────────
 
                     # First ramp to the fixed detuning point
+                    # The point duration should cover both the buffer AND the readout length
                     dot_pair.ramp_to_voltages(
                         {dot_pair.name: detuning, dot_pair.barrier_gate.name: node.parameters.barrier_gate_voltage},
                         ramp_duration=node.parameters.ramp_duration,
-                        duration=node.parameters.buffer_duration,
+                        duration=node.parameters.buffer_duration + readout_len,
                     )
 
                     # ── STEP 3 - MEASURE: Perform the measurement at the PSB point ──────────
 
-                    rr = sensor.readout_resonator
-                    readout_length = rr.operations[op_name].length
-
-                    # Make sure to track the duration of the readout pulse. This is to ensure that the compensation pulse calculation is correct
-                    dot_pair.voltage_sequence.track_sticky_duration(readout_length)
-
-                    # Make sure to align the measure command to be AFTER the ramp + wait
-                    align(rr.id, dot_pair.physical_channel.id)
+                    # Readout resonator sits idle during ramp + buffer
+                    rr.wait((node.parameters.ramp_duration + node.parameters.buffer_duration) // 4)
 
                     # Play the "readout_{quantum_dot_pair.name}" pulse and integrate I/Q into I[i], Q[i]
                     rr.measure(op_name, qua_vars=(I[i], Q[i]))
@@ -218,7 +228,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        "samples": samples,
+        # "samples": samples,
     }
 
 
