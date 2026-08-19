@@ -13,6 +13,7 @@ from qualang_tools.units import unit
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.common_utils.experiment import get_sensors
+from calibration_utils.bias_tee_filters_single_shot import get_elements
 from calibration_utils.bias_tee_filters import (
     Parameters,
     process_raw_dataset,
@@ -26,12 +27,14 @@ from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
-        BIAS TEE FILTERS CHARACTERIZATION
-This measurement aims to characterize the bias tees at the device level, in order to extract the relevant digital
-filter coefficients. This calibration is performed by tuning the sensor, and tuning the plunger dot gate voltage
-on top of a Coulomb peak. A square wave is sent through the plunger at varying frequencies, and the response of the
-sensor is measured. High-frequency square waves pass through to the device undistorted, whereas lower frequency square
-waves decay with time. This manifests in the integrated signal measured by the sensor.
+BIAS TEE FILTERS CHARACTERIZATION
+
+This sequence characterizes the device-level bias-tee response of one or more swept
+elements by driving a square-wave voltage step at varying frequencies and measuring the
+integrated sensor response. High-frequency square waves pass to the device with little
+distortion, while lower-frequency square waves decay through the bias tee and therefore
+reduce the measured response. Fitting this transfer function yields the effective
+high-pass time constant and the corresponding OPX exponential-filter parameter.
 
 
 Prerequisites:
@@ -85,12 +88,9 @@ node.machine = Quam.load()
 )
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    # ── Experiment parameters (Python side) ──────────────────────────────
     n_avg = node.parameters.num_shots
-    if node.parameters.elements is None:
-        node.parameters.elements = list(node.machine.quantum_dots.keys())
-    node.namespace["elements"] = elements = [
-        node.machine.get_component(el) for el in node.parameters.elements
-    ]
+    node.namespace["elements"] = elements = get_elements(node)
     node.namespace["sensors"] = sensors = get_sensors(node)
     if len(sensors) != 1:
         raise ValueError(
@@ -133,9 +133,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     max_periods = int(num_periods.max())
     amp_array = np.tile([amp_val, -amp_val], max_periods).tolist()
 
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
         seq = node.machine.voltage_sequences[vgs_id]
 
+        # Real-time variables:
+        # n           : shot counter
+        # half_period : current half-period of the square wave
+        # n_periods   : number of full periods to play at this frequency
+        # square_wave_idx : walks the precomputed +/-amplitude sequence
+        # I_all/Q_all : per-element, per-sensor integrated IQ values
+        # I_st/Q_st   : streams used to transfer one averaged point per frequency
         n = declare(int)
         n_st = declare_stream()
 
@@ -167,7 +175,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Align everything first
                     align()
 
-                    # Dispatch measurements to sensor elements (runs concurrently on different elements)
+                    # Measure the sensor response once for the current square-wave frequency.
                     for multiplexed_sensors in sensors.batch():
                         for i, s in multiplexed_sensors.items():
                             rr = s.readout_resonator
@@ -177,6 +185,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
 
+                    # Play the precomputed +/-amplitude sequence long enough to cover the
+                    # fixed acquisition window for this swept frequency.
                     with for_(
                         square_wave_idx,
                         0,
@@ -187,6 +197,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         seq.step_to_voltages(
                             voltages={el.name: amp}, duration=half_period
                         )
+                    # Return to zero before moving to the next element/frequency.
                     seq.ramp_to_zero(ramp_duration=16)
                     align()
                 seq.ramp_to_zero()
@@ -250,7 +261,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -383,4 +393,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()
