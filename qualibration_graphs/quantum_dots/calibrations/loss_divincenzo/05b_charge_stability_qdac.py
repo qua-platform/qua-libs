@@ -89,6 +89,14 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.simulate = True
+    # node.parameters.x_span = 0.12
+    # node.parameters.y_span = 0.12
+    # node.parameters.x_points = 6
+    # node.parameters.y_points = 9
+    # node.parameters.num_shots = 1
+    # node.parameters.use_validation = False
+    # node.parameters.simulation_duration_ns = 200000
     pass
 
 
@@ -158,15 +166,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             scan_mode=scan_mode,
         )
 
-    # Case 2: Y on QDAC (slow), X on OPX (fast)
+    # Case 2: both axes on the QDAC
     elif x_ext and y_ext:
-        build_sweep_axes(node, x_volts=x_volts, y_volts=y_volts, scan_mode=scan_mode)
-        x_object = node.machine.get_component(x_axis_name)
-        y_object = node.machine.get_component(y_axis_name)
+        build_sweep_axes(
+            node,
+            x_volts=x_volts,
+            y_volts=y_volts,
+            slow_axis_name=y_axis_name,
+            fast_axis_name=x_axis_name,
+            scan_mode=scan_mode,
+        )
         virtual_dc_set = node.machine.virtual_dc_sets[vgs_id]
 
-        _, trig_axis_name = select_scan_trigger(x_axis_name, y_axis_name, virtual_dc_set)
-        trig_object = x_object if trig_axis_name == x_axis_name else y_object
+        _, trigger_gate_name = select_scan_trigger(x_axis_name, y_axis_name, virtual_dc_set)
+        trigger_gate = virtual_dc_set.channels[trigger_gate_name]
 
         with program() as node.namespace["qua_program"]:
 
@@ -192,7 +205,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         trig_counter + 1,
                     ):
                         # Play the chosen trigger
-                        trig_object.physical_channel.dac_spec.opx_trigger_out.play("trigger")
+                        trigger_gate.physical_channel.play("trigger")
 
                         # Wait for the trigger to be processed
                         wait(node.parameters.post_trigger_wait_ns // 4)
@@ -237,7 +250,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        "samples": samples,
+        # "samples": samples,
     }
 
 
@@ -245,7 +258,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program, and fetch raw I/Q into ``ds_raw``."""
-    qmm = node.machine.connect()
+    qmm = node.machine.connect(skip_dacs = False)
 
     # Set the voltages based on whether a) A desired offset is supplied and b) whether the axis is external. If both are satisfied, the offset is applied.
     voltages_to_set = {
@@ -291,7 +304,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate validation data}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation or node.parameters.simulate)
 def simulate_data(node: QualibrationNode[Parameters, Quam]):
     """Generate synthetic charge-stability data for pipeline validation (placeholder)."""
     pass
@@ -310,7 +323,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Analyse_data}
-@node.run_action(skip_if=not node.parameters.perform_edge_analysis)
+@node.run_action(skip_if=not node.parameters.perform_edge_analysis or node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
     (
@@ -321,7 +334,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
-@node.run_action()
+@node.run_action(skip_if = node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Build the node figures from the raw and fitted charge-stability data."""
     point_kwargs = {}

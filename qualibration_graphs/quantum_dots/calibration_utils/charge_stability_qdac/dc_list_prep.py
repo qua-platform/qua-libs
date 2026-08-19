@@ -1,13 +1,17 @@
 import numpy as np
 from typing import Dict, List, Union, Sequence
 
+from quam.components.pulses import SquarePulse
 from quam_builder.architecture.quantum_dots.components import VirtualDCSet
 from qualibrate.core import QualibrationNode
 
 from calibration_utils.charge_stability_opx import get_axis_names_and_validate, ScanMode
-from calibration_utils.charge_stability_qdac import get_voltage_arrays
+from .helper_utils import get_voltage_arrays
 
 __all__ = ["prepare_dc_lists", "select_scan_trigger"]
+
+
+TRIGGER_PULSE_LENGTH_NS = 1000
 
 
 def _find_physical_dc_lists(
@@ -103,6 +107,34 @@ def _find_trigger_in(
     return trigger
 
 
+def _resolve_trigger_gate(
+    axis_name: str,
+    physical_dc_lists: Dict[str, List[float]],
+    virtual_dc_set: VirtualDCSet,
+) -> tuple[int, str]:
+    for ch_name in physical_dc_lists.keys():
+        gate = virtual_dc_set.channels[ch_name]
+        spec = getattr(gate, "qdac_spec", None)
+        if spec is None:
+            continue
+        trig = getattr(spec, "qdac_trigger_in", None)
+        if trig is None:
+            continue
+        if len(getattr(gate, "digital_outputs", {}) or {}) == 0:
+            raise ValueError(
+                f"Physical gate '{ch_name}' provides qdac_trigger_in={trig}, "
+                "but it has no digital_outputs to emit an OPX trigger pulse."
+            )
+        if "trigger" not in gate.operations:
+            gate.operations["trigger"] = SquarePulse(
+                amplitude=0.0,
+                length=TRIGGER_PULSE_LENGTH_NS,
+                digital_marker="ON",
+            )
+        return trig, ch_name
+    raise ValueError(f"No trigger-capable physical gate found for axis '{axis_name}'.")
+
+
 def _load_physical_dc_lists(
     node: QualibrationNode,
     physical_dc_lists: Dict[str, List[float]],
@@ -148,9 +180,17 @@ def prepare_dc_lists(
         resolved_x_offset = _get_offset(x_axis_name, x_offset, virtual_dc_set)
         node.namespace["resolved_offsets"] = node.namespace.get("resolved_offsets", {})
         node.namespace["resolved_offsets"][x_axis_name] = resolved_x_offset
-        x_array = x_volts_no_offset + resolved_x_offset
+        # x_array = x_volts_no_offset + resolved_x_offset
+
+        # Find the right x_array based on the scan mode (Raster vs SwitchRaster)
+        scan_mode = node.namespace["scan_mode"]
+        if scan_mode.name == "spiral": 
+            raise ValueError("Spiral scan pattern does not work with mixed axes. Please choose another.")
+        x_array = scan_mode.get_y_axis_order(x_volts_no_offset + resolved_x_offset)
+
         physical_dc_lists = _find_physical_dc_lists(virtual_dc_set, x_axis_name, x_array)
-        trig = _find_trigger_in(x_axis_name, physical_dc_lists, virtual_dc_set)
+        trig, trigger_gate_name = _resolve_trigger_gate(x_axis_name, physical_dc_lists, virtual_dc_set)
+        node.namespace["trigger_gate_name"] = trigger_gate_name
         _load_physical_dc_lists(node, physical_dc_lists, virtual_dc_set, trig)
         return
 
@@ -158,9 +198,17 @@ def prepare_dc_lists(
         resolved_y_offset = _get_offset(y_axis_name, y_offset, virtual_dc_set)
         node.namespace["resolved_offsets"] = node.namespace.get("resolved_offsets", {})
         node.namespace["resolved_offsets"][y_axis_name] = resolved_y_offset
-        y_array = y_volts_no_offset + resolved_y_offset
+        # y_array = y_volts_no_offset + resolved_y_offset
+        
+        # Find the right x_array based on the scan mode (Raster vs SwitchRaster)
+        scan_mode = node.namespace["scan_mode"]
+        if scan_mode.name == "spiral": 
+            raise ValueError("Spiral scan pattern does not work with mixed axes. Please choose another.")
+        y_array = scan_mode.get_y_axis_order(y_volts_no_offset + resolved_y_offset)
+
         physical_dc_lists = _find_physical_dc_lists(virtual_dc_set, y_axis_name, y_array)
-        trig = _find_trigger_in(y_axis_name, physical_dc_lists, virtual_dc_set)
+        trig, trigger_gate_name = _resolve_trigger_gate(y_axis_name, physical_dc_lists, virtual_dc_set)
+        node.namespace["trigger_gate_name"] = trigger_gate_name
         _load_physical_dc_lists(node, physical_dc_lists, virtual_dc_set, trig)
         return
 
@@ -178,7 +226,8 @@ def prepare_dc_lists(
         physical_dc_lists = _find_physical_dc_list_per_pixel(
             virtual_dc_set, x_axis_name, y_axis_name, x_array, y_array, node.namespace["scan_mode"]
         )
-        trig = _find_trigger_in(x_axis_name, physical_dc_lists, virtual_dc_set)
+        trig, trigger_gate_name = _resolve_trigger_gate(x_axis_name, physical_dc_lists, virtual_dc_set)
+        node.namespace["trigger_gate_name"] = trigger_gate_name
         _load_physical_dc_lists(node, physical_dc_lists, virtual_dc_set, trig)
 
 
@@ -188,13 +237,11 @@ def select_scan_trigger(
     virtual_dc_set: VirtualDCSet,
 ) -> tuple[int, str]:
     """Probe X then Y with dummy values to find which physical channels each
-    touches, and return the trigger for whichever axis has one, plus which
-    axis it belongs to."""
+    touches, and return the trigger plus the physical gate name that can emit it."""
     for axis_name in (x_axis_name, y_axis_name):
         probe_lists = _find_physical_dc_lists(virtual_dc_set, axis_name, [0.0, 1.0])
         try:
-            trig = _find_trigger_in(probe_lists, virtual_dc_set)
-            return trig, axis_name
+            return _resolve_trigger_gate(axis_name, probe_lists, virtual_dc_set)
         except ValueError:
             continue
     raise ValueError(f"No trigger found for physical channels touched by '{x_axis_name}' or '{y_axis_name}'.")
