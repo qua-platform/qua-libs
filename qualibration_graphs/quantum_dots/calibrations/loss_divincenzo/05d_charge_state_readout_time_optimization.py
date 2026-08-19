@@ -73,6 +73,9 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.simulate = True
+    # node.parameters.detuning_02 = 0.11
+    # node.parameters.simulation_duration_ns = 200000
     pass
 
 
@@ -111,8 +114,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     unique_sensors = {s.name: s for pair in quantum_dot_pairs for s in pair.sensor_dots}
     for s in unique_sensors.values():
         for pair in quantum_dot_pairs:
+            if s.name not in [sd.name for sd in pair.sensor_dots]:   # compare by name, not identity
+                continue
+            op_name = f"readout_{pair.name}"
+            resolved_op_name = op_name if op_name in s.readout_resonator.operations else "readout"
+
             with tracked_updates(s.readout_resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
-                resonator.operations[f"readout_{pair.name}"].length = node.parameters.integration_time_stop
+                resonator.operations[resolved_op_name].length = node.parameters.integration_time_stop
                 node.namespace["tracked_resonators"].append(resonator)
 
     # Register the sweep axes to be added to the dataset when fetching data.
@@ -246,7 +254,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        "samples": samples,
+        # "samples": samples,
     }
 
 
