@@ -28,9 +28,7 @@ class FitParameters:
     success: bool
 
 
-def _exponential_decay_model(
-    t: np.ndarray, A: float, tau: float, B: float
-) -> np.ndarray:
+def _exponential_decay_model(t: np.ndarray, A: float, tau: float, B: float) -> np.ndarray:
     """Exponential decay: S(t) = A * exp(-t / τ) + B.
 
     After a voltage step through a bias tee (high-pass RC), the signal
@@ -190,18 +188,12 @@ def fit_raw_data(
                     fit_params.offset,
                 )
                 fit_key = f"fit_{el.name}_{i + 1}"
-                ds_fit = ds_fit.assign(
-                    {fit_key: xr.DataArray(fit_curve, dims=["time"])}
-                )
+                ds_fit = ds_fit.assign({fit_key: xr.DataArray(fit_curve, dims=["time"])})
 
-                correction = fit_params.amplitude * (
-                    1 - np.exp(-time_ns / fit_params.time_constant_ns)
-                )
+                correction = fit_params.amplitude * (1 - np.exp(-time_ns / fit_params.time_constant_ns))
                 corrected = signal + correction
                 corr_key = f"amplitude_corrected_{el.name}_{i + 1}"
-                ds_fit = ds_fit.assign(
-                    {corr_key: xr.DataArray(corrected, dims=["time"])}
-                )
+                ds_fit = ds_fit.assign({corr_key: xr.DataArray(corrected, dims=["time"])})
 
     return ds_fit, fit_results
 

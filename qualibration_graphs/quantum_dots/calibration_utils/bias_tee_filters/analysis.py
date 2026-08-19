@@ -192,19 +192,13 @@ def fit_raw_data(
                     fit_params.offset,
                 )
                 fit_key = f"fit_{el.name}_{i + 1}"
-                ds_fit = ds_fit.assign(
-                    {fit_key: xr.DataArray(fit_curve, dims=["frequency"])}
-                )
+                ds_fit = ds_fit.assign({fit_key: xr.DataArray(fit_curve, dims=["frequency"])})
 
-                H = frequencies / np.sqrt(
-                    frequencies**2 + fit_params.cutoff_frequency_Hz**2
-                )
+                H = frequencies / np.sqrt(frequencies**2 + fit_params.cutoff_frequency_Hz**2)
                 correction = fit_params.amplitude * (1 - H)
                 corrected = signal + correction
                 corr_key = f"amplitude_corrected_{el.name}_{i + 1}"
-                ds_fit = ds_fit.assign(
-                    {corr_key: xr.DataArray(corrected, dims=["frequency"])}
-                )
+                ds_fit = ds_fit.assign({corr_key: xr.DataArray(corrected, dims=["frequency"])})
 
     return ds_fit, fit_results
 

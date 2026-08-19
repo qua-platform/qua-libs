@@ -32,9 +32,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     """
     u = unit(coerce_to_integer=True)
 
-    node.namespace["elements"] = elements = [
-        node.machine.get_component(el) for el in node.parameters.elements
-    ]
+    node.namespace["elements"] = elements = [node.machine.get_component(el) for el in node.parameters.elements]
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     f_start = node.parameters.square_wave_frequency_start_MHz * u.MHz
