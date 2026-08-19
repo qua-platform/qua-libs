@@ -84,7 +84,10 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.use_simulated_data
+)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
 
@@ -97,8 +100,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Number of shots per single shot measurement
     n_avg = node.parameters.num_shots
-
-    # TODO: Can we not average the bias tee value from the multiple sensors?
+    
+    # TODO: Can we not average the bias tee value from the multiple sensors? 
     if len(sensors) != 1:
         raise ValueError(
             "04a_bias_tee_filters_single_shot requires exactly one sensor "
@@ -148,8 +151,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_st = declare_stream()
         ind = declare(int)
 
-        I_all = {el.name: [declare(fixed, size=num_chunks) for _ in sensors] for el in elements}
-        Q_all = {el.name: [declare(fixed, size=num_chunks) for _ in sensors] for el in elements}
+        I_all = {
+            el.name: [declare(fixed, size=num_chunks) for _ in sensors]
+            for el in elements
+        }
+        Q_all = {
+            el.name: [declare(fixed, size=num_chunks) for _ in sensors]
+            for el in elements
+        }
         I_st_all = {el.name: [declare_stream() for _ in sensors] for el in elements}
         Q_st_all = {el.name: [declare_stream() for _ in sensors] for el in elements}
 
@@ -160,14 +169,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             I_st = I_st_all[el.name]
             Q_st = Q_st_all[el.name]
 
-            # Inner python loop over the sensors involved in this measurement
+            # Inner python loop over the sensors involved in this measurement
             for multiplexed_sensors in sensors.batch():
 
                 # ── OUTER QUA LOOP: repeat the measurement n_avg times ───────────────────────
                 with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st)  # tell the PC which shot we are on
+                    save(n, n_st) # tell the PC which shot we are on
                     # Optionally wait at the start of the averaging loop
-                    if node.parameters.reset_wait_time > 0:
+                    if node.parameters.reset_wait_time > 0: 
                         wait(node.parameters.reset_wait_time // 4)
 
                     # Align everything first
@@ -187,16 +196,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         rr = s.readout_resonator
                         # Resonator sits idle for the wait time
                         rr.wait(wait_time // 4)
-                        # Measure for measurement_time, and slice the measurement into chunks, saving each into a QUA array
+                        # Measure for measurement_time, and slice the measurement into chunks, saving each into a QUA array
                         I[i], Q[i] = rr.measure_sliced(
                             pulse_name="readout",
                             num_segments=num_chunks,
                         )
 
                     # Return to zero and apply the compensation pulse before the next shot.
-                    seq.apply_compensation_pulse(return_to_zero=True, go_to_zero=True)
+                    seq.apply_compensation_pulse(
+                        return_to_zero=True, go_to_zero=True
+                    )
 
-                    # For each sensor, loop over the number of elements in the chunked array and save them individually.
+                    # For each sensor, loop over the number of elements in the chunked array and save them individually. 
                     for i, s in multiplexed_sensors.items():
                         with for_(ind, 0, ind < num_chunks, ind + 1):
                             save(I[i][ind], I_st[i])
@@ -210,8 +221,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # .buffer(len(time_array)) : group points along the time axis
                     # .average() : group points along the repetitions axis
                     # Result : 2D trace I(time_array, n_avg), Q(time_array, n_avg) per sensor per element
-                    I_st_all[el.name][i].buffer(len(time_array)).average().save(f"I_{el.name}_{i + 1}")
-                    Q_st_all[el.name][i].buffer(len(time_array)).average().save(f"Q_{el.name}_{i + 1}")
+                    I_st_all[el.name][i].buffer(len(time_array)).average().save(
+                        f"I_{el.name}_{i + 1}"
+                    )
+                    Q_st_all[el.name][i].buffer(len(time_array)).average().save(
+                        f"Q_{el.name}_{i + 1}"
+                    )
 
 
 # %% {Simulate}
@@ -226,7 +241,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
+    samples, fig, wf_report = simulate_and_plot(
+        qmm, config, node.namespace["qua_program"], node.parameters
+    )
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -239,7 +256,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None
+    or node.parameters.simulate
+    or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -303,7 +322,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     if node.parameters.elements is None:
         node.parameters.elements = list(node.machine.quantum_dots.keys())
-    node.namespace["elements"] = [node.machine.get_component(el) for el in node.parameters.elements]
+    node.namespace["elements"] = [
+        node.machine.get_component(el) for el in node.parameters.elements
+    ]
     node.namespace["sensors"] = get_sensors(node)
     if len(node.namespace["sensors"]) != 1:
         raise ValueError(
