@@ -29,9 +29,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         The function writes ``elements``, ``sensors``, and ``sweep_axes``
         into ``node.namespace``.
     """
-    node.namespace["elements"] = elements = [
-        node.machine.get_component(el) for el in node.parameters.elements
-    ]
+    node.namespace["elements"] = elements = [node.machine.get_component(el) for el in node.parameters.elements]
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     num_chunks = node.parameters.measurement_time // node.parameters.integration_time

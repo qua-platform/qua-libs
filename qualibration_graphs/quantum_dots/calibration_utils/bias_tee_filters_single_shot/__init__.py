@@ -15,5 +15,5 @@ __all__ = [
     "log_fitted_results",
     "plot_all",
     "generate_simulated_dataset",
-    "get_elements"
+    "get_elements",
 ]

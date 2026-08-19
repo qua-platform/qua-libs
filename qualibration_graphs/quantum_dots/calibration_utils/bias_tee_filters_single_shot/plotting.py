@@ -54,9 +54,7 @@ def plot_all(
             time_us = time_ns / 1e3
             amplitude = ds[amp_key].values
 
-            ax.plot(
-                time_us, amplitude * 1e3, "o", markersize=3, label="Raw data", alpha=0.7
-            )
+            ax.plot(time_us, amplitude * 1e3, "o", markersize=3, label="Raw data", alpha=0.7)
 
             amp_corr_key = f"amplitude_corrected_{el.name}_{i + 1}"
             if amp_corr_key in ds:

@@ -82,10 +82,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.use_simulated_data
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # ── Experiment parameters (Python side) ──────────────────────────────
@@ -94,8 +91,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = sensors = get_sensors(node)
     if len(sensors) != 1:
         raise ValueError(
-            "04b_bias_tee_filters requires exactly one sensor because it writes "
-            "one output filter per element."
+            "04b_bias_tee_filters requires exactly one sensor because it writes " "one output filter per element."
         )
 
     u = unit(coerce_to_integer=True)
@@ -123,12 +119,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # `total_length_ns` acquisition window, and `amp_array`/`square_wave_idx` (below)
     # walk the precomputed +/-amplitude half-periods via `for_each_`.
     half_periods_ns = np.round(1e9 / (2 * np.flip(frequencies)) / 4).astype(int) * 4
-    total_length_ns = int(
-        max([s.readout_resonator.operations["readout"].length for s in sensors]) * 5
-    )
-    num_periods = np.maximum(
-        np.ceil(total_length_ns / (half_periods_ns * 2)).astype(int), 1
-    )
+    total_length_ns = int(max([s.readout_resonator.operations["readout"].length for s in sensors]) * 5)
+    num_periods = np.maximum(np.ceil(total_length_ns / (half_periods_ns * 2)).astype(int), 1)
     amp_val = node.parameters.square_wave_amplitude / 2
     max_periods = int(num_periods.max())
     amp_array = np.tile([amp_val, -amp_val], max_periods).tolist()
@@ -194,9 +186,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         square_wave_idx + 1,
                     ):
                         assign(amp, amp_array_qua[square_wave_idx])
-                        seq.step_to_voltages(
-                            voltages={el.name: amp}, duration=half_period
-                        )
+                        seq.step_to_voltages(voltages={el.name: amp}, duration=half_period)
                     # Return to zero before moving to the next element/frequency.
                     seq.ramp_to_zero(ramp_duration=16)
                     align()
@@ -206,12 +196,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for el in elements:
                 for i in range(num_sensors):
-                    I_st_all[el.name][i].buffer(len(frequencies)).average().save(
-                        f"I_{el.name}_{i + 1}"
-                    )
-                    Q_st_all[el.name][i].buffer(len(frequencies)).average().save(
-                        f"Q_{el.name}_{i + 1}"
-                    )
+                    I_st_all[el.name][i].buffer(len(frequencies)).average().save(f"I_{el.name}_{i + 1}")
+                    Q_st_all[el.name][i].buffer(len(frequencies)).average().save(f"Q_{el.name}_{i + 1}")
 
 
 # %% {Simulate}
@@ -227,9 +213,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -240,9 +224,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Execute}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None
-    or node.parameters.simulate
-    or node.parameters.use_simulated_data
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
@@ -274,14 +256,11 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     """Generate simulated IQ data so the full analysis pipeline can run without hardware."""
     if node.parameters.elements is None:
         node.parameters.elements = list(node.machine.quantum_dots.keys())
-    node.namespace["elements"] = [
-        node.machine.get_component(el) for el in node.parameters.elements
-    ]
+    node.namespace["elements"] = [node.machine.get_component(el) for el in node.parameters.elements]
     node.namespace["sensors"] = get_sensors(node)
     if len(node.namespace["sensors"]) != 1:
         raise ValueError(
-            "04b_bias_tee_filters requires exactly one sensor because it writes "
-            "one output filter per element."
+            "04b_bias_tee_filters requires exactly one sensor because it writes " "one output filter per element."
         )
     u = unit(coerce_to_integer=True)
     node.namespace["frequencies"] = frequencies = np.arange(
@@ -310,14 +289,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     if node.parameters.elements is None:
         node.parameters.elements = list(node.machine.quantum_dots.keys())
-    node.namespace["elements"] = [
-        node.machine.get_component(el) for el in node.parameters.elements
-    ]
+    node.namespace["elements"] = [node.machine.get_component(el) for el in node.parameters.elements]
     node.namespace["sensors"] = get_sensors(node)
     if len(node.namespace["sensors"]) != 1:
         raise ValueError(
-            "04b_bias_tee_filters requires exactly one sensor because it writes "
-            "one output filter per element."
+            "04b_bias_tee_filters requires exactly one sensor because it writes " "one output filter per element."
         )
 
 
