@@ -74,7 +74,7 @@ def build_qua_program_with_mixed_axes(
                 # ── MIDDLE LOOP: average over shots ───────────────────────
                 with for_(n, 0, n < n_avg, n + 1):
                     save(n, n_st)  # update the progress bar
-                    seq.ramp_to_zero(ramp_duration = node.parameters.ramp_duration, reset_tracker = True)
+                    seq.ramp_to_zero(ramp_duration=node.parameters.ramp_duration, reset_tracker=True)
                     align()
 
                     if node.parameters.per_line_wait > 0:
@@ -87,10 +87,10 @@ def build_qua_program_with_mixed_axes(
                         )
 
                     # Wait for QDAC to settle at the new X voltage
-                    # First a global wait command in clock cycles, and then ensure that the sticky duration for this time is also tracked. 
+                    # First a global wait command in clock cycles, and then ensure that the sticky duration for this time is also tracked.
                     wait(node.parameters.post_trigger_wait_ns // 4)
                     seq.track_sticky_duration(node.parameters.post_trigger_wait_ns)
-                    #seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
+                    # seq.step_to_voltages({}, duration=node.parameters.post_trigger_wait_ns)
 
                     # ── INNER LOOP: fast axis (y) ──────────────────────
                     # OPX ramps Y through y_volts (scan_mode sets order)
@@ -107,7 +107,14 @@ def build_qua_program_with_mixed_axes(
                             # Select the resonator tied to the sensor
                             rr = sensor.readout_resonator
                             # Wait for the ramp + hold duration
-                            rr.wait((node.parameters.post_trigger_wait_ns + node.parameters.ramp_duration + node.parameters.hold_duration) // 4)
+                            rr.wait(
+                                (
+                                    node.parameters.post_trigger_wait_ns
+                                    + node.parameters.ramp_duration
+                                    + node.parameters.hold_duration
+                                )
+                                // 4
+                            )
                             # Measure using the selected resonator
                             rr.measure("readout", qua_vars=(I[i], Q[i]))
                             # Post-measurement wait (Optional)
@@ -119,9 +126,9 @@ def build_qua_program_with_mixed_axes(
 
                     if node.parameters.per_line_compensation:
                         seq.apply_compensation_pulse(max_voltage=node.parameters.max_compensation_voltage)
-                        seq.ramp_to_zero(ramp_duration = node.parameters.ramp_duration, reset_tracker = True)
+                        seq.ramp_to_zero(ramp_duration=node.parameters.ramp_duration, reset_tracker=True)
 
-                seq.ramp_to_zero(ramp_duration = node.parameters.ramp_duration, reset_tracker = True)
+                seq.ramp_to_zero(ramp_duration=node.parameters.ramp_duration, reset_tracker=True)
         # ── Post-processing on the OPX before data reaches the PC ──
         with stream_processing():
             n_st.save("n")  # save the shot counter for the progress bar
@@ -130,5 +137,9 @@ def build_qua_program_with_mixed_axes(
                 # Individual shots are not retained.
                 # .buffer(len(y)).buffer(len(x)) : group into 2D grid (y fast, x slow)
                 # .average() : average over all shots (n_avg repetitions)
-                I_st[i].buffer(len(fast_axis_values)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(slow_axis_values)).save(f"I{i}")
-                Q_st[i].buffer(len(fast_axis_values)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(slow_axis_values)).save(f"Q{i}")
+                I_st[i].buffer(len(fast_axis_values)).buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    len(slow_axis_values)
+                ).save(f"I{i}")
+                Q_st[i].buffer(len(fast_axis_values)).buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    len(slow_axis_values)
+                ).save(f"Q{i}")

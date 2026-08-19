@@ -258,7 +258,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program, and fetch raw I/Q into ``ds_raw``."""
-    qmm = node.machine.connect(skip_dacs = False)
+    qmm = node.machine.connect(skip_dacs=False)
 
     # Set the voltages based on whether a) A desired offset is supplied and b) whether the axis is external. If both are satisfied, the offset is applied.
     voltages_to_set = {
@@ -304,7 +304,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate validation data}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation or node.parameters.simulate
+)
 def simulate_data(node: QualibrationNode[Parameters, Quam]):
     """Generate synthetic charge-stability data for pipeline validation (placeholder)."""
     pass
@@ -334,7 +336,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
-@node.run_action(skip_if = node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Build the node figures from the raw and fitted charge-stability data."""
     point_kwargs = {}

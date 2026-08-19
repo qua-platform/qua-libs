@@ -184,7 +184,7 @@ def prepare_dc_lists(
 
         # Find the right x_array based on the scan mode (Raster vs SwitchRaster)
         scan_mode = node.namespace["scan_mode"]
-        if scan_mode.name == "spiral": 
+        if scan_mode.name == "spiral":
             raise ValueError("Spiral scan pattern does not work with mixed axes. Please choose another.")
         x_array = scan_mode.get_y_axis_order(x_volts_no_offset + resolved_x_offset)
 
@@ -199,10 +199,10 @@ def prepare_dc_lists(
         node.namespace["resolved_offsets"] = node.namespace.get("resolved_offsets", {})
         node.namespace["resolved_offsets"][y_axis_name] = resolved_y_offset
         # y_array = y_volts_no_offset + resolved_y_offset
-        
+
         # Find the right x_array based on the scan mode (Raster vs SwitchRaster)
         scan_mode = node.namespace["scan_mode"]
-        if scan_mode.name == "spiral": 
+        if scan_mode.name == "spiral":
             raise ValueError("Spiral scan pattern does not work with mixed axes. Please choose another.")
         y_array = scan_mode.get_y_axis_order(y_volts_no_offset + resolved_y_offset)
 

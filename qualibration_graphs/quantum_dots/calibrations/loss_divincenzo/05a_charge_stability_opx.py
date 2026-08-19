@@ -188,7 +188,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 assign(buf_idx, 0)  # Start filling the buffer array from 0
 
                 # ── INNER 2D LOOP: step the voltages to each pixel and measure ────────────────
-                seq.ramp_to_zero(ramp_duration = node.parameters.ramp_duration, reset_tracker = True)
+                seq.ramp_to_zero(ramp_duration=node.parameters.ramp_duration, reset_tracker=True)
                 align()
 
                 # scan_mode.qua_scan yields the x, y, and the save flag as QUA variables
@@ -229,7 +229,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 save(Q_buf[i][save_idx], Q_st[i])
                         assign(buf_idx, 0)
 
-                seq.ramp_to_zero(ramp_duration = node.parameters.ramp_duration, reset_tracker = True)
+                seq.ramp_to_zero(ramp_duration=node.parameters.ramp_duration, reset_tracker=True)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
