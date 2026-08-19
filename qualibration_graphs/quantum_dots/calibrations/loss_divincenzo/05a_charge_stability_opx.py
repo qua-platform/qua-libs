@@ -78,6 +78,14 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.run_in_video_mode = False
+    node.parameters.simulate = True
+    node.parameters.x_span = 0.12
+    node.parameters.y_span = 0.12
+    node.parameters.x_points = 3
+    node.parameters.y_points = 3
+    node.parameters.simulation_duration_ns = 150000
+    node.parameters.per_line_compensation = False
+    node.parameters.num_shots = 3
     pass
 
 
@@ -180,6 +188,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 assign(buf_idx, 0)  # Start filling the buffer array from 0
 
                 # ── INNER 2D LOOP: step the voltages to each pixel and measure ────────────────
+                seq.ramp_to_zero(ramp_duration = node.parameters.ramp_duration, reset_tracker = True)
+                align()
 
                 # scan_mode.qua_scan yields the x, y, and the save flag as QUA variables
                 for x, y, save_flag in scan_mode.qua_scan(
@@ -219,7 +229,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 save(Q_buf[i][save_idx], Q_st[i])
                         assign(buf_idx, 0)
 
-                seq.ramp_to_zero()
+                seq.ramp_to_zero(ramp_duration = node.parameters.ramp_duration, reset_tracker = True)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
@@ -242,7 +252,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        "samples": samples,
+        # "samples": samples,
     }
 
 
@@ -341,7 +351,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 from calibration_utils.run_video_mode import create_video_mode
 
 
-@node.run_action(skip_if=node.parameters.run_in_video_mode is False)
+@node.run_action(skip_if=node.parameters.run_in_video_mode is False or node.parameters.simulate)
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     """Run Video Mode directly from Qualibrate by checking the bool 'run_in_video_mode'."""
     node.machine.track_integrated_voltage = True
