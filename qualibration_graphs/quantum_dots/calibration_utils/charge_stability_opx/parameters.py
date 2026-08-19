@@ -56,13 +56,3 @@ class Parameters(
     NodeSpecificParameters,
 ):
     """05a: OPX charge stability map with optional video mode."""
-
-
-class OPXuDACParameters(
-    NodeParameters,
-    CommonNodeParameters,
-    NodeSpecificParameters,
-):
-    """05e: OPX charge stability map using user-specific DAC voltage sequences."""
-
-    plot_pca: bool = True

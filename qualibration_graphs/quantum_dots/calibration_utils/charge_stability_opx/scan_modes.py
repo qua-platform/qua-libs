@@ -70,9 +70,13 @@ class ScanMode(ABC):
 
     def compensate(self, seq, params):
         if params.per_line_compensation:
-            seq.apply_compensation_pulse(go_to_zero=True, return_to_zero=True)
+            seq.apply_compensation_pulse(
+                go_to_zero=True,
+                return_to_zero=True,
+                max_voltage=params.max_compensation_voltage,
+            )
         else:
-            seq.ramp_to_zero(ramp_duration=16)
+            seq.ramp_to_zero(ramp_duration=16, reset_tracker=True)
 
 
 class RasterScan(ScanMode):
