@@ -19,6 +19,7 @@ from calibration_utils.bias_tee_filters_single_shot import (
     log_fitted_results,
     plot_all,
     generate_simulated_dataset,
+    get_elements,
 )
 from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
@@ -26,12 +27,13 @@ from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
-        BIAS TEE FILTERS CHARACTERIZATION WITH SINGLE SHOT
-This measurement aims to characterize the bias tees at the device level, in order to extract the relevant digital
-filter coefficients. This calibration is performed by tuning the sensor, and tuning the plunger dot gate voltage
-on top of a Coulomb peak. A single DC step pulse is sent to the plunger gate, and the sensor is measured with time.
-Using a sliced demodulation, the resolution can be tuned. The resulting curve against the time after the pulse can
-be fitted with an exponential.
+BIAS TEE FILTERS CHARACTERIZATION WITH SINGLE SHOT
+
+This sequence characterizes the device-level bias-tee response of one or more swept
+elements by applying a single DC step and measuring the sensor response as a function of
+time. The readout is performed with sliced demodulation, so the time resolution is set by
+``integration_time``. The resulting transient is fitted with an exponential decay and
+used to derive the corresponding OPX exponential-filter parameter.
 
 
 Prerequisites:
@@ -58,7 +60,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="04c_bias_tee_filters_single_shot",  # Name should be unique
+    name="04a_bias_tee_filters_single_shot",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -71,6 +73,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # node.parameters.use_simulated_data = True
     # node.parameters.estimated_bias_tee_tau_ns = 20000  # ns
+    node.parameters.simulate = True
+    node.parameters.sensor_names = ["virtual_sensor_1"]
+    node.parameters.measurement_time = 10000
     pass
 
 
@@ -85,23 +90,48 @@ node.machine = Quam.load()
 )
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
-    if node.parameters.elements is None:
-        node.parameters.elements = list(node.machine.quantum_dots.keys())
-    node.namespace["elements"] = elements = [
-        node.machine.get_component(el) for el in node.parameters.elements
-    ]
+
+    # ── Experiment parameters (Python side) ──────────────────────────────
+
+    # First extract the relevant elements and sensors given in the node parameters
+    node.namespace["elements"], _ = elements, vgs_id = get_elements(node)
     node.namespace["sensors"] = sensors = get_sensors(node)
+    num_sensors = len(sensors)
+
+    # Number of shots per single shot measurement
+    n_avg = node.parameters.num_shots
+    
+    # TODO: Can we not average the bias tee value from the multiple sensors? 
     if len(sensors) != 1:
         raise ValueError(
-            "04c_bias_tee_filters_single_shot requires exactly one sensor "
+            "04a_bias_tee_filters_single_shot requires exactly one sensor "
             "because it writes one output filter per element."
         )
 
+    # Extend the readout pulse so one acquisition covers the full sliced-demodulation window.
+    tracked_resonators = []
+    for sensor in sensors:
+        with tracked_updates(sensor.readout_resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
+            resonator.operations["readout"].length = node.parameters.measurement_time
+            tracked_resonators.append(resonator)
+    node.namespace["tracked_resonators"] = tracked_resonators
+
+
+    # Set up the sweep. The total measurement time will be split into num_chunks sections
     num_chunks = node.parameters.measurement_time // node.parameters.integration_time
     if num_chunks < 1:
         raise ValueError("measurement_time must be at least integration_time.")
 
     time_array = (np.arange(num_chunks) + 0.5) * node.parameters.integration_time
+
+    # Wait briefly before measuring so the sliced demodulation starts after
+    # the leading edge transient has settled.
+    wait_time = node.parameters.wait_time_after_pulse
+
+    # Add margin so the sliced demodulation window stays fully inside the played pulse.
+    readout_len = int(np.round(node.parameters.measurement_time * 1.2 / 4) * 4)
+
+    # The swept axes. Buffer along the time axis and average over n_avg
     node.namespace["sweep_axes"] = {
         "time": xr.DataArray(
             time_array,
@@ -109,33 +139,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         ),
     }
 
-    tracked_resonators = []
-    for sensor in sensors:
-        resonator = tracked_updates(
-            sensor.readout_resonator,
-            auto_revert=False,
-            dont_assign_to_none=True,
-        ).__enter__()
-        resonator.operations["readout"].length = node.parameters.measurement_time
-        tracked_resonators.append(resonator)
-    node.namespace["tracked_resonators"] = tracked_resonators
-
-    n_avg = node.parameters.num_shots
-    num_sensors = len(sensors)
-
-    # TODO: Add a check for this. Possible to perform this node for dots in different gate sets?
-    vgs_id = elements[0].voltage_sequence.gate_set.id
-
-    # Pulse runs 20% longer than the measurement window so the sliced demodulation
-    # never reads past the end of the readout pulse (rounded to a 4 ns clock cycle).
-    pulse_time = int(np.round(node.parameters.measurement_time * 1.2 / 4) * 4)
-
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
         seq = node.machine.voltage_sequences[vgs_id]
 
+        # Real-time variables:
+        # n      : shot counter
+        # ind    : index over the sliced-demodulation chunks
+        # I_all/Q_all : per-element, per-sensor arrays of accumulated IQ chunks
+        # I_st/Q_st   : streams used to transfer the chunked IQ data back to the host
         n = declare(int)
         n_st = declare_stream()
-
         ind = declare(int)
 
         I_all = {
@@ -149,52 +163,65 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         I_st_all = {el.name: [declare_stream() for _ in sensors] for el in elements}
         Q_st_all = {el.name: [declare_stream() for _ in sensors] for el in elements}
 
+        # Outer python loop over all the elements in the measurement
         for el in elements:
             I = I_all[el.name]
             Q = Q_all[el.name]
             I_st = I_st_all[el.name]
             Q_st = Q_st_all[el.name]
+
+            # Inner python loop over the sensors involved in this measurement
             for multiplexed_sensors in sensors.batch():
+
+                # ── OUTER QUA LOOP: repeat the measurement n_avg times ───────────────────────
                 with for_(n, 0, n < n_avg, n + 1):
-                    save(n, n_st)
+                    save(n, n_st) # tell the PC which shot we are on
+                    # Optionally wait at the start of the averaging loop
+                    if node.parameters.reset_wait_time > 0: 
+                        wait(node.parameters.reset_wait_time // 4)
 
                     # Align everything first
                     align()
 
-                    # Extra settling time (ns) before the step so the sliced demodulation
-                    # starts after the voltage transient/electronics have settled.
-                    wait_time = 1000
-                    # Perform the single step. Minimum duration, as it is sticky anyway
+                    # Apply one step on the selected element and keep it in place
+                    # long enough to cover the entire readout window.
                     seq.step_to_voltages(
                         voltages={el.name: node.parameters.step_amplitude},
-                        duration=pulse_time + wait_time,
+                        duration=readout_len + wait_time,
                     )
 
-                    # Dispatch measurements to sensor elements (runs concurrently on different elements)
-
+                    # Measure the response with sliced demodulation. Each chunk integrates over
+                    # integration_time and is saved as one sample on the time axis.
                     for i, s in multiplexed_sensors.items():
+                        # Extract the readout resonator from the SensorDot
                         rr = s.readout_resonator
-                        rr.wait(wait_time)
-
+                        # Resonator sits idle for the wait time
+                        rr.wait(wait_time // 4)
+                        # Measure for measurement_time, and slice the measurement into chunks, saving each into a QUA array
                         I[i], Q[i] = rr.measure_sliced(
                             pulse_name="readout",
                             num_segments=num_chunks,
                         )
 
+                    # Return to zero and apply the compensation pulse before the next shot.
+                    seq.apply_compensation_pulse(
+                        return_to_zero=True, go_to_zero=True
+                    )
+
+                    # For each sensor, loop over the number of elements in the chunked array and save them individually. 
                     for i, s in multiplexed_sensors.items():
                         with for_(ind, 0, ind < num_chunks, ind + 1):
                             save(I[i][ind], I_st[i])
                             save(Q[i][ind], Q_st[i])
 
-                    align()
-                    seq.apply_compensation_pulse(
-                        return_to_zero=True, go_to_zero=True
-                    )
-
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
             for el in elements:
                 for i in range(num_sensors):
+                    # .buffer(len(time_array)) : group points along the time axis
+                    # .average() : group points along the repetitions axis
+                    # Result : 2D trace I(time_array, n_avg), Q(time_array, n_avg) per sensor per element
                     I_st_all[el.name][i].buffer(len(time_array)).average().save(
                         f"I_{el.name}_{i + 1}"
                     )
@@ -215,7 +242,6 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    # Simulate the QUA program, generate the waveform report and plot the simulated samples
     samples, fig, wf_report = simulate_and_plot(
         qmm, config, node.namespace["qua_program"], node.parameters
     )
@@ -223,7 +249,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        "samples": samples,
+        # "samples": samples,
     }
     for resonator in node.namespace.pop("tracked_resonators", []):
         resonator.revert_changes()
@@ -252,7 +278,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -266,15 +291,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     """Generate simulated IQ data so the full analysis pipeline can run without hardware."""
-    if node.parameters.elements is None:
-        node.parameters.elements = list(node.machine.quantum_dots.keys())
-    node.namespace["elements"] = [
-        node.machine.get_component(el) for el in node.parameters.elements
-    ]
+    node.namespace["elements"] = get_elements(node)
     node.namespace["sensors"] = get_sensors(node)
     if len(node.namespace["sensors"]) != 1:
         raise ValueError(
-            "04c_bias_tee_filters_single_shot requires exactly one sensor "
+            "04a_bias_tee_filters_single_shot requires exactly one sensor "
             "because it writes one output filter per element."
         )
     num_chunks = node.parameters.measurement_time // node.parameters.integration_time
@@ -308,7 +329,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = get_sensors(node)
     if len(node.namespace["sensors"]) != 1:
         raise ValueError(
-            "04c_bias_tee_filters_single_shot requires exactly one sensor "
+            "04a_bias_tee_filters_single_shot requires exactly one sensor "
             "because it writes one output filter per element."
         )
 
@@ -388,4 +409,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()

@@ -18,6 +18,10 @@ class NodeSpecificParameters(RunnableParameters):
     """The measurement time of the sensor."""
     integration_time: int = 1000
     """How much time to integrate to a single data point. Sliced demodulation will be used."""
+    wait_time_after_pulse: int = 1000
+    """The wait time after the pulse is played, before the measurement is started."""
+    reset_wait_time: int = 100
+    """Wait time at the start of each averaging loop."""
     estimated_bias_tee_tau_ns: Optional[float] = None
     """Estimated bias tee time constant in ns. Used as the initial guess for the
     exponential fit and as the simulated τ when generating synthetic data.

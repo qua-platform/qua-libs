@@ -6,6 +6,7 @@ from .analysis import (
 )
 from .plotting import plot_all
 from .simulated_data_generator import generate_simulated_dataset
+from .helper_utils import get_elements
 
 __all__ = [
     "Parameters",
@@ -14,4 +15,5 @@ __all__ = [
     "log_fitted_results",
     "plot_all",
     "generate_simulated_dataset",
+    "get_elements"
 ]
