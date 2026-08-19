@@ -114,7 +114,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     unique_sensors = {s.name: s for pair in quantum_dot_pairs for s in pair.sensor_dots}
     for s in unique_sensors.values():
         for pair in quantum_dot_pairs:
-            if s.name not in [sd.name for sd in pair.sensor_dots]:   # compare by name, not identity
+            if s.name not in [sd.name for sd in pair.sensor_dots]:  # compare by name, not identity
                 continue
             op_name = f"readout_{pair.name}"
             resolved_op_name = op_name if op_name in s.readout_resonator.operations else "readout"
