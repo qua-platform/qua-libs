@@ -87,7 +87,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # ── Experiment parameters (Python side) ──────────────────────────────
     n_avg = node.parameters.num_shots
-    node.namespace["elements"] = elements = get_elements(node)
+    node.namespace["elements"], _ = elements, vgs_id = get_elements(node)
     node.namespace["sensors"] = sensors = get_sensors(node)
     if len(sensors) != 1:
         raise ValueError(
@@ -109,9 +109,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         ),
     }
     num_sensors = len(sensors)
-
-    # TODO: Add a check for this. Possible to perform this node for dots in different gate sets?
-    vgs_id = elements[0].voltage_sequence.gate_set.id
 
     # Each swept frequency is played as a square wave (period = 2 * half_period) rather
     # than a QUA frequency sweep, since the bias-tee element is stepped, not driven at
@@ -151,6 +148,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         amp = declare(fixed)
         amp_array_qua = declare(fixed, value=amp_array)
 
+        # ── OUTER QUA LOOP: repeat the measurement n_avg times ───────────────────────
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
 

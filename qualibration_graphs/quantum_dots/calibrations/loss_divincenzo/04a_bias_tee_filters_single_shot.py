@@ -73,9 +73,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # node.parameters.use_simulated_data = True
     # node.parameters.estimated_bias_tee_tau_ns = 20000  # ns
-    node.parameters.simulate = True
-    node.parameters.sensor_names = ["virtual_sensor_1"]
-    node.parameters.measurement_time = 10000
+    # node.parameters.simulate = True
+    # node.parameters.sensor_names = ["virtual_sensor_1"]
+    # node.parameters.measurement_time = 10000
     pass
 
 
