@@ -139,7 +139,8 @@ def plot_raw_data_with_fit(
     n = len(qubit_names)
     ncol = 2
     fig, axes = plt.subplots(
-        n, ncol,
+        n,
+        ncol,
         figsize=(9, 4 * n),
         squeeze=False,
         sharey="row",

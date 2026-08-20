@@ -333,8 +333,7 @@ def _analyse_single_qubit(
         mean_parity_fit = model(detuning_hz, *popt)
         is_peak = popt[0] > 0
         _logger.debug(
-            "Ramsey mean-parity fit (DE, %s): f_offset=%.3f MHz, "
-            "gamma=%.5f 1/ns, sigma_g=%.5f 1/ns, T2*=%.1f ns",
+            "Ramsey mean-parity fit (DE, %s): f_offset=%.3f MHz, " "gamma=%.5f 1/ns, sigma_g=%.5f 1/ns, T2*=%.1f ns",
             "peak" if is_peak else "dip",
             freq_offset * 1e-6,
             decay_rate,
@@ -454,10 +453,7 @@ def analyse_raw_data(
 ) -> tuple[xr.Dataset, dict, dict]:
     """Fit Ramsey chevron data and return public results plus full diagnostics."""
     ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
-    fit_results_public = {
-        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
-        for k, v in fit_results_full.items()
-    }
+    fit_results_public = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
     return ds_fit, fit_results_public, fit_results_full
 
 

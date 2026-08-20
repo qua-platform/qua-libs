@@ -149,9 +149,7 @@ def _fit_single_qubit(
         result["offset"] = offset
         result["decay_rate"] = decay_rate
         result["fitted_curve"] = fitted_curve
-        result["success"] = bool(
-            np.isfinite(t1_best) and t1_best > 0 and abs(amplitude) > 1e-6
-        )
+        result["success"] = bool(np.isfinite(t1_best) and t1_best > 0 and abs(amplitude) > 1e-6)
 
         _logger.debug(
             "T1 fit: T1=%.1f ns, A=%.4f, offset=%.4f, γ=%.6f 1/ns",
@@ -242,10 +240,7 @@ def analyse_raw_data(
 ) -> tuple[xr.Dataset, dict, dict]:
     """Fit T1 data and return public results plus full diagnostics."""
     ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
-    fit_results_public = {
-        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
-        for k, v in fit_results_full.items()
-    }
+    fit_results_public = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
     return ds_fit, fit_results_public, fit_results_full
 
 

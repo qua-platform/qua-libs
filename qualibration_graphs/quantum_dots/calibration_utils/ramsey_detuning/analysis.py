@@ -308,8 +308,7 @@ def _analyse_single_qubit(
     result["success"] = np.isfinite(freq_offset) and contrast > 1e-6
 
     _logger.debug(
-        "Joint extraction: δ₀=%.3f MHz (short=%.3f, long=%.3f), "
-        "A_short=%.4f, A_long=%.4f, γ=%.5f 1/ns, T2*=%.1f ns",
+        "Joint extraction: δ₀=%.3f MHz (short=%.3f, long=%.3f), " "A_short=%.4f, A_long=%.4f, γ=%.5f 1/ns, T2*=%.1f ns",
         freq_offset * 1e-6,
         delta0s[0] * 1e-6,
         delta0s[-1] * 1e-6,
@@ -409,10 +408,7 @@ def analyse_raw_data(
 ) -> tuple[xr.Dataset, dict, dict]:
     """Fit two-tau detuning data and return public results plus full diagnostics."""
     ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
-    fit_results_public = {
-        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
-        for k, v in fit_results_full.items()
-    }
+    fit_results_public = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
     return ds_fit, fit_results_public, fit_results_full
 
 

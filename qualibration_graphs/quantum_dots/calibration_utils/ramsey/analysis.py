@@ -165,9 +165,7 @@ def _fit_single_trace(
         result["fitted_curve"] = _damped_cosine(t, *popt)
         result["success"] = bool(np.isfinite(t2) and t2 > 0)
     except Exception:
-        _logger.debug(
-            "Single-trace fit failed for detuning %.3f MHz", detuning_hz * 1e-6
-        )
+        _logger.debug("Single-trace fit failed for detuning %.3f MHz", detuning_hz * 1e-6)
 
     return result
 
@@ -361,10 +359,7 @@ def analyse_raw_data(
 ) -> tuple[xr.Dataset, dict, dict]:
     """Fit Ramsey ±δ data and return public results plus full diagnostics."""
     ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
-    fit_results_public = {
-        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
-        for k, v in fit_results_full.items()
-    }
+    fit_results_public = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
     return ds_fit, fit_results_public, fit_results_full
 
 

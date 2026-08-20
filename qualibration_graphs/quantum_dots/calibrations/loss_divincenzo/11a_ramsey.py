@@ -82,7 +82,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # A class for unit conversion
+    # A class for unit conversion
     u = unit(coerce_to_integer=True)
 
     # Select which qubits participate in this calibration
@@ -105,9 +105,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             detuning_values,
             attrs={"long_name": "frequency detuning", "units": "Hz"},
         ),
-        "tau": xr.DataArray(
-            tau_values * 4, attrs={"long_name": "idle time", "units": "ns"}
-        ),
+        "tau": xr.DataArray(tau_values * 4, attrs={"long_name": "idle time", "units": "ns"}),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -123,14 +121,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         p_post, p_pre, streams = declare_streams(node, qubits)
         n_st = declare_output_stream()
 
-        # Python loop over the relevant qubits
+        # Python loop over the relevant qubits
         for qubit in qubits:
             # Extract the current IF of the qubit's XY component
             intermediate_frequency = qubit.xy.intermediate_frequency
 
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st) # tell the PC which shot we are on
+                save(n, n_st)  # tell the PC which shot we are on
 
                 # ── MIDDLE LOOP: repeat sweep for +f and -f ───────────────────────
                 with for_(*from_array(df, detuning_values)):
@@ -201,18 +199,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -221,9 +215,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data."""
     # Connect to the QOP
@@ -266,6 +258,7 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
         parity_measurement=node.parameters.parity_measurement,
         sweep_dims=("detuning", "tau"),
     )
+
 
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
@@ -310,6 +303,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             fit_result = node.results["fit_results"][qubit.name]
             qubit.larmor_frequency = qubit.larmor_frequency + fit_result["freq_offset"]
             qubit.T2ramsey = fit_result["t2_star"] * 1e-9
+
 
 # %% {Save_results}
 @node.run_action()
