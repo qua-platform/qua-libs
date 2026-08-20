@@ -12,6 +12,9 @@ class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 500
     """Number of averages to perform. Default is 500."""
 
+    rms_threshold: float = 0.1
+    """Max allowed RMS vs the ideal All-XY staircase (normalized to [0, 1]). Default is 0.1."""
+
 
 class Parameters(
     NodeParameters,
