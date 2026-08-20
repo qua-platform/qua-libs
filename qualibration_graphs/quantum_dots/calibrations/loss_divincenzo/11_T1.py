@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.T1_parity_diff import (
+from calibration_utils.T1 import (
     Parameters,
     analyse_raw_data,
     log_fitted_results,
@@ -89,10 +89,16 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+
     # ── Experiment parameters (Python side) ──────────────────────────────
+
+    # Select which qubits participate in this calibration
     node.namespace["qubits"] = qubits = get_qubits(node)
 
+    # Number of shots per detuning point
     n_avg = node.parameters.num_shots
+
+    # Construct the array of tau times
     tau_values = np.arange(
         node.parameters.tau_min,
         node.parameters.tau_max,
@@ -109,29 +115,34 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
+        # Real-time variables:
+        # t      : QUA variable representing the idle time
+        # n      : shot counter
+        # p_post, p_pre : post- / pre-manipulation measurement outcomes
         t = declare(int)
         n = declare(int)
-
-        # Streams store the joint pre/post parity outcomes for later conversion into
-        # conditional expectations such as E_p1_given_p0_0.
         p_post, p_pre, streams = declare_streams(node, qubits)
-
         n_st = declare_output_stream()
 
+        # Python loop over the relevant qubits
         for qubit in qubits:
-            # Each qubit is measured independently; the full tau sweep is repeated n_avg times.
-            with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)
 
+            # ── OUTER LOOP: average over shots ───────────────────────
+            with for_(n, 0, n < n_avg, n + 1):
+                save(n, n_st) # tell the PC which shot we are on
+
+                # ── INNER LOOP: sweep idle times t ───────────────────────
                 with for_(*from_array(t, tau_values // 4)):
-                    # Optional pre-measurement parity readout for conditional analysis.
+
+                    # Optional pre-measurement parity readout for conditional analysi
                     if node.parameters.parity_measurement:
                         qubit.empty()
                         a1 = qubit.measure()
 
-                    # Re-initialize at the operating point before each T1 repetition.
+                    # Perform the initialize macro
                     qubit.initialize()
 
+                    # Global align before and after the operate -> wait -> measure shot
                     align()
 
                     with strict_timing_():
@@ -143,24 +154,29 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     align()
 
-                    # Return the slow voltage sequence to zero before the next shot.
+                    # Just in-case there is any residual output, ramp everything down to zero
                     qubit.voltage_sequence.ramp_to_zero()
 
+                    # Cast the bool output of the measurement to an int (0 or 1) for averaging purposes
                     assign(p_post, Cast.to_int(a2))
 
                     align()
 
+                    # Optionally cast the pre-parity measurement to an int too
                     if node.parameters.parity_measurement:
                         assign(p_pre, Cast.to_int(a1))
 
+                    # Save the measurements to the relevant streams, dependent on whether node.parameters.parity_measurement
                     save_measurement(node, qubit.name, p_pre, p_post, streams)
 
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
-
             n_tau = len(tau_values)
             for qubit in qubits:
-                # Buffer one parity trace per tau point before reducing on the host.
+                # Save order per stream: for each qubit, sweep all tau values.
+                # n_tau axis - group points along the idle time axis
+                # Result: 2D joint-outcome counts vs (n_tau) per qubit
                 buffer_streams(node, qubit.name, streams, n_tau)
 
 
@@ -182,7 +198,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        "samples": samples,
+        # "samples": samples,
     }
 
 
@@ -208,7 +224,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
                 start_time=data_fetcher.t_start,
-                node=node,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
@@ -243,7 +258,7 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Fit exponential decay P(τ) = offset + A·exp(−τ/T₁) to extract T₁."""
+    """Analyse the raw data."""
     node.results["ds_fit"], fit_results, node.namespace["_fit_results_full"] = analyse_raw_data(
         node.results["ds_raw"], node
     )
@@ -258,7 +273,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot parity-difference vs idle time with exponential fit."""
+    """Plot the raw and fitted data."""
     fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
     node.results["figures"] = plot_all(
         node.results["ds_raw"],
@@ -275,7 +290,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
-
     with node.record_state_updates():
         for qubit in node.namespace["qubits"]:
             if not node.results["fit_results"][qubit.name]["success"]:
