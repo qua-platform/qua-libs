@@ -12,12 +12,8 @@ from typing import Optional
 import numpy as np
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
-from qualibration_libs.parameters import CommonNodeParameters
-from calibration_utils.common_utils.experiment import (
-    HeraldedInitializeParameters,
-    QubitsExperimentNodeParameters,
-)
-
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
 
 class NodeSpecificParameters(RunnableParameters):
     """Node-specific parameters for 14_single_qubit_randomized_benchmarking."""
@@ -34,10 +30,6 @@ class NodeSpecificParameters(RunnableParameters):
     """If True, use log-scale depths: 2, 4, 8, 16, ... up to max_circuit_depth. Default is True."""
     seed: Optional[int] = None
     """Seed for the QUA pseudo-random number generator. Default is None (random)."""
-    operation_x90: str = "x90"
-    """Name of the π/2 X rotation operation on the xy channel. Default is 'x90'."""
-    operation_x180: str = "x180"
-    """Name of the π X rotation operation on the xy channel. Default is 'x180'."""
 
 
 class Parameters(

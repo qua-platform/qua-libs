@@ -38,8 +38,9 @@ def _get_qubit_state_data(ds_raw: xr.Dataset, qname: str) -> np.ndarray | None:
 
 def plot_raw_data_with_fit(
     ds_raw: xr.Dataset,
-    fit_results: dict[str, dict[str, Any]],
     qubits: list[Any],
+    ds_fit: xr.Dataset | None = None,
+    fit_results: dict[str, dict[str, Any]] | None = None,
 ) -> plt.Figure:
     """Create a multi-panel RB figure (one row per qubit).
 
@@ -48,7 +49,10 @@ def plot_raw_data_with_fit(
     ds_raw : xr.Dataset
         Raw dataset with ``depth`` and ``circuit`` coordinates and
         ``state_<qubit>`` variables shaped ``[num_circuits, num_depths]``.
-    fit_results : dict
+    ds_fit : xr.Dataset or None
+        Optional fit dataset containing survival probabilities and fitted
+        curves vs depth.
+    fit_results : dict or None
         Output of :func:`~.analysis.fit_raw_data`.
     qubits : list
         Qubit objects (each must have a ``.name`` attribute).
@@ -70,12 +74,17 @@ def plot_raw_data_with_fit(
     for idx, qubit in enumerate(qubits):
         ax = axes[idx, 0]
         qname = qubit.name
+        fit_results = fit_results or {}
 
         state_data = _get_qubit_state_data(ds_raw, qname)
         if state_data is None:
             ax.set_title(f"{qname} — no data")
             continue
-        survival_prob = np.mean(state_data, axis=0)
+
+        if ds_fit is not None and f"survival_probability_{qname}" in ds_fit.data_vars:
+            survival_prob = ds_fit[f"survival_probability_{qname}"].values
+        else:
+            survival_prob = np.mean(state_data, axis=0)
         n_circuits = state_data.shape[0]
 
         # Binomial standard error
@@ -96,7 +105,12 @@ def plot_raw_data_with_fit(
         )
 
         # Fitted curve
-        fitted = r.get("fitted_curve")
+        fitted = None
+        if ds_fit is not None and f"fitted_curve_{qname}" in ds_fit.data_vars:
+            fitted = ds_fit[f"fitted_curve_{qname}"].values
+        elif r.get("fitted_curve") is not None:
+            fitted = r.get("fitted_curve")
+
         if fitted is not None and len(fitted) == len(depths):
             x_smooth = np.linspace(float(depths.min()), float(depths.max()), 200)
             alpha = r.get("alpha", 0)
@@ -136,3 +150,21 @@ def plot_raw_data_with_fit(
     fig.suptitle("Single-Qubit Randomized Benchmarking", fontsize=13, fontweight="bold")
     fig.tight_layout()
     return fig
+
+
+def plot_all(
+    ds_raw: xr.Dataset,
+    qubits: list[Any],
+    *,
+    ds_fit: xr.Dataset | None = None,
+    fit_results: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, plt.Figure]:
+    """Build and return all RB figures."""
+    return {
+        "raw_data_with_fit": plot_raw_data_with_fit(
+            ds_raw,
+            qubits,
+            ds_fit=ds_fit,
+            fit_results=fit_results,
+        )
+    }

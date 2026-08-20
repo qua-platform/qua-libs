@@ -226,6 +226,52 @@ def fit_raw_data(
     return results
 
 
+def analyse_raw_data(
+    ds_raw: xr.Dataset,
+    qubits: list[Any],
+    avg_gates_per_clifford: float,
+) -> tuple[xr.Dataset, dict[str, dict[str, Any]]]:
+    """Fit RB decay data and build a plotting-ready fit dataset.
+
+    Returns
+    -------
+    tuple
+        ``(ds_fit, fit_results)`` where ``ds_fit`` contains per-qubit
+        survival probabilities and fitted curves vs circuit depth.
+    """
+    fit_results = fit_raw_data(ds_raw, qubits, avg_gates_per_clifford)
+
+    ds_fit = xr.Dataset(coords={"depth": ds_raw.coords["depth"]})
+    depths = ds_raw.coords["depth"]
+    qubit_names = []
+
+    for qubit in qubits:
+        qname = qubit.name
+        qubit_names.append(qname)
+
+        state_data = _get_qubit_state_data(ds_raw, qname)
+        if state_data is None:
+            continue
+
+        survival_prob = np.mean(state_data, axis=0)
+        ds_fit[f"survival_probability_{qname}"] = xr.DataArray(
+            survival_prob,
+            dims=["depth"],
+            coords={"depth": depths},
+        )
+
+        fitted_curve = fit_results.get(qname, {}).get("fitted_curve")
+        if fitted_curve is not None and len(fitted_curve) == len(depths):
+            ds_fit[f"fitted_curve_{qname}"] = xr.DataArray(
+                fitted_curve,
+                dims=["depth"],
+                coords={"depth": depths},
+            )
+
+    ds_fit = ds_fit.assign_coords(qubit=("qubit", qubit_names))
+    return ds_fit, fit_results
+
+
 def log_fitted_results(
     fit_results: dict[str, dict[str, Any]],
     node_logger: Any | None = None,
