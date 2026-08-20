@@ -1,102 +1,155 @@
-from typing import List
+"""Plotting for the ±δ Ramsey parity-difference analysis.
+
+Produces a two-panel figure per qubit:
+
+1. **+δ trace** — parity-difference vs idle time at positive detuning,
+   with the damped-cosine fit overlaid and fitted frequency annotated.
+2. **−δ trace** — same for the negative detuning.
+"""
+
+from __future__ import annotations
+
+from typing import Any, List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 
-from qualang_tools.units import unit
-
-u = unit(coerce_to_integer=True)
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 
-def plot_ramsey_detuning(
-    ds: xr.Dataset, qubits: List, fit_results: dict = None
-) -> Figure:
+def _get_qubit_names_from_ds(
+    ds: xr.Dataset,
+    qubits: List[Any],
+    analysis_signal: str,
+) -> List[str]:
+    return get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
+
+
+def _plot_trace_ax(
+    ax: "plt.Axes",
+    tau_ns: np.ndarray,
+    qubit_name: str,
+    trace_fit: dict | None,
+    label: str,
+    analysis_signal: str = "E_p1_given_p0_0",
+    color: str = "b",
+    fit_color: str = "r",
+) -> None:
+    """Plot one detuning trace with its damped-cosine fit."""
+    if trace_fit is None:
+        ax.text(0.5, 0.5, "No fit data", transform=ax.transAxes, ha="center")
+        ax.set_title(f"{qubit_name} — {label}")
+        return
+
+    trace = trace_fit.get("signal", trace_fit.get("pdiff"))
+    fitted = trace_fit.get("fitted_curve")
+    t_shifted = trace_fit["tau_shifted"]
+    t_plot = t_shifted + tau_ns[0]
+
+    ax.plot(t_plot, trace, f"{color}-", lw=0.8, alpha=0.7)
+    ax.scatter(t_plot, trace, c=color, s=8, alpha=0.5, zorder=3, label="Data")
+
+    if fitted is not None:
+        ax.plot(
+            t_plot, fitted, f"{fit_color}-", lw=1.5, alpha=0.9, label="Damped cosine"
+        )
+
+    ax.set_xlabel("Idle time (ns)")
+    ax.set_ylabel(analysis_signal)
+    ax.set_ylim(-0.05, 1.05)
+
+    f_hz = trace_fit.get("ramsey_freq", np.nan)
+    title = f"{qubit_name} — {label}"
+    if np.isfinite(f_hz):
+        title += f" (f={f_hz * 1e-6:.3f} MHz)"
+    ax.set_title(title)
+    ax.legend(loc="upper right", fontsize=7)
+
+
+def plot_raw_data_with_fit(
+    ds: xr.Dataset,
+    ds_fit: xr.Dataset | None,
+    qubits: List[Any],
+    fit_results: dict,
+    analysis_signal: str = "E_p1_given_p0_0",
+) -> "plt.Figure":
+    """Plot ±δ Ramsey analysis for each qubit.
+
+    Layout (per qubit row):
+    * Column 1 — +δ trace with damped-cosine fit.
+    * Column 2 — −δ trace with damped-cosine fit.
     """
-    Plots the parity difference signal as a function of frequency detuning for each qubit.
+    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    if not qubit_names:
+        fig, _ = plt.subplots(figsize=(6, 4))
+        return fig
 
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing pdiff data and optional fit curves.
-    qubits : list
-        A list of qubit objects to plot.
-    fit_results : dict, optional
-        Dictionary of fit results for each qubit (default is None).
+    n = len(qubit_names)
+    ncol = 2
+    fig, axes = plt.subplots(n, ncol, figsize=(6 * ncol, 4 * n), squeeze=False)
 
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-    """
-    num_qubits = len(qubits)
-    fig, axes = plt.subplots(1, num_qubits, figsize=(5 * num_qubits, 4), squeeze=False)
-    axes = axes.flatten()
+    tau_ns = np.asarray(ds.tau.values, dtype=float)
+    detuning_hz = np.asarray(ds.detuning.values, dtype=float)
 
-    for ax, qubit in zip(axes, qubits):
-        plot_individual_ramsey_detuning(ax, ds, qubit, fit_results)
+    for i, qname in enumerate(qubit_names):
+        fr = fit_results.get(qname, {})
+        diag = fr.get("_diag", {})
+        fit_plus = diag.get("fit_plus")
+        fit_minus = diag.get("fit_minus")
 
-    fig.suptitle("Ramsey detuning parity difference")
+        det_plus_mhz = detuning_hz[0] * 1e-6 if len(detuning_hz) > 0 else 0
+        det_minus_mhz = detuning_hz[1] * 1e-6 if len(detuning_hz) > 1 else 0
+
+        _plot_trace_ax(
+            axes[i, 0],
+            tau_ns,
+            qname,
+            fit_plus,
+            label=f"+δ ({det_plus_mhz:+.1f} MHz)",
+            analysis_signal=analysis_signal,
+            color="b",
+            fit_color="r",
+        )
+        _plot_trace_ax(
+            axes[i, 1],
+            tau_ns,
+            qname,
+            fit_minus,
+            label=f"−δ ({det_minus_mhz:+.1f} MHz)",
+            analysis_signal=analysis_signal,
+            color="C2",
+            fit_color="C3",
+        )
+
+    fig.suptitle(f"Ramsey ±δ triangulation ({analysis_signal})")
     fig.tight_layout()
     return fig
 
 
-def plot_individual_ramsey_detuning(
-    ax: Axes, ds: xr.Dataset, qubit, fit_results: dict = None
-):
-    """
-    Plots individual qubit parity difference data as a function of frequency detuning.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axis on which to plot the data.
-    ds : xr.Dataset
-        The dataset containing the parity difference data.
-    qubit : object
-        The qubit object.
-    fit_results : dict, optional
-        Dictionary of fit results for each qubit (default is None).
-    """
-    detuning_mhz = ds.detuning.values / u.MHz
-
-    # Plot pdiff
-    ax.plot(
-        detuning_mhz,
-        ds[f"pdiff_{qubit.name}"].values,
-        "o-",
-        markersize=3,
-        label="P_diff",
-    )
-
-    # Plot fit if available
-    fit_key = f"pdiff_fit_{qubit.name}"
-    if fit_key in ds.data_vars:
-        ax.plot(
-            detuning_mhz,
-            ds[fit_key].values,
-            "r--",
-            lw=1.5,
-            label="Fit",
+def plot_all(
+    ds_raw: xr.Dataset,
+    qubits: List[Any],
+    *,
+    ds_fit: xr.Dataset | None = None,
+    fit_results: dict | None = None,
+    analysis_signal: str = "E_p1_given_p0_0",
+    show: bool = True,
+) -> dict[str, "plt.Figure"]:
+    """Build and return all 11a Ramsey figures."""
+    figures = {
+        "raw_data_with_fit": plot_raw_data_with_fit(
+            ds_raw,
+            ds_fit,
+            qubits,
+            fit_results or {},
+            analysis_signal=analysis_signal,
         )
-
-    # Mark the frequency offset if fit results available
-    if fit_results and qubit.name in fit_results:
-        fr = fit_results[qubit.name]
-        if fr["success"]:
-            freq_offset_mhz = fr["freq_offset"] / u.MHz
-            ax.axvline(
-                freq_offset_mhz,
-                color="g",
-                linestyle=":",
-                lw=1.5,
-                label=f"Offset: {freq_offset_mhz:.3f} MHz",
-            )
-
-    ax.set_xlabel("Frequency detuning [MHz]")
-    ax.set_ylabel("Parity difference")
-    ax.set_title(f"Qubit: {qubit.name}")
-    ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.3)
+    }
+    if show:
+        plt.show()
+    return figures

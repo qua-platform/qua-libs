@@ -12,10 +12,8 @@ from calibration_utils.measurement_utils.parameters import ParityDiffAnalysisPar
 
 class NodeSpecificParameters(RunnableParameters):
     """Parameters for Ramsey 11a."""
-
     num_shots: int = 300
     """Number of averages to perform. Default is 100."""
-
 
 class Parameters(
     NodeParameters,
@@ -26,7 +24,9 @@ class Parameters(
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):
-    """Parameter set for 11a_ramsey."""
+    """Parameter set for 11c_ramsey_chevron (and related Ramsey chevron nodes)."""
 
-    frequency_detuning_in_mhz: float = 0.25
-    """Frequency detuning in MHz. Default is 1.0 MHz."""
+    detuning_span_in_mhz: float = 5.0
+    """Frequency detuning span. Default 5MHz."""
+    detuning_step_in_mhz: float = 0.1
+    """Frequency detuning step. Default 0.1MHz"""
