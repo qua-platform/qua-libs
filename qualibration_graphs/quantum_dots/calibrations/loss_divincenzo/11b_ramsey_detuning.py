@@ -159,7 +159,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.initialize()
 
                         # Update the frequency after the initialize macro
-                        qubit.xy.update_frequency(intermediate_frequency)
+                        qubit.xy.update_frequency(intermediate_frequency + df)
 
                         # Global align before and after the operate -> wait -> operate -> measure shot
                         align()
@@ -172,7 +172,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         align()
 
-                        # Measure the post-sequence state and return the slow voltages to zero.
+                        # Measure the post-sequence state
                         a2 = qubit.measure()
 
                         # Just in-case there is any residual output, ramp everything down to zero
