@@ -1,4 +1,5 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -13,9 +14,9 @@ from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.ramsey import RamseyParameters
 from calibration_utils.ramsey_parity_diff import (
-    fit_raw_data,
+    analyse_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_all,
 )
 from qualibration_libs.parameters import get_qubits
 from calibration_utils.measurement_utils.measurement_streams import (
@@ -66,6 +67,7 @@ node = QualibrationNode[RamseyParameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[RamseyParameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     pass
 
 
@@ -81,6 +83,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     Sweeps idle time at two symmetric detunings [+δ, −δ] from the qubit
     intermediate frequency, producing a 2-D dataset (detuning × tau).
     """
+    # ── Experiment parameters (Python side) ──────────────────────────────
     u = unit(coerce_to_integer=True)
 
     node.namespace["qubits"] = qubits = get_qubits(node)
@@ -91,6 +94,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     # Idle time sweep (in clock cycles of 4ns)
     tau_values = get_idle_times_in_clock_cycles(node.parameters)
 
+    # Register the sweep axes to be added to the dataset when fetching data.
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "detuning": xr.DataArray(
@@ -102,11 +106,14 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
         ),
     }
 
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
         t = declare(int)
         df = declare(int)
         n = declare(int)
 
+        # Streams store the joint pre/post parity outcomes for later conversion into
+        # conditional expectations such as E_p1_given_p0_0.
         p_post, p_pre, streams = declare_streams(node, qubits)
 
         n_st = declare_output_stream()
@@ -118,16 +125,18 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 
                 with for_(*from_array(df, detuning_values)):
                     with for_each_(t, tau_values):
-
+                        # Reset the drive frequency and frame before each Ramsey shot.
                         qubit.xy.update_frequency(intermediate_frequency)
                         reset_frame(qubit.xy.name)
 
                         align()
 
+                        # Optional pre-measurement parity readout for conditional analysis.
                         if node.parameters.parity_measurement:
                             qubit.empty()
                             a1 = qubit.measure()
 
+                        # Re-initialize at the operating point before applying the Ramsey pulses.
                         qubit.initialize()
 
                         align()
@@ -135,14 +144,14 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
                         align()
 
                         with strict_timing_():
+                            # Apply the Ramsey π/2 – idle – π/2 sequence at the chosen detuning.
                             qubit.x90()
-
                             wait(t, qubit.xy.name)
-
                             qubit.x90()
 
                         align()
 
+                        # Measure the post-sequence state and return the slow voltages to zero.
                         a2 = qubit.measure()
 
                         qubit.voltage_sequence.ramp_to_zero()
@@ -163,6 +172,7 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
             n_detuning = len(detuning_values)
             n_tau = len(tau_values)
             for qubit in qubits:
+                # Buffer one 2-D trace per qubit (detuning × tau) before host-side processing.
                 buffer_streams(node, qubit.name, streams, n_detuning, n_tau)
 
 
@@ -172,7 +182,9 @@ def create_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 )
 def simulate_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
+    # Connect to the QOP
     qmm = node.machine.connect()
+    # Get the config from the machine
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(
         qmm, config, node.namespace["qua_program"], node.parameters
@@ -190,12 +202,17 @@ def simulate_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
 )
 def execute_qua_program(node: QualibrationNode[RamseyParameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data."""
+    # Connect to the QOP
     qmm = node.machine.connect()
+    # Get the config from the machine
     config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
+            # Display the progress bar
             progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
@@ -231,17 +248,14 @@ def process_raw_data(node: QualibrationNode[RamseyParameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Analyse the raw data to extract Ramsey frequency and T2*."""
-    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["ds_fit"] = ds_fit
-    node.results["fit_results"] = {
-        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
-        for k, v in fit_results.items()
-    }
-    node.namespace["_fit_results_full"] = fit_results
+    node.results["ds_fit"], fit_results, node.namespace["_fit_results_full"] = analyse_raw_data(
+        node.results["ds_raw"], node
+    )
+    node.results["fit_results"] = fit_results
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qname: ("successful" if r["success"] else "failed")
-        for qname, r in fit_results.items()
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
 
@@ -249,17 +263,16 @@ def analyse_data(node: QualibrationNode[RamseyParameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[RamseyParameters, Quam]):
     """Plot the raw and fitted data."""
-    fit_with_diag = node.namespace.get(
-        "_fit_results_full", node.results.get("fit_results", {})
-    )
-    fig = plot_raw_data_with_fit(
+    fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
+    node.results["figures"] = plot_all(
         node.results["ds_raw"],
-        node.results.get("ds_fit"),
         node.namespace["qubits"],
-        fit_with_diag,
+        ds_fit=node.results.get("ds_fit"),
+        fit_results=fit_with_diag,
         analysis_signal=node.parameters.analysis_signal,
     )
-    node.results["figures"] = {"raw_data_with_fit": fig}
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
@@ -278,4 +291,5 @@ def update_state(node: QualibrationNode[RamseyParameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[RamseyParameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()

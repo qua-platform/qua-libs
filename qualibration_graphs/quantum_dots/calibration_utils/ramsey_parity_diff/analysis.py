@@ -355,6 +355,19 @@ def fit_raw_data(
     return ds_fit, fit_results
 
 
+def analyse_raw_data(
+    ds_raw: xr.Dataset,
+    node: QualibrationNode,
+) -> tuple[xr.Dataset, dict, dict]:
+    """Fit Ramsey ±δ data and return public results plus full diagnostics."""
+    ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
+    fit_results_public = {
+        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
+        for k, v in fit_results_full.items()
+    }
+    return ds_fit, fit_results_public, fit_results_full
+
+
 def log_fitted_results(
     fit_results: Dict[str, Any],
     log_callable=None,
