@@ -158,14 +158,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         with strict_timing_():
-                            # Apply the Ramsey π/2 – idle – π/2 sequence at the chosen detuning.
+                            # Apply the Ramsey π/2 – idle – π/2 sequence at the chosen detuning
                             qubit.x90()
                             wait(t, qubit.xy.name)
                             qubit.x90()
 
                         align()
 
-                        # Measure the post-sequence state and return the slow voltages to zero.
+                        # Measure the post-sequence state
                         a2 = qubit.measure()
 
                         # Just in-case there is any residual output, ramp everything down to zero

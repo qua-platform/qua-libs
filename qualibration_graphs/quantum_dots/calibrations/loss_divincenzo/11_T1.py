@@ -16,6 +16,7 @@ from calibration_utils.T1 import (
     analyse_raw_data,
     log_fitted_results,
     plot_all,
+    elements_list,
 )
 from qualibration_libs.parameters import get_qubits
 from calibration_utils.measurement_utils.measurement_streams import (
@@ -76,6 +77,9 @@ node = QualibrationNode[Parameters, Quam](name="11_T1", description=description,
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
+    node.parameters.simulate = True
+    node.parameters.tau_min = 200
+    node.parameters.simulation_duration_ns = 200000
     pass
 
 
@@ -122,6 +126,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # Python loop over the relevant qubits
         for qubit in qubits:
+            # Find the length of the x180 pulse, so that we can wait the exact duration
+            x180_length_cc = qubit.xy.operations[qubit.x180.pulse_name].length // 4
 
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
@@ -136,7 +142,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         a1 = qubit.measure()
 
                     # Perform the initialize macro
-                    qubit.initialize()
+                    qubit.initialize(max_loops = 1)
 
                     # Global align before and after the operate -> wait -> measure shot
                     align()
@@ -145,10 +151,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Prepare the excited state, wait for the variable idle time,
                         # then measure the decayed population.
                         qubit.x180()
-                        qubit.idle(t)
+                        # Wait the length of the x180 pulse on the relevant elements in the gate_set, and the readout_resoantor. 
+                        wait(x180_length_cc + t, *elements_list(qubit))
+                        # Measure the post-sequence state
                         a2 = qubit.measure()
-
-                    align()
 
                     # Just in-case there is any residual output, ramp everything down to zero
                     qubit.voltage_sequence.ramp_to_zero()

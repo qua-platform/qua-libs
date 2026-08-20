@@ -173,7 +173,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         align()
 
-                        # Measure the post-sequence state and return the slow voltages to zero.
+                        # Measure the post-sequence state
                         a2 = qubit.measure()
 
                         # Just in-case there is any residual output, ramp everything down to zero
