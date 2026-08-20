@@ -43,9 +43,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """Score each qubit against the ideal All-XY staircase (no pulse-parameter fit)."""
     threshold = node.parameters.rms_threshold
     fit_results: Dict[str, FitParameters] = {}
@@ -57,8 +55,8 @@ def fit_raw_data(
     for q in node.namespace["qubits"]:
         y = np.asarray(ds[data_var].sel(qubit=q.name).values, dtype=float).ravel()
         y_span = float(np.max(y) - np.min(y))
-        rms_error = float("inf") if y_span == 0.0 else float(
-            np.sqrt(np.mean(((y - np.min(y)) / y_span - IDEAL_ALL_XY) ** 2))
+        rms_error = (
+            float("inf") if y_span == 0.0 else float(np.sqrt(np.mean(((y - np.min(y)) / y_span - IDEAL_ALL_XY) ** 2)))
         )
         success = rms_error < threshold
         fit_results[q.name] = FitParameters(success=success, rms_error=rms_error)

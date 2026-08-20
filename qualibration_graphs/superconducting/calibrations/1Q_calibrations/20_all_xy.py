@@ -28,7 +28,6 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-
 # %% {Description}
 description = """
         ALL-XY SEQUENCE
@@ -67,8 +66,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
-    node.parameters.qubits = ["qD1", "qD2"]
-    node.parameters.use_state_discrimination = True
+    pass
 
 
 def play_all_xy_gate(qubit, gate: str) -> None:
