@@ -1,5 +1,6 @@
 # %% {Imports}
 import logging
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -16,9 +17,9 @@ from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.ramsey import RamseyChevronParameters as Parameters
 from calibration_utils.ramsey_chevron_parity_diff import (
-    fit_raw_data,
+    analyse_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_all,
 )
 from qualibration_libs.parameters import get_qubits
 from calibration_utils.measurement_utils.measurement_streams import (
@@ -69,6 +70,7 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     pass
 
 
@@ -174,7 +176,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
+    # Connect to the QOP
     qmm = node.machine.connect()
+    # Get the config from the machine
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(
         qmm, config, node.namespace["qua_program"], node.parameters
@@ -192,12 +196,17 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data."""
+    # Connect to the QOP
     qmm = node.machine.connect()
+    # Get the config from the machine
     config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
+            # Display the progress bar
             progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
@@ -234,17 +243,14 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data to extract frequency offset and T2*."""
-    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["ds_fit"] = ds_fit
-    node.results["fit_results"] = {
-        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
-        for k, v in fit_results.items()
-    }
-    node.namespace["_fit_results_full"] = fit_results
+    node.results["ds_fit"], fit_results, node.namespace["_fit_results_full"] = analyse_raw_data(
+        node.results["ds_raw"], node
+    )
+    node.results["fit_results"] = fit_results
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qname: ("successful" if r["success"] else "failed")
-        for qname, r in fit_results.items()
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
 
@@ -255,14 +261,15 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     fit_with_diag = node.namespace.get(
         "_fit_results_full", node.results.get("fit_results", {})
     )
-    fig = plot_raw_data_with_fit(
+    node.results["figures"] = plot_all(
         node.results["ds_raw"],
-        node.results.get("ds_fit"),
         node.namespace["qubits"],
-        fit_with_diag,
+        ds_fit=node.results.get("ds_fit"),
+        fit_results=fit_with_diag,
         analysis_signal=node.parameters.analysis_signal,
     )
-    node.results["figures"] = {"raw_data_with_fit": fig}
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
@@ -282,4 +289,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()

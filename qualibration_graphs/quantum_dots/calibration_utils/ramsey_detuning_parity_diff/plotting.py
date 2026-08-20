@@ -172,3 +172,27 @@ def plot_raw_data_with_fit(
     fig.suptitle(suptitle, fontsize=11)
     fig.tight_layout()
     return fig
+
+
+def plot_all(
+    ds_raw: xr.Dataset,
+    qubits: List[Any],
+    *,
+    ds_fit: xr.Dataset | None = None,
+    fit_results: dict | None = None,
+    analysis_signal: str = "E_p1_given_p0_0",
+    show: bool = True,
+) -> dict[str, "plt.Figure"]:
+    """Build and return all 11b Ramsey-detuning figures."""
+    figures = {
+        "raw_data_with_fit": plot_raw_data_with_fit(
+            ds_raw,
+            ds_fit,
+            qubits,
+            fit_results or {},
+            analysis_signal=analysis_signal,
+        )
+    }
+    if show:
+        plt.show()
+    return figures

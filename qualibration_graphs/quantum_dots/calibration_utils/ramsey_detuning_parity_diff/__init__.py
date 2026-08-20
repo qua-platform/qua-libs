@@ -3,9 +3,11 @@ from calibration_utils.ramsey.parameters import RamseyDetuningParameters as Para
 from calibration_utils.ramsey_detuning_parity_diff.analysis import (
     fit_raw_data,
     log_fitted_results,
+    analyse_raw_data,
 )
 from calibration_utils.ramsey_detuning_parity_diff.plotting import (
     plot_raw_data_with_fit,
+    plot_all,
 )
 
 __all__ = [
@@ -13,5 +15,7 @@ __all__ = [
     "ParityDiffAnalysisParameters",
     "fit_raw_data",
     "log_fitted_results",
+    "analyse_raw_data",
     "plot_raw_data_with_fit",
+    "plot_all",
 ]

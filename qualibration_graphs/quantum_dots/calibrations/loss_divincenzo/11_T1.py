@@ -1,4 +1,5 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -12,9 +13,9 @@ from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.T1_parity_diff import (
     Parameters,
-    fit_raw_data,
+    analyse_raw_data,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_all,
 )
 from qualibration_libs.parameters import get_qubits
 from calibration_utils.measurement_utils.measurement_streams import (
@@ -76,6 +77,7 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     pass
 
 
@@ -87,6 +89,7 @@ node.machine = Quam.load()
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    # ── Experiment parameters (Python side) ──────────────────────────────
     node.namespace["qubits"] = qubits = get_qubits(node)
 
     n_avg = node.parameters.num_shots
@@ -96,6 +99,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.tau_step,
     )
 
+    # Register the sweep axes to be added to the dataset when fetching data.
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "tau": xr.DataArray(
@@ -103,40 +107,43 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         ),
     }
 
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
         t = declare(int)
         n = declare(int)
-        t_wait = declare(int)
 
+        # Streams store the joint pre/post parity outcomes for later conversion into
+        # conditional expectations such as E_p1_given_p0_0.
         p_post, p_pre, streams = declare_streams(node, qubits)
 
         n_st = declare_output_stream()
 
         for qubit in qubits:
+            # Each qubit is measured independently; the full tau sweep is repeated n_avg times.
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
                 with for_(*from_array(t, tau_values // 4)):
-
+                    # Optional pre-measurement parity readout for conditional analysis.
                     if node.parameters.parity_measurement:
                         qubit.empty()
                         a1 = qubit.measure()
 
+                    # Re-initialize at the operating point before each T1 repetition.
                     qubit.initialize()
 
                     align()
 
                     with strict_timing_():
+                        # Prepare the excited state, wait for the variable idle time,
+                        # then measure the decayed population.
                         qubit.x180()
-
-                        # align(qubit.xy.name, *qubit.voltage_sequence.gate_set.channels)
                         qubit.idle(t)
-
                         a2 = qubit.measure()
-
 
                     align()
 
+                    # Return the slow voltage sequence to zero before the next shot.
                     qubit.voltage_sequence.ramp_to_zero()
 
                     assign(p_post, Cast.to_int(a2))
@@ -153,6 +160,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             n_tau = len(tau_values)
             for qubit in qubits:
+                # Buffer one parity trace per tau point before reducing on the host.
                 buffer_streams(node, qubit.name, streams, n_tau)
 
 
@@ -161,7 +169,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
+    """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -183,7 +191,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """Connect to the QOP, execute the QUA program, and fetch raw joint-outcome data into ``ds_raw``."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -195,6 +203,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
+            # Display the progress bar
             progress_counter(
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots,
@@ -235,16 +244,14 @@ def process_raw_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit exponential decay P(τ) = offset + A·exp(−τ/T₁) to extract T₁."""
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
-    node.results["fit_results"] = {
-        k: {kk: vv for kk, vv in v.items() if kk != "_diag"}
-        for k, v in fit_results.items()
-    }
-    node.namespace["_fit_results_full"] = fit_results
+    node.results["ds_fit"], fit_results, node.namespace["_fit_results_full"] = analyse_raw_data(
+        node.results["ds_raw"], node
+    )
+    node.results["fit_results"] = fit_results
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        name: ("successful" if fit_result["success"] else "failed")
-        for name, fit_result in node.results["fit_results"].items()
+        qubit_name: ("successful" if fit_result["success"] else "failed")
+        for qubit_name, fit_result in node.results["fit_results"].items()
     }
 
 
@@ -252,17 +259,16 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot parity-difference vs idle time with exponential fit."""
-    fit_with_diag = node.namespace.get(
-        "_fit_results_full", node.results.get("fit_results", {})
-    )
-    fig = plot_raw_data_with_fit(
+    fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
+    node.results["figures"] = plot_all(
         node.results["ds_raw"],
-        node.results.get("ds_fit"),
         node.namespace["qubits"],
-        fit_with_diag,
+        ds_fit=node.results.get("ds_fit"),
+        fit_results=fit_with_diag,
         analysis_signal=node.parameters.analysis_signal,
     )
-    node.results["figures"] = {"raw_data_with_fit": fig}
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
@@ -281,4 +287,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()
