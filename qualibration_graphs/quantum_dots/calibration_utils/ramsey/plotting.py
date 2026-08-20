@@ -55,9 +55,7 @@ def _plot_trace_ax(
     ax.scatter(t_plot, trace, c=color, s=8, alpha=0.5, zorder=3, label="Data")
 
     if fitted is not None:
-        ax.plot(
-            t_plot, fitted, f"{fit_color}-", lw=1.5, alpha=0.9, label="Damped cosine"
-        )
+        ax.plot(t_plot, fitted, f"{fit_color}-", lw=1.5, alpha=0.9, label="Damped cosine")
 
     ax.set_xlabel("Idle time (ns)")
     ax.set_ylabel(analysis_signal)

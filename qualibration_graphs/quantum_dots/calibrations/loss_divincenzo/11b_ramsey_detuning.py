@@ -82,7 +82,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # A class for unit conversion
+    # A class for unit conversion
     u = unit(coerce_to_integer=True)
 
     # Select which qubits participate in this calibration
@@ -111,12 +111,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data.
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "tau": xr.DataArray(
-            idle_times_ns, attrs={"long_name": "idle time", "units": "ns"}
-        ),
-        "detuning": xr.DataArray(
-            detuning_values, attrs={"long_name": "frequency detuning", "units": "Hz"}
-        ),
+        "tau": xr.DataArray(idle_times_ns, attrs={"long_name": "idle time", "units": "ns"}),
+        "detuning": xr.DataArray(detuning_values, attrs={"long_name": "frequency detuning", "units": "Hz"}),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -132,14 +128,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         p_post, p_pre, streams = declare_streams(node, qubits)
         n_st = declare_output_stream()
 
-        # Python loop over the relevant qubits
+        # Python loop over the relevant qubits
         for qubit in qubits:
             # Extract the current IF of the qubit's XY component
             intermediate_frequency = qubit.xy.intermediate_frequency
 
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st) # tell the PC which shot we are on
+                save(n, n_st)  # tell the PC which shot we are on
 
                 # ── MIDDLE LOOP: sweep all detuning values ───────────────────────
                 with for_(*from_array(df, detuning_values)):
@@ -210,9 +206,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
@@ -220,9 +214,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -232,9 +224,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program, and fetch raw joint-outcome data into ``ds_raw``."""
     # Connect to the QOP

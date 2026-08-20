@@ -85,7 +85,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # A class for unit conversion
+    # A class for unit conversion
     u = unit(coerce_to_integer=True)
 
     # Select which qubits participate in this calibration
@@ -129,14 +129,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         p_post, p_pre, streams = declare_streams(node, qubits)
         n_st = declare_output_stream()
 
-        # Python loop over the relevant qubits
+        # Python loop over the relevant qubits
         for qubit in qubits:
             # Extract the current IF of the qubit's XY component
             intermediate_frequency = qubit.xy.intermediate_frequency
 
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st) # tell the PC which shot we are on
+                save(n, n_st)  # tell the PC which shot we are on
 
                 # ── MIDDLE LOOP: sweep all detuning values ───────────────────────
                 with for_(*from_array(df, detuning_values)):
@@ -183,7 +183,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Cast the bool output of the measurement to an int (0 or 1) for averaging purposes
                         assign(p_post, Cast.to_int(a2))
 
-                         # Optionally cast the pre-parity measurement to an int too
+                        # Optionally cast the pre-parity measurement to an int too
                         if node.parameters.parity_measurement:
                             assign(p_pre, Cast.to_int(a1))
 
@@ -207,18 +207,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
@@ -227,9 +223,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data."""
     # Connect to the QOP
@@ -294,9 +288,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data."""
-    fit_with_diag = node.namespace.get(
-        "_fit_results_full", node.results.get("fit_results", {})
-    )
+    fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
     node.results["figures"] = plot_all(
         node.results["ds_raw"],
         node.namespace["qubits"],

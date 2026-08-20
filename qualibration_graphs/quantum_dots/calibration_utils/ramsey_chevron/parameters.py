@@ -12,8 +12,10 @@ from calibration_utils.measurement_utils.parameters import ParityDiffAnalysisPar
 
 class NodeSpecificParameters(RunnableParameters):
     """Parameters for Ramsey 11a."""
+
     num_shots: int = 300
     """Number of averages to perform. Default is 100."""
+
 
 class Parameters(
     NodeParameters,

@@ -68,9 +68,7 @@ State updates:
 """
 
 
-node = QualibrationNode[Parameters, Quam](
-    name="11_T1", description=description, parameters=Parameters()
-)
+node = QualibrationNode[Parameters, Quam](name="11_T1", description=description, parameters=Parameters())
 
 
 # Any parameters that should change for debugging purposes only should go in here
@@ -108,9 +106,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Register the sweep axes to be added to the dataset when fetching data.
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "tau": xr.DataArray(
-            tau_values, attrs={"long_name": "idle time", "units": "ns"}
-        ),
+        "tau": xr.DataArray(tau_values, attrs={"long_name": "idle time", "units": "ns"}),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -129,7 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st) # tell the PC which shot we are on
+                save(n, n_st)  # tell the PC which shot we are on
 
                 # ── INNER LOOP: sweep idle times t ───────────────────────
                 with for_(*from_array(t, tau_values // 4)):
@@ -181,9 +177,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
@@ -191,9 +185,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     # Store the figure, waveform report and simulated samples
     node.results["simulation"] = {
         "figure": fig,
@@ -203,9 +195,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program, and fetch raw joint-outcome data into ``ds_raw``."""
     # Connect to the QOP
