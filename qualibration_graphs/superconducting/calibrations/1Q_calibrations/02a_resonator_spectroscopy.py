@@ -36,7 +36,6 @@ from calibration_utils.resonator_spectroscopy.escalation import (
     plan_lo_recenter,
 )
 
-
 # %% {Node initialisation}
 description = """
         1D RESONATOR SPECTROSCOPY
@@ -70,7 +69,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]) -> None:
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qA1"] # XXX
+    node.parameters.qubits = ["qA1"]  # XXX
     pass
 
 
@@ -255,8 +254,7 @@ def escalate_no_dip(node: QualibrationNode[Parameters, Quam]) -> None:
             break
         span = plan["new_span_hz"]
         node.log(
-            f"escalation: no dip on {plan['qubits']} -> re-measuring all active qubits "
-            f"at span {span / 1e6:.0f} MHz"
+            f"escalation: no dip on {plan['qubits']} -> re-measuring all active qubits " f"at span {span / 1e6:.0f} MHz"
         )
         # Re-center LOs where the wider sweep would push the IF out of reach.
         lo_moves = {}
@@ -310,9 +308,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]) -> None:
     if node.parameters.show_raw_phase_plot:
         figures["phase"] = plot_raw_phase(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     if node.parameters.show_iq_circle_plot:
-        figures["iq_circle"] = plot_iq_circle(
-            node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
-        )
+        figures["iq_circle"] = plot_iq_circle(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
     node.results["figures"] = figures
