@@ -15,12 +15,7 @@ from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 
 
 def lorentzian_dip_linbg(
-    f: NDArray[np.float64],
-    f0: float,
-    fwhm: float,
-    amp: float,
-    bg0: float,
-    bg1: float
+    f: NDArray[np.float64], f0: float, fwhm: float, amp: float, bg0: float, bg1: float
 ) -> NDArray[np.float64]:
     """Inverted Lorentzian with linear background.
 
@@ -34,12 +29,7 @@ def lorentzian_dip_linbg(
 
 
 def lorentzian_dip_quadbg(
-    f: NDArray[np.float64],
-    f0: float,
-    fwhm: float, amp: float,
-    bg0: float,
-    bg1: float,
-    bg2: float
+    f: NDArray[np.float64], f0: float, fwhm: float, amp: float, bg0: float, bg1: float, bg2: float
 ) -> NDArray[np.float64]:
     """Inverted Lorentzian with quadratic background (curved / bowl baselines)."""
     fc = f.mean()
@@ -98,9 +88,7 @@ def find_dip_candidates(
     return out
 
 
-def _smooth_and_estimate_noise(
-    amplitude: NDArray[np.float64], smooth_window: int
-) -> tuple[NDArray[np.float64], float]:
+def _smooth_and_estimate_noise(amplitude: NDArray[np.float64], smooth_window: int) -> tuple[NDArray[np.float64], float]:
     """Savgol-smooth the trace and estimate the per-point noise sigma from the residual (robust MAD)."""
     N = len(amplitude)
     win = min(smooth_window, N // 3 * 2 - 1)
@@ -207,8 +195,11 @@ def _fit_lorentzian_dip_ladder(
         if best is None or r2_t > best["r2"]:
             bg_at_f0 = popt_t[3] + popt_t[4] * (popt_t[0] - f_win.mean())
             best = dict(
-                popt=np.array(popt_t[:5], dtype=float), r2=float(r2_t),
-                f0=float(popt_t[0]), fwhm=float(popt_t[1]), amp=float(popt_t[2]),
+                popt=np.array(popt_t[:5], dtype=float),
+                r2=float(r2_t),
+                f0=float(popt_t[0]),
+                fwhm=float(popt_t[1]),
+                amp=float(popt_t[2]),
                 contrast=float(popt_t[2] / bg_at_f0) if bg_at_f0 > 0 else 0.0,
                 f_win=(float(f_win.min()), float(f_win.max())),
             )
@@ -259,8 +250,13 @@ def _select_fit_outputs(
         and best["f_win"][0] <= f0_out <= best["f_win"][1]
     )
     return dict(
-        f0=f0_out, fwhm=fwhm_out, r2=r2, contrast=fitted_contrast,
-        popt=popt, fit_win_lo=fit_win_lo, fit_win_hi=fit_win_hi,
+        f0=f0_out,
+        fwhm=fwhm_out,
+        r2=r2,
+        contrast=fitted_contrast,
+        popt=popt,
+        fit_win_lo=fit_win_lo,
+        fit_win_hi=fit_win_hi,
         success_shape=success_shape,
     )
 
@@ -312,10 +308,21 @@ def fit_resonator(
     """
     _nan5 = np.full(5, np.nan)
     result = dict(
-        f0=np.nan, fwhm=np.nan, r2=np.nan, success=False, success_shape=False,
-        ambiguous=False, dip_snr=0.0, candidates=[],
-        popt=_nan5.copy(), edge_dip=False, contrast=np.nan, dip_idx=-1, reason="",
-        fit_win_lo=np.nan, fit_win_hi=np.nan,
+        f0=np.nan,
+        fwhm=np.nan,
+        r2=np.nan,
+        success=False,
+        success_shape=False,
+        ambiguous=False,
+        dip_snr=0.0,
+        candidates=[],
+        popt=_nan5.copy(),
+        edge_dip=False,
+        contrast=np.nan,
+        dip_idx=-1,
+        reason="",
+        fit_win_lo=np.nan,
+        fit_win_hi=np.nan,
     )
 
     freqs = np.asarray(freqs, dtype=float)
@@ -340,7 +347,9 @@ def fit_resonator(
 
     # Significant dip candidates (noise-relative, background-free, width-capped)
     candidates = find_dip_candidates(
-        freqs, smoothed, noise_sigma,
+        freqs,
+        smoothed,
+        noise_sigma,
         min_dip_snr=min_dip_snr,
         max_dip_width_hz=1.5 * max_fwhm_mhz * 1e6,
         edge_fraction=edge_fraction,
@@ -357,9 +366,7 @@ def fit_resonator(
     f0_init = float(freqs[dip_idx])
     A_raw = smoothed.max() - smoothed.min()
 
-    fwhm_init, depth_d = _estimate_initial_fwhm(
-        freqs, smoothed, f0_init, top["width_hz"], detrend_window_mhz, step
-    )
+    fwhm_init, depth_d = _estimate_initial_fwhm(freqs, smoothed, f0_init, top["width_hz"], detrend_window_mhz, step)
 
     best = _fit_lorentzian_dip_ladder(
         freqs, amplitude, f0_init, fwhm_init, A_raw, step, window_fwhm_factor, min_window_mhz
@@ -378,11 +385,15 @@ def fit_resonator(
         popt[0] = f0_out
 
     result.update(
-        f0=float(f0_out), fwhm=float(outputs["fwhm"]), r2=float(outputs["r2"]),
+        f0=float(f0_out),
+        fwhm=float(outputs["fwhm"]),
+        r2=float(outputs["r2"]),
         success=True,  # a significant, resonator-shaped dip exists (candidates non-empty)
         success_shape=outputs["success_shape"],
-        popt=np.array(popt), contrast=float(outputs["contrast"]),
-        fit_win_lo=float(outputs["fit_win_lo"]), fit_win_hi=float(outputs["fit_win_hi"]),
+        popt=np.array(popt),
+        contrast=float(outputs["contrast"]),
+        fit_win_lo=float(outputs["fit_win_lo"]),
+        fit_win_hi=float(outputs["fit_win_hi"]),
     )
     return result
 
@@ -434,16 +445,18 @@ class FitParameters:
     frequency: float
     fwhm: float
     r2: float
-    success: bool                    # FREQUENCY success: a significant dip exists, f0 delivered
-    success_shape: bool = False      # Lorentzian lineshape trustworthy (strict gates)
-    ambiguous: bool = False          # >1 comparable dip in the window — needs disambiguation
-    dip_snr: float = 0.0             # top dip prominence / noise sigma
+    success: bool  # FREQUENCY success: a significant dip exists, f0 delivered
+    success_shape: bool = False  # Lorentzian lineshape trustworthy (strict gates)
+    ambiguous: bool = False  # >1 comparable dip in the window — needs disambiguation
+    dip_snr: float = 0.0  # top dip prominence / noise sigma
     candidates: list[dict[str, int | float]] = field(default_factory=list)  # all significant dips (desc prominence)
     fit_win_lo: float = float("nan")  # lower edge (Hz) of the window popt was actually fit on
     fit_win_hi: float = float("nan")  # upper edge (Hz) of the window popt was actually fit on
 
 
-def log_fitted_results(fit_results: dict[str, dict[str, Any]], log_callable: Callable[[str], None] | None = None) -> None:
+def log_fitted_results(
+    fit_results: dict[str, dict[str, Any]], log_callable: Callable[[str], None] | None = None
+) -> None:
     """Log the fitted results for all qubits (three-state + ambiguity in v2)."""
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
@@ -469,18 +482,13 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """Convert IQ to voltage, add amplitude/phase, and attach full-frequency coordinates."""
     ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     ds = add_amplitude_and_phase(ds, "detuning", subtract_slope_flag=True)
-    full_freq = np.array([
-        ds.detuning.values + q.resonator.RF_frequency
-        for q in node.namespace["qubits"]
-    ])
+    full_freq = np.array([ds.detuning.values + q.resonator.RF_frequency for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, dict[str, FitParameters]]:
     """Fit a Lorentzian dip to each qubit's amplitude trace.
 
     Reads re_fit_resonators / re_fit_centers_ghz / re_fit_span_mhz from
@@ -518,7 +526,8 @@ def fit_raw_data(
 
         ov = overrides.get(q.name, {})
         res = fit_resonator(
-            full_freq_q, amplitude_q,
+            full_freq_q,
+            amplitude_q,
             override_center_hz=ov.get("center_hz"),
             override_span_hz=ov.get("span_hz"),
             min_dip_snr=getattr(params, "min_dip_snr", 6.0),
@@ -545,43 +554,35 @@ def fit_raw_data(
                 f0_vals,
                 coords={"qubit": qubit_names},
                 dims="qubit",
-                attrs={"long_name": "resonator frequency", "units": "Hz"}
+                attrs={"long_name": "resonator frequency", "units": "Hz"},
             ),
             "fwhm": xr.DataArray(
-                fwhm_vals,
-                coords={"qubit": qubit_names},
-                dims="qubit",
-                attrs={"long_name": "FWHM", "units": "Hz"}
+                fwhm_vals, coords={"qubit": qubit_names}, dims="qubit", attrs={"long_name": "FWHM", "units": "Hz"}
             ),
-            "r2": xr.DataArray(
-                r2_vals,
-                coords={"qubit": qubit_names},
-                dims="qubit",
-                attrs={"long_name": "R²"}
-            ),
+            "r2": xr.DataArray(r2_vals, coords={"qubit": qubit_names}, dims="qubit", attrs={"long_name": "R²"}),
             "success": xr.DataArray(
                 success_vals,
                 coords={"qubit": qubit_names},
                 dims="qubit",
-                attrs={"long_name": "frequency success (significant dip found)"}
+                attrs={"long_name": "frequency success (significant dip found)"},
             ),
             "success_shape": xr.DataArray(
                 shape_vals,
                 coords={"qubit": qubit_names},
                 dims="qubit",
-                attrs={"long_name": "lineshape trustworthy (strict gates)"}
+                attrs={"long_name": "lineshape trustworthy (strict gates)"},
             ),
             "ambiguous": xr.DataArray(
                 amb_vals,
                 coords={"qubit": qubit_names},
                 dims="qubit",
-                attrs={"long_name": "multiple comparable dips in window"}
+                attrs={"long_name": "multiple comparable dips in window"},
             ),
             "dip_snr": xr.DataArray(
                 snr_vals,
                 coords={"qubit": qubit_names},
                 dims="qubit",
-                attrs={"long_name": "top dip prominence / noise sigma"}
+                attrs={"long_name": "top dip prominence / noise sigma"},
             ),
             "popt": xr.DataArray(
                 popt_array,
@@ -593,13 +594,13 @@ def fit_raw_data(
                 fit_win_lo_vals,
                 coords={"qubit": qubit_names},
                 dims="qubit",
-                attrs={"long_name": "lower edge of the window popt was fit on", "units": "Hz"}
+                attrs={"long_name": "lower edge of the window popt was fit on", "units": "Hz"},
             ),
             "fit_win_hi": xr.DataArray(
                 fit_win_hi_vals,
                 coords={"qubit": qubit_names},
                 dims="qubit",
-                attrs={"long_name": "upper edge of the window popt was fit on", "units": "Hz"}
+                attrs={"long_name": "upper edge of the window popt was fit on", "units": "Hz"},
             ),
         }
     )

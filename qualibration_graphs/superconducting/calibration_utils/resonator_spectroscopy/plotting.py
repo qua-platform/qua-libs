@@ -52,35 +52,36 @@ def _relock_twin_axis(ax: Axes, ax2: Axes, center_hz: float) -> None:
     lo, hi = ax.get_xlim()  # GHz
     ax2.set_xlim((lo * u.GHz - center_hz) / u.MHz, (hi * u.GHz - center_hz) / u.MHz)
 
+
 # ---------------------------------------------------------------------------
 # Reference single-panel geometry + bounds (tune the figure look here)
 # ---------------------------------------------------------------------------
 # The "gold" single-qubit panel: a 1x1 grid renders at exactly this size with
 # the base font sizes below, reproducing the original single-qubit figure.
-_REF_PANEL_W = 15.0   # inches, width of one reference panel
-_REF_PANEL_H = 9.0    # inches, height of one reference panel
+_REF_PANEL_W = 15.0  # inches, width of one reference panel
+_REF_PANEL_H = 9.0  # inches, height of one reference panel
 
 # Maximum total figure size for a multiplexed grid.  The scale factor never
 # exceeds 1, so panels are never *larger* than the reference; for large grids
 # the figure is capped at these dimensions and fonts shrink to fit.
-_TARGET_W = 24.0      # inches, max total figure width
-_TARGET_H = 15.0      # inches, max total figure height
+_TARGET_W = 24.0  # inches, max total figure width
+_TARGET_H = 15.0  # inches, max total figure height
 
 # ---------------------------------------------------------------------------
 # Base (gold) font / pad sizes — these apply unscaled to a single panel
 # ---------------------------------------------------------------------------
-_BASE_FS_SUPTITLE = 28   # figure suptitle
-_BASE_FS_TITLE    = 24   # per-subplot title
-_BASE_FS_LABEL    = 24   # axis label (xlabel / ylabel)
-_BASE_FS_TICK     = 22   # tick-label size
-_BASE_FS_LEGEND   = 20   # legend text
-_BASE_FS_CBAR     = 20   # colorbar label / ticks
+_BASE_FS_SUPTITLE = 28  # figure suptitle
+_BASE_FS_TITLE = 24  # per-subplot title
+_BASE_FS_LABEL = 24  # axis label (xlabel / ylabel)
+_BASE_FS_TICK = 22  # tick-label size
+_BASE_FS_LEGEND = 20  # legend text
+_BASE_FS_CBAR = 20  # colorbar label / ticks
 
 # Extra vertical padding (pts) for subplot titles on plots that have a twiny()
 # top x-axis: the top ticks + "Detuning [MHz]" label need to be cleared.
 # Rule of thumb: ~1.5 x (_FS_TICK + _FS_LABEL) in points (at full scale).
-_BASE_TITLE_PAD_TWINY = 40   # plots with twiny top x-axis
-_BASE_TITLE_PAD       =  8   # plots without a top x-axis
+_BASE_TITLE_PAD_TWINY = 40  # plots with twiny top x-axis
+_BASE_TITLE_PAD = 8  # plots without a top x-axis
 
 
 def _clip(value: float, floor: float) -> float:
@@ -175,18 +176,14 @@ def plot_raw_phase(
         qubit_name = qubit["qubit"]
 
         # Primary axis: absolute RF frequency [GHz], left y: phase
-        ds_q.assign_coords(full_freq_GHz=ds_q.full_freq / u.GHz).phase.plot(
-            ax=ax1, x="full_freq_GHz"
-        )
+        ds_q.assign_coords(full_freq_GHz=ds_q.full_freq / u.GHz).phase.plot(ax=ax1, x="full_freq_GHz")
         ax1.set_xlabel("RF frequency [GHz]", fontsize=st.fs_label)
         ax1.set_ylabel("phase [rad]", fontsize=st.fs_label)
         _apply_tick_fontsize(ax1, st.fs_tick)
 
         # Top x-axis: detuning [MHz]
         ax2 = ax1.twiny()
-        ds_q.assign_coords(detuning_MHz=ds_q.detuning / u.MHz).phase.plot(
-            ax=ax2, x="detuning_MHz"
-        )
+        ds_q.assign_coords(detuning_MHz=ds_q.detuning / u.MHz).phase.plot(ax=ax2, x="detuning_MHz")
         ax2.set_xlabel("Detuning [MHz]", fontsize=st.fs_label)
         ax2.set_title("")  # clear any auto-title xarray set on the twin axis
         _apply_tick_fontsize(ax2, st.fs_tick)
@@ -195,8 +192,12 @@ def plot_raw_phase(
         tau_ns = -np.gradient(phase, full_freq_hz) * 1e9
         ax_gd = ax1.twinx()
         ax_gd.plot(
-            full_freq_ghz, tau_ns,
-            color="darkorange", linewidth=st.lw_gd, alpha=0.7, label="group delay",
+            full_freq_ghz,
+            tau_ns,
+            color="darkorange",
+            linewidth=st.lw_gd,
+            alpha=0.7,
+            label="group delay",
         )
         ax_gd.set_ylabel("-dφ/df [ns]", color="darkorange", fontsize=st.fs_label)
         ax_gd.tick_params(axis="y", colors="darkorange", labelsize=st.fs_tick)
@@ -211,7 +212,10 @@ def plot_raw_phase(
             if not np.isnan(f0_hz):
                 f0_ghz_val = f0_hz / u.GHz
                 ax1.axvline(
-                    f0_ghz_val, color="red", linestyle="--", linewidth=st.lw_gd,
+                    f0_ghz_val,
+                    color="red",
+                    linestyle="--",
+                    linewidth=st.lw_gd,
                     label=f"f₀={f0_ghz_val:.4f} GHz",
                 )
                 ax1.legend(fontsize=st.fs_legend, loc="upper right")
@@ -222,9 +226,7 @@ def plot_raw_phase(
     return _finalize(grid, st, "Resonator spectroscopy (phase)")
 
 
-def plot_raw_amplitude_with_fit(
-    ds: xr.Dataset, qubits: list[AnyTransmon], fits: xr.Dataset
-) -> Figure:
+def plot_raw_amplitude_with_fit(ds: xr.Dataset, qubits: list[AnyTransmon], fits: xr.Dataset) -> Figure:
     """Plot IQ amplitude with fitted curves for all qubits on a grid."""
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     st = _style_for_grid(grid)
@@ -257,26 +259,26 @@ def plot_individual_amplitude_with_fit(
     """
     if st is None:
         st = SimpleNamespace(
-            fs_label=_BASE_FS_LABEL, fs_title=_BASE_FS_TITLE, fs_tick=_BASE_FS_TICK,
-            fs_legend=_BASE_FS_LEGEND, pad_twiny=_BASE_TITLE_PAD_TWINY, lw_fit=1.5,
+            fs_label=_BASE_FS_LABEL,
+            fs_title=_BASE_FS_TITLE,
+            fs_tick=_BASE_FS_TICK,
+            fs_legend=_BASE_FS_LEGEND,
+            pad_twiny=_BASE_TITLE_PAD_TWINY,
+            lw_fit=1.5,
         )
 
     ds_q = ds.loc[qubit]
     qubit_name = qubit["qubit"]
 
     # Primary x-axis: absolute RF frequency in GHz
-    (ds_q.assign_coords(full_freq_GHz=ds_q.full_freq / u.GHz).IQ_abs / u.mV).plot(
-        ax=ax, x="full_freq_GHz"
-    )
+    (ds_q.assign_coords(full_freq_GHz=ds_q.full_freq / u.GHz).IQ_abs / u.mV).plot(ax=ax, x="full_freq_GHz")
     ax.set_xlabel("RF frequency [GHz]", fontsize=st.fs_label)
     ax.set_ylabel(r"$R=\sqrt{I^2+Q^2}$ [mV]", fontsize=st.fs_label)
     _apply_tick_fontsize(ax, st.fs_tick)
 
     # Secondary x-axis: detuning in MHz
     ax2 = ax.twiny()
-    (ds_q.assign_coords(detuning_MHz=ds_q.detuning / u.MHz).IQ_abs / u.mV).plot(
-        ax=ax2, x="detuning_MHz"
-    )
+    (ds_q.assign_coords(detuning_MHz=ds_q.detuning / u.MHz).IQ_abs / u.mV).plot(ax=ax2, x="detuning_MHz")
     ax2.set_xlabel("Detuning [MHz]", fontsize=st.fs_label)
     ax2.set_title("")  # clear xarray auto-title on twin axis
     _apply_tick_fontsize(ax2, st.fs_tick)
@@ -328,8 +330,10 @@ def plot_individual_amplitude_with_fit(
 
             # Dashed fit line with annotation in legend
             ax2.plot(
-                detuning_mhz, fitted_curve_mv,
-                "r--", linewidth=st.lw_fit,
+                detuning_mhz,
+                fitted_curve_mv,
+                "r--",
+                linewidth=st.lw_fit,
                 label=f"fit: f₀={f0_ghz:.4f} GHz, FWHM={fwhm_mhz:.2f} MHz",
             )
 
@@ -341,7 +345,8 @@ def plot_individual_amplitude_with_fit(
             ax2.axvspan(
                 det_f0_mhz - fwhm_mhz / 2,
                 det_f0_mhz + fwhm_mhz / 2,
-                alpha=0.15, color="red",
+                alpha=0.15,
+                color="red",
             )
 
             ax2.legend(fontsize=st.fs_legend, loc="upper right")
@@ -404,7 +409,10 @@ def plot_detrended_phase(
 
         if det_f0_mhz is not None:
             ax.axvline(
-                det_f0_mhz, color="red", linestyle="--", linewidth=st.lw_gd,
+                det_f0_mhz,
+                color="red",
+                linestyle="--",
+                linewidth=st.lw_gd,
                 label=f"f₀={f0_hz_val / u.GHz:.4f} GHz",
             )
             ax.legend(fontsize=st.fs_legend, loc="upper right")
@@ -444,8 +452,12 @@ def plot_iq_circle(
 
         # Scatter coloured by detuning
         sc = ax.scatter(
-            I_mV, Q_mV,
-            c=detuning_mhz, cmap="plasma", s=st.scatter_s, zorder=2,
+            I_mV,
+            Q_mV,
+            c=detuning_mhz,
+            cmap="plasma",
+            s=st.scatter_s,
+            zorder=2,
         )
 
         # Directional arrows evenly spaced along the trace (skip for a degenerate trace)
@@ -487,8 +499,12 @@ def plot_iq_circle(
                 full_freq_hz = ds_q.full_freq.values
                 idx = int(np.argmin(np.abs(full_freq_hz - f0_hz)))
                 ax.scatter(
-                    I_mV[idx], Q_mV[idx],
-                    color="red", marker="*", s=st.star_s, zorder=5,
+                    I_mV[idx],
+                    Q_mV[idx],
+                    color="red",
+                    marker="*",
+                    s=st.star_s,
+                    zorder=5,
                     label=f"f₀={f0_hz / u.GHz:.4f} GHz",
                 )
                 ax.legend(fontsize=st.fs_legend, loc="upper right")

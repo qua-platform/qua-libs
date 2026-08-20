@@ -72,14 +72,16 @@ def plan_lo_recenter(
         return dict(shift=False, new_lo_hz=float(lo_hz), error=None)
     if span_hz / 2.0 > if_limit_hz:
         return dict(
-            shift=False, new_lo_hz=float(lo_hz),
+            shift=False,
+            new_lo_hz=float(lo_hz),
             error=f"span/2 = {span_hz / 2 / 1e6:.0f} MHz exceeds the ±{if_limit_hz / 1e6:.0f} MHz IF reach",
         )
     new_lo = float(rf_hz)  # IF -> 0 at the expected center
     if not (lo_min <= new_lo <= lo_max):
         return dict(
-            shift=False, new_lo_hz=float(lo_hz),
+            shift=False,
+            new_lo_hz=float(lo_hz),
             error=f"re-centered LO {new_lo / 1e9:.3f} GHz outside band-{band} range "
-                  f"[{lo_min / 1e9:.2f}, {lo_max / 1e9:.2f}] GHz",
+            f"[{lo_min / 1e9:.2f}, {lo_max / 1e9:.2f}] GHz",
         )
     return dict(shift=True, new_lo_hz=new_lo, error=None)
