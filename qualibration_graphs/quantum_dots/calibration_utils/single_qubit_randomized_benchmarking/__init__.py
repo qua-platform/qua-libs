@@ -1,16 +1,22 @@
 from .parameters import Parameters
-from .clifford_tables import build_single_qubit_clifford_tables, NATIVE_GATE_MAP, decomposition_type, avg_physical_gates_per_clifford
+from .clifford_tables import (
+    build_single_qubit_clifford_tables,
+    NATIVE_GATE_MAP,
+    decomposition_type,
+    avg_physical_gates_per_clifford,
+)
 from .qua_macros import play_rb_gate
-from .analysis import fit_raw_data, log_fitted_results, analyse_raw_data
+from .analysis import process_raw_dataset, fit_raw_data, log_fitted_results, analyse_raw_data
 from .plotting import plot_raw_data_with_fit, plot_all
 
 __all__ = [
     "Parameters",
     "build_single_qubit_clifford_tables",
-    'decomposition_type',
-    'avg_physical_gates_per_clifford',
+    "decomposition_type",
+    "avg_physical_gates_per_clifford",
     "NATIVE_GATE_MAP",
     "play_rb_gate",
+    "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",
     "analyse_raw_data",

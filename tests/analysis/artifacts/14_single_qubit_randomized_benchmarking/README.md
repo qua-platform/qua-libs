@@ -3,12 +3,12 @@
 ## Description
 
 
-        SINGLE QUBIT RANDOMIZED BENCHMARKING (PPU-optimized)
-The program plays random sequences of single-qubit Clifford gates and measures the
-survival probability (return to ground state) afterward.  The 24 single-qubit
-Cliffords are decomposed via Qiskit transpilation (basis: rx, ry, rz) into native
-gates {x90, x180, -x90, y90, y180, -y90} plus virtual Z rotations
-(frame_rotation_2pi, zero duration).
+SINGLE QUBIT RANDOMIZED BENCHMARKING (PPU-optimized)
+
+This node estimates the average single-qubit Clifford fidelity by playing random
+Clifford sequences and measuring the survival probability after the recovery
+operation. The 24 single-qubit Cliffords are decomposed into the native gate set
+`{x90, x180, -x90, y90, y180, -y90}` plus virtual Z rotations.
 
 The PPU generates random Clifford circuits on-chip:
   1. PPU PHASE: For each circuit, random Cliffords are generated incrementally
@@ -20,7 +20,7 @@ Depth convention: depth d = d-1 random Cliffords + 1 recovery (inverse) = d tota
 A single random circuit of max length is generated per circuit_idx; shorter depths
 are truncations of the same circuit (standard RB truncation approach).
 
-The survival probability vs circuit depth is fit to F(m) = A·α^m + B.  The average
+The survival probability vs circuit depth is fit to F(m) = A·α^m + B. The average
 error per Clifford is epc = (1 − α)·(d − 1)/d with d = 2, giving the average
 Clifford gate fidelity F_avg = 1 − epc.
 
@@ -30,13 +30,20 @@ Prerequisites:
     - Having calibrated π and π/2 pulse parameters (nodes 09a, 09b, 11a).
     - Native gate operations (x90, x180, -x90, y90, y180, -y90) defined on the qubit XY channel.
 
+Datasets:
+    - `ds_raw`: Averaged survival probability versus circuit depth for each qubit and random circuit.
+    - `ds_fit`: Fitted RB decay traces and derived analysis variables used for plotting.
+    - `fit_results`: Per-qubit scalar fit summary, including fit success and native gate fidelity.
+
+Results:
+    - Per-qubit fitted RB decay parameters and the extracted average native gate fidelity.
+
+Figures:
+    - Raw RB survival data with fitted decay curves for each selected qubit.
+    - Simulated waveform report and sample plot when `simulate=True`.
+
 State update:
     - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"].
-
-TODO:
-    Fix alignment/timing consistency between FEM output channels (LF vs MW) so pulses
-    and background offsets line up across hardware and simulated RB waveforms.
-
 
 
 ## Parameters
@@ -47,35 +54,25 @@ TODO:
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
 quadratures 'I' and 'Q'. Default is False. |
-| `reset_wait_time` | `5000` | The wait time for qubit reset. |
+| `reset_type` | `thermal` | The qubit reset method to use. Must be implemented as a method of Quam.qubit. Can be "thermal", "active", or
+"active_gef". Default is "thermal". |
 | `qubits` | `['q1', 'q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
-| `num_circuits_per_length` | `6` | Number of random circuits per depth. Default is 50. |
-| `num_shots` | `200` | Number of repetitions (shots) per circuit. Default is 400. |
-| `max_circuit_depth` | `16` | Maximum circuit depth (total Clifford count). Default is 256. |
+| `target_state` | `None` | The state you want to initialize into for heralded initialization. |
+| `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
+| `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |
+| `num_circuits_per_length` | `20` | Number of random circuits per depth. Default is 50. |
+| `num_shots` | `500` | Number of repetitions (shots) per circuit. Default is 400. |
+| `max_circuit_depth` | `56` | Maximum circuit depth (total Clifford count). Default is 256. |
 | `delta_clifford` | `20` | Step between depths in linear scale mode. Default is 20. |
 | `log_scale` | `True` | If True, use log-scale depths: 2, 4, 8, 16, ... up to max_circuit_depth. Default is True. |
 | `seed` | `None` | Seed for the QUA pseudo-random number generator. Default is None (random). |
-| `operation_x90` | `x90` | Name of the π/2 X rotation operation on the xy channel. Default is 'x90'. |
-| `operation_x180` | `x180` | Name of the π X rotation operation on the xy channel. Default is 'x180'. |
 | `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
 | `simulation_duration_ns` | `50000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
 | `timeout` | `120` | Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s. |
 | `load_data_id` | `None` | Optional QUAlibrate node run index for loading historical data. Default is None. |
 
-## Fit Results
 
-| Qubit | f_res (GHz) | t_pi (ns) | Omega_R (rad/ns) | gamma (1/ns) | T2* (ns) | success |
-|-------|-------------|----------|--------------|----------|----------|--------|
-| q1 | 0.0000 | nan | nan | nan | inf | True |
-| q2 | 0.0000 | nan | nan | nan | inf | True |
-
-## Updated State
-
-| Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
-|-------|-----------------------------|-----------------------------------------|
-| q1 | 0 | nan |
-| q2 | 0 | nan |
 
 ## Analysis Output
 

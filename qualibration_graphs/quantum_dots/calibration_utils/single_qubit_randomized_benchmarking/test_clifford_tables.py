@@ -36,15 +36,15 @@ from clifford_tables import (
 _s = 1.0 / np.sqrt(2)
 
 _GATE_MATRICES: dict[str, np.ndarray] = {
-    "x90":  np.array([[_s, -1j * _s], [-1j * _s,  _s]], dtype=complex),
-    "x180": np.array([[0,  -1j     ], [-1j,        0 ]], dtype=complex),
-    "xm90": np.array([[_s,  1j * _s], [ 1j * _s,  _s]], dtype=complex),
-    "y90":  np.array([[_s,  -_s    ], [ _s,       _s ]], dtype=complex),
-    "y180": np.array([[0,   -1     ], [ 1,         0 ]], dtype=complex),
-    "ym90": np.array([[_s,   _s    ], [-_s,        _s]], dtype=complex),
-    "z90":  np.array([[_s - 1j * _s, 0           ], [0,            _s + 1j * _s]], dtype=complex),
-    "z180": np.array([[-1j,          0           ], [0,            1j          ]], dtype=complex),
-    "zm90": np.array([[_s + 1j * _s, 0           ], [0,            _s - 1j * _s]], dtype=complex),
+    "x90": np.array([[_s, -1j * _s], [-1j * _s, _s]], dtype=complex),
+    "x180": np.array([[0, -1j], [-1j, 0]], dtype=complex),
+    "xm90": np.array([[_s, 1j * _s], [1j * _s, _s]], dtype=complex),
+    "y90": np.array([[_s, -_s], [_s, _s]], dtype=complex),
+    "y180": np.array([[0, -1], [1, 0]], dtype=complex),
+    "ym90": np.array([[_s, _s], [-_s, _s]], dtype=complex),
+    "z90": np.array([[_s - 1j * _s, 0], [0, _s + 1j * _s]], dtype=complex),
+    "z180": np.array([[-1j, 0], [0, 1j]], dtype=complex),
+    "zm90": np.array([[_s + 1j * _s, 0], [0, _s - 1j * _s]], dtype=complex),
 }
 
 
@@ -59,12 +59,7 @@ def _seq_unitary(seq: list[str]) -> np.ndarray:
 def _equiv(U: np.ndarray, V: np.ndarray, tol: float = 1e-10) -> bool:
     """True if U and V are equal up to a global phase (U V† ∝ I)."""
     M = U @ V.conj().T
-    return (
-        abs(M[0, 1]) < tol
-        and abs(M[1, 0]) < tol
-        and abs(abs(M[0, 0]) - 1) < tol
-        and abs(abs(M[1, 1]) - 1) < tol
-    )
+    return abs(M[0, 1]) < tol and abs(M[1, 0]) < tol and abs(abs(M[0, 0]) - 1) < tol and abs(abs(M[1, 1]) - 1) < tol
 
 
 # ---------------------------------------------------------------------------
@@ -84,8 +79,7 @@ class TestAlternativeDecompositions:
     def test_equivalent_to_reference(self, k: int) -> None:
         alt = _seq_unitary(_ALTERNATIVE_DECOMPOSITION_SEQUENCES[k])
         assert _equiv(_REF[k], alt), (
-            f"Clifford {k}: alt={_ALTERNATIVE_DECOMPOSITION_SEQUENCES[k]} "
-            f"!= ref={_DECOMPOSITION_SEQUENCES[k]}"
+            f"Clifford {k}: alt={_ALTERNATIVE_DECOMPOSITION_SEQUENCES[k]} " f"!= ref={_DECOMPOSITION_SEQUENCES[k]}"
         )
 
     def test_no_z_gates(self) -> None:
@@ -101,9 +95,7 @@ class TestCayleyTable:
         for j in range(NUM_CLIFFORDS):
             k = CAYLEY[i][j]
             product = _REF[i] @ _REF[j]
-            assert _equiv(product, _REF[k]), (
-                f"CAYLEY[{i}][{j}] = {k} wrong: U(C_{i}) @ U(C_{j}) != U(C_{k})"
-            )
+            assert _equiv(product, _REF[k]), f"CAYLEY[{i}][{j}] = {k} wrong: U(C_{i}) @ U(C_{j}) != U(C_{k})"
 
 
 class TestInverseTable:
@@ -111,9 +103,7 @@ class TestInverseTable:
     def test_inverse(self, i: int) -> None:
         j = INVERSES[i]
         product = _REF[i] @ _REF[j]
-        assert _equiv(product, np.eye(2, dtype=complex)), (
-            f"INVERSES[{i}] = {j} wrong: U(C_{i}) @ U(C_{j}) != I"
-        )
+        assert _equiv(product, np.eye(2, dtype=complex)), f"INVERSES[{i}] = {j} wrong: U(C_{i}) @ U(C_{j}) != I"
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +132,7 @@ def _exact_alpha_gate(gate_counts: list[int], alpha_rb: float) -> float:
     n = len(gate_counts)
 
     def residual(x: float) -> float:
-        return sum(x ** nk for nk in gate_counts) / n - alpha_rb
+        return sum(x**nk for nk in gate_counts) / n - alpha_rb
 
     if residual(1.0) < 0:
         return 1.0  # alpha_rb > 1, unphysical — return identity
@@ -164,52 +154,49 @@ class TestEPGFormula:
             alpha1, alpha2 = rng.uniform(0.9, 1.0, 2)
             composed = _depolarising(_depolarising(rho, alpha2), alpha1)
             direct = _depolarising(rho, alpha1 * alpha2)
-            assert np.allclose(composed, direct, atol=1e-14), (
-                f"Composition failed: alpha1={alpha1:.4f}, alpha2={alpha2:.4f}"
-            )
+            assert np.allclose(
+                composed, direct, atol=1e-14
+            ), f"Composition failed: alpha1={alpha1:.4f}, alpha2={alpha2:.4f}"
 
-    @pytest.mark.parametrize("sequences,name", [
-        (_DECOMPOSITION_SEQUENCES, "reference"),
-        (_ALTERNATIVE_DECOMPOSITION_SEQUENCES, "alternative"),
-    ])
-    def test_step2_rb_decay_is_clifford_average(
-        self, sequences: list[list[str]], name: str
-    ) -> None:
+    @pytest.mark.parametrize(
+        "sequences,name",
+        [
+            (_DECOMPOSITION_SEQUENCES, "reference"),
+            (_ALTERNATIVE_DECOMPOSITION_SEQUENCES, "alternative"),
+        ],
+    )
+    def test_step2_rb_decay_is_clifford_average(self, sequences: list[list[str]], name: str) -> None:
         """alpha_RB = (1/24) sum_k alpha_gate^{n_k} for a concrete alpha_gate."""
-        gate_counts = [
-            sum(1 for g in seq if g in _PHYSICAL_GATES) for seq in sequences
-        ]
+        gate_counts = [sum(1 for g in seq if g in _PHYSICAL_GATES) for seq in sequences]
         alpha_gate = 0.999  # representative high-fidelity gate
-        alpha_rb_exact = sum(alpha_gate ** nk for nk in gate_counts) / NUM_CLIFFORDS
+        alpha_rb_exact = sum(alpha_gate**nk for nk in gate_counts) / NUM_CLIFFORDS
 
         # Reconstruct alpha_gate via exact numerical inversion
         alpha_gate_recovered = _exact_alpha_gate(gate_counts, alpha_rb_exact)
         assert abs(alpha_gate_recovered - alpha_gate) < 1e-10, (
-            f"[{name}] exact inversion failed: "
-            f"in={alpha_gate:.6f}, recovered={alpha_gate_recovered:.6f}"
+            f"[{name}] exact inversion failed: " f"in={alpha_gate:.6f}, recovered={alpha_gate_recovered:.6f}"
         )
 
     @pytest.mark.parametrize("epg", [1e-2, 1e-3, 1e-4])
-    @pytest.mark.parametrize("sequences,name", [
-        (_DECOMPOSITION_SEQUENCES, "reference"),
-        (_ALTERNATIVE_DECOMPOSITION_SEQUENCES, "alternative"),
-    ])
-    def test_step3_approximation_error(
-        self, sequences: list[list[str]], name: str, epg: float
-    ) -> None:
+    @pytest.mark.parametrize(
+        "sequences,name",
+        [
+            (_DECOMPOSITION_SEQUENCES, "reference"),
+            (_ALTERNATIVE_DECOMPOSITION_SEQUENCES, "alternative"),
+        ],
+    )
+    def test_step3_approximation_error(self, sequences: list[list[str]], name: str, epg: float) -> None:
         """alpha_gate ≈ alpha_RB^(1/<n_g>) to within O(Var(n_k)*(log alpha_gate)^2/2).
 
         The approximation should be negligible for realistic gate errors.
         """
-        gate_counts = [
-            sum(1 for g in seq if g in _PHYSICAL_GATES) for seq in sequences
-        ]
+        gate_counts = [sum(1 for g in seq if g in _PHYSICAL_GATES) for seq in sequences]
         avg_ng = avg_physical_gates_per_clifford(sequences)
         var_ng = np.var(gate_counts)
 
         d = 2
         alpha_gate_true = 1.0 - epg * d / (d - 1)  # from epg = (1-alpha)*(d-1)/d
-        alpha_rb = sum(alpha_gate_true ** nk for nk in gate_counts) / NUM_CLIFFORDS
+        alpha_rb = sum(alpha_gate_true**nk for nk in gate_counts) / NUM_CLIFFORDS
 
         # Approximate inversion
         alpha_gate_approx = alpha_rb ** (1.0 / avg_ng)
@@ -229,6 +216,4 @@ class TestEPGFormula:
         epg_exact = (1.0 - _exact_alpha_gate(gate_counts, alpha_rb)) * (d - 1) / d
         relative_error = abs(epg_approx - epg_exact) / epg
         if epg <= 1e-2:
-            assert relative_error < 0.01, (
-                f"[{name}, epg={epg}] relative EPG error {relative_error:.2e} > 1%"
-            )
+            assert relative_error < 0.01, f"[{name}, epg={epg}] relative EPG error {relative_error:.2e} > 1%"
