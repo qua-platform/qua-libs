@@ -36,10 +36,14 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        if "nb_of_pulses" not in ds or len(ds.nb_of_pulses) == 1:
-            plot_individual_data_with_fit_1D(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        fit_sel = fits.sel(qubit=qubit["qubit"]) if "qubit" in fits.dims else fits
+        # Dispatch by dataset dimensions: readout_frequency -> 2D (amp x freq), else nb_of_pulses -> 1D or 2D
+        if "readout_frequency" in ds.dims:
+            plot_individual_data_with_fit_2D_readout_freq(ax, ds, qubit, fit_sel)
+        elif "nb_of_pulses" not in ds.dims or len(ds.nb_of_pulses) == 1:
+            plot_individual_data_with_fit_1D(ax, ds, qubit, fit_sel)
         else:
-            plot_individual_data_with_fit_2D(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+            plot_individual_data_with_fit_2D(ax, ds, qubit, fit_sel)
 
     grid.fig.suptitle("Power Rabi")
     grid.fig.set_size_inches(15, 9)
@@ -67,8 +71,8 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    if "nb_of_pulses" not in ds or len(ds.nb_of_pulses.data) == 1:
-        if fit:
+    if "nb_of_pulses" not in ds.dims or len(ds.nb_of_pulses.data) == 1:
+        if fit is not None:
             fitted_data = oscillation(
                 fit.amp_prefactor.data,
                 fit.fit.sel(fit_vals="a").data,
@@ -92,12 +96,71 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
             raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
 
         (ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit] * 1e3)[data].plot(ax=ax, x="amp_mV")
-        ax.plot(fit.full_amp * 1e3, 1e3 * fitted_data)
+        if fit is not None and fitted_data is not None:
+            ax.plot(fit.full_amp * 1e3, 1e3 * fitted_data)
         ax.set_ylabel(label)
         ax.set_xlabel("Pulse amplitude [mV]")
         ax2 = ax.twiny()
         (ds.assign_coords(amp_mV=ds.amp_prefactor).loc[qubit] * 1e3)[data].plot(ax=ax2, x="amp_mV")
         ax2.set_xlabel("amplitude prefactor")
+        # Mark the reported half-period optimum (1/2f) and the fit-free raw data peak for comparison
+        marked = False
+        if fit is not None and "opt_amp_prefactor" in fit:
+            opt = float(fit.opt_amp_prefactor.values)
+            if opt == opt:  # not NaN
+                ax2.axvline(opt, color="g", ls="-", lw=1, label="fit pi (1/2f)")
+                marked = True
+        if fit is not None and "opt_amp_prefactor_raw" in fit:
+            raw = float(fit.opt_amp_prefactor_raw.values)
+            if raw == raw:  # not NaN
+                ax2.axvline(raw, color="r", ls="--", lw=1, label="raw peak")
+                marked = True
+        if marked:
+            ax2.legend(fontsize=6, loc="lower right")
+
+
+def plot_individual_data_with_fit_2D_readout_freq(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
+):
+    """
+    Plots 2D heatmap (amp_prefactor x readout_frequency) for one qubit.
+    Used when dataset has readout_frequency dimension (e.g. EF power Rabi with I/Q and freq sweep).
+    Overlays best-contrast readout frequency (horizontal line) and fitted
+    opt_amp_prefactor (vertical line) when available.
+    """
+    if hasattr(ds, "IQ_abs"):
+        data = "IQ_abs"
+        label = "IQ amplitude [mV]"
+    elif hasattr(ds, "I"):
+        data = "I"
+        label = "Rotated I quadrature [mV]"
+    else:
+        raise RuntimeError("Dataset must contain 'I' or 'IQ_abs' for 2D readout_freq plot.")
+    ds_qubit = ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit]
+    (ds_qubit * 1e3)[data].plot(
+        ax=ax,
+        x="amp_prefactor",
+        y="readout_frequency",
+        add_colorbar=True,
+        robust=True,
+    )
+    ax.set_xlabel("Amplitude prefactor")
+    ax.set_ylabel("Readout frequency detuning [Hz]")
+    ax.set_title(f"{label} (2D sweep)")
+    # Overlay best-contrast readout frequency and fitted pi-pulse amplitude when available
+    if fit is not None:
+        if "best_readout_frequency" in fit:
+            bf = fit.best_readout_frequency
+            if bf.size > 0:
+                best_freq = float(bf.values)
+                ax.axhline(y=best_freq, color="lime", linestyle="--", alpha=0.9, label="best contrast")
+        if hasattr(fit, "success") and hasattr(fit, "opt_amp_prefactor"):
+            try:
+                if bool(fit.success.values):
+                    opt_amp = float(fit.opt_amp_prefactor.values)
+                    ax.axvline(x=opt_amp, color="green", linestyle="-", alpha=0.9, label="fit pi pulse")
+            except (TypeError, AttributeError):
+                pass
 
 
 def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
@@ -136,6 +199,7 @@ def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
         ax=ax2, add_colorbar=False, x="amp_mV", y="nb_of_pulses", robust=True
     )
     ax2.set_xlabel("amplitude prefactor")
+    # Overlay fitted pi-pulse amplitude when fit succeeded
     if fit.success:
         ax2.axvline(
             x=fit.opt_amp_prefactor,
