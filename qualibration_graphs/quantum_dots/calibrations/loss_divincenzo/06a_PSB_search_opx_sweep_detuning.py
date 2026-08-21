@@ -20,6 +20,7 @@ from calibration_utils.psb_search_sweep_detuning import (
     fit_raw_data_pca_gaussian,
     log_fitted_results,
     plot_all,
+    extract_vgs_id,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -95,6 +96,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
 
+    # Ensure that the machine is set up to track the integrated voltage
+    node.machine.reset_voltage_sequence(extract_vgs_id(qubit_pairs), track_integrated_voltage=True)
+
     # Number of shots per detuning point
     n_avg = node.parameters.num_shots
 
@@ -107,8 +111,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # The swept axes. Buffer order is (detuning) then (n_runs).
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
-        "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
         "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
+        "detuning": xr.DataArray(detuning_array, attrs={"long_name": "voltage", "units": "V"}),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -135,8 +139,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 dot_pair = qubit_pair.quantum_dot_pair
                 op_name = "readout" + f"_{dot_pair.name}"
 
-                # Use the first sensor dot in the list of sensors associated with the quantum dot pair, 
-                # so that we can extract the readout_resonator element and readout_len 
+                # Use the first sensor dot in the list of sensors associated with the quantum dot pair,
+                # so that we can extract the readout_resonator element and readout_len
                 sensor = dot_pair.sensor_dots[0]
                 rr = sensor.readout_resonator
                 readout_len = rr.operations[op_name].length

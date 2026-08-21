@@ -1,7 +1,16 @@
 import numpy as np
 import xarray as xr
 
-__all__ = ["validate_and_build_arrays", "assemble_ds_raw"]
+__all__ = [
+    "validate_and_build_arrays",
+    "assemble_ds_raw",
+    "extract_vgs_id",
+]
+
+
+def extract_vgs_id(qubit_pairs):
+    vgs_id = next(iter({pair.quantum_dot_pair.voltage_sequence.gate_set.name for pair in qubit_pairs}))
+    return vgs_id
 
 
 def validate_and_build_arrays(node):

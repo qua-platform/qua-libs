@@ -7,7 +7,7 @@ from .analysis import (
     process_raw_dataset,
 )
 from .plotting import plot_all, plot_detuning_vs_buffer_pca_map
-from .helper_utils import assemble_ds_raw, validate_and_build_arrays
+from .helper_utils import assemble_ds_raw, validate_and_build_arrays, extract_vgs_id
 from .simulated_data_generator import generate_simulated_dataset
 
 __all__ = [
@@ -22,4 +22,5 @@ __all__ = [
     "assemble_ds_raw",
     "validate_and_build_arrays",
     "generate_simulated_dataset",
+    "extract_vgs_id",
 ]

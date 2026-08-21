@@ -197,8 +197,8 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {
-        "figure": fig, 
-        "wf_report": wf_report, 
+        "figure": fig,
+        "wf_report": wf_report,
         # "samples": samples
     }
 

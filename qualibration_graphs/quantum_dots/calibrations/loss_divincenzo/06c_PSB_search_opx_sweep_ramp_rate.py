@@ -23,6 +23,7 @@ from calibration_utils.psb_search_sweep_ramp_rate import (
     prepare_dot_pairs,
     modify_and_track_point,
     validate_and_build_ramp_sweep,
+    extract_vgs_id,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -103,6 +104,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     prepare_dot_pairs(node)
 
+    # Ensure that the machine is set up to track the integrated voltage
+    node.machine.reset_voltage_sequence(extract_vgs_id(qubit_pairs), track_integrated_voltage=True)
+
     # Number of shots per sweep point
     n_avg = node.parameters.num_shots
 
@@ -123,11 +127,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # The swept axes. Buffer order is (ramp_duration) then (n_runs).
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([qp.name for qp in qubit_pairs]),
+        "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
         node.parameters.sweep_name: xr.DataArray(
             ramp_duration_array.astype(float),
             attrs={"long_name": "ramp duration", "units": "ns"},
         ),
-        "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -162,7 +166,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # ── STEP 0 - RESET: ensure settling between sweep points ──────────
                     wait(node.parameters.reset_wait_time // 4)
-                    align() # Start loop with a global align after the reset time. This ensures that all the elements will start here
+                    align()  # Start loop with a global align after the reset time. This ensures that all the elements will start here
 
                     # ── STEP 1 - INITIALIZE: preparation macro (empty or initialize) ─
                     dot_pair.macros[node.parameters.initialization_macro].apply()
@@ -173,13 +177,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ── STEP 2 - RAMP: ramp to measure with the swept duration ───────
                     dot_pair.ramp_to_point(
                         "measure",
-                        ramp_duration = ramp_d * 4, # Convert back from clock cycles to nanoseconds
-                        duration = buffer_duration_cc * 4 + readout_len,
+                        ramp_duration=ramp_d * 4,  # Convert back from clock cycles to nanoseconds
+                        duration=buffer_duration_cc * 4 + readout_len,
                     )
 
                     # ── STEP 3 - MEASURE: resonator readout at the PSB point ─────────
                     # Resonator sits idle for ramp duration + buffer duration
-                    rr.wait(ramp_d + buffer_duration_cc) # This wait command is in clock cycles
+                    rr.wait(ramp_d + buffer_duration_cc)  # This wait command is in clock cycles
 
                     # Measure the demodulated measurement and save into the QUA variables
                     rr.measure(op_name, qua_vars=(I[i], Q[i]))
@@ -225,7 +229,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.results["simulation"] = {
         "figure": fig,
         "wf_report": wf_report,
-        # "samples": samples,
+        # "samples": samples,
     }
 
 
@@ -325,7 +329,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
-    for dot_pair in node.namespace["dot_pairs"]:
+    for qubit_pair in node.namespace["qubit_pairs"]:
+        dot_pair = qubit_pair.quantum_dot_pair
         if dot_pair.name in node.namespace.get("tracked_original_detunings", {}):
             dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
             point_name = dot_pair._create_point_name("measure")

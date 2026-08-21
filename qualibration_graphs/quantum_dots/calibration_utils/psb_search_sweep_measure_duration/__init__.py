@@ -7,6 +7,7 @@ from .helper_utils import (
     modify_and_track_readout_pulse,
     validate_readout,
     prepare_dot_pairs,
+    extract_vgs_id,
 )
 from .simulated_data_generator import (
     generate_simulated_dataset,
@@ -28,4 +29,5 @@ __all__ = [
     "validate_readout",
     "prepare_dot_pairs",
     "process_raw_dataset",
+    "extract_vgs_id",
 ]

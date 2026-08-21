@@ -26,6 +26,7 @@ from calibration_utils.psb_search_sweep_detuning_vs_buffer import (
     plot_all,
     process_raw_dataset,
     validate_and_build_arrays,
+    extract_vgs_id,
 )
 
 
@@ -94,6 +95,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Select which qubit-pairs participate in this calibration
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
+
+    # Ensure that the machine is set up to track the integrated voltage
+    node.machine.reset_voltage_sequence(extract_vgs_id(qubit_pairs), track_integrated_voltage=True)
 
     # Number of shots per detuning point
     n_avg = node.parameters.num_shots
