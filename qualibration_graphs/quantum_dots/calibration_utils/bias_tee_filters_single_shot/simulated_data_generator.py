@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
 from calibration_utils.common_utils.experiment import get_sensors
+from .helper_utils import get_elements
 
 # ── Defaults ────────────────────────────────────────────────────────────
 DEFAULT_TAU_NS = 20_000.0  # Fallback when estimated_bias_tee_tau_ns is None
@@ -29,7 +30,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         The function writes ``elements``, ``sensors``, and ``sweep_axes``
         into ``node.namespace``.
     """
-    node.namespace["elements"] = elements = [node.machine.get_component(el) for el in node.parameters.elements]
+    node.namespace["elements"], _ = elements, vgs_id = get_elements(node)
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     num_chunks = node.parameters.measurement_time // node.parameters.integration_time
