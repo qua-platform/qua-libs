@@ -32,9 +32,9 @@ class NodeSpecificParameters(RunnableParameters):
     y_points: int = 121
     """The number of measurement points on the Y axis. Default is 121."""
     x_span: float = 0.05
-    """The X axis span in volts. Default is 1V."""
+    """The X axis span in volts. Default is 0.05V."""
     y_span: float = 0.05
-    """The Y axis span in volts. Default is 1V."""
+    """The Y axis span in volts. Default is 0.05V."""
     ramp_duration: int = 100
     """The ramp duration to each pixel. Set to zero for a step instead of a ramp. Default is 100ns."""
     hold_duration: int = 100
