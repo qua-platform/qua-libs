@@ -21,6 +21,7 @@ from calibration_utils.sensor_dot import (
     generate_simulated_dataset,
     plot_all,
     apply_compensation_pulse,
+    refresh_voltage_sequences,
 )
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
@@ -124,6 +125,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
+            refresh_voltage_sequences(node, multiplexed_sensors)
+
             align()  # sync all channels in this batch before starting
 
             # ── OUTER LOOP: repeat the full sweep n_avg times ──
