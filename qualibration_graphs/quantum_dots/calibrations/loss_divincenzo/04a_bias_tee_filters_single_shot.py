@@ -90,6 +90,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
 
+    # Ensure that the machine is tracking the integrated voltage, for compensation
+    node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage = True)
+
     # Number of shots per single shot measurement
     n_avg = node.parameters.num_shots
 
@@ -145,8 +148,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         I_all = {el.name: [declare(fixed, size=num_chunks) for _ in sensors] for el in elements}
         Q_all = {el.name: [declare(fixed, size=num_chunks) for _ in sensors] for el in elements}
-        I_st_all = {el.name: [declare_stream() for _ in sensors] for el in elements}
-        Q_st_all = {el.name: [declare_stream() for _ in sensors] for el in elements}
+        I_st_all = {el.name: [declare_output_stream() for _ in sensors] for el in elements}
+        Q_st_all = {el.name: [declare_output_stream() for _ in sensors] for el in elements}
 
         # Outer python loop over all the elements in the measurement
         for el in elements:
