@@ -1,4 +1,5 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -8,10 +9,11 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 from calibration_utils.charge_stability_opx import (
     Parameters,
     analyse_raw_data,
+    process_raw_dataset,
     get_voltage_arrays,
     ScanMode,
     plot_all,
@@ -76,16 +78,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.run_in_video_mode = False
-    # node.parameters.simulate = True
-    # node.parameters.x_span = 0.12
-    # node.parameters.y_span = 0.12
-    # node.parameters.x_points = 8
-    # node.parameters.y_points = 4
-    # node.parameters.simulation_duration_ns = 150000
-    # node.parameters.per_line_compensation = True
-    # node.parameters.num_shots = 3
     pass
 
 
@@ -310,17 +302,27 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
-# %% {Analyse Data}
+# %% {Process_raw_data}
+@node.run_action(
+    skip_if=node.parameters.simulate or node.parameters.run_in_video_mode or not node.parameters.perform_edge_analysis
+)
+def process_raw_data(node: QualibrationNode[Parameters, Quam]):
+    """Process the acquired dataset before edge analysis."""
+    node.namespace["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
+
+
+# %% {Analyse_data}
 @node.run_action(
     skip_if=node.parameters.simulate or node.parameters.run_in_video_mode or not node.parameters.perform_edge_analysis
 )
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
+    ds_processed = node.namespace.get("ds_processed", node.results["ds_raw"])
     (
         node.results["ds_fit"],
         node.results["fit_results"],
         node.outcomes,
-    ) = analyse_raw_data(node.results["ds_raw"], node, log_callable=node.log)
+    ) = analyse_raw_data(ds_processed, node, log_callable=node.log)
 
 
 # %% {Plot_data}
@@ -345,6 +347,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         perform_edge_analysis=node.parameters.perform_edge_analysis,
         **point_kwargs,
     )
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Run_video_mode}
@@ -386,6 +390,13 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
         # point_duration = node.parameters.hold_duration,
         mid_scan_compensation=node.parameters.per_line_compensation,
     )
+
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """No QuAM state is updated for this diagnostic node."""
+    pass
 
 
 # %% {Save_results}
