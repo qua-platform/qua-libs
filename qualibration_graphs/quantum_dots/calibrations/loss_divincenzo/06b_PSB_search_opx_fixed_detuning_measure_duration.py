@@ -24,6 +24,7 @@ from calibration_utils.psb_search_sweep_measure_duration import (
     modify_and_track_readout_pulse,
     validate_readout,
     prepare_dot_pairs,
+    extract_vgs_id,
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -108,6 +109,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Validate dot pairs and extract the max readout, in-case none is given
     readout_max = prepare_dot_pairs(node)
+
+    # Ensure that the machine is set up to track the integrated voltage
+    node.machine.reset_voltage_sequence(extract_vgs_id(qubit_pairs), track_integrated_voltage=True)
 
     # Build the sweep. This program uses measure_accumulated, so the sweep must be carefully constructed
     sweep = build_psb_readout_sweep(
@@ -352,7 +356,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     for tracked_resonator in node.namespace.get("tracked_resonators", []):
         tracked_resonator.revert_changes()
 
-    for dot_pair in node.namespace["dot_pairs"]:
+    for qubit_pair in node.namespace["qubit_pairs"]:
+        dot_pair = qubit_pair.quantum_dot_pair
         if dot_pair.name in node.namespace.get("tracked_original_detunings", {}):
             dot_pair_gate_set = dot_pair.voltage_sequence.gate_set
             point_name = dot_pair._create_point_name("measure")

@@ -17,4 +17,10 @@ __all__ = [
     "fit_raw_data",
     "fit_raw_data_pca_gaussian",
     "log_fitted_results",
+    "extract_vgs_id",
 ]
+
+
+def extract_vgs_id(qubit_pairs):
+    vgs_id = next(iter({pair.quantum_dot_pair.voltage_sequence.gate_set.name for pair in qubit_pairs}))
+    return vgs_id

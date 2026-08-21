@@ -59,7 +59,9 @@ def plot_detuning_vs_buffer_pca_map(
     return fig
 
 
-def plot_all(ds_fit: xr.Dataset, *, metric_name: str = "pc1_std", fit_results: dict | None = None) -> dict[str, plt.Figure]:
+def plot_all(
+    ds_fit: xr.Dataset, *, metric_name: str = "pc1_std", fit_results: dict | None = None
+) -> dict[str, plt.Figure]:
     """Generate all node figures via the local plotting API."""
     # 06e currently exposes a single summary heatmap. Keeping this wrapper means
     # the node can stay consistent with the other PSB nodes even though the

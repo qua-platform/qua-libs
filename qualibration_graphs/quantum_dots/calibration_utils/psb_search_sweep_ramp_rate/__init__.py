@@ -8,6 +8,7 @@ from .helper_utils import (
     prepare_dot_pairs,
     modify_and_track_point,
     validate_and_build_ramp_sweep,
+    extract_vgs_id,
 )
 from .analysis import (
     fit_sweep_rate_raw_data,
@@ -29,4 +30,5 @@ __all__ = [
     "modify_and_track_point",
     "validate_and_build_ramp_sweep",
     "process_raw_dataset",
+    "extract_vgs_id",
 ]
