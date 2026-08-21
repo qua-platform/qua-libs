@@ -116,20 +116,29 @@ def _fit_single_qubit(
             fitted_curve=np.full_like(y, np.nan),
         )
 
-    # try:
-    popt, _ = curve_fit(
-        _rb_decay,
-        depths,
-        y,
-        p0=[0.0, 0.99, 0.5],
-        bounds=([-1, 0, 0], [1, 1, 1]),
-        maxfev=10_000,
-    )
+    try:
+        popt, _ = curve_fit(
+            _rb_decay,
+            depths,
+            y,
+            p0=[0.0, 0.99, 0.5],
+            bounds=([-1, 0, 0], [1, 1, 1]),
+            maxfev=10_000,
+        )
+    except (RuntimeError, ValueError) as exc:
+        logger.warning("RB fit failed: %s", exc)
+        return dict(
+            FitParameters().__dict__,
+            fitted_curve=np.full_like(y, np.nan),
+        )
+
     A, alpha, B = popt
     success = bool(np.isfinite(alpha) and 0 < alpha <= 1)
-    # except (RuntimeError, ValueError):
-    #     A, alpha, B = 0.5, 0.5, 0.5
-    #     success = False
+    if not success:
+        return dict(
+            FitParameters().__dict__,
+            fitted_curve=np.full_like(y, np.nan),
+        )
 
     d = 2  # single qubit
     epc = (1.0 - alpha) * (d - 1) / d
@@ -178,6 +187,11 @@ def _get_qubit_state_data(ds_raw: xr.Dataset, qname: str) -> np.ndarray | None:
             except (KeyError, ValueError):
                 continue
     return None
+
+
+def process_raw_dataset(ds_raw: xr.Dataset) -> xr.Dataset:
+    """Return the processed RB dataset used for fitting."""
+    return ds_raw
 
 
 def fit_raw_data(

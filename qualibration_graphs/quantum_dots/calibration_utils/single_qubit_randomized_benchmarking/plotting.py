@@ -128,11 +128,7 @@ def plot_raw_data_with_fit(
         ax.text(
             0.95,
             0.95,
-            (
-                f"Native fidelity: {fidelity * 100:.2f}%\n"
-                f"Error/Clifford: {epc * 100:.3f}%\n"
-                f"α = {alpha_val:.5f}"
-            ),
+            (f"Native fidelity: {fidelity * 100:.2f}%\n" f"Error/Clifford: {epc * 100:.3f}%\n" f"α = {alpha_val:.5f}"),
             transform=ax.transAxes,
             fontsize=9,
             verticalalignment="top",

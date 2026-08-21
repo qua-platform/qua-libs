@@ -30,7 +30,6 @@ from .conftest import (
     _VIRTUAL_QPU_AVAILABLE,
     single_qubit_ld_params,
 )
-from .conftest import create_ld_quam as create_minimal_quam
 
 # ── conditional virtual_qpu imports ───────────────────────────────────────────
 try:
@@ -225,7 +224,7 @@ def _generate_rb_ds(
 
 @pytest.mark.analysis
 def test_14_single_qubit_rb_virtual_qpu_analysis(
-    calibrated_pi_half_amp, analysis_runner
+    calibrated_pi_half_amp, analysis_runner, minimal_quam_factory
 ):
     """RB via virtual_qpu full pulse-schedule Lindblad simulation.
 
@@ -246,7 +245,7 @@ def test_14_single_qubit_rb_virtual_qpu_analysis(
     qubit_freq_ghz = device_ref.params.qubit_freqs[0]
 
     # 2. Resolve QuAM qubit names (q1 → virtual_dot_1, q2 → virtual_dot_2)
-    machine = create_minimal_quam()
+    machine = minimal_quam_factory()
     qubit_name_1 = machine.qubits["q1"].name  # "virtual_dot_1"
     qubit_name_2 = machine.qubits["q2"].name  # "virtual_dot_2"
 
