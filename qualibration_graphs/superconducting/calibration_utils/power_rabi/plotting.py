@@ -1,4 +1,3 @@
-from typing import List
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -11,7 +10,7 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 u = unit(coerce_to_integer=True)
 
 
-def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_raw_data_with_fit(ds: xr.Dataset, qubits: list[AnyTransmon], fits: xr.Dataset) -> Figure:
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
@@ -37,10 +36,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         fit_sel = fits.sel(qubit=qubit["qubit"]) if "qubit" in fits.dims else fits
-        # Dispatch by dataset dimensions: readout_frequency -> 2D (amp x freq), else nb_of_pulses -> 1D or 2D
-        if "readout_frequency" in ds.dims:
-            plot_individual_data_with_fit_2D_readout_freq(ax, ds, qubit, fit_sel)
-        elif "nb_of_pulses" not in ds.dims or len(ds.nb_of_pulses) == 1:
+        if "nb_of_pulses" not in ds.dims or len(ds.nb_of_pulses) == 1:
             plot_individual_data_with_fit_1D(ax, ds, qubit, fit_sel)
         else:
             plot_individual_data_with_fit_2D(ax, ds, qubit, fit_sel)
@@ -51,7 +47,9 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     return grid.fig
 
 
-def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with_fit_1D(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset | None = None
+) -> None:
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -119,51 +117,9 @@ def plot_individual_data_with_fit_1D(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
             ax2.legend(fontsize=6, loc="lower right")
 
 
-def plot_individual_data_with_fit_2D_readout_freq(
-    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None
-):
-    """
-    Plots 2D heatmap (amp_prefactor x readout_frequency) for one qubit.
-    Used when dataset has readout_frequency dimension (e.g. EF power Rabi with I/Q and freq sweep).
-    Overlays best-contrast readout frequency (horizontal line) and fitted
-    opt_amp_prefactor (vertical line) when available.
-    """
-    if hasattr(ds, "IQ_abs"):
-        data = "IQ_abs"
-        label = "IQ amplitude [mV]"
-    elif hasattr(ds, "I"):
-        data = "I"
-        label = "Rotated I quadrature [mV]"
-    else:
-        raise RuntimeError("Dataset must contain 'I' or 'IQ_abs' for 2D readout_freq plot.")
-    ds_qubit = ds.assign_coords(amp_mV=ds.full_amp * 1e3).loc[qubit]
-    (ds_qubit * 1e3)[data].plot(
-        ax=ax,
-        x="amp_prefactor",
-        y="readout_frequency",
-        add_colorbar=True,
-        robust=True,
-    )
-    ax.set_xlabel("Amplitude prefactor")
-    ax.set_ylabel("Readout frequency detuning [Hz]")
-    ax.set_title(f"{label} (2D sweep)")
-    # Overlay best-contrast readout frequency and fitted pi-pulse amplitude when available
-    if fit is not None:
-        if "best_readout_frequency" in fit:
-            bf = fit.best_readout_frequency
-            if bf.size > 0:
-                best_freq = float(bf.values)
-                ax.axhline(y=best_freq, color="lime", linestyle="--", alpha=0.9, label="best contrast")
-        if hasattr(fit, "success") and hasattr(fit, "opt_amp_prefactor"):
-            try:
-                if bool(fit.success.values):
-                    opt_amp = float(fit.opt_amp_prefactor.values)
-                    ax.axvline(x=opt_amp, color="green", linestyle="-", alpha=0.9, label="fit pi pulse")
-            except (TypeError, AttributeError):
-                pass
-
-
-def plot_individual_data_with_fit_2D(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with_fit_2D(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset | None = None
+) -> None:
     """
     Plots individual qubit data on a given axis with optional fit.
 

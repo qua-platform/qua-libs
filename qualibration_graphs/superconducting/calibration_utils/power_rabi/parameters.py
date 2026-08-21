@@ -1,6 +1,7 @@
 from typing import Literal, Protocol, runtime_checkable
 
 import numpy as np
+from numpy.typing import NDArray
 from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
@@ -69,7 +70,7 @@ class HasErrorAmplification(Protocol):
     operation: str
 
 
-def get_number_of_pulses(node_parameter: BasePowerRabiParameters):
+def get_number_of_pulses(node_parameter: BasePowerRabiParameters) -> NDArray[np.int_]:
     """Return array of number of pulses for error amplification.
 
     For EF node (12b) the default behaviour is a single pulse sweep (equivalent to max_number_pulses_per_sweep = 1).

@@ -1,26 +1,21 @@
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-from qualibration_libs.analysis import fit_oscillation
+from qualibration_libs.analysis import fit_oscillation, oscillation
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 from quam_config.instrument_limits import instrument_limits
 
-
-def _get_operation_name(node: QualibrationNode) -> str:
-    """Return the operation name from node parameters (no node name branching)."""
-    return getattr(node.parameters, "operation", "EF_x180")
-
-
-def _fit_oscillation_1d_safe(da: xr.DataArray, dim: str) -> xr.DataArray:
-    """Call fit_oscillation; work around qualibration_libs returning float when da has only one dim."""
-    if len(da.dims) == 1:
-        da = da.expand_dims("_batch")
-        return fit_oscillation(da, dim).squeeze("_batch", drop=True)
-    return fit_oscillation(da, dim)
+# Fit-quality gates applied to the single-pulse Rabi fit (see _rabi_fit_quality): the library's
+# fit_oscillation returns *some* sinusoid even on pure noise, and a noise-derived pi-amplitude that
+# happens to land inside the hardware range must not be reported as a success.
+MIN_OSC_AMP_SNR = 3.0  # fitted amplitude / residual scatter
+MIN_N_PERIODS = 0.75  # Rabi periods spanned by the sweep; below this the frequency is unconstrained
+MIN_PTS_PER_PERIOD = 8.0  # sweep points per Rabi period (aliasing guard)
+MAX_RAW_FIT_GAP = 0.2  # max allowed gap, in signal space, between the fit and the raw-peak cross-check
 
 
 def _raw_pi_prefactor(signal_1d: xr.DataArray, freq: float) -> float:
@@ -52,46 +47,57 @@ def _raw_pi_prefactor(signal_1d: xr.DataArray, freq: float) -> float:
 
 @dataclass
 class FitParameters:
+    """Stores the relevant power Rabi fit parameters for a single qubit."""
 
     opt_amp_prefactor: float
+    """Amplitude prefactor, relative to the operation's nominal amplitude, that yields a pi pulse."""
+
     opt_amp: float
+    """Absolute pulse amplitude, in volts, that yields a pi pulse."""
+
     operation: str
+    """Name of the calibrated operation, e.g. "x180" or "EF_x180"."""
+
     success: bool
-    best_readout_frequency: Optional[float] = None  # Set when fitting 2D readout_frequency sweep (best-contrast)
-    opt_amp_prefactor_raw: Optional[float] = None  # Fit-free first-period extremum (diagnostic; not written to state)
-    # --- v2 fit quality (why success is what it is) ---
-    osc_amp_snr: float = float("nan")   # oscillation amplitude / residual scatter (noise fit ~< 3)
-    n_periods: float = float("nan")     # Rabi periods visible in the sweep (need >= 0.75)
-    pts_per_period: float = float("nan")  # sampling density (need >= 8)
-    raw_fit_consistent: bool = True     # fit half-period vs raw first-extremum within 15 %
+    """Whether the fit passed both the amplitude-range check and the oscillation-quality gates."""
+
+    opt_amp_prefactor_raw: float | None = None
+    """Fit-free amplitude prefactor of the first-period extremum; diagnostic only, not written to state."""
+
+    osc_amp_snr: float = float("nan")
+    """Fitted oscillation amplitude divided by residual scatter; NaN when not computed."""
+
+    n_periods: float = float("nan")
+    """Number of Rabi periods spanned by the amplitude sweep; NaN when not computed."""
+
+    pts_per_period: float = float("nan")
+    """Number of sweep points sampled per Rabi period; NaN when not computed."""
+
+    raw_fit_consistent: bool = True
+    """Whether the fit-free raw peak agrees with the fitted pi point in signal space."""
 
 
-def _rabi_fit_quality(fit: xr.Dataset, use_state_disc: bool) -> Dict[str, dict]:
+def _rabi_fit_quality(fit: xr.Dataset, use_state_disc: bool) -> dict[str, dict[str, float]]:
     """Post-fit quality of the 1D Rabi oscillation per qubit (pure, never raises).
 
-    The library ``fit_oscillation`` returns *some* sinusoid even on pure noise,
-    and the legacy gate (not-NaN + amp<max) let that through — a noise-derived
-    pi-amplitude within hardware range was written to state. Grades computed
-    here: ``amp_snr`` (fitted amplitude / MAD of the residual — a fit to noise
-    scores ~< 3), ``n_periods`` (f x sweep span; below ~0.75 the frequency is
-    unconstrained) and ``pts_per_period`` (aliasing guard, need >= ~8).
-    Qubits whose signal shape is unavailable (e.g. 2D variants) return NaN and
-    are not gated on ``amp_snr``.
+    Grades computed here: ``osc_amp_snr`` (fitted amplitude / MAD of the residual — a fit to noise
+    scores below ``MIN_OSC_AMP_SNR``), ``n_periods`` (f x sweep span; below ``MIN_N_PERIODS`` the
+    frequency is unconstrained), ``pts_per_period`` (aliasing guard) and ``raw_y_gap`` (fit-vs-raw
+    consistency in signal space, since on a broad flat-topped Rabi hump the raw extremum's x-position
+    alone is not a reliable check). Qubits whose signal shape is unavailable return NaN for the
+    corresponding metric, which is treated as "not gated" by the caller.
     """
-    out: Dict[str, dict] = {}
-    try:
-        from qualibration_libs.analysis.models import oscillation as _osc_model
-    except Exception:  # pragma: no cover
-        _osc_model = lambda t, a, f, phi, offset: a * np.cos(2 * np.pi * f * t + phi) + offset
+    out: dict[str, dict[str, float]] = {}
     sig_name = "state" if (use_state_disc and "state" in fit) else ("IQ_abs" if "IQ_abs" in fit else "I")
     x = fit.amp_prefactor.values.astype(float) if "amp_prefactor" in fit.coords else None
     for q in [str(v) for v in fit.qubit.values]:
-        rec = dict(osc_amp_snr=float("nan"), n_periods=float("nan"),
-                   pts_per_period=float("nan"), raw_y_gap=float("nan"))
+        rec: dict[str, float] = dict(
+            osc_amp_snr=float("nan"), n_periods=float("nan"), pts_per_period=float("nan"), raw_y_gap=float("nan")
+        )
         try:
             p = fit.fit.sel(qubit=q)
-            a = float(p.sel(fit_vals="a")); f = float(p.sel(fit_vals="f"))
-            phi = float(p.sel(fit_vals="phi")); off = float(p.sel(fit_vals="offset"))
+            a, f = float(p.sel(fit_vals="a")), float(p.sel(fit_vals="f"))
+            phi, off = float(p.sel(fit_vals="phi")), float(p.sel(fit_vals="offset"))
             if x is not None and np.isfinite(f) and f > 0:
                 span = float(x.max() - x.min())
                 step = float(np.median(np.abs(np.diff(x)))) or 1.0
@@ -99,27 +105,42 @@ def _rabi_fit_quality(fit: xr.Dataset, use_state_disc: bool) -> Dict[str, dict]:
                 rec["pts_per_period"] = (1.0 / f) / step
                 y_da = fit[sig_name].sel(qubit=q)
                 if set(y_da.dims) == {"amp_prefactor"}:
-                    y = y_da.values.astype(float)
-                    resid = y - _osc_model(x, a, f, phi, off)
+                    resid = y_da.values.astype(float) - oscillation(x, a, f, phi, off)
                     scatter = 1.4826 * float(np.median(np.abs(resid - np.median(resid)))) + 1e-15
                     rec["osc_amp_snr"] = abs(a) / scatter
-                # Fit-vs-raw consistency IN SIGNAL SPACE: on a broad flat-topped
-                # Rabi hump the raw extremum lands anywhere on the plateau, so an
-                # x-distance test misfires; what matters is whether the raw point
-                # sits at the same signal level as the fitted pi extremum.
                 raw_p = fit.opt_amp_prefactor_raw.sel(qubit=q).values if "opt_amp_prefactor_raw" in fit else np.nan
                 fit_p = 1.0 / (2 * f)
                 if np.isfinite(raw_p) and abs(a) > 0:
-                    y_fit = _osc_model(np.array([fit_p]), a, f, phi, off)[0]
-                    y_raw = _osc_model(np.array([float(raw_p)]), a, f, phi, off)[0]
+                    y_fit = oscillation(np.array([fit_p]), a, f, phi, off)[0]
+                    y_raw = oscillation(np.array([float(raw_p)]), a, f, phi, off)[0]
                     rec["raw_y_gap"] = abs(y_raw - y_fit) / (2 * abs(a))
-        except Exception:
+        except Exception:  # pragma: no cover - purely diagnostic, must never break the node
             pass
         out[q] = rec
     return out
 
 
-def log_fitted_results(fit_results: Dict, log_callable=None):
+def _gate_ok(value: float, threshold: float, minimum: bool) -> bool:
+    """True if `value` clears `threshold`; a NaN value (metric not computed) is never gated."""
+    return np.isnan(value) or (value >= threshold if minimum else value <= threshold)
+
+
+def _raw_gap_ok(rec: dict[str, float]) -> bool:
+    """True if the fit-free raw peak agrees with the fitted pi point in signal space (or wasn't computed)."""
+    return _gate_ok(rec.get("raw_y_gap", float("nan")), MAX_RAW_FIT_GAP, minimum=False)
+
+
+def _passes_quality_gates(rec: dict[str, float]) -> bool:
+    """True if every fit-quality metric present in `rec` clears its gate; a missing (NaN) metric is not gated."""
+    return (
+        _gate_ok(rec.get("osc_amp_snr", float("nan")), MIN_OSC_AMP_SNR, minimum=True)
+        and _gate_ok(rec.get("n_periods", float("nan")), MIN_N_PERIODS, minimum=True)
+        and _gate_ok(rec.get("pts_per_period", float("nan")), MIN_PTS_PER_PERIOD, minimum=True)
+        and _raw_gap_ok(rec)
+    )
+
+
+def log_fitted_results(fit_results: dict[str, dict], log_callable: Callable[[str], None] | None = None) -> None:
     """
     Logs the node-specific fitted results for all qubits from the fit results
 
@@ -127,7 +148,7 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     -----------
     fit_results : dict
         Dictionary containing the fitted results for all qubits.
-    logger : logging.Logger, optional
+    log_callable : Callable[[str], None], optional
         Logger for logging the fitted results. If None, a default logger is used.
 
     """
@@ -155,35 +176,24 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable(s_qubit + s_amp)
 
 
-def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """Process raw dataset by converting IQ to V and adding amplitude/phase."""
-    if not getattr(node.parameters, "use_state_discrimination", False):
+    if not node.parameters.use_state_discrimination:
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
 
-    # Full pulse amplitude (prefactor * operation amplitude) from parameters; no node name branching
-    operation = _get_operation_name(node)
+    operation = node.parameters.operation
     full_amp = np.array(
         [ds.amp_prefactor.values * q.xy.operations[operation].amplitude for q in node.namespace["qubits"]]
     )
     ds = ds.assign_coords(full_amp=(["qubit", "amp_prefactor"], full_amp))
     ds.full_amp.attrs = {"long_name": "pulse amplitude", "units": "V"}
 
-    # Add amplitude and phase (IQ_abs etc.) when using I/Q readout (not state discrimination)
-    if hasattr(ds, "I") and not getattr(node.parameters, "use_state_discrimination", False):
-        if "readout_frequency" in ds.dims:
-            # 2D sweep: add_amplitude_and_phase per readout_frequency slice, then concat
-            slices = []
-            for freq in ds.readout_frequency.values:
-                ds_slice = ds.sel(readout_frequency=freq, drop=True)
-                ds_slice = add_amplitude_and_phase(ds_slice, "amp_prefactor", subtract_slope_flag=True)
-                slices.append(ds_slice)
-            ds = xr.concat(slices, dim=ds.readout_frequency)
-        else:
-            ds = add_amplitude_and_phase(ds, "amp_prefactor", subtract_slope_flag=True)
+    if hasattr(ds, "I") and not node.parameters.use_state_discrimination:
+        ds = add_amplitude_and_phase(ds, "amp_prefactor", subtract_slope_flag=True)
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
 
@@ -200,52 +210,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         Dataset containing the fit results.
     """
     max_pulses = getattr(node.parameters, "max_number_pulses_per_sweep", 1)
-    operation = _get_operation_name(node)
-    use_state_disc = getattr(node.parameters, "use_state_discrimination", False)
+    operation = node.parameters.operation
+    use_state_disc = node.parameters.use_state_discrimination
 
-    if max_pulses == 1 and "readout_frequency" in ds.dims:
-        # Best-contrast path: for each qubit, compute contrast at each readout frequency, fit at best
-        fit_list = []
-        best_freqs = []
-        raw_prefs = []
-        for q in ds.qubit.values:
-            ds_q = ds.sel(qubit=q)
-            contrasts = []
-            for freq in ds.readout_frequency.values:
-                ds_slice = ds_q.sel(readout_frequency=freq)
-                if use_state_disc and "state" in ds_slice:
-                    fit_vals = _fit_oscillation_1d_safe(ds_slice.state, "amp_prefactor")
-                elif "IQ_abs" in ds_slice:
-                    fit_vals = _fit_oscillation_1d_safe(ds_slice.IQ_abs, "amp_prefactor")
-                else:
-                    fit_vals = _fit_oscillation_1d_safe(ds_slice.I, "amp_prefactor")
-                a_vals = fit_vals.sel(fit_vals="a").values
-                contrasts.append(np.nanmax(np.abs(a_vals)) if np.any(~np.isnan(a_vals)) else np.nan)
-            contrasts = np.array(contrasts)
-            best_idx = np.nanargmax(contrasts)
-            best_freq = float(ds.readout_frequency.values[best_idx])
-            best_freqs.append(best_freq)
-            # Fit at the best-contrast readout frequency for this qubit
-            ds_slice = ds_q.sel(readout_frequency=best_freq)
-            if use_state_disc and "state" in ds_slice:
-                fit_vals = _fit_oscillation_1d_safe(ds_slice.state, "amp_prefactor")
-            elif "IQ_abs" in ds_slice:
-                fit_vals = _fit_oscillation_1d_safe(ds_slice.IQ_abs, "amp_prefactor")
-            else:
-                fit_vals = _fit_oscillation_1d_safe(ds_slice.I, "amp_prefactor")
-            fit_list.append(fit_vals.expand_dims(qubit=[q]))
-            # Fit-free cross-check of the pi point on the best-contrast signal
-            sig = (
-                ds_slice.state
-                if (use_state_disc and "state" in ds_slice)
-                else (ds_slice.IQ_abs if "IQ_abs" in ds_slice else ds_slice.I)
-            )
-            raw_prefs.append(_raw_pi_prefactor(sig, float(fit_vals.sel(fit_vals="f").values)))
-        fit_vals = xr.concat(fit_list, dim="qubit")
-        ds_fit = xr.merge([ds, fit_vals.rename("fit")])
-        ds_fit = ds_fit.assign(best_readout_frequency=xr.DataArray(best_freqs, coords={"qubit": ds.qubit}))
-        ds_fit = ds_fit.assign(opt_amp_prefactor_raw=xr.DataArray(raw_prefs, coords={"qubit": ds.qubit}))
-    elif max_pulses == 1:
+    if max_pulses == 1:
         # Single-pulse path: drop the (size-1) nb_of_pulses dimension if present, then fit.
         # In 1D mode N_pi_vec == [1], so the dimension exists with length 1 and must be removed,
         # otherwise it survives into the fit and opt_amp_prefactor ends up 1-D (not a scalar).
@@ -254,15 +222,10 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
             fit_var = ds_fit.state
         else:
             fit_var = ds_fit.IQ_abs if "IQ_abs" in ds_fit else ds_fit.I
-        fit_vals = _fit_oscillation_1d_safe(fit_var, "amp_prefactor")
+        fit_vals = fit_oscillation(fit_var, "amp_prefactor")
         # Fit-free cross-check of the pi point, per qubit
         raw_prefs = [
-            _raw_pi_prefactor(
-                fit_var.sel(qubit=q) if "qubit" in fit_var.dims else fit_var,
-                float(fit_vals.sel(qubit=q, fit_vals="f").values)
-                if "qubit" in fit_vals.dims
-                else float(fit_vals.sel(fit_vals="f").values),
-            )
+            _raw_pi_prefactor(fit_var.sel(qubit=q), float(fit_vals.sel(qubit=q, fit_vals="f").values))
             for q in fit_var.qubit.values
         ]
         ds_fit = xr.merge([ds, fit_vals.rename("fit")])
@@ -287,11 +250,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return fit_data, fit_results
 
 
-def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
+def _extract_relevant_fit_parameters(
+    fit: xr.Dataset, node: QualibrationNode
+) -> tuple[xr.Dataset, dict[str, FitParameters]]:
     """Add metadata to the dataset and fit results."""
     limits = [instrument_limits(q.xy) for q in node.namespace["qubits"]]
     max_pulses = getattr(node.parameters, "max_number_pulses_per_sweep", 1)
-    operation = _get_operation_name(node)
+    operation = node.parameters.operation
+    current_amps = xr.DataArray(
+        [q.xy.operations[operation].amplitude for q in node.namespace["qubits"]],
+        coords={"qubit": fit.qubit.data},
+    )
     if max_pulses == 1:
         # Pi-pulse prefactor = half-period of the Rabi oscillation = 1/(2f)
         # (phase phi is a readout nuisance parameter, not a physical drive offset)
@@ -301,36 +270,18 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             "long_name": "factor to get a pi pulse",
             "units": "Hz",
         }
-        # Current amplitude from state: EF_x180 for EF node, else node.parameters.operation (e.g. x180)
-        if operation == "EF_x180":
-            current_amps = xr.DataArray(
-                [q.xy.operations["EF_x180"].amplitude for q in node.namespace["qubits"]],
-                coords={"qubit": fit.qubit.data},
-            )
-        else:
-            current_amps = xr.DataArray(
-                [q.xy.operations[node.parameters.operation].amplitude for q in node.namespace["qubits"]],
-                coords={"qubit": fit.qubit.data},
-            )
-        opt_amp = factor * current_amps
-        fit = fit.assign({"opt_amp": opt_amp})
+        fit = fit.assign({"opt_amp": factor * current_amps})
         fit.opt_amp.attrs = {"long_name": "x180 pulse amplitude", "units": "V"}
-
     else:
-        current_amps = xr.DataArray(
-            [q.xy.operations[operation].amplitude for q in node.namespace["qubits"]],
-            coords={"qubit": fit.qubit.data},
-        )
         fit = fit.assign({"opt_amp": fit.opt_amp_prefactor * current_amps})
         fit.opt_amp.attrs = {
             "long_name": f"{operation} pulse amplitude",
             "units": "V",
         }
 
-    # Assess whether the fit was successful or not (v2: oscillation-quality
-    # gates on top of the legacy range checks — a sinusoid fitted to noise can
-    # no longer write a pi-amplitude just because it lands inside the hardware
-    # range).
+    # Assess whether the fit was successful or not: oscillation-quality gates on top of the
+    # legacy range check, so a sinusoid fitted to noise can no longer pass just because it lands
+    # inside the hardware range.
     nan_success = np.isnan(fit.opt_amp_prefactor) | np.isnan(fit.opt_amp)
     max_amps = xr.DataArray(
         [lim.max_x180_wf_amplitude for lim in limits],
@@ -338,30 +289,18 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     )
     amp_success = fit.opt_amp < max_amps
 
-    use_state_disc = bool(getattr(node.parameters, "use_state_discrimination", False))
-    quality = _rabi_fit_quality(fit, use_state_disc) if max_pulses == 1 else {}
-    qnames = [str(v) for v in fit.qubit.values]
-    snr_arr = np.array([quality.get(q, {}).get("osc_amp_snr", np.nan) for q in qnames])
-    nper_arr = np.array([quality.get(q, {}).get("n_periods", np.nan) for q in qnames])
-    ppp_arr = np.array([quality.get(q, {}).get("pts_per_period", np.nan) for q in qnames])
-    raw_gap_arr = np.array([quality.get(q, {}).get("raw_y_gap", np.nan) for q in qnames])
-    # Gates apply only where the metric is defined (NaN -> not gated), so 2D
-    # variants and the multi-pulse path keep their legacy behaviour.
-    snr_ok = np.isnan(snr_arr) | (snr_arr >= 3.0)
-    per_ok = np.isnan(nper_arr) | (nper_arr >= 0.75)
-    ppp_ok = np.isnan(ppp_arr) | (ppp_arr >= 8.0)
-    raw_ok = np.isnan(raw_gap_arr) | (raw_gap_arr <= 0.2)
-    quality_ok = xr.DataArray(snr_ok & per_ok & ppp_ok & raw_ok, coords={"qubit": fit.qubit.data})
+    quality = _rabi_fit_quality(fit, node.parameters.use_state_discrimination) if max_pulses == 1 else {}
+    quality_ok = xr.DataArray(
+        [_passes_quality_gates(quality.get(str(q), {})) for q in fit.qubit.values],
+        coords={"qubit": fit.qubit.data},
+    )
 
     success_criteria = ~nan_success & amp_success & quality_ok
     fit = fit.assign({"success": success_criteria})
-    fit = fit.assign({"osc_amp_snr": xr.DataArray(snr_arr, coords={"qubit": fit.qubit.data})})
-    fit = fit.assign({"n_periods": xr.DataArray(nper_arr, coords={"qubit": fit.qubit.data})})
-    # Populate the FitParameters class with fitted values (incl. best_readout_frequency when from 2D readout sweep)
-    best_freq_arr = fit.best_readout_frequency if "best_readout_frequency" in fit else None
+
     raw_arr = fit.opt_amp_prefactor_raw if "opt_amp_prefactor_raw" in fit else None
 
-    def _raw_for(q):
+    def _raw_for(q: str) -> float | None:
         if raw_arr is None:
             return None
         v = float(raw_arr.sel(qubit=q).values)
@@ -373,12 +312,11 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             opt_amp=float(fit.sel(qubit=q).opt_amp.values),
             operation=operation,
             success=bool(fit.sel(qubit=q).success.values),
-            best_readout_frequency=float(best_freq_arr.sel(qubit=q).values) if best_freq_arr is not None else None,
             opt_amp_prefactor_raw=_raw_for(q),
-            osc_amp_snr=float(snr_arr[qnames.index(str(q))]),
-            n_periods=float(nper_arr[qnames.index(str(q))]),
-            pts_per_period=float(ppp_arr[qnames.index(str(q))]),
-            raw_fit_consistent=bool(raw_ok[qnames.index(str(q))]),
+            osc_amp_snr=quality.get(str(q), {}).get("osc_amp_snr", float("nan")),
+            n_periods=quality.get(str(q), {}).get("n_periods", float("nan")),
+            pts_per_period=quality.get(str(q), {}).get("pts_per_period", float("nan")),
+            raw_fit_consistent=_raw_gap_ok(quality.get(str(q), {})),
         )
         for q in fit.qubit.values
     }
