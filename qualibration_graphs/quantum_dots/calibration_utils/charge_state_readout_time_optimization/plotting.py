@@ -261,22 +261,21 @@ def plot_all(
     show: bool = True,
 ) -> dict[str, Figure]:
     """Build and return all 05d readout-time-optimization figures."""
-    ds_plot = ds_fit if ds_fit is not None else ds_raw
     figures = {
         "iq_histogram": plot_iq_histogram(
-            ds_plot,
+            ds_raw,
             all_sensors,
             quantum_dot_pairs,
             fit_results=fit_results,
         ),
         "snr_vs_integration_time": plot_snr_vs_integration_time(
-            ds_plot,
+            ds_fit if ds_fit is not None else ds_raw,
             all_sensors,
             quantum_dot_pairs,
             fit_results=fit_results,
         ),
         "projected_histogram": plot_projected_histogram(
-            ds_plot,
+            ds_raw,
             all_sensors,
             quantum_dot_pairs,
             fit_results=fit_results or {},
