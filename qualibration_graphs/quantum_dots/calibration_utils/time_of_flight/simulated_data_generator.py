@@ -57,9 +57,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         # Cosine burst: zero before delay, oscillation after
         waveform = np.zeros_like(time_axis, dtype=float)
         pulse_mask = time_axis >= delay
-        waveform[pulse_mask] = pulse_amplitude_counts * np.cos(
-            omega * (time_axis[pulse_mask] - delay)
-        )
+        waveform[pulse_mask] = pulse_amplitude_counts * np.cos(omega * (time_axis[pulse_mask] - delay))
 
         trace_avg = waveform + rng.normal(0, noise_std * 0.3, size=len(time_axis))
         trace_single = waveform + rng.normal(0, noise_std, size=len(time_axis))

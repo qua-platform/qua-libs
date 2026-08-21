@@ -11,16 +11,18 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of averages to perform. Default is 100."""
     sensor_names: Optional[List[str]] = None
     """List of sensor names to include in the measurement. If None, all sensors are used."""
-    v_center: float = 0.0
+    v_center: Optional[float] = None
     """Center of the voltage sweep in volts. Default 0.0V."""
     v_span: float = 0.01
     """Span of the voltage sweep in volts. Default 10mV."""
-    num_points: int = 101
+    n_points: int = 101
     """Number of points in the voltage sweep. Default is 101."""
-    dc_control: bool = False
-    """If checked, then v_center will be applied by your external source via the VirtualDCSet. If not, then v_center will be applied by the OPX."""
     dwell_time: int = 500
     """Dwell time at each voltage in nanoseconds. Default is 500ns."""
+    ramp_duration: int = 100
+    """The ramp duration to each voltage point. Default is 100ns."""
+    max_compensation_voltage: float = 0.01
+    """The maximum height of the compensation pulse. The duration will be calculated using this height."""
 
 
 class Parameters(

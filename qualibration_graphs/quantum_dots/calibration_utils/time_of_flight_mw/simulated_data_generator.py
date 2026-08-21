@@ -60,12 +60,8 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
         waveI = np.zeros_like(time_axis, dtype=float)
         waveQ = np.zeros_like(time_axis, dtype=float)
-        waveI[pulse_mask] = pulse_amplitude_counts * np.cos(
-            omega * t_shifted + reflection_phase
-        )
-        waveQ[pulse_mask] = pulse_amplitude_counts * np.sin(
-            omega * t_shifted + reflection_phase
-        )
+        waveI[pulse_mask] = pulse_amplitude_counts * np.cos(omega * t_shifted + reflection_phase)
+        waveQ[pulse_mask] = pulse_amplitude_counts * np.sin(omega * t_shifted + reflection_phase)
 
         adcI_avg.append(waveI + rng.normal(0, noise_std * 0.3, size=len(time_axis)))
         adcQ_avg.append(waveQ + rng.normal(0, noise_std * 0.3, size=len(time_axis)))
