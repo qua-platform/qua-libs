@@ -96,6 +96,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Additionally adds keys 'x_axis', 'y_axis', 'gate_set_id' in the node.namespace['axes_names']
     x_axis_name, y_axis_name, vgs_id = get_axis_names_and_validate(node)
 
+    # Ensure that the machine is set up to track the integrated voltage
+    node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage=True)
+
     # Extract the sensors relevant for this measurement
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
@@ -235,7 +238,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX and simulate the QUA program."""
-    qmm = node.machine.connect()
+    qmm = node.machine.connect(timeout=500)
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples

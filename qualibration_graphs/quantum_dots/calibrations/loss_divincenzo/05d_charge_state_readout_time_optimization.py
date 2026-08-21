@@ -74,6 +74,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
+    node.parameters.simulate = True
+    node.parameters.max_loops = 1
     pass
 
 
@@ -89,8 +91,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── Experiment parameters (Python side) ──────────────────────────────
 
     # Extract the dot pairs and sensors
-    node.namespace["quantum_dot_pairs"] = quantum_dot_pairs = get_dot_pairs(node)
+    node.namespace["quantum_dot_pairs"], _ = quantum_dot_pairs, vgs_id = get_dot_pairs(node)
     node.namespace["all_sensors"] = all_sensors = get_dot_pair_sensors(node)
+
+    # Ensure that the machine is set up to track the integrated voltage
+    node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage=True)
 
     # Number of averages
     n_avg = node.parameters.num_shots
@@ -175,7 +180,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 dot_pair.initialize(
                     target_state=node.parameters.target_state,
                     max_loops=node.parameters.max_loops,
-                    conditional_drive=True,
                 )
 
                 align()
@@ -295,7 +299,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
 
-    node.namespace["quantum_dot_pairs"] = get_dot_pairs(node)
+    node.namespace["quantum_dot_pairs"], _ = get_dot_pairs(node)
     node.namespace["all_sensors"] = get_dot_pair_sensors(node)
 
 
