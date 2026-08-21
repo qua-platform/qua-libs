@@ -1,11 +1,13 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
+
 from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 from calibration_utils.charge_stability_opx import (
     ScanMode,
     get_axis_names_and_validate,
@@ -88,15 +90,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.simulate = True
-    # node.parameters.x_span = 0.12
-    # node.parameters.y_span = 0.12
-    # node.parameters.x_points = 6
-    # node.parameters.y_points = 9
-    # node.parameters.num_shots = 1
-    # node.parameters.use_validation = False
-    # node.parameters.simulation_duration_ns = 200000
     pass
 
 
@@ -357,6 +350,15 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         perform_edge_analysis=node.parameters.perform_edge_analysis,
         **point_kwargs,
     )
+    if not node.modes.external:
+        plt.show()
+
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """No QuAM state is updated for this diagnostic node."""
+    pass
 
 
 # %% {Save_results}

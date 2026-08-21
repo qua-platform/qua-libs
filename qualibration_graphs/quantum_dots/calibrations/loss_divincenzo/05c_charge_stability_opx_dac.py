@@ -1,6 +1,7 @@
 # %% {Imports}
 import time
 
+import matplotlib.pyplot as plt
 import xarray as xr
 from qm.qua import *
 
@@ -8,7 +9,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 from calibration_utils.charge_stability_opx import (
     analyse_raw_data,
     plot_all,
@@ -322,7 +323,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
-# %% {Analyse Data}
+# %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate or not node.parameters.perform_edge_analysis)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
@@ -357,6 +358,15 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         perform_edge_analysis=node.parameters.perform_edge_analysis,
         **point_kwargs,
     )
+    if not node.modes.external:
+        plt.show()
+
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """No QuAM state is updated for this diagnostic node."""
+    pass
 
 
 # %% {Save_results}

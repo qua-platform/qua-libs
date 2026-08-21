@@ -1,4 +1,5 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -8,11 +9,12 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 
 from calibration_utils.charge_state_readout_time_optimization import (
     Parameters,
     analyse_raw_data,
+    process_raw_dataset,
     plot_all,
     generate_simulated_dataset,
     get_dot_pairs,
@@ -72,10 +74,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.simulate = True
-    # node.parameters.detuning_02 = 0.11
-    # node.parameters.simulation_duration_ns = 200000
     pass
 
 
@@ -177,6 +175,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 dot_pair.initialize(
                     target_state=node.parameters.target_state,
                     max_loops=node.parameters.max_loops,
+                    conditional_drive=True,
                 )
 
                 align()
@@ -264,7 +263,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program, and fetch raw IQ chunks into ``ds_raw``."""
-    qmm = node.machine.connect(timeout=500)
+    qmm = node.machine.connect()
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
@@ -300,15 +299,23 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["all_sensors"] = get_dot_pair_sensors(node)
 
 
+# %% {Process_raw_data}
+@node.run_action(skip_if=node.parameters.simulate)
+def process_raw_data(node: QualibrationNode[Parameters, Quam]):
+    """Process the acquired dataset before fitting."""
+    node.namespace["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
+
+
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit the integration-time sweep, and store processed outputs."""
+    ds_processed = node.namespace.get("ds_processed", node.results["ds_raw"])
     (
         node.results["ds_fit"],
         node.results["fit_results"],
         node.outcomes,
-    ) = analyse_raw_data(node.results["ds_raw"], node, log_callable=node.log)
+    ) = analyse_raw_data(ds_processed, node, log_callable=node.log)
 
 
 # %% {Plot_data}
@@ -322,6 +329,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         ds_fit=node.results.get("ds_fit"),
         fit_results=node.results.get("fit_results"),
     )
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
