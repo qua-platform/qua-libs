@@ -3,8 +3,10 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 from qualang_tools.multi_user import qm_session
 from qualibrate.core import QualibrationNode
+from qualibration_libs.parameters import get_qubits
+
 from quam_config import Quam
-from calibration_utils.common_utils.experiment import get_sensors, get_qubits
+from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.mixer_calibration import (
     Parameters,
     extract_relevant_fit_parameters,
