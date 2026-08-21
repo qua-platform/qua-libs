@@ -21,6 +21,7 @@ from calibration_utils.sensor_dot import (
     generate_simulated_dataset,
     plot_all,
     apply_compensation_pulse,
+    refresh_voltage_sequences,
 )
 from calibration_utils.common_utils.experiment import get_sensors
 from qualibration_libs.runtime import simulate_and_plot
@@ -138,6 +139,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
+            refresh_voltage_sequences(node, multiplexed_sensors)
+
             align()  # sync all channels in this batch before starting
 
             # ── OUTER LOOP: PAUSE the QUA program, and set the DAC voltage ──
@@ -224,7 +227,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
-    qmm = node.machine.connect(skip_dacs = False)
+    qmm = node.machine.connect(skip_dacs=False)
 
     # Get the config from the machine
     config = node.machine.generate_config()
