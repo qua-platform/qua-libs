@@ -74,8 +74,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    node.parameters.simulate = True
-    node.parameters.max_loops = 1
     pass
 
 
@@ -277,7 +275,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 data_fetcher.get("n", 0),
                 node.parameters.num_shots * len(node.namespace["quantum_dot_pairs"]),
                 start_time=data_fetcher.t_start,
-                node=node,
             )
         node.log(job.execution_report())
     node.results["ds_raw"] = dataset
@@ -332,6 +329,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.namespace["quantum_dot_pairs"],
         ds_fit=node.results.get("ds_fit"),
         fit_results=node.results.get("fit_results"),
+        show=False,
     )
     if not node.modes.external:
         plt.show()
