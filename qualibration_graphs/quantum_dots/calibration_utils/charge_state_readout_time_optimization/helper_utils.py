@@ -18,17 +18,21 @@ def _get_dot_pairs(machine: BaseQuamQD, node_parameters: BaseExperimentNodeParam
         dot_pairs = list(machine.quantum_dot_pairs.values())
     else:
         dot_pairs = [machine.quantum_dot_pairs[qdp] for qdp in node_parameters.quantum_dot_pairs]
-    return dot_pairs
+
+    vgs_ids = [dp.voltage_sequence.gate_set.name for dp in dot_pairs]
+    # Assume the same vgs id
+    vgs_name = vgs_ids[0]
+    return dot_pairs, vgs_name
 
 
 def get_dot_pairs(node: QualibrationNode) -> BatchableList[QuantumDotPair]:
-    dots = _get_dot_pairs(node.machine, node.parameters)
+    dots, vgs_id = _get_dot_pairs(node.machine, node.parameters)
     dots_batchable_list = _make_batchable_list_from_multiplexed(dots, False)  # node.parameters.multiplexed)
-    return dots_batchable_list
+    return dots_batchable_list, vgs_id
 
 
 def get_dot_pair_sensors(node: QualibrationNode) -> Dict[str, BatchableList[SensorDot]]:
-    dot_pairs = get_dot_pairs(node)
+    dot_pairs, _ = get_dot_pairs(node)
 
     all_sensors = {pair.name: _make_batchable_list_from_multiplexed(pair.sensor_dots, True) for pair in dot_pairs}
 

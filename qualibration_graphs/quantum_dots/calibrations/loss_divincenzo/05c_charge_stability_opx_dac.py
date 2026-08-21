@@ -100,6 +100,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     opx_array, dac_array, vgs_id = get_voltage_arrays(node)
     node.namespace["voltage_points"] = node.machine.virtual_gate_sets[vgs_id].get_macros()
 
+    # Ensure that the machine is set up to track the integrated voltage
+    node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage=True)
+
     # Ensure that no virtual value in the OPX array resolves beyond the OPX limit.
     validate_opx_limit(node, opx_axis_name, opx_array)
 

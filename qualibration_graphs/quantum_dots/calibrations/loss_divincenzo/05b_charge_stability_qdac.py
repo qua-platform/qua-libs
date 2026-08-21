@@ -114,6 +114,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Additionally adds keys 'x_axis', 'y_axis', 'gate_set_id' in the node.namespace['axes_names']
     x_axis_name, y_axis_name, vgs_id = get_axis_names_and_validate(node)
 
+    # Ensure that the machine is set up to track the integrated voltage
+    node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage=True)
+
     # Relative sweep coordinates centered at zero; absolute values are set below
     x_volts, y_volts = get_voltage_arrays(node)
 
