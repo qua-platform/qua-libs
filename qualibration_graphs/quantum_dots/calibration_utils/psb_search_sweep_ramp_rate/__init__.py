@@ -5,7 +5,6 @@ from .simulated_data_generator import (
 )
 from .helper_utils import (
     build_ramp_duration_sweep,
-    prepare_dot_pairs,
     modify_and_track_point,
     validate_and_build_ramp_sweep,
     extract_vgs_id,
@@ -26,7 +25,6 @@ __all__ = [
     "log_fitted_results",
     "plot_ramp_duration_sweep_figures",
     "plot_all",
-    "prepare_dot_pairs",
     "modify_and_track_point",
     "validate_and_build_ramp_sweep",
     "process_raw_dataset",

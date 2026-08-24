@@ -15,7 +15,7 @@ __all__ = [
     "modify_and_track_readout_pulse",
     "validate_readout",
     "validate_dot_pairs",
-    "prepare_dot_pairs",
+    "find_max_readout_len",
     "extract_vgs_id",
 ]
 
@@ -25,7 +25,7 @@ def extract_vgs_id(qubit_pairs):
     return vgs_id
 
 
-def prepare_dot_pairs(node: QualibrationNode):
+def find_max_readout_len(node: QualibrationNode):
     """
     Prepares the QuantumDotPair objects of the QubitPair:
         - Resets the voltage sequence. Done for consecutive runs
@@ -34,10 +34,6 @@ def prepare_dot_pairs(node: QualibrationNode):
     """
     qubit_pairs = node.namespace["qubit_pairs"]
     dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
-
-    # TODO: Verify that this is strictly necessary
-    for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
-        node.machine.reset_voltage_sequence(gate_set_id)
 
     readout_max = node.parameters.readout_length_max
     if readout_max is None:

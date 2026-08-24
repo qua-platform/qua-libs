@@ -6,7 +6,7 @@ from .helper_utils import (
     modify_and_track_point,
     modify_and_track_readout_pulse,
     validate_readout,
-    prepare_dot_pairs,
+    find_max_readout_len,
     extract_vgs_id,
 )
 from .simulated_data_generator import (
@@ -27,7 +27,7 @@ __all__ = [
     "modify_and_track_point",
     "modify_and_track_readout_pulse",
     "validate_readout",
-    "prepare_dot_pairs",
+    "find_max_readout_len",
     "process_raw_dataset",
     "extract_vgs_id",
 ]

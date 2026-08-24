@@ -23,7 +23,7 @@ from calibration_utils.psb_search_sweep_measure_duration import (
     modify_and_track_point,
     modify_and_track_readout_pulse,
     validate_readout,
-    prepare_dot_pairs,
+    find_max_readout_len,
     extract_vgs_id,
 )
 from qualibration_libs.runtime import simulate_and_plot
@@ -108,7 +108,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_avg = node.parameters.num_shots
 
     # Validate dot pairs and extract the max readout, in-case none is given
-    readout_max = prepare_dot_pairs(node)
+    readout_max = find_max_readout_len(node)
 
     # Ensure that the machine is set up to track the integrated voltage
     node.machine.reset_voltage_sequence(extract_vgs_id(qubit_pairs), track_integrated_voltage=True)

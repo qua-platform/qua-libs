@@ -6,7 +6,6 @@ from qualibration_libs.parameters.experiment import QualibrationNode
 
 __all__ = [
     "build_ramp_duration_sweep",
-    "prepare_dot_pairs",
     "modify_and_track_point",
     "validate_and_build_ramp_sweep",
     "extract_vgs_id",
@@ -40,23 +39,6 @@ def validate_and_build_ramp_sweep(node: QualibrationNode):
         raise ValueError("Empty ramp duration sweep: require ramp_duration_min < ramp_duration_max with positive step.")
 
     return ramp_duration_array
-
-
-def prepare_dot_pairs(node: QualibrationNode):
-    """
-    Prepares the QuantumDotPair objects of the QubitPair:
-        - Resets the voltage sequence. Done for consecutive runs
-        - If readout_length_max is None in parameters, ensure that either the readout lengths are the same, or
-            raise an error.
-    """
-    qubit_pairs = node.namespace["qubit_pairs"]
-    dot_pair_objects = [qp.quantum_dot_pair for qp in qubit_pairs]
-
-    node.namespace["dot_pairs"] = dot_pair_objects
-
-    # TODO: Verify that this is strictly necessary
-    for gate_set_id in {dot_pair.voltage_sequence.gate_set.id for dot_pair in dot_pair_objects}:
-        node.machine.reset_voltage_sequence(gate_set_id)
 
 
 def build_ramp_duration_sweep(ramp_duration_min: int, ramp_duration_max: int, ramp_duration_step: int) -> np.ndarray:
