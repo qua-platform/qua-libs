@@ -156,7 +156,7 @@ def plot_individual_data_with_fit_2D(
     )
     ax2.set_xlabel("amplitude prefactor")
     # Overlay fitted pi-pulse amplitude when fit succeeded
-    if fit.success:
+    if fit is not None and bool(fit.success):
         ax2.axvline(
             x=fit.opt_amp_prefactor,
             color="g",

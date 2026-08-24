@@ -228,7 +228,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
             _raw_pi_prefactor(fit_var.sel(qubit=q), float(fit_vals.sel(qubit=q, fit_vals="f").values))
             for q in fit_var.qubit.values
         ]
-        ds_fit = xr.merge([ds, fit_vals.rename("fit")])
+        # Merge onto the squeezed ds_fit (not original ds) so signal dims stay
+        # {"amp_prefactor"} and _rabi_fit_quality can compute osc_amp_snr.
+        ds_fit = xr.merge([ds_fit, fit_vals.rename("fit")])
         ds_fit = ds_fit.assign(
             opt_amp_prefactor_raw=xr.DataArray(raw_prefs, coords={"qubit": list(fit_var.qubit.values)})
         )
