@@ -126,9 +126,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # Python loop over the relevant qubits
         for qubit in qubits:
-            # Find the length of the x180 pulse, so that we can wait the exact duration
-            x180_length_cc = qubit.xy.operations[qubit.x180.pulse_name].length // 4
-
+            
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)  # tell the PC which shot we are on
@@ -147,14 +145,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Global align before and after the operate -> wait -> measure shot
                     align()
 
-                    with strict_timing_():
-                        # Prepare the excited state, wait for the variable idle time,
-                        # then measure the decayed population.
-                        qubit.x180()
-                        # Wait the length of the x180 pulse on the relevant elements in the gate_set, and the readout_resoantor.
-                        wait(x180_length_cc + t, *elements_list(qubit))
-                        # Measure the post-sequence state
-                        a2 = qubit.measure()
+                    # Prepare the excited state, wait for the variable idle time,
+                    # then measure the decayed population.
+                    qubit.x180()
+                    # Wait the length of the x180 pulse on the relevant elements in the gate_set, and the readout_resoantor.
+                    align(qubit.xy.name, qubit.physical_channel.name)
+                    # Measure the post-sequence state
+                    a2 = qubit.measure()
 
                     # Just in-case there is any residual output, ramp everything down to zero
                     qubit.voltage_sequence.ramp_to_zero()
