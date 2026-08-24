@@ -100,9 +100,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # Select which qubit-pairs participate in this calibration
+    # Select which qubit-pairs participate in this calibration, and save the information in the namespace
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
-    prepare_dot_pairs(node)
+    node.namespace["dot_pairs"] = [qp.quantum_dot_pair for qp in qubit_pairs]
 
     # Ensure that the machine is set up to track the integrated voltage
     node.machine.reset_voltage_sequence(extract_vgs_id(qubit_pairs), track_integrated_voltage=True)
