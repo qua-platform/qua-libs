@@ -67,10 +67,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Set up a symmetric gate sweep
     volts = np.linspace(-0.01, 0.01, 11)
 
-    # Set up voltage tracking. The gate_set name is hard-coded here, but can be extracted from 
+    # Set up voltage tracking. The gate_set name is hard-coded here, but can be extracted from
     # the quantum dot via quantum_dot.voltage_sequence.gate_set.name
-    node.machine.reset_voltage_sequence("main_qpu", track_integrated_voltage = True)
-    
+    node.machine.reset_voltage_sequence("main_qpu", track_integrated_voltage=True)
+
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
         "quantum_dots": xr.DataArray(quantum_dots),
@@ -86,14 +86,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   n            : shot counter
         #   n_st         : stream reporting shot index to PC (progress bar)
         #   v            : QUA variable holding the voltage value to apply to the plunger
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs = 1) 
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=1)
         v = declare(fixed)
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)  # Tell the PC which shot we are on
 
-            for quantum_dot in quantum_dots: 
+            for quantum_dot in quantum_dots:
                 # Extract the quantum dot's run-time helper for voltage stepping and ramping
                 seq = quantum_dot.voltage_sequence
 
@@ -107,25 +107,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # This can be used with any physical or virtual voltage in the gate set
                     seq.ramp_to_voltages(
                         voltages={quantum_dot.name: v},
-                        duration=1000, 
-                        ramp_duration = 1000,
+                        duration=1000,
+                        ramp_duration=1000,
                     )
-                
+
                 # Apply the compensation pulse
-                seq.apply_compensation_pulse(max_voltage = 0.01)
+                seq.apply_compensation_pulse(max_voltage=0.01)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
-            # This example doesn't save the I/Q per sensor per QD
-            
+            # This example doesn't save the I/Q per sensor per QD
+
             # for i in range(len(quantum_dots)):
-                # Each save() above is one voltage point.
-                # .buffer(len(voltages)) : group points along the voltage axis
-                # .average() : group points along the repetitions axis
-                # Result : 1D trace I(voltages), Q(voltages) per quantum dot
-                # I_st[i].buffer(len(volts)).average().save(f"I_{qd_name}_{i}")
-                # Q_st[i].buffer(len(volts)).average().save(f"Q_{qd_name}_{i}")
+            # Each save() above is one voltage point.
+            # .buffer(len(voltages)) : group points along the voltage axis
+            # .average() : group points along the repetitions axis
+            # Result : 1D trace I(voltages), Q(voltages) per quantum dot
+            # I_st[i].buffer(len(volts)).average().save(f"I_{qd_name}_{i}")
+            # Q_st[i].buffer(len(volts)).average().save(f"Q_{qd_name}_{i}")
 
 
 # %% {Simulate}
