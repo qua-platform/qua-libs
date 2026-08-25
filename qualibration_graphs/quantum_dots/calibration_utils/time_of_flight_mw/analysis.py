@@ -106,12 +106,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return ds_fit, fit_results
 
 
-def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode):
-    """Add metadata to the dataset and fit results."""
-    pass
-    # return fit, fit_results
-
-
 def _filter_adc_signal(data, window_length=11, polyorder=3):
     """
     Applies a Savitzky-Golay filter to smooth the absolute IQ signal in the dataset.

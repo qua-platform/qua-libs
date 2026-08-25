@@ -10,9 +10,8 @@ from qm.octave.octave_mixer_calibration import MixerCalibrationResults
 u = unit(coerce_to_integer=True)
 
 
-def plot_raw_data_with_fit(node: QualibrationNode):
-    """
-    Plot Octave LO-leakage and image-rejection calibration figures for each element.
+def plot_all(node: QualibrationNode):
+    """Standard node plotting API for Octave mixer calibration figures.
 
     Returns
     -------
