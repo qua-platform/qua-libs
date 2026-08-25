@@ -312,7 +312,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit PCA + two-Gaussian readout model at each readout length (same stack as 06a)."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep = True), node)
+    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_measure_duration_raw_data(node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
