@@ -16,7 +16,6 @@ from quam_config import QubitQuam as Quam
 
 from calibration_utils.init_ramp_detuning import (
     Parameters,
-    FitParameters,
     analyse_init_ramp_detuning,
     log_fitted_results,
     plot_all,
@@ -260,13 +259,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Stage a fit/plot dataset without mutating ds_raw."""
-    node.results["ds_fit"] = node.results["ds_raw"].copy()
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
@@ -274,6 +266,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
 
     qp_names = [qp.name for qp in qubit_pairs]
+    ds_in = node.results["ds_raw"].copy(deep = True)
     ds_fit, fit_results = analyse_init_ramp_detuning(
         node.results.get("ds_fit", node.results["ds_raw"]),
         qp_names,
