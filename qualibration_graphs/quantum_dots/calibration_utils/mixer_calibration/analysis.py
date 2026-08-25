@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from qualibrate.core import QualibrationNode
 from qualang_tools.octave_tools.calibration_result_plotter import (
@@ -35,44 +35,58 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     for element_name in fit_results.keys():
         s_element = f"Results for {element_name}: "
         if fit_results[element_name]["resonator"] is not None:
-            s_res = f"\tresonator -> LO leakage suppression: {fit_results[element_name]['resonator']['lo_leakage']:.1f} dB | image rejection: {fit_results[element_name]['resonator']['image_rejection']:.1f} dB.\n"
+            s_res = (
+                f"\tresonator -> LO leakage suppression: "
+                f"{fit_results[element_name]['resonator']['lo_leakage']:.1f} dB | "
+                f"image rejection: {fit_results[element_name]['resonator']['image_rejection']:.1f} dB.\n"
+            )
         else:
             s_res = ""
         if fit_results[element_name]["xy_drive"] is not None:
-            s_xy = f"\txy_drive  -> LO leakage suppression: {fit_results[element_name]['xy_drive']['lo_leakage']:.1f} dB | image rejection: {fit_results[element_name]['xy_drive']['image_rejection']:.1f} dB.\n"
+            s_xy = (
+                f"\txy_drive  -> LO leakage suppression: "
+                f"{fit_results[element_name]['xy_drive']['lo_leakage']:.1f} dB | "
+                f"image rejection: {fit_results[element_name]['xy_drive']['image_rejection']:.1f} dB.\n"
+            )
         else:
             s_xy = ""
         if fit_results[element_name]["success"]:
-            s_qubit += " SUCCESS!\n"
+            s_element += " SUCCESS!\n"
         else:
-            s_qubit += " FAIL!\n"
-        log_callable(s_qubit + s_res + s_xy)
+            s_element += " FAIL!\n"
+        log_callable(s_element + s_res + s_xy)
+
+
+def _metrics_from_calibration_result(cal_result: Any) -> Optional[dict]:
+    """Extract LO leakage / image rejection, or ``None`` if unavailable."""
+    if cal_result is None:
+        return None
+    try:
+        plotter = CalibrationResultPlotter(cal_result)
+        return {
+            "lo_leakage": plotter.get_lo_leakage_rejection(),
+            "image_rejection": plotter.get_image_rejection(),
+        }
+    except Exception:
+        return None
 
 
 def extract_relevant_fit_parameters(node: QualibrationNode):
-    """Add metadata to the dataset and fit results."""
+    """Build per-element fit parameters from whatever channels were actually calibrated."""
+    fit_results = {}
+    for element_name, element_cal in node.namespace["calibration_results"].items():
+        resonator = None
+        if "resonator" in element_cal and node.parameters.calibrate_resonator:
+            resonator = _metrics_from_calibration_result(element_cal.get("resonator"))
 
-    cal_results = node.namespace["calibration_results"]
-    fit_results = {
-        q: FitParameters(
-            resonator=(
-                {
-                    "lo_leakage": CalibrationResultPlotter(cal_results[q]["resonator"]).get_lo_leakage_rejection(),
-                    "image_rejection": CalibrationResultPlotter(cal_results[q]["resonator"]).get_image_rejection(),
-                }
-                if node.parameters.calibrate_resonator
-                else None
-            ),
-            xy_drive=(
-                {
-                    "lo_leakage": CalibrationResultPlotter(cal_results[q]["xy_drive"]).get_lo_leakage_rejection(),
-                    "image_rejection": CalibrationResultPlotter(cal_results[q]["xy_drive"]).get_image_rejection(),
-                }
-                if node.parameters.calibrate_drive
-                else None
-            ),
-            success=True,
+        xy_drive = None
+        if "xy_drive" in element_cal and node.parameters.calibrate_drive:
+            xy_drive = _metrics_from_calibration_result(element_cal.get("xy_drive"))
+
+        success = resonator is not None or xy_drive is not None
+        fit_results[element_name] = FitParameters(
+            resonator=resonator,
+            xy_drive=xy_drive,
+            success=success,
         )
-        for q in node.namespace["calibration_results"].keys()
-    }
     return fit_results

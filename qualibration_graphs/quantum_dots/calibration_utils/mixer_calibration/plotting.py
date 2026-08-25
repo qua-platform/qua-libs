@@ -25,7 +25,7 @@ def plot_raw_data_with_fit(node: QualibrationNode):
         figures[sensor.name] = figs
     for qubit in node.namespace["qubits"]:
         figs = plot_individual_data_with_fit(node.namespace["calibration_results"], qubit.name)
-        figures["qubit.name"] = figs
+        figures[qubit.name] = figs
     return figures
 
 
@@ -37,17 +37,20 @@ def plot_individual_data_with_fit(
     Plots individual element data on a given axis with optional fit.
     """
     figs = {}
+    element_cal = calibration_results.get(element_name, {})
     for key in ["resonator", "xy_drive"]:
-        if calibration_results[element_name][key] is not None:
-            plotter = CalibrationResultPlotter(calibration_results[element_name][key])
-            # LO leakage
-            fig_lo_leakage = plotter.show_lo_leakage_calibration_result()
-            fig_lo_leakage.suptitle(element_name + "." + key + ": " + fig_lo_leakage._suptitle.get_text())
-            # Image rejection
-            fig_image_rejection = plotter.show_image_rejection_calibration_result()
-            fig_image_rejection.suptitle(element_name + "." + key + ": " + fig_image_rejection._suptitle.get_text())
-            figs[key] = {
-                "lo_leakage": fig_lo_leakage,
-                "image_rejection": fig_image_rejection,
-            }
+        cal_result = element_cal.get(key)
+        if cal_result is None:
+            continue
+        plotter = CalibrationResultPlotter(cal_result)
+        # LO leakage
+        fig_lo_leakage = plotter.show_lo_leakage_calibration_result()
+        fig_lo_leakage.suptitle(element_name + "." + key + ": " + fig_lo_leakage._suptitle.get_text())
+        # Image rejection
+        fig_image_rejection = plotter.show_image_rejection_calibration_result()
+        fig_image_rejection.suptitle(element_name + "." + key + ": " + fig_image_rejection._suptitle.get_text())
+        figs[key] = {
+            "lo_leakage": fig_lo_leakage,
+            "image_rejection": fig_image_rejection,
+        }
     return figs
