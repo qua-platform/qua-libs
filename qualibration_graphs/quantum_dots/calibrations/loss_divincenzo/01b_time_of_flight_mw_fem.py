@@ -158,9 +158,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for i, sensor in enumerate(node.namespace["sensors"]):
                 # Specify the ADC input to save based on which input the sensor is actually connected to
                 if sensor_input[i] == 1:
-                    stream = adc_st[i].input1()
+                    stream = adc_st[sensor.name].input1()
                 else:
-                    stream = adc_st[i].input2()
+                    stream = adc_st[sensor.name].input2()
 
                 # Save both the averaged and single trace of the ADC input
                 # Will save average:
