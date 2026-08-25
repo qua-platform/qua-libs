@@ -8,10 +8,10 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
+
 from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.time_of_flight import (
     Parameters,
@@ -50,8 +50,12 @@ Prerequisites:
  
 Datasets:
     - ``ds_raw``: untouched raw ADC counts (``adc``, ``adc_single_run``) vs ``readout_time``, per sensor.
-    - ``ds_processed``: ``ds_raw`` converted to volts, plus derived ``adc_abs`` amplitude.
-    - ``ds_fit``: ``ds_processed`` plus the fitted delay/offset/success fields used for state updates.
+    - ``ds_fit``: volts-converted traces plus fitted delay/offset/success fields used for state updates.
+ 
+Results:
+    - ``fit_results[sensor].tof_to_add``: additional time of flight to add [ns].
+    - ``fit_results[sensor].offset_to_add``: analog-input DC offset to add [V].
+    - ``fit_results[sensor].success``: whether the fit met the success criteria.
  
 Figures:
     - ``"single_run"``: single-shot ADC trace with fitted TOF/offset overlay, per sensor.
@@ -70,7 +74,9 @@ node = QualibrationNode[Parameters, Quam](name="01a_time_of_flight", description
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -231,24 +237,19 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = get_sensors(node)
 
 
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node):
-    """Convert raw ADC traces to volts and add derived amplitude (keeps ds_raw immutable)."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_processed"], node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
-        qubit_name: ("successful" if fit_result["success"] else "failed")
-        for qubit_name, fit_result in node.results["fit_results"].items()
+        sensor_name: ("successful" if fit_result["success"] else "failed")
+        for sensor_name, fit_result in node.results["fit_results"].items()
     }
 
 
@@ -296,4 +297,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Save the node results and state."""
     node.save()

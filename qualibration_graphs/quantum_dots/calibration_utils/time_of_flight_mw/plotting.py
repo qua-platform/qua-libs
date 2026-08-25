@@ -13,9 +13,8 @@ u = unit(coerce_to_integer=True)
 def plot_all(ds_fit: xr.Dataset, sensors: List[SensorDot]) -> Dict[str, Figure]:
     """Standard node plotting API.
 
-    ``ds_fit`` already contains the raw (volts-converted) ADC I/Q traces alongside
-    the fitted delay field -- ``fit_raw_data`` builds it directly from
-    ``ds_processed`` -- so it doubles as both the "raw" and "fit" source for the
+    ``ds_fit`` already contains the volts-converted ADC I/Q traces alongside the
+    fitted delay field, so it doubles as both the "raw" and "fit" source for the
     two figures below.
 
     Parameters
@@ -39,7 +38,7 @@ def plot_all(ds_fit: xr.Dataset, sensors: List[SensorDot]) -> Dict[str, Figure]:
 
 def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset):
     """
-    Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given sensors.
+    Plots the single-run ADC I/Q traces with fitted TOF for the given sensors.
 
     Parameters
     ----------
@@ -76,7 +75,7 @@ def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.
 
 def plot_averaged_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset):
     """
-    Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given sensors.
+    Plots the averaged ADC I/Q traces with fitted TOF for the given sensors.
 
     Parameters
     ----------
@@ -146,7 +145,7 @@ def plot_individual_single_run_with_fit(ax: Axes, sensor_data: xr.Dataset, senso
         label="ADC Range",
     )
     ax.set_xlabel("Time [ns]")
-    ax.set_ylabel("Readout amplitude [mV]")
+    ax.set_ylabel("Readout amplitude [V]")
     ax.set_title(sensor_name)
     ax.legend()
     ax.grid(True, alpha=0.3)
@@ -179,7 +178,7 @@ def plot_individual_averaged_run_with_fit(ax: Axes, sensor_data: xr.Dataset, sen
         ax.axvline(fit.delay, color="k", linestyle="--", label="TOF")
 
     ax.set_xlabel("Time [ns]")
-    ax.set_ylabel("Readout amplitude [mV]")
+    ax.set_ylabel("Readout amplitude [V]")
     ax.set_title(sensor_name)
     ax.legend()
     ax.grid(True, alpha=0.3)

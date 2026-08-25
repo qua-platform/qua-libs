@@ -10,7 +10,7 @@ from qualang_tools.octave_tools.calibration_result_plotter import (
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Stores Octave mixer calibration metrics for a single element (sensor or qubit)."""
 
     resonator: Optional[dict] = None
     xy_drive: Optional[dict] = None

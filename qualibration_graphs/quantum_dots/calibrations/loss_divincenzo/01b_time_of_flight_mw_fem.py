@@ -8,7 +8,6 @@ from qm.qua import *
 
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
@@ -22,11 +21,11 @@ from calibration_utils.time_of_flight_mw import (
     plot_all,
     generate_simulated_dataset,
 )
-
 from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 
+# %% {Node initialisation}
 description = """
         TIME OF FLIGHT - MW FEM
  
@@ -48,8 +47,11 @@ Prerequisites:
 Datasets:
     - ``ds_raw``: untouched raw ADC I/Q counts (``adcI``, ``adcQ``, ``adc_single_runI``,
       ``adc_single_runQ``) vs ``readout_time``, per sensor.
-    - ``ds_processed``: ``ds_raw`` converted to volts, plus derived ``IQ_abs`` amplitude.
-    - ``ds_fit``: ``ds_processed`` plus the fitted delay/success fields used for state updates.
+    - ``ds_fit``: volts-converted I/Q traces plus fitted delay/success fields used for state updates.
+ 
+Results:
+    - ``fit_results[sensor].tof_to_add``: additional time of flight to add [ns].
+    - ``fit_results[sensor].success``: whether the fit met the success criteria.
  
 Figures:
     - ``"single_run"``: single-shot ADC trace with fitted TOF overlay, per sensor.
@@ -71,6 +73,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -238,18 +241,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = get_sensors(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Convert raw ADC traces to volts and add derived IQ amplitude (keeps ds_raw immutable)."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit the time-of-flight delay, storing results in "ds_fit" and "fit_results"."""
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_processed"], node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis

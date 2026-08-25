@@ -10,7 +10,7 @@ from qualibrate.core import QualibrationNode
 
 @dataclass
 class FitParameters:
-    """Stores the relevant sensor spectroscopy experiment fit parameters for a single sensor"""
+    """Stores the time-of-flight fit parameters for a single sensor."""
 
     tof_to_add: int
     offset_to_add: float
@@ -53,21 +53,23 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """
-    Fit the sensor frequency and FWHM for each sensor in the dataset.
+    Fit the time-of-flight delay and analog-input offset for each sensor.
 
     Parameters:
     -----------
     ds : xr.Dataset
-        Dataset containing the raw data.
-    node_parameters : Parameters
-        Parameters related to the node, including whether state discrimination is used.
+        Processed dataset (volts) containing ``adc`` / ``adc_abs``.
+    node : QualibrationNode
+        Calibration node (provides ``machine`` and ``sensors`` for controller mapping).
 
     Returns:
     --------
     xr.Dataset
-        Dataset containing the fit results.
+        Dataset containing the fit results (copy; does not mutate ``ds``).
+    dict[str, FitParameters]
+        Per-sensor fit parameters.
     """
-    ds_fit = ds
+    ds_fit = ds.copy(deep=True)
     # Filter the data to get the pulse arrival time
     ds_fit["filtered_adc"] = xr.apply_ufunc(_filter_adc_signal, ds_fit.adc_abs)
     # Detect the pulse arrival times
@@ -115,7 +117,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         )
         for s in ds_fit.sensor.values
     }
-    node.outcomes = {s: "successful" if fit_results[s].success else "fail" for s in ds_fit.sensor.values}
 
     return ds_fit, fit_results
 
