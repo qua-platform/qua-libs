@@ -42,7 +42,8 @@ Prerequisites:
     - Having a reasonable initial RF frequency estimate for the selected qubits.
 
 Data:
-    - `ds_raw`: averaged parity streams and averaged raw I/Q traces versus detuning.
+    - `ds_raw`: dataarray of raw data
+    - `ds_processed`: averaged parity streams and averaged raw I/Q traces versus detuning.
     - `ds_fit`: fitted spectroscopy traces, fitted curves, resonance positions, and linewidths.
 
 Plots:
@@ -293,18 +294,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Build the conditional parity expectations from the explicitly named raw streams."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit the spectroscopy response and store both the fitted dataset and fit summary."""
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
@@ -320,7 +315,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Build the node figures from the processed dataset and the fitted results."""
     node.results["figures"] = plot_all(
-        node.results["ds_raw"],
+        node.results["ds_processed"],
         node.namespace["qubits"],
         node.results["ds_fit"],
         analysis_signal=node.parameters.analysis_signal,
