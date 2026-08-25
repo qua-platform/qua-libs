@@ -13,10 +13,9 @@ u = unit(coerce_to_integer=True)
 def plot_all(ds_fit: xr.Dataset, sensors: List[SensorDot]) -> Dict[str, Figure]:
     """Standard node plotting API.
 
-    ``ds_fit`` already contains the raw (volts-converted) ADC traces alongside the
-    fitted delay/offset fields -- ``fit_raw_data`` builds it directly from
-    ``ds_processed`` -- so it doubles as both the "raw" and "fit" source for the
-    two figures below.
+    ``ds_fit`` already contains the volts-converted ADC traces alongside the
+    fitted delay/offset fields, so it doubles as both the "raw" and "fit" source
+    for the two figures below.
 
     Parameters
     ----------
@@ -170,7 +169,7 @@ def plot_individual_averaged_run_with_fit(ax: Axes, sensor_data: xr.Dataset, sen
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    sensor_data.adc_single_run.plot(ax=ax, x="readout_time", label="ADC", color="b")
+    sensor_data.adc.plot(ax=ax, x="readout_time", label="ADC", color="b")
 
     if fit is not None:
         ax.axvline(fit.delay, color="k", linestyle="--", label="TOF")

@@ -12,16 +12,12 @@ u = unit(coerce_to_integer=True)
 
 def plot_raw_data_with_fit(node: QualibrationNode):
     """
-    Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
+    Plot Octave LO-leakage and image-rejection calibration figures for each element.
+
     Returns
     -------
-    Figure
-        The matplotlib figure object containing the plots.
-
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each element.
-    - Each subplot contains the raw data and the fitted curve.
+    dict
+        Mapping of element name to a dict of calibration figures.
     """
     figures = {}
     for sensor in node.namespace["sensors"]:
