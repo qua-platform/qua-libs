@@ -17,9 +17,8 @@ Prerequisites:
 
 Datasets:
     - ``ds_raw``: untouched I/Q fetched from the OPX (never modified after acquisition).
-    - ``ds_processed``: ``ds_raw`` plus derived amplitude/phase (used by fitting and plotting).
-    - ``ds_fit``: processed sweeps plus analysis outputs (derived fields and per-sensor summary coordinates). Used by
-      ``plot_data``.
+    - ``ds_fit``: processed sweeps (amplitude/phase) plus analysis outputs (derived fields and per-sensor summary
+      coordinates). Used by ``plot_data``.
     - ``fit_results``: compact per-sensor calibration dict (``FitParameters`` serialized with ``asdict``). Used by
       logging, ``node.outcomes``, and ``update_state``.
 
@@ -51,7 +50,7 @@ quadratures 'I' and 'Q'. Default is False. |
 | `num_shots` | `10` | Number of averages to perform. Default is 100. |
 | `offset_min` | `-0.2` | Minimum voltage offset for the sensor gate sweep in volts. Default is -0.2 V. |
 | `offset_max` | `0.2` | Maximum voltage offset for the sensor gate sweep in volts. Default is 0.2 V. |
-| `offset_step` | `0.01` | Step size for the voltage offset sweep in volts. Default is 0.005 V. |
+| `offset_step` | `0.01` | Step size for the voltage offset sweep in volts. Default is 0.01 V. |
 | `duration_after_step` | `1000` | Wait duration after each voltage step in nanoseconds. Default is 1000 ns (1 µs). |
 | `sensor_names` | `None` | The list of sensor dot names to be included in the measurement.  |
 | `use_simulated_data` | `False` | Whether to generate simulated data instead of measuring via the OPX. Default False. |
