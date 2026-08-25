@@ -3,11 +3,11 @@ from qualibrate.core import QualibrationNode, NodeParameters
 from quam_config import QubitQuam as Quam
 
 description = """
-        CLOSE ALL OTHER QMs.
+        CLOSE ALL QMs.
 """
 
 node = QualibrationNode[NodeParameters, Quam](
-    name="00_close_other_qms", description=description, parameters=NodeParameters()
+    name="00_close_all_qms", description=description, parameters=NodeParameters()
 )
 
 
