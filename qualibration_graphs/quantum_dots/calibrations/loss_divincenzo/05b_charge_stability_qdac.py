@@ -13,6 +13,7 @@ from calibration_utils.charge_stability_opx import (
     get_axis_names_and_validate,
     analyse_raw_data,
     plot_all,
+    process_raw_dataset,
 )
 from calibration_utils.charge_stability_qdac import (
     Parameters,
@@ -324,11 +325,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=not node.parameters.perform_edge_analysis or node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
+    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
         node.results["fit_results"],
         node.outcomes,
-    ) = analyse_raw_data(node.results["ds_raw"], node, log_callable=node.log)
+    ) = analyse_raw_data(ds_processed, node, log_callable=node.log)
 
 
 # %% {Plot_data}

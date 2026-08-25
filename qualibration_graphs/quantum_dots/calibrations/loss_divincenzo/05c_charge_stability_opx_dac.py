@@ -13,6 +13,7 @@ from quam_config import QubitQuam as Quam
 from calibration_utils.charge_stability_opx import (
     analyse_raw_data,
     plot_all,
+    process_raw_dataset,
 )
 from calibration_utils.charge_stability_external_dac import (
     Parameters,
@@ -330,11 +331,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or not node.parameters.perform_edge_analysis)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
+    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
         node.results["fit_results"],
         node.outcomes,
-    ) = analyse_raw_data(node.results["ds_raw"], node, log_callable=node.log)
+    ) = analyse_raw_data(ds_processed, node, log_callable=node.log)
 
 
 # %% {Plot_data}
