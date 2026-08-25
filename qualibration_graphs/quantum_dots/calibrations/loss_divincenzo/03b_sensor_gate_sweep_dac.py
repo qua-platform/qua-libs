@@ -81,7 +81,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.sensor_names = ["virtual_sensor_1"]
+    # node.parameters.sensor_names = ["virtual_sensor_1"]
     pass
 
 
@@ -184,7 +184,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # At the end of each 1D sweep, play a compensation pulse to account for any charge build-up in the bias tee
                     # This is only necessary in this program if a qubit pair was stepped. Otherwise, skip
                     if node.parameters.qubit_pair_to_step is not None:
-                        apply_compensation_pulse(multiplexed_sensors, node.parameters.max_compensation_pulse)
+                        apply_compensation_pulse(multiplexed_sensors, node.parameters.max_compensation_voltage)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
