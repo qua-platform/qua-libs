@@ -15,10 +15,7 @@ def test_time_of_flight_mw_fem_simulation(simulation_runner, minimal_quam_factor
     sensor = next(iter(machine.sensor_dots.values()))
     resonator_type = type(sensor.readout_resonator).__name__
     if "MW" not in resonator_type:
-        pytest.skip(
-            f"Test machine sensor resonator is {resonator_type}; "
-            "01b requires a MW-FEM readout resonator."
-        )
+        pytest.skip(f"Test machine sensor resonator is {resonator_type}; " "01b requires a MW-FEM readout resonator.")
 
     simulation_runner(
         node_name=NODE_NAME,

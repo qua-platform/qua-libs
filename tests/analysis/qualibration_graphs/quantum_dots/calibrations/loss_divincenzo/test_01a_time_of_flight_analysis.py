@@ -41,9 +41,9 @@ def test_01a_time_of_flight_analysis(analysis_runner):
     assert fit["success"], f"TOF fit should succeed, got: {fit}"
 
     tof_to_add = int(fit["tof_to_add"])
-    assert abs(tof_to_add - SIMULATED_DELAY_NS) <= 8, (
-        f"Expected tof_to_add near {SIMULATED_DELAY_NS} ns, got {tof_to_add} ns"
-    )
+    assert (
+        abs(tof_to_add - SIMULATED_DELAY_NS) <= 8
+    ), f"Expected tof_to_add near {SIMULATED_DELAY_NS} ns, got {tof_to_add} ns"
     assert np.isfinite(fit["offset_to_add"])
     assert abs(fit["offset_to_add"]) < 0.5
 
