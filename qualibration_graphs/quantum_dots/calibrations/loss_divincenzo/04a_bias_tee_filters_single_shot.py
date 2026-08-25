@@ -309,19 +309,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
             "because it writes one output filter per element."
         )
 
-
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Process the acquired dataset before fitting."""
-    node.namespace["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit an exponential decay to extract the bias tee time constant."""
-    ds_processed = node.namespace.get("ds_processed", process_raw_dataset(node.results["ds_raw"], node))
+    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep = True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
