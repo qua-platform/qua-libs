@@ -20,7 +20,6 @@ from calibration_utils.psb_search_sweep_ramp_rate import (
     process_raw_dataset,
     log_fitted_results,
     plot_all,
-    prepare_dot_pairs,
     modify_and_track_point,
     validate_and_build_ramp_sweep,
     extract_vgs_id,
@@ -282,17 +281,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Process raw dataset into an analysis-ready form (keeps ``ds_raw`` immutable)."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep = True), node)
     node.results["ds_fit"], fit_results = fit_sweep_rate_raw_data(node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 

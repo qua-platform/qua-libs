@@ -279,19 +279,13 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Process raw dataset into a plotting/analysis-ready dataset (keeps ds_raw immutable)."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep = True), node)
 
-    node.results["ds_fit"], fit_results = fit_raw_data_pca_gaussian(node.results["ds_processed"], node)
+    node.results["ds_fit"], fit_results = fit_raw_data_pca_gaussian(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
