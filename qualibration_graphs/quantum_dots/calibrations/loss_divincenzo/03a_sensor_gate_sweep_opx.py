@@ -6,26 +6,27 @@ from dataclasses import asdict
 
 from qm.qua import *
 
+from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.loops import from_array
 
-from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
+
+from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.sensor_dot import (
     Parameters,
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    generate_simulated_dataset,
     plot_all,
+    generate_simulated_dataset,
     apply_compensation_pulse,
     refresh_voltage_sequences,
 )
-from calibration_utils.common_utils.experiment import get_sensors
-from qualibration_libs.runtime import simulate_and_plot
+from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
@@ -276,8 +277,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
     if not node.modes.external:
         plt.show()
-    # ### Annotations can come later, once calibration_utils is done
-    # annotate_node_figures(node)
 
 
 # %% {Update_state}
@@ -305,4 +304,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist node results and parameters."""
     node.save()

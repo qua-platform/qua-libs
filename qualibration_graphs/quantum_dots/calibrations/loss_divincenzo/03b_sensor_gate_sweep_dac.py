@@ -1,31 +1,33 @@
 # %% {Imports}
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from dataclasses import asdict
-import time
 
 from qm.qua import *
 
+from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.loops import from_array
 
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
-from calibration_utils.sensor_dot_dac import Parameters
+
+from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.sensor_dot import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
-    generate_simulated_dataset,
     plot_all,
+    generate_simulated_dataset,
     apply_compensation_pulse,
     refresh_voltage_sequences,
 )
-from calibration_utils.common_utils.experiment import get_sensors
-from qualibration_libs.runtime import simulate_and_plot
+from calibration_utils.sensor_dot_dac import Parameters
 from qualibration_libs.data import XarrayDataFetcher
+from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
@@ -96,7 +98,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # Get the relevant sensor dots rom the node
+    # Get the relevant sensor dots from the node
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
 
@@ -357,8 +359,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
     if not node.modes.external:
         plt.show()
-    # ### Annotations can come later, once calibration_utils is done
-    # annotate_node_figures(node)
 
 
 # %% {Update_state}
@@ -383,4 +383,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist node results and parameters."""
     node.save()
