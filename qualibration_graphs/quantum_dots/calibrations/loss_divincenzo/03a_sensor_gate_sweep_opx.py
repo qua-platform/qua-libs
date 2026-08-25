@@ -123,7 +123,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Real-time variable holding the plunger gate voltage
         offset = declare(fixed)
 
-        # If several sensors share the same AWG resources, they are grouped into batches
+        # If several sensors share the same OPX resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
             refresh_voltage_sequences(node, multiplexed_sensors)
 
