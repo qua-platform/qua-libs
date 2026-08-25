@@ -91,7 +91,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     num_sensors = len(sensors)
 
     # Ensure that the machine is tracking the integrated voltage, for compensation
-    node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage = True)
+    node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage=True)
 
     # Number of shots per single shot measurement
     n_avg = node.parameters.num_shots
@@ -309,11 +309,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
             "because it writes one output filter per element."
         )
 
+
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit an exponential decay to extract the bias tee time constant."""
-    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep = True), node)
+    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
