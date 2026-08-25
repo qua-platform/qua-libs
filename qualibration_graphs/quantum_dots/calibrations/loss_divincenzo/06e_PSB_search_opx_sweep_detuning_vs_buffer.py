@@ -109,15 +109,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray([pair.name for pair in qubit_pairs]),
-        "buffer_duration": xr.DataArray(
-            buffer_ns_array.astype(float),
-            attrs={"long_name": "buffer duration", "units": "ns"},
-        ),
+        "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
         "detuning": xr.DataArray(
             detuning_array,
             attrs={"long_name": "detuning", "units": "V"},
         ),
-        "n_runs": xr.DataArray(np.arange(n_avg), attrs={"long_name": "shot"}),
+        "buffer_duration": xr.DataArray(
+            buffer_ns_array.astype(float),
+            attrs={"long_name": "buffer duration", "units": "ns"},
+        ),
     }
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
@@ -285,17 +285,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Process raw dataset into an analysis-ready form (keeps ``ds_raw`` immutable)."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep = True), node)
     node.results["ds_fit"], fit_results = fit_detuning_vs_buffer_raw_data(node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
