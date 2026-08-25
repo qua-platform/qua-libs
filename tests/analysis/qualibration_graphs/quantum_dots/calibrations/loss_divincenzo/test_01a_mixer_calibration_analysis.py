@@ -65,9 +65,7 @@ def test_01a_mixer_extract_success_when_channel_metrics_present():
     fake_cal = object()
     node = _make_node({SENSOR_NAME: {"resonator": fake_cal}, QUBIT_NAME: {"xy_drive": None}})
 
-    with patch(
-        "calibration_utils.mixer_calibration.analysis.CalibrationResultPlotter"
-    ) as plotter_cls:
+    with patch("calibration_utils.mixer_calibration.analysis.CalibrationResultPlotter") as plotter_cls:
         plotter = plotter_cls.return_value
         plotter.get_lo_leakage_rejection.return_value = 40.0
         plotter.get_image_rejection.return_value = 35.0
@@ -115,9 +113,7 @@ def test_01a_mixer_plot_all_builds_figures_for_present_channel():
     fake_img = MagicMock()
     fake_img._suptitle.get_text.return_value = "IMG"
 
-    with patch(
-        "calibration_utils.mixer_calibration.plotting.CalibrationResultPlotter"
-    ) as plotter_cls:
+    with patch("calibration_utils.mixer_calibration.plotting.CalibrationResultPlotter") as plotter_cls:
         plotter = plotter_cls.return_value
         plotter.show_lo_leakage_calibration_result.return_value = fake_lo
         plotter.show_image_rejection_calibration_result.return_value = fake_img
