@@ -137,7 +137,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Real-time variable to indicate the index along the sensor bias array
         sensor_idx = declare(int)
 
-        # If several sensors share the same AWG resources, they are grouped into batches
+        # If several sensors share the same OPX resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
             refresh_voltage_sequences(node, multiplexed_sensors)
 
@@ -145,8 +145,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             # ── OUTER LOOP: PAUSE the QUA program, and set the DAC voltage ──
             with for_(sensor_idx, 0, sensor_idx < len(bias_offsets), sensor_idx + 1):
-                pause()
                 # During pause, will step the DAC
+                pause()
 
                 wait(node.parameters.duration_after_step)
 
