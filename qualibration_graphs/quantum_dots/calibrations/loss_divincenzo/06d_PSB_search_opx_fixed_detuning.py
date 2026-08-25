@@ -253,7 +253,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit the labeled readout model using the processed dataset."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep = True), node)
+    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_fixed_detuning_raw_data(node)
     node.results["fit_results"] = {str(name): asdict(result) for name, result in fit_results.items()}
 
