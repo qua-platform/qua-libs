@@ -73,7 +73,6 @@ def _run_03b_analysis(*, machine, param_overrides: Dict[str, Any]) -> Any:
     for sensor in node.namespace["sensors"]:
         node.namespace[f"{sensor.name}_dac_offset"] = DAC_OFFSET_V
 
-    call_node_action(node, "process_raw_data")
     call_node_action(node, "analyse_data")
     call_node_action(node, "plot_data")
     if "fit_results" in node.results:

@@ -44,9 +44,8 @@ Prerequisites:
 
 Datasets:
     - ``ds_raw``: untouched I/Q fetched from the OPX (never modified after acquisition).
-    - ``ds_processed``: ``ds_raw`` plus derived amplitude/phase (used by fitting and plotting).
-    - ``ds_fit``: processed sweeps plus analysis outputs (derived fields and per-sensor summary coordinates). Used by
-      ``plot_data``.
+    - ``ds_fit``: processed sweeps (amplitude/phase) plus analysis outputs (derived fields and per-sensor summary
+      coordinates). Used by ``plot_data``.
     - ``fit_results``: compact per-sensor calibration dict (``FitParameters`` serialized with ``asdict``). Used by
       logging, ``node.outcomes``, and ``update_state``.
 
@@ -244,25 +243,13 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = get_sensors(node)
 
 
-#
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Process the raw dataset into derived signals for analysis and plotting."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
-    ds_processed = node.results.get("ds_processed")
-    if ds_processed is None:
-        ds_processed = process_raw_dataset(node.results["ds_raw"], node)
+    """Process raw I/Q, fit each sensor, and store ``ds_fit`` / ``fit_results``."""
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-
-    # Log the relevant information extracted from the data analysis
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
         sensor_name: ("successful" if fit_result["success"] else "failed")
