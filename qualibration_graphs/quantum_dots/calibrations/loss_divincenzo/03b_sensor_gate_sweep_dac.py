@@ -326,7 +326,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = get_sensors(node)
 
 
-#
 # %% {Process_raw_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def process_raw_data(node: QualibrationNode[Parameters, Quam]):
