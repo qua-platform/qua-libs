@@ -391,18 +391,11 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Prepare the acquired RB dataset for fitting."""
-    node.namespace["ds_processed"] = process_raw_dataset(node.results["ds_raw"])
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit the RB exponential decay for each qubit."""
-    ds_processed = node.namespace.get("ds_processed", node.results["ds_raw"])
+    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True))
     node.results["ds_fit"], fit_results = analyse_raw_data(
         ds_processed,
         node.namespace["qubits"],
