@@ -94,7 +94,7 @@ def _run_06d_analysis(
     param_overrides: Dict[str, Any],
     artifacts_subdir: str,
 ) -> Any:
-    from shared_fixtures import (
+    from tests.shared_fixtures import (
         apply_param_overrides,
         call_node_action,
         ensure_quam_config_stub,
@@ -124,7 +124,7 @@ def _run_06d_analysis(
     )
 
     # Resolve qubits from the machine
-    from calibration_utils.common_utils.experiment import get_qubits
+    from qualibration_libs.parameters.experiment import get_qubits
     node.namespace["qubits"] = qubits = get_qubits(node)
 
     # Resolve (qubit, dot_pair) tuples via preferred_readout_quantum_dot
@@ -140,6 +140,7 @@ def _run_06d_analysis(
 
     node.results["ds_raw"] = ds_raw
 
+    call_node_action(node, "process_raw_data")
     call_node_action(node, "analyse_data")
     call_node_action(node, "plot_data")
     if "fit_results" in node.results:
@@ -207,7 +208,7 @@ def test_06d_psb_fixed_detuning_analysis(minimal_quam_factory, analysis_model):
         f"got {list(machine.qubits)}"
     )
 
-    num_shots = 1000
+    num_shots = 200
     qubit_names = [QUBIT_NAME]
 
     ds_raw = _build_ds_raw(

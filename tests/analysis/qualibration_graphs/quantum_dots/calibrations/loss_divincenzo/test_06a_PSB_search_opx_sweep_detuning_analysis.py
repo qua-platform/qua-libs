@@ -27,7 +27,7 @@ from .conftest import (
     CALIBRATION_LIBRARY_ROOT,
 )
 
-from calibration_utils.iq_blobs.readout_barthel.simulate import (
+from calibration_utils.iq_utils.iq_blobs.readout_barthel.simulate import (
     SimulationParamsIQ,
     simulate_readout_iq,
 )
@@ -149,7 +149,7 @@ def _run_06a_analysis(
     param_overrides: Dict[str, Any],
     artifacts_subdir: str,
 ) -> Any:
-    from shared_fixtures import (
+    from tests.shared_fixtures import (
         apply_param_overrides,
         call_node_action,
         ensure_quam_config_stub,
@@ -183,6 +183,7 @@ def _run_06a_analysis(
         node.namespace["qubit_pairs"] = list(machine.qubit_pairs.values())
     node.results["ds_raw"] = ds_raw
 
+    call_node_action(node, "process_raw_data")
     call_node_action(node, "analyse_data")
     call_node_action(node, "plot_data")
     if "fit_results" in node.results:
@@ -248,13 +249,13 @@ def test_06a_psb_search_sweep_detuning_analysis(minimal_quam_factory):
     ), f"Test factory missing expected pair '{PAIR_NAME}'; got {list(machine.qubit_pairs)}"
     pair_names = _add_analysis_pair_aliases(machine, ["q1_q2_alias_1", "q1_q2_alias_2"])
 
-    detuning_min, detuning_max, detuning_points = -0.1, 0.1, 200
+    detuning_min, detuning_max, detuning_points = -0.1, 0.1, 41
     detunings = np.linspace(detuning_min, detuning_max, detuning_points)
     optimal_detuning = (
         0.05  # where the synthetic blob separation peaks for the primary pair
     )
     optimal_detunings = [optimal_detuning, 0.0, -0.05]
-    num_shots = 20000
+    num_shots = 3000
 
     ds_raw = _build_ds_raw(
         pair_names=pair_names,

@@ -28,7 +28,7 @@ from .conftest import (
     CALIBRATION_LIBRARY_ROOT,
 )
 
-from calibration_utils.iq_blobs.readout_barthel.simulate import (
+from calibration_utils.iq_utils.iq_blobs.readout_barthel.simulate import (
     SimulationParamsIQ,
     simulate_readout_iq,
 )
@@ -154,7 +154,7 @@ def _run_06b_analysis(
     param_overrides: Dict[str, Any],
     artifacts_subdir: str,
 ) -> Any:
-    from shared_fixtures import (
+    from tests.shared_fixtures import (
         apply_param_overrides,
         call_node_action,
         ensure_quam_config_stub,

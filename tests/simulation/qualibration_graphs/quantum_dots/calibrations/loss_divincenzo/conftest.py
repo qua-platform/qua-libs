@@ -161,6 +161,23 @@ DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
 }
 
 
+def _is_cluster_connectivity_error(exc: Exception) -> bool:
+    """Return True when the exception indicates QOP cluster reachability issues."""
+    try:
+        from qm.exceptions import QMConnectionError, QmServerDetectionError
+
+        error_types = (QMConnectionError, QmServerDetectionError)
+    except Exception:
+        error_types = ()
+
+    current = exc
+    while current is not None:
+        if error_types and isinstance(current, error_types):
+            return True
+        current = getattr(current, "__cause__", None)
+    return False
+
+
 def _regenerate_quam_machine() -> LossDiVincenzoQuam:
     """Rebuild QUAM JSON, ``update_machine``, save (overwrite), load from disk."""
     loaded, _cfg = regenerate_state_directory()
@@ -282,7 +299,14 @@ def simulation_runner(minimal_quam_factory, save_simulation_plot, markdown_gener
                         simulate_fn,
                     ),
                 ):
-                    result = node.run(simulate=True)
+                    try:
+                        result = node.run(simulate=True)
+                    except Exception as exc:
+                        if _is_cluster_connectivity_error(exc):
+                            pytest.skip(
+                                "Unable to connect to the configured QOP cluster for simulation."
+                            )
+                        raise
         else:
             if not configure_machine_network(machine):
                 pytest.skip("Missing QM host configuration for OPX simulation.")
@@ -298,7 +322,14 @@ def simulation_runner(minimal_quam_factory, save_simulation_plot, markdown_gener
                     simulate_fn,
                 ),
             ):
-                result = node.run(simulate=True)
+                try:
+                    result = node.run(simulate=True)
+                except Exception as exc:
+                    if _is_cluster_connectivity_error(exc):
+                        pytest.skip(
+                            "Unable to connect to the configured QOP cluster for simulation."
+                        )
+                    raise
 
         sim_result = (
             getattr(node, "results", {}).get("simulation")
