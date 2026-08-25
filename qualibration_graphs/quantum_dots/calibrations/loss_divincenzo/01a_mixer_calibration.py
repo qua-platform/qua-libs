@@ -13,7 +13,7 @@ from calibration_utils.mixer_calibration import (
     Parameters,
     extract_relevant_fit_parameters,
     log_fitted_results,
-    plot_raw_data_with_fit,
+    plot_all,
 )
 from qualibration_libs.parameters import get_qubits
 
@@ -118,10 +118,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot Octave LO-leakage and image-rejection calibration figures per element."""
-    figs = plot_raw_data_with_fit(node)
-    plt.show()
-    # Store the generated figures
-    node.results["figures"] = figs
+    node.results["figures"] = plot_all(node)
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Save_results}
