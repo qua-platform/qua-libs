@@ -112,16 +112,8 @@ def run_video_mode(node: QualibrationNode[Parameters, Quam]):
         readout_pulses=readout_pulses,
         save_path=quam_state_path,
         port=video_mode_port,
-        # point_duration = node.parameters.hold_duration,
         mid_scan_compensation=per_line_compensation,
     )
-
-
-# %% {Load_historical_data}
-@node.run_action(skip_if=node.parameters.load_data_id is None)
-def load_data(node: QualibrationNode[Parameters, Quam]):
-    """Load and plot a previously acquired Video Mode dataset."""
-    pass
 
 
 # %% {Save_results}

@@ -27,7 +27,7 @@ from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialisation}
 description = """
-        TIME OF FLIGHT - OPX+ & LF-FEM
+        TIME OF FLIGHT - OPX+ or LF-FEM
  
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
 The data undergoes post-processing to calibrate three distinct parameters:
@@ -39,8 +39,11 @@ The data undergoes post-processing to calibrate three distinct parameters:
       the OPX might exhibit slight DC offsets.
  
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates
-      the ADC, the variable gain of the OPX1000 LF-FEM analog input, ranging from -3 dB to 29 dB,
-      can be modified to fit the signal within the ADC range of +/-0.5V.
+      the ADC, the variable gain of the OPX+ analog input or the OPX1000 LF-FEM analog input
+      can be modified to fit the signal within the ADC range of +/-0.5V. While the gain is not 
+      automatically set as the state update of this node, this can be manually adjusted 
+      using the command sensor.readout_resonator.opx_input.gain_db = int(___) for a ReadoutResonatorSingle, and 
+      sensor.readout_resonator.input_gain = int(___) for a ReadoutResonatorIQ. 
  
 Prerequisites:
     - Having initialized the Quam (quam_config/populate_quam_state_*.py).
@@ -142,7 +145,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     reset_if_phase(sensor.readout_resonator.name)
                     # Measure the resonator (send a readout pulse and record the raw ADC trace)
                     sensor.readout_resonator.measure("readout", stream=adc_st[sensor.name])
-                    # Wait for the resonator to deplete
+                    # Wait 1µs for the resonator to deplete and to let enough time for the stream processing to process the raw ADC traces
                     sensor.readout_resonator.wait(250)
                 align()
 

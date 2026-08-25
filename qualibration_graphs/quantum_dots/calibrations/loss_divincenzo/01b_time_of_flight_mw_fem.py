@@ -38,7 +38,9 @@ The data undergoes post-processing to calibrate three distinct parameters:
  
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates
       the ADC, the variable gain of the OPX1000 MW-FEM analog input, ranging from 0 dB to 32 dB,
-      can be modified to fit the signal within the ADC range of +/-0.5V.
+      can be modified to fit the signal within the ADC range of +/-0.5V. While the gain is not automatically 
+      set as the state update of this node, this can be manually adjusted using the command 
+      sensor.readout_resonator.opx_input.gain_db = int(___) for a ReadoutResonatorMW. 
  
 Prerequisites:
     - Having initialized the Quam (quam_config/populate_quam_state_*.py).
@@ -99,8 +101,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
             if node.parameters.time_of_flight_in_ns is not None:
                 resonator.time_of_flight = node.parameters.time_of_flight_in_ns
-            resonator.operations["readout"].length = node.parameters.readout_length_in_ns
-            resonator.set_output_power(node.parameters.readout_amplitude_in_dBm, operation="readout")
+            if node.parameters.readout_length_in_ns is not None:
+                resonator.operations["readout"].length = node.parameters.readout_length_in_ns
+            if node.parameters.readout_amplitude_in_dBm is not None:
+                resonator.set_output_power(node.parameters.readout_amplitude_in_dBm, operation="readout")
 
             # Populate the list of tracked resonators
             node.namespace["tracked_resonators"].append(resonator)
@@ -141,8 +145,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     reset_if_phase(sensor.readout_resonator.name)
                     # Measure the resonator (send a readout pulse and record the raw ADC trace)
                     sensor.readout_resonator.measure("readout", stream=adc_st[sensor.name])
-                    # Wait for the resonator to deplete
-                    sensor.readout_resonator.wait(1000)
+                    # Wait 1µs for the resonator to deplete and to let enough time for the stream processing to process the raw ADC traces
+                    sensor.readout_resonator.wait(250)
                 align()
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
