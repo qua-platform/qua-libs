@@ -305,22 +305,13 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["sensors"] = [node.machine.sensor_dots[name] for name in node.parameters.sensor_names]
 
 
-# %% {Process_raw_data}
-@node.run_action(
-    skip_if=node.parameters.simulate or node.parameters.run_in_video_mode or not node.parameters.perform_edge_analysis
-)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Process the acquired dataset before edge analysis."""
-    node.namespace["ds_processed"] = process_raw_dataset(node.results["ds_raw"], node)
-
-
 # %% {Analyse_data}
 @node.run_action(
     skip_if=node.parameters.simulate or node.parameters.run_in_video_mode or not node.parameters.perform_edge_analysis
 )
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
-    ds_processed = node.namespace.get("ds_processed", node.results["ds_raw"])
+    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
         node.results["fit_results"],

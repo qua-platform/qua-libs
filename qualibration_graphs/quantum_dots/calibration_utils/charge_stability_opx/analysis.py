@@ -107,13 +107,12 @@ def process_raw_dataset(ds: xr.Dataset, node: Optional[QualibrationNode] = None)
 
 
 def analyse_raw_data(
-    ds_raw: xr.Dataset,
+    ds_processed: xr.Dataset,
     node: QualibrationNode,
     *,
     log_callable=None,
 ) -> tuple[xr.Dataset, dict, dict]:
     """Process the raw dataset and, when enabled, run edge analysis."""
-    ds_processed = process_raw_dataset(ds_raw.copy(deep=True), node)
     if not node.parameters.perform_edge_analysis:
         return ds_processed, {}, {}
 

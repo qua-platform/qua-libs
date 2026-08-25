@@ -46,13 +46,12 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 
 def analyse_raw_data(
-    ds_raw: xr.Dataset,
+    ds_processed: xr.Dataset,
     node: QualibrationNode,
     *,
     log_callable=None,
 ) -> tuple[xr.Dataset, dict, dict]:
     """Process the raw dataset, fit the integration-time sweep, and derive outcomes."""
-    ds_processed = process_raw_dataset(ds_raw.copy(deep=True), node)
     ds_fit, fit_results = fit_raw_data(ds_processed, node)
     fit_results_dict = {k: r.__dict__ for k, r in fit_results.items()}
     log_fitted_results(fit_results_dict, log_callable=log_callable)
