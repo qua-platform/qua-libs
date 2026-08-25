@@ -266,7 +266,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
 
     qp_names = [qp.name for qp in qubit_pairs]
-    ds_in = node.results["ds_raw"].copy(deep = True)
+    ds_in = node.results["ds_raw"].copy(deep=True)
     ds_fit, fit_results = analyse_init_ramp_detuning(
         node.results.get("ds_fit", node.results["ds_raw"]),
         qp_names,

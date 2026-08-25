@@ -107,7 +107,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     if node.parameters.ramp_log_scale:
         n_ramp_pts = int((ramp_max - ramp_min) // ramp_step)
         ramp_duration_array = np.logspace(
-            np.log10(ramp_min), 
+            np.log10(ramp_min),
             np.log10(ramp_max),
             n_ramp_pts,
             dtype=int,
@@ -262,7 +262,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     qubit_pairs = node.namespace["qubit_pairs"]
     qp_names = [qp.name for qp in qubit_pairs]
 
-    ds_in = node.results["ds_raw"].copy(deep = True)
+    ds_in = node.results["ds_raw"].copy(deep=True)
     ds_fit, fit_results = analyse_ramp_rate(
         ds_in,
         qp_names,
