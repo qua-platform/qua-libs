@@ -1,4 +1,5 @@
 from typing import Literal
+import numpy as np
 
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
@@ -33,3 +34,21 @@ class Parameters(
     ParityDiffAnalysisParameters,
 ):
     """Parameter set for 09b_power_rabi_error_amplification."""
+
+def get_number_of_pulses(node_parameter: NodeSpecificParameters):
+    """Return array of number of pulses for error amplification."""
+
+    if node_parameter.max_n_pulses > 1:
+        if node_parameter.operation == "x180":
+            N_pulses = np.arange(1, node_parameter.max_n_pulses, 2).astype(int)
+        elif node_parameter.operation in ["x90", "-x90", "y90", "-y90"]:
+            N_pulses = np.arange(2, node_parameter.max_n_pulses, 4).astype(int)
+        else:
+            raise ValueError(f"Unrecognized operation {node_parameter.operation}.")
+    else:
+        N_pulses = np.linspace(
+            1,
+            node_parameter.max_n_pulses,
+            node_parameter.max_n_pulses,
+        ).astype(int)[::2]
+    return N_pulses

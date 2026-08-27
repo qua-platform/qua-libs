@@ -19,6 +19,7 @@ from calibration_utils.measurement_utils import (
 )
 from calibration_utils.power_rabi_error_amplification import (
     Parameters,
+    get_number_of_pulses,
     fit_raw_data,
     generate_simulated_dataset,
     log_fitted_results,
@@ -101,7 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     operation = node.parameters.operation  # qubit gate repeated during manipulation (x180 or x90)
 
     # Error-amplification axis: even number of π pulses so the sequence returns to |↑⟩ at perfect amplitude
-    n_pulses = np.arange(2, node.parameters.max_n_pulses, 2)
+    n_pulses = get_number_of_pulses(node.parameters)
 
     # Amplitude axis: narrow prefactor window around the π amplitude from node 09a
     amps = np.arange(
