@@ -16,7 +16,6 @@ from calibration_utils.T1 import (
     analyse_raw_data,
     log_fitted_results,
     plot_all,
-    elements_list,
 )
 from qualibration_libs.parameters import get_qubits
 from calibration_utils.measurement_utils.measurement_streams import (
@@ -32,8 +31,9 @@ from qualibration_libs.data import XarrayDataFetcher
 description = """
         T1 RELAXATION TIME MEASUREMENT - using standard QUA (pulse > 16ns and 4ns granularity)
 The goal of this script is to measure the longitudinal (spin-lattice) relaxation time T1 of the qubit.
-T1 characterizes how quickly an excited qubit state decays back to the ground state (thermal equilibrium of ensemble) due to energy exchange
-with the environment. This sets the fundamental upper limit for qubit coherence and readout fidelity.
+T1 characterizes how quickly an excited qubit state decays back to the ground state (thermal equilibrium of ensemble) 
+due to energy exchange with the environment. 
+This sets the fundamental upper limit for qubit coherence and readout fidelity.
 
 The QUA program is divided into three sections:
     1) step between the initialization point and the operation point using sticky elements (long timescale).
