@@ -1,5 +1,3 @@
-from typing import Literal
-
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
@@ -11,13 +9,11 @@ class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
     min_amp_factor: float = 0.001
-    """Minimum amplitude factor for the operation. Default is 0.001."""
+    """Minimum amplitude factor for the x180 operation. Default is 0.001."""
     max_amp_factor: float = 1.99
-    """Maximum amplitude factor for the operation. Default is 1.99."""
+    """Maximum amplitude factor for the x180 operation. Default is 1.99."""
     amp_factor_step: float = 0.01
     """Step size for the amplitude factor. Default is 0.01."""
-    operation: Literal["x180", "x90"] = "x180"
-    """The operation to perform to drive the qubit."""
     use_simulated_data: bool = False
     """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 

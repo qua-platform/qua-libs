@@ -32,7 +32,7 @@ from qualibration_libs.runtime import simulate_and_plot
 # %% {Node initialisation}
 description = """
         POWER RABI
-This sequence parks the qubit at the manipulation bias point, plays the selected qubit operation (e.g. x180) at
+This sequence parks the qubit at the manipulation bias point, plays an x180 gate at
 different amplitude prefactors, and measures the spin state. Joint-outcome streams are averaged and reduced to
 conditional expectations for analysis. Rabi oscillations in the analysis signal versus amplitude prefactor are
 fitted to extract the π-pulse amplitude prefactor.
@@ -60,8 +60,8 @@ Figures (``node.results["figures"]``):
     - ``"fft"``: FFT magnitude spectrum with peak fit per qubit.
 
 State update:
-    - The amplitude prefactor of the selected operation (``node.parameters.operation``).
-    - When calibrating x180, x90 is also updated to half the x180 prefactor.
+    - The amplitude prefactor of the x180 gate.
+    - The x90 gate is also updated to half the x180 prefactor.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -96,7 +96,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
 
     n_avg = node.parameters.num_shots  # repetitions averaged at each amplitude point
-    operation = node.parameters.operation  # qubit gate played during manipulation (x180 or x90)
 
     # Amplitude axis: dimensionless prefactor applied to the calibrated gate amplitude.
     # Must stay within [-2, 2) for QUA fixed-point arithmetic.
@@ -151,14 +150,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     align()
                     # Play the selected gate at the current amplitude prefactor
-                    qubit.macros[operation].apply(amplitude_scale=a)
+                    qubit.x180(amplitude_scale=a)
                     align()
 
                     # Post-measurement: did the manipulation flip the spin?
                     a1 = qubit.measure()
 
-                    # Return gate voltages to zero before the next shot
-                    qubit.voltage_sequence.ramp_to_zero()
                     align()  # sync before the next iteration (avoids pulses playing too early)
 
                     assign(p1, Cast.to_int(a1))
@@ -167,6 +164,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # Route outcome to joint-outcome streams (p0_p0, p1_p0, … or p)
                     save_measurement(node, qubit.name, p0, p1, parity_streams)
+
+                    # Return gate voltages to zero before the next shot
+                    qubit.voltage_sequence.ramp_to_zero()
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
@@ -287,9 +287,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             opt_prefactor = node.results["fit_results"][q.name]["opt_amp"]
-            q.macros[node.parameters.operation].update(amplitude_scale=opt_prefactor)
-            if node.parameters.operation == "x180":
-                q.macros["x90"].update(amplitude_scale=opt_prefactor / 2)
+            q.macros["x180"].update(amplitude_scale=opt_prefactor)
+            q.macros["x90"].update(amplitude_scale=opt_prefactor / 2)
 
 
 # %% {Save_results}
