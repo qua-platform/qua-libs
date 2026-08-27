@@ -33,9 +33,8 @@ from qualibration_libs.runtime import simulate_and_plot
 description = """
         POWER RABI
 This sequence parks the qubit at the manipulation bias point, plays an x180 gate at
-different amplitude prefactors, and measures the spin state. Joint-outcome streams are averaged and reduced to
-conditional expectations for analysis. Rabi oscillations in the analysis signal versus amplitude prefactor are
-fitted to extract the π-pulse amplitude prefactor.
+different amplitude prefactors, and measures the spin state. Rabi oscillations in the analysis signal versus amplitude 
+prefactor are fitted to extract the π-pulse and π/2-pulse amplitudes.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
