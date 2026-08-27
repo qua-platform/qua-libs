@@ -77,7 +77,7 @@ node = QualibrationNode[Parameters, Quam](name="12_hahn_echo", description=descr
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow local parameter overrides for debugging (ignored in the GUI / graph)."""
     # node.parameters.qubits = ["q1"]
-    # node.parameters.use_simulated_data = True
+    node.parameters.use_simulated_data = True
     pass
 
 
