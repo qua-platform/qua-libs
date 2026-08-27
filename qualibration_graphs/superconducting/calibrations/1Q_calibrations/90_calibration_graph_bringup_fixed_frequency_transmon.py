@@ -1,9 +1,9 @@
 # %%
 from typing import List
-from qualibrate.orchestration.basic_orchestrator import BasicOrchestrator
+from qualibrate.core.orchestration.basic_orchestrator import BasicOrchestrator
 from qualibrate.core.parameters import GraphParameters
-from qualibrate.qualibration_graph import QualibrationGraph
-from qualibrate.qualibration_library import QualibrationLibrary
+from qualibrate import QualibrationGraph
+from qualibrate import QualibrationLibrary
 
 library = QualibrationLibrary.get_active_library()
 

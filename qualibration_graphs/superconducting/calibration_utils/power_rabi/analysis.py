@@ -122,7 +122,7 @@ def _rabi_fit_quality(fit: xr.Dataset, use_state_disc: bool) -> dict[str, dict[s
 
 def _gate_ok(value: float, threshold: float, minimum: bool) -> bool:
     """True if `value` clears `threshold`; a NaN value (metric not computed) is never gated."""
-    return np.isnan(value) or (value >= threshold if minimum else value <= threshold)
+    return bool(np.isnan(value) or (value >= threshold if minimum else value <= threshold))
 
 
 def _raw_gap_ok(rec: dict[str, float]) -> bool:
@@ -318,7 +318,7 @@ def _extract_relevant_fit_parameters(
             osc_amp_snr=quality.get(str(q), {}).get("osc_amp_snr", float("nan")),
             n_periods=quality.get(str(q), {}).get("n_periods", float("nan")),
             pts_per_period=quality.get(str(q), {}).get("pts_per_period", float("nan")),
-            raw_fit_consistent=_raw_gap_ok(quality.get(str(q), {})),
+            raw_fit_consistent=bool(_raw_gap_ok(quality.get(str(q), {}))),
         )
         for q in fit.qubit.values
     }

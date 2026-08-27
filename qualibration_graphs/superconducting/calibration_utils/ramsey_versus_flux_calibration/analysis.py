@@ -263,7 +263,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         t2_star[q] = tau.sel(qubit=q).values
 
         # Success criterion: fit parameters are finite and flux offset is within swept range
-        success[q] = (
+        success[q] = bool(
             np.isfinite(a[q])
             and np.isfinite(flux_offset[q])
             and np.isfinite(freq_offset[q])
