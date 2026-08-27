@@ -18,8 +18,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for the amplitude factor. Default is 0.01."""
     operation: Literal["x180", "x90"] = "x180"
     """The operation to perform to drive the qubit."""
-    parity_measurement: bool = False
-    """Whether or not to perform parity measurement."""
     use_simulated_data: bool = False
     """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
