@@ -143,17 +143,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # Perform the initialize macro
                     qubit.initialize()
-
                     align()
+
                     # Play the selected gate at the current amplitude prefactor
                     qubit.x180(amplitude_scale=a)
                     align()
 
                     # Post-measurement: did the manipulation flip the spin?
                     a1 = qubit.measure()
-
-                    align()  # sync before the next iteration (avoids pulses playing too early)
-
                     assign(p1, Cast.to_int(a1))
                     if node.parameters.parity_measurement:
                         assign(p0, Cast.to_int(a0))
@@ -161,21 +158,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Route outcome to joint-outcome streams (p0_p0, p1_p0, … or p)
                     save_measurement(node, qubit.name, p0, p1, parity_streams)
 
-                    # Return gate voltages to zero before the next shot
+                    # Return gate voltages to zero before the next shot to avoid accumulation of fixed point errors
+                    align()
                     qubit.voltage_sequence.ramp_to_zero()
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
-
-            n_amps = len(amps)
-
             for qubit in qubits:
                 # Each save() is one amplitude point.
                 # .buffer(n_amps) : group points along the amplitude axis
                 # .average()      : average over all shots (n_avg repetitions)
                 # Result: 1D joint-outcome counts vs amp_prefactor per qubit
-                buffer_streams(node, qubit.name, parity_streams, n_amps)
+                buffer_streams(node, qubit.name, parity_streams, len(amps))
 
 
 # %% {Simulate}

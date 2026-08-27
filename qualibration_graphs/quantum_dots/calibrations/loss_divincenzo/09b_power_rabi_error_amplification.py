@@ -154,38 +154,36 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                         # Perform the initialize macro
                         qubit.initialize()
-
                         align()
+
                         # Repeat the gate n_rabi times; small amplitude errors accumulate
                         with for_(m, 0, m < n_rabi, m + 1):
                             qubit.macros[operation].apply(amplitude_scale=a)
                         align()
 
+                        # Post-measurement: did the manipulation flip the spin?
                         a1 = qubit.measure()
-
-                        qubit.voltage_sequence.ramp_to_zero()
-                        align()
-
                         assign(p1, Cast.to_int(a1))
                         if node.parameters.parity_measurement:
                             assign(p0, Cast.to_int(a0))
 
+                        # Route outcome to joint-outcome streams (p0_p0, p1_p0, … or p)
                         save_measurement(node, qubit.name, p0, p1, parity_streams)
+
+                        # Return gate voltages to zero before the next shot to avoid accumulation of fixed point errors
+                        align()
+                        qubit.voltage_sequence.ramp_to_zero()
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
-
-            n_amps = len(amps)
-            pulse_number = len(n_pulses)
-
             for qubit in qubits:
                 # Save order per stream: for each n_pulses, sweep all amplitude values.
                 # .buffer(n_amps)       → inner axis = amp_prefactor
                 # .buffer(pulse_number)  → outer axis = n_pulses
                 # .average()            → average over shots
                 # Result: 2D joint-outcome counts vs (n_pulses, amp_prefactor) per qubit
-                buffer_streams(node, qubit.name, parity_streams, pulse_number, n_amps)
+                buffer_streams(node, qubit.name, parity_streams, len(n_pulses), len(amps))
 
 
 # %% {Simulate}
