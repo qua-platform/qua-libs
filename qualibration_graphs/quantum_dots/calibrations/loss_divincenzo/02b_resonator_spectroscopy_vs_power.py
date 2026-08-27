@@ -35,8 +35,9 @@ description = """
 This sequence involves measuring the resonator by sending a readout pulse and
 demodulating the signals to extract the 'I' and 'Q' quadratures for all resonators
 simultaneously. This is done across various readout frequencies and amplitudes.
-Based on the results, one can then adjust the readout amplitude, choosing a
-readout amplitude value just before the observed frequency splitting.
+Based on the results, the optimal readout amplitude/power is chosen as the largest 
+before distortions appear. This is just a preliminary guess as subsequent nodes such 
+as sensor gate sweep will focus on optimizing the SNR.
 
 Prerequisites:
     - Having calibrated the resonator frequency (node 02a_resonator_spectroscopy.py).
