@@ -354,7 +354,7 @@
                     "__class__": "quam_builder.tools.macros.default_macros.WaitMacro"
                 },
                 "initialize": {
-                    "__class__": "quam_builder.architecture.quantum_dots.operations.voltage_balanced_macros.state_macros.BalancedInitializeMacro"
+                    "__class__": "quam_builder.architecture.quantum_dots.operations.voltage_balanced_macros.state_macros.BalancedHeraldedInitializeMacro"
                 },
                 "empty": {
                     "__class__": "quam_builder.architecture.quantum_dots.operations.voltage_balanced_macros.state_macros.BalancedEmptyMacro"
