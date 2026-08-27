@@ -17,7 +17,7 @@ import xarray as xr
 from scipy.optimize import curve_fit
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.common_utils.parity_streams import get_parity_item_names
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -85,9 +85,7 @@ def _fit_peak_to_fft(
 # ── Damped-sinusoid model ────────────────────────────────────────────────────
 
 
-def _damped_sinusoid(
-    t: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float
-) -> np.ndarray:
+def _damped_sinusoid(t: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float) -> np.ndarray:
     """offset + amp * exp(-gamma * t) * cos(2π * freq * t + phi)."""
     return offset + amp * np.exp(-gamma * t) * np.cos(2.0 * np.pi * freq * t + phi)
 
@@ -200,13 +198,9 @@ def _fft_analyse_single_qubit(
     magnitude = np.abs(np.fft.rfft(trace_centered))
 
     # ── Step 1: FFT peak detection (seed) ────────────────────────────────
-    mu, amp, peak_curve = _fit_peak_to_fft(
-        freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian"
-    )
+    mu, amp, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
     if mu is None:
-        mu, amp, peak_curve = _fit_peak_to_fft(
-            freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian"
-        )
+        mu, amp, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
 
     if mu is None or mu < 1e-6:
         return {
@@ -255,8 +249,7 @@ def _fft_analyse_single_qubit(
         t_pi = 1.0 / (2.0 * f_rabi)  # ns
         gamma = sinusoid_result["gamma"]  # 1/ns (direct from envelope)
         _logger.debug(
-            "1D Rabi damped-sinusoid fit: f = %.5f cycles/ns, Ω = %.5f rad/ns, "
-            "t_π = %.1f ns, γ = %.6f /ns",
+            "1D Rabi damped-sinusoid fit: f = %.5f cycles/ns, Ω = %.5f rad/ns, " "t_π = %.1f ns, γ = %.6f /ns",
             f_rabi,
             omega,
             t_pi,
@@ -269,8 +262,7 @@ def _fft_analyse_single_qubit(
         t_pi = 1.0 / (2.0 * f_rabi)
         gamma = gamma_seed
         _logger.debug(
-            "1D Rabi FFT fallback: f = %.5f cycles/ns, Ω = %.5f rad/ns, "
-            "t_π = %.1f ns, γ = %.6f /ns",
+            "1D Rabi FFT fallback: f = %.5f cycles/ns, Ω = %.5f rad/ns, " "t_π = %.1f ns, γ = %.6f /ns",
             f_rabi,
             omega,
             t_pi,
@@ -294,13 +286,57 @@ def _fft_analyse_single_qubit(
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
+def compute_fft_diagnostic(
+    trace_1d: np.ndarray,
+    x_values: np.ndarray,
+    *,
+    freq_min: float = FFT_FREQ_MIN,
+    freq_max: float = FFT_FREQ_MAX,
+) -> Dict[str, Any]:
+    """Return FFT magnitude spectrum and optional peak-fit curve for plotting."""
+    x = np.asarray(x_values, dtype=float)
+    n = len(x)
+    dx = float(x[1] - x[0]) if n > 1 else 1.0
+    if dx <= 0:
+        dx = 1.0
+
+    trace = np.asarray(trace_1d, dtype=float)
+    trace_centered = trace - np.mean(trace)
+
+    freqs_fft = np.fft.rfftfreq(n, dx)
+    magnitude = np.abs(np.fft.rfft(trace_centered))
+
+    mu, _, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, "gaussian")
+    if mu is None:
+        _, _, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, "lorentzian")
+
+    return {
+        "fft_freqs": freqs_fft,
+        "fft_magnitude": magnitude,
+        "peak_curve": peak_curve,
+    }
+
+
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
+    from calibration_utils.measurement_utils.measurement_streams import process_streams
+
+    qubits = node.namespace["qubits"]
+    return process_streams(
+        ds,
+        [q.name for q in qubits],
+        parity_measurement=node.parameters.parity_measurement,
+        sweep_dims=("pulse_duration",),
+    )
+
+
 def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit t_π per qubit from 1D time-Rabi data.  Returns ``(ds_fit, fit_results)``."""
     qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
     qubit_names = get_parity_item_names(
         ds,
         analysis_signal,
@@ -310,6 +346,7 @@ def fit_raw_data(
     durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
+    fit_arrays: Dict[str, tuple] = {}
 
     for qname in qubit_names:
         signal_var = f"{analysis_signal}_{qname}"
@@ -334,15 +371,14 @@ def fit_raw_data(
         )
         fit_results[qname] = asdict(fp)
 
-        # Store diagnostics for plotting
-        fit_results[qname]["_fft_diag"] = {
-            "fft_freqs": result["fft_freqs"],
-            "fft_magnitude": result["fft_magnitude"],
-            "peak_curve": result["peak_curve"],
-        }
-        fit_results[qname]["_sinusoid_fit"] = result.get("sinusoid_fit")
+        sinusoid = result.get("sinusoid_fit")
+        if sinusoid is not None:
+            fit_arrays[f"{signal_var}_fit"] = (
+                ["pulse_duration"],
+                np.asarray(sinusoid["fitted_curve"], dtype=float),
+            )
 
-    ds_fit = ds.copy()
+    ds_fit = ds.assign(**fit_arrays) if fit_arrays else ds.copy()
     return ds_fit, fit_results
 
 

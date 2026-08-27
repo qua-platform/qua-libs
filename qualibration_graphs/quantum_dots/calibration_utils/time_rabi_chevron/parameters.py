@@ -1,3 +1,5 @@
+"""Node parameters for time Rabi chevron calibration."""
+
 from typing import Literal
 
 from qualibrate.core import NodeParameters
@@ -10,12 +12,16 @@ from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 100
     """Number of averages to perform. Default is 100."""
-    min_amp_factor: float = 0.001
-    """Minimum amplitude factor for the operation. Default is 0.001."""
-    max_amp_factor: float = 1.99
-    """Maximum amplitude factor for the operation. Default is 1.99."""
-    amp_factor_step: float = 0.01
-    """Step size for the amplitude factor. Default is 0.01."""
+    min_wait_time_in_ns: int = 16
+    """Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns."""
+    max_wait_time_in_ns: int = 10_000
+    """Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us)."""
+    time_step_in_ns: int = 52
+    """Step size for the pulse duration sweep in nanoseconds. Default is 52 ns."""
+    frequency_span_in_mhz: float = 5
+    """Span of frequencies to sweep in MHz. Default is 5 MHz."""
+    frequency_step_in_mhz: float = 0.05
+    """Step size for the frequency detuning sweep in MHz. Default is 0.05 MHz."""
     operation: Literal["x180", "x90"] = "x180"
     """The operation to perform to drive the qubit."""
     parity_measurement: bool = False
@@ -32,6 +38,4 @@ class Parameters(
     QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):
-    """Parameter set for 09a_power_rabi."""
-
-    amp_default: float = 1
+    """Parameter set for 10b_time_rabi_chevron."""

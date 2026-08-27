@@ -85,9 +85,7 @@ def _fit_peak_to_fft(
 # ── Damped-sinusoid model ────────────────────────────────────────────────────
 
 
-def _damped_sinusoid(
-    a: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float
-) -> np.ndarray:
+def _damped_sinusoid(a: np.ndarray, offset: float, amp: float, freq: float, gamma: float, phi: float) -> np.ndarray:
     """offset + amp * exp(-gamma * a) * cos(2π * freq * a + phi)."""
     return offset + amp * np.exp(-gamma * a) * np.cos(2.0 * np.pi * freq * a + phi)
 
@@ -186,13 +184,9 @@ def _analyse_single_qubit(
     magnitude = np.abs(np.fft.rfft(trace_centered))
 
     # ── Step 1: FFT peak detection (seed) ────────────────────────────────
-    mu, amp_peak, peak_curve = _fit_peak_to_fft(
-        freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian"
-    )
+    mu, amp_peak, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "gaussian")
     if mu is None:
-        mu, amp_peak, peak_curve = _fit_peak_to_fft(
-            freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian"
-        )
+        mu, amp_peak, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, FFT_FREQ_MIN, FFT_FREQ_MAX, "lorentzian")
 
     if mu is None or mu < 1e-6:
         return {
@@ -275,17 +269,57 @@ def _analyse_single_qubit(
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
+def compute_fft_diagnostic(
+    trace_1d: np.ndarray,
+    x_values: np.ndarray,
+    *,
+    freq_min: float = FFT_FREQ_MIN,
+    freq_max: float = FFT_FREQ_MAX,
+) -> Dict[str, Any]:
+    """Return FFT magnitude spectrum and optional peak-fit curve for plotting."""
+    x = np.asarray(x_values, dtype=float)
+    n = len(x)
+    dx = float(x[1] - x[0]) if n > 1 else 1.0
+    if dx <= 0:
+        dx = 1.0
+
+    trace = np.asarray(trace_1d, dtype=float)
+    trace_centered = trace - np.mean(trace)
+
+    freqs_fft = np.fft.rfftfreq(n, dx)
+    magnitude = np.abs(np.fft.rfft(trace_centered))
+
+    mu, _, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, "gaussian")
+    if mu is None:
+        _, _, peak_curve = _fit_peak_to_fft(freqs_fft, magnitude, freq_min, freq_max, "lorentzian")
+
+    return {
+        "fft_freqs": freqs_fft,
+        "fft_magnitude": magnitude,
+        "peak_curve": peak_curve,
+    }
+
+
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
+    from calibration_utils.measurement_utils.measurement_streams import process_streams
+
+    qubits = node.namespace["qubits"]
+    return process_streams(
+        ds,
+        [q.name for q in qubits],
+        parity_measurement=node.parameters.parity_measurement,
+        sweep_dims=("amp_prefactor",),
+    )
+
+
 def _power_rabi_qubit_names(
     ds: xr.Dataset,
     analysis_signal: str,
     qubits,
 ) -> list[str]:
     signal_prefix = f"{analysis_signal}_"
-    signal_vars = [
-        v
-        for v in sorted(ds.data_vars)
-        if v.startswith(signal_prefix) and not v.endswith("_fit")
-    ]
+    signal_vars = [v for v in sorted(ds.data_vars) if v.startswith(signal_prefix) and not v.endswith("_fit")]
     names = [v.removeprefix(signal_prefix) for v in signal_vars]
 
     if not names:
@@ -295,9 +329,7 @@ def _power_rabi_qubit_names(
         names = [
             v[2:]
             for v in sorted(ds.data_vars)
-            if v.startswith("p_")
-            and "qubit" not in ds[v].dims
-            and not v.startswith(("p0_", "p1_", "pdiff_", "E_"))
+            if v.startswith("p_") and "qubit" not in ds[v].dims and not v.startswith(("p0_", "p1_", "pdiff_", "E_"))
         ]
     if not names:
         names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
@@ -314,13 +346,12 @@ def _as_amp_trace(da: xr.DataArray, qname: str) -> np.ndarray:
         else:
             raise ValueError(
                 f"{da.name!r} for {qname!r} still has a non-singleton qubit "
-                f"dimension. Run process_raw_data before fit_raw_data."
+                f"dimension. Run process_raw_dataset before fit_raw_data."
             )
 
     if "amp_prefactor" not in da.dims:
         raise ValueError(
-            f"{da.name!r} for {qname!r} must contain an 'amp_prefactor' "
-            f"dimension; dims are {da.dims}."
+            f"{da.name!r} for {qname!r} must contain an 'amp_prefactor' " f"dimension; dims are {da.dims}."
         )
 
     for dim in list(da.dims):
@@ -342,17 +373,17 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit optimal amplitude per qubit from power-Rabi data."""
     qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
     qubit_names = _power_rabi_qubit_names(ds, analysis_signal, qubits)
 
     amps = np.asarray(ds.amp_prefactor.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
+    fit_arrays: Dict[str, tuple] = {}
 
     for qname in qubit_names:
         signal_var = f"{analysis_signal}_{qname}"
         if signal_var not in ds.data_vars and f"p_{qname}" in ds.data_vars:
-            # Backwards-compatible fallback for pre-normalized single-shot data.
             signal_var = f"p_{qname}"
         if signal_var not in ds.data_vars:
             fp = FitParameters(
@@ -375,14 +406,14 @@ def fit_raw_data(
         )
         fit_results[qname] = asdict(fp)
 
-        fit_results[qname]["_fft_diag"] = {
-            "fft_freqs": result["fft_freqs"],
-            "fft_magnitude": result["fft_magnitude"],
-            "peak_curve": result["peak_curve"],
-        }
-        fit_results[qname]["_sinusoid_fit"] = result.get("sinusoid_fit")
+        sinusoid = result.get("sinusoid_fit")
+        if sinusoid is not None:
+            fit_arrays[f"{signal_var}_fit"] = (
+                ["amp_prefactor"],
+                np.asarray(sinusoid["fitted_curve"], dtype=float),
+            )
 
-    ds_fit = ds.copy()
+    ds_fit = ds.assign(**fit_arrays) if fit_arrays else ds.copy()
     return ds_fit, fit_results
 
 

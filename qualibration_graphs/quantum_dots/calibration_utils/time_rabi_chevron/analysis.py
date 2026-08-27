@@ -16,8 +16,8 @@ import xarray as xr
 
 from qualibrate.core import QualibrationNode
 
-from calibration_utils.common_utils.parity_streams import get_parity_item_names
-from calibration_utils.time_rabi_chevron_parity_diff.init_utils import (
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
+from calibration_utils.time_rabi_chevron.init_utils import (
     _estimate_f_res_and_omega_from_chevron,
 )
 
@@ -66,9 +66,7 @@ def _fft_analyse_single_qubit(
     f_min, f_max = float(freqs_hz.min()), float(freqs_hz.max())
 
     try:
-        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(
-            pdiff, freqs_hz, durations_ns, nominal_freq_hz
-        )
+        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(pdiff, freqs_hz, durations_ns, nominal_freq_hz)
     except Exception as exc:
         _logger.warning("FFT analysis failed: %s", exc)
         return {
@@ -92,8 +90,16 @@ def _fft_analyse_single_qubit(
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Add full_freq coord (nominal + detuning) from first qubit for plotting."""
+    """Build conditional expectations and plotting coords from joint-outcome streams."""
+    from calibration_utils.measurement_utils.measurement_streams import process_streams
+
     qubits = node.namespace["qubits"]
+    ds = process_streams(
+        ds,
+        [q.name for q in qubits],
+        parity_measurement=node.parameters.parity_measurement,
+        sweep_dims=("detuning", "pulse_duration"),
+    )
     if qubits:
         f = _get_drive_frequencies_hz(ds, qubits[0])
         ds = ds.assign_coords(full_freq=(["detuning"], f))
@@ -101,12 +107,10 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     return ds
 
 
-def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode
-) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit f_res and t_π per qubit. Returns (ds_fit, fit_results)."""
     qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p2_given_p1_0")
+    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
     qubit_names = get_parity_item_names(
         ds,
         analysis_signal,
@@ -140,20 +144,12 @@ def fit_raw_data(
             continue
 
         signal_2d = np.asarray(ds[signal_var].values, dtype=float)
-        freqs_hz = (
-            _get_drive_frequencies_hz(ds, qubit)
-            if qubit
-            else np.asarray(ds.detuning.values, dtype=float)
-        )
+        freqs_hz = _get_drive_frequencies_hz(ds, qubit) if qubit else np.asarray(ds.detuning.values, dtype=float)
         nominal_freq = (
-            getattr(qubit.xy, "intermediate_frequency", float(freqs_hz.mean()))
-            if qubit
-            else float(freqs_hz.mean())
+            getattr(qubit.xy, "intermediate_frequency", float(freqs_hz.mean())) if qubit else float(freqs_hz.mean())
         )
 
-        result, fit_surface = _fft_analyse_single_qubit(
-            signal_2d, freqs_hz, durations_ns, nominal_freq
-        )
+        result, fit_surface = _fft_analyse_single_qubit(signal_2d, freqs_hz, durations_ns, nominal_freq)
 
         fp = FitParameters(
             optimal_frequency=result["optimal_frequency"],
