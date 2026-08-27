@@ -15,7 +15,7 @@ from qualang_tools.results import progress_counter
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 
-from calibration_utils.common_utils.experiment import get_sensors
+from calibration_utils.common_utils.experiment import get_sensors, ensure_single_gate_set
 from calibration_utils.sensor_dot import (
     process_raw_dataset,
     fit_raw_data,
@@ -82,7 +82,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.sensor_names = ["virtual_sensor_1"]
+    node.parameters.sensor_names = ["virtual_sensor_1"]
+    node.parameters.qubit_pair_to_step = "q1_q2"
     pass
 
 
@@ -122,8 +123,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # In-case you want to step along the detuning axis at each sensor dot point.
     # This is useful if you want to calibrate the sensor dot peak relative to the actual measure point
-    if node.parameters.qubit_pair_to_step is not None:
-        dot_pair = [node.machine.get_component(qp).quantum_dot_pair for qp in node.parameters.qubit_pair_to_step][0]
+    dot_pair = (
+        node.machine.get_component(node.parameters.qubit_pair_to_step).quantum_dot_pair
+        if node.parameters.qubit_pair_to_step
+        else None
+    )
+
+    # Ensure that the sensors list only contains a single VirtualGateSet, and reset the VoltageSequence
+    # to track the integrated voltage for use with the compensation pulse.
+    node.namespace["vgs_id"] = vgs_id = ensure_single_gate_set(
+        node.machine, [dot_pair, *sensors] if dot_pair else sensors, reset_with_voltage_tracking=True
+    )
+    seq = node.machine.voltage_sequences[vgs_id]
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
@@ -140,7 +151,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # If several sensors share the same OPX resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
-            refresh_voltage_sequences(node, multiplexed_sensors)
 
             align()  # sync all channels in this batch before starting
 
@@ -160,11 +170,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     # Optionally step a particular qubit pair to the readout point.
                     if node.parameters.qubit_pair_to_step is not None:
-                        dot_pair.voltage_sequence.step_to_point(f"{dot_pair.name}_measure")
+                        seq.step_to_point(f"{dot_pair.name}_measure")
 
                         # TODO: Verify this logic
                         # Track the sticky duration through the maximum readout pulse in the multiplexed batch
-                        dot_pair.voltage_sequence.track_sticky_duration(
+                        seq.track_sticky_duration(
                             int(
                                 max(
                                     k.readout_resonator.operations["readout"].length
@@ -185,7 +195,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # At the end of each 1D sweep, play a compensation pulse to account for any charge build-up in the bias tee
                     # This is only necessary in this program if a qubit pair was stepped. Otherwise, skip
                     if node.parameters.qubit_pair_to_step is not None:
-                        apply_compensation_pulse(multiplexed_sensors, node.parameters.max_compensation_voltage)
+                        seq.apply_compensation_pulse(node.parameters.max_compensation_voltage)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
@@ -237,11 +247,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Use the same sensor set as the compiled QUA program.
     sensor_names = node.namespace["sensors"].get_names()
+    vgs_id = node.namespace["vgs_id"]
 
     # Extract the gate set IDs for each sensor, and measure their current voltage to store their original offsets
     for s in sensor_names:
-        gate_set_id = node.machine.sensor_dots[s].voltage_sequence.gate_set.name
-        node.namespace[f"{s}_dac_offset"] = node.machine.virtual_dc_sets[gate_set_id].get_voltage(s, requery=True)
+        node.namespace[f"{s}_dac_offset"] = node.machine.virtual_dc_sets[vgs_id].get_voltage(s, requery=True)
 
     try:
         # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
@@ -263,23 +273,20 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                         time.sleep(0.1)
 
                     # Batch the voltages that are necessary to apply
-                    voltages_by_gate_set = {}
+                    voltages = {}
                     for _sensor_idx, sensor in multiplexed_sensors.items():
-                        gate_set_id = node.machine.sensor_dots[sensor.name].voltage_sequence.gate_set.name
 
                         # The value to apply is the current DAC offset + the sweep value
                         value_to_play = node.namespace[f"{sensor.name}_dac_offset"] + y_value
 
-                        # Batch the voltage by gate set name. This is so that sensors can be stepped simultaneously
-                        voltages_by_gate_set.setdefault(gate_set_id, {})[sensor.name] = value_to_play
+                        voltages[sensor.name] = value_to_play
 
                         # Log the percentage of this innermost loop
                         pct = 100 * i / len(axis_values)
                         node.log(f"Applying {value_to_play: .4f} to the channel {sensor.name}: ({pct: .1f} %)")
 
                     # Finally, set the voltages batched together.
-                    for gate_set_id, voltages_dict in voltages_by_gate_set.items():
-                        node.machine.virtual_dc_sets[gate_set_id].set_voltages(voltages_dict)
+                    node.machine.virtual_dc_sets[vgs_id].set_voltages(voltages)
 
                     time.sleep(node.parameters.dac_settling_time_s)
 
@@ -301,8 +308,9 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # At the end of all the loops, re-apply the original DAC offsets.
         node.log("Re-applying initial offsets.")
         for s in sensor_names:
-            gate_set_id = node.machine.sensor_dots[s].voltage_sequence.gate_set.name
-            node.machine.virtual_dc_sets[gate_set_id].set_voltages({s: node.namespace[f"{s}_dac_offset"]})
+            node.machine.virtual_dc_sets[vgs_id].set_voltages(
+                {s: node.namespace[f"{s}_dac_offset"] for s in sensor_names}
+            )
 
 
 # %% {Generate_simulated_data}
@@ -322,7 +330,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Get the active sensors from the loaded node parameters
-    node.namespace["sensors"] = get_sensors(node)
+    node.namespace["sensors"] = sensors = get_sensors(node)
+    node.namespace["vgs_id"] = ensure_single_gate_set(node.machine, sensors)
 
 
 # %% {Analyse_data}
@@ -354,6 +363,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
 
     with node.record_state_updates():
+        voltages = {}
         for sensor in node.namespace["sensors"]:
             if node.outcomes.get(sensor.name) != "successful":
                 continue
@@ -363,8 +373,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
             node.log(f"Optimal offset is {dac_optimal_value}. Setting this now.")
 
-            gate_set_id = node.machine.sensor_dots[sensor.name].voltage_sequence.gate_set.name
-            node.machine.virtual_dc_sets[gate_set_id].set_voltages({sensor.name: dac_optimal_value})
+            voltages[sensor.name] = dac_optimal_value
+
+        if voltages:
+            node.machine.virtual_dc_sets[node.namespace["vgs_id"]].set_voltages(voltages)
 
 
 # %% {Save_results}
