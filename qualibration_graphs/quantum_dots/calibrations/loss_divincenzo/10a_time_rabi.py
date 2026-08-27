@@ -145,11 +145,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.empty()
                         a0 = qubit.measure()
 
-                    qubit.initialize(
-                        target_state=node.parameters.target_state,
-                        max_loops=node.parameters.max_loops,
-                        conditional_drive=True,
-                    )
+                    # Perform the initialize macro
+                    qubit.initialize()
 
                     align()
                     # Play the selected gate at the current duration (time-Rabi)
