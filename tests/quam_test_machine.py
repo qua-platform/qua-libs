@@ -104,8 +104,7 @@ def _resolve_macro_catalogs(
 def _load_cluster_config() -> tuple[str, str]:
     if not CLUSTER_CONFIG_PATH.is_file():
         raise FileNotFoundError(
-            f"Missing {CLUSTER_CONFIG_PATH}. "
-            "Copy tests/.qm_cluster_config.json.example and set host/cluster_name."
+            f"Missing {CLUSTER_CONFIG_PATH}. " "Copy tests/.qm_cluster_config.json.example and set host/cluster_name."
         )
     raw: dict[str, Any] = json.loads(CLUSTER_CONFIG_PATH.read_text(encoding="utf-8"))
     return str(raw["host"]), str(raw["cluster_name"])
@@ -133,9 +132,7 @@ def build_machine(
     """
     connectivity = Connectivity()
     connectivity.add_quantum_dots(quantum_dots=[1, 2])
-    connectivity.add_quantum_dot_drive_lines(
-        quantum_dots=[1, 2], shared_line=True, use_mw_fem=True
-    )
+    connectivity.add_quantum_dot_drive_lines(quantum_dots=[1, 2], shared_line=True, use_mw_fem=True)
     connectivity.add_sensor_dots(sensor_dots=[1], shared_resonator_line=False)
 
     connectivity.add_quantum_dot_pairs(quantum_dot_pairs=[(1, 2)])
@@ -158,9 +155,7 @@ def build_machine(
     )
     machine = build_quam(
         machine,
-        qubit_pair_sensor_map={
-            "q1_q2": ["sensor_1"]
-        },
+        qubit_pair_sensor_map={"q1_q2": ["sensor_1"]},
         catalogs=_resolve_macro_catalogs(macro_catalog),
         save=save,
         path=dest,
@@ -255,9 +250,7 @@ def _register_placeholder_voltage_points(machine: LossDiVincenzoQuam) -> None:
 
     for qubit in machine.qubits.values():
         qubit.macros[VoltagePointName.MEASURE].hold_duration = 248
-        qubit.macros[SingleQubitMacroName.XY_DRIVE].pulse_family = (
-            DrivePulseName.GAUSSIAN.value
-        )
+        qubit.macros[SingleQubitMacroName.XY_DRIVE].pulse_family = DrivePulseName.GAUSSIAN.value
 
 
 def update_machine(machine: LossDiVincenzoQuam) -> LossDiVincenzoQuam:

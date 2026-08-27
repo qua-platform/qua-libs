@@ -35,12 +35,7 @@ if str(EXECUTE_ROOT) not in sys.path:
     sys.path.insert(0, str(EXECUTE_ROOT))
 
 # ── Shared helpers ─────────────────────────────────────────────────────
-_SHARED_DIR = (
-    Path(__file__).resolve().parents[5]
-    / "qualibration_graphs"
-    / "quantum_dots"
-    / "calibrations"
-)
+_SHARED_DIR = Path(__file__).resolve().parents[5] / "qualibration_graphs" / "quantum_dots" / "calibrations"
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
 
@@ -99,13 +94,7 @@ patch_qualibrate_logger(_cache_base)
 
 # ── Paths and defaults ─────────────────────────────────────────────────
 
-CALIBRATION_LIBRARY_ROOT = (
-    REPO_ROOT
-    / "qualibration_graphs"
-    / "quantum_dots"
-    / "calibrations"
-    / "loss_divincenzo"
-)
+CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "loss_divincenzo"
 ARTIFACTS_BASE = EXECUTE_ROOT / "artifacts"
 
 DEFAULT_SMALL_SWEEP_PARAMS: Dict[str, Any] = {
@@ -232,9 +221,7 @@ def execute_runner(minimal_quam_factory, markdown_generator):
             details = getattr(run_error_info, "details", "") or ""
             for line in details.splitlines():
                 stripped = line.strip().lstrip("- ")
-                if stripped and not stripped.startswith(
-                    ("Completed", "Skipped", "Failed", "Source")
-                ):
+                if stripped and not stripped.startswith(("Completed", "Skipped", "Failed", "Source")):
                     if "Completed actions" in details and line.strip().startswith("- "):
                         completed_actions.append(stripped)
             failed_action = getattr(run_error_info, "details_headline", "")
@@ -298,7 +285,5 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     for item in items:
-        if "tests/execute/" in str(item.fspath) and not item.get_closest_marker(
-            "execute"
-        ):
+        if "tests/execute/" in str(item.fspath) and not item.get_closest_marker("execute"):
             item.add_marker(pytest.mark.execute)

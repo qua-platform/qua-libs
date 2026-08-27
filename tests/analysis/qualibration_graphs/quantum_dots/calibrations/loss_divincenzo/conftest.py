@@ -26,12 +26,7 @@ CURRENT_DIR = Path(__file__).resolve().parent
 ANALYSIS_ROOT = CURRENT_DIR.parents[3]  # tests/analysis/
 
 # ── Shared helpers ─────────────────────────────────────────────────────
-_SHARED_DIR = (
-    Path(__file__).resolve().parents[5]
-    / "qualibration_graphs"
-    / "quantum_dots"
-    / "calibrations"
-)
+_SHARED_DIR = Path(__file__).resolve().parents[5] / "qualibration_graphs" / "quantum_dots" / "calibrations"
 if str(_SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(_SHARED_DIR))
 
@@ -69,13 +64,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 # ── Paths and defaults ─────────────────────────────────────────────────
 
-CALIBRATION_LIBRARY_ROOT = (
-    REPO_ROOT
-    / "qualibration_graphs"
-    / "quantum_dots"
-    / "calibrations"
-    / "loss_divincenzo"
-)
+CALIBRATION_LIBRARY_ROOT = REPO_ROOT / "qualibration_graphs" / "quantum_dots" / "calibrations" / "loss_divincenzo"
 ARTIFACTS_BASE = ANALYSIS_ROOT / "artifacts"
 
 QUBIT_NAMES: list[str] = ["q1", "q2", "q3", "q4"]
@@ -115,9 +104,7 @@ def ld_params_with_decoherence(
 ) -> Any:
     """Two-qubit params matching ``DEFAULT_LD_PARAMS`` with Lindblad T1/T2."""
     if DEFAULT_LD_PARAMS is None:
-        raise RuntimeError(
-            "ld_params_with_decoherence requires virtual_qpu / quantum_dots"
-        )
+        raise RuntimeError("ld_params_with_decoherence requires virtual_qpu / quantum_dots")
     return replace(DEFAULT_LD_PARAMS, t1=t1_ns, t2=t2_ns)
 
 
@@ -150,9 +137,9 @@ PARITY_PROJECTOR_4x4 = (
     jnp.array(
         [
             [0.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0,  0.0, 0.0],
-            [0.0, 0.0,  1.0, 0.0],
-            [0.0, 0.0,  0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
         ],
         dtype=jnp.complex64,
     )
@@ -326,9 +313,7 @@ def build_joint_stream_analysis_ds(
     data_vars: Dict[str, Any] = {}
     for qname in qubit_names:
         sig = signal_per_qubit.get(qname, np.zeros(shape))
-        data_vars[f"p0_p0_{qname}"] = xr.DataArray(
-            np.zeros_like(sig, dtype=float), dims=dim_names
-        )
+        data_vars[f"p0_p0_{qname}"] = xr.DataArray(np.zeros_like(sig, dtype=float), dims=dim_names)
         data_vars[f"{analysis_signal}_{qname}"] = xr.DataArray(sig, dims=dim_names)
 
     xr_coords = {
@@ -366,9 +351,7 @@ def ld_device():
     """A pre-configured ``LossDiVincenzoDevice`` with default parameters."""
     device = LossDiVincenzoDevice(params=DEFAULT_LD_PARAMS)
     jump_ops = device.collapse_operators()
-    assert len(jump_ops) > 0, (
-        "Default device should have dephasing/relaxation jump operators (T1/T2 set)"
-    )
+    assert len(jump_ops) > 0, "Default device should have dephasing/relaxation jump operators (T1/T2 set)"
     return device
 
 
@@ -544,9 +527,7 @@ def rabi_chevron_calibration():
     durations_ns = np.asarray(durations)
     nominal_freq_hz = float(qubit_freq_ghz * 1e9)
 
-    fit_result, _ = _fft_analyse_single_qubit(
-        pdiff, freqs_hz, durations_ns, nominal_freq_hz
-    )
+    fit_result, _ = _fft_analyse_single_qubit(pdiff, freqs_hz, durations_ns, nominal_freq_hz)
     assert fit_result["success"], f"Rabi chevron calibration failed: {fit_result}"
     return fit_result
 
@@ -647,10 +628,7 @@ def markdown_generator():
                 state_section = "\n## Updated State\n\n" + "\n".join(state_rows)
 
         if saved_figure_files:
-            figure_lines = [
-                f"![{Path(filename).stem}]({filename})"
-                for filename in saved_figure_files
-            ]
+            figure_lines = [f"![{Path(filename).stem}]({filename})" for filename in saved_figure_files]
             figures_section = "\n".join(figure_lines) + "\n\n"
         else:
             figures_section = "![Analysis simulation](simulation.png)\n\n"
@@ -736,9 +714,7 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         except Exception:
             if hasattr(machine, "qubits"):
                 qubits = machine.qubits
-                node.namespace["qubits"] = (
-                    list(qubits.values()) if isinstance(qubits, dict) else list(qubits)
-                )
+                node.namespace["qubits"] = list(qubits.values()) if isinstance(qubits, dict) else list(qubits)
 
         try:
             from calibration_utils.common_utils.experiment import get_qubit_pairs
@@ -747,9 +723,7 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         except Exception:
             if hasattr(machine, "qubit_pairs"):
                 qp = machine.qubit_pairs
-                node.namespace["qubit_pairs"] = (
-                    list(qp.values()) if isinstance(qp, dict) else list(qp)
-                )
+                node.namespace["qubit_pairs"] = list(qp.values()) if isinstance(qp, dict) else list(qp)
 
         try:
             from calibration_utils.common_utils.experiment import get_sensors
@@ -758,17 +732,11 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         except Exception:
             if hasattr(machine, "sensor_dots"):
                 sensors = machine.sensor_dots
-                node.namespace["sensors"] = (
-                    list(sensors.values())
-                    if isinstance(sensors, dict)
-                    else list(sensors)
-                )
+                node.namespace["sensors"] = list(sensors.values()) if isinstance(sensors, dict) else list(sensors)
 
         if ds_raw is None:
             if simulated_data_generator is None:
-                raise ValueError(
-                    "analysis_runner requires ds_raw or simulated_data_generator"
-                )
+                raise ValueError("analysis_runner requires ds_raw or simulated_data_generator")
             ds_raw = simulated_data_generator(node)
 
         filter_names = analyse_qubit_pairs or analyse_qubits
@@ -807,22 +775,15 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         call_node_action(node, "plot_data")
 
         action_manager = getattr(node, "_action_manager", None)
-        has_update_state = (
-            action_manager is not None
-            and "update_state" in getattr(action_manager, "actions", {})
-        )
+        has_update_state = action_manager is not None and "update_state" in getattr(action_manager, "actions", {})
         if "fit_results" in node.results and has_update_state:
             call_node_action(node, "update_state")
 
         artifacts_dir = ARTIFACTS_BASE / (artifacts_subdir or node_name)
         figures = _collect_node_figures(node, fig)
-        saved_figure_files = _save_node_figures(
-            figures, save_analysis_plot, artifacts_dir
-        )
+        saved_figure_files = _save_node_figures(figures, save_analysis_plot, artifacts_dir)
 
-        markdown_generator(
-            node, get_parameters_dict(node), artifacts_dir, saved_figure_files
-        )
+        markdown_generator(node, get_parameters_dict(node), artifacts_dir, saved_figure_files)
 
         for filename in saved_figure_files:
             assert (artifacts_dir / filename).exists(), f"{filename} not created"
@@ -845,7 +806,5 @@ def pytest_configure(config):
 
 def pytest_collection_modifyitems(config, items):
     for item in items:
-        if "tests/analysis/" in str(item.fspath) and not item.get_closest_marker(
-            "analysis"
-        ):
+        if "tests/analysis/" in str(item.fspath) and not item.get_closest_marker("analysis"):
             item.add_marker(pytest.mark.analysis)
