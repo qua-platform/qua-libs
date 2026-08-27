@@ -35,6 +35,7 @@ class Parameters(
 ):
     """Parameter set for 09b_power_rabi_error_amplification."""
 
+
 def get_number_of_pulses(node_parameter: NodeSpecificParameters):
     """Return array of number of pulses for error amplification."""
 
@@ -50,5 +51,7 @@ def get_number_of_pulses(node_parameter: NodeSpecificParameters):
             1,
             node_parameter.max_n_pulses,
             node_parameter.max_n_pulses,
-        ).astype(int)[::2]
+        ).astype(
+            int
+        )[::2]
     return N_pulses
