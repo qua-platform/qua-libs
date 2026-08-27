@@ -97,25 +97,27 @@ def launch_video_mode(
             "Spiral_Scan": scan_modes.SpiralScan(),
         }
 
-    qmm = machine.connect()
-    try:
-        machine.create_virtual_dc_set(virtual_gate_id)
-    except:
-        print("Was unable to create virtual DC set. Moving on without DC control. ")
-    dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
+    voltage_control_tab, voltage_control_component, dc_set = None, None, None
+    qmm = machine.connect(skip_dacs=not dc_control)
+    if dc_control:
+        try:
+            machine.create_virtual_dc_set(virtual_gate_id)
+            dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
+        except:
+            print("Was unable to create virtual DC set. Moving on without DC control. ")
+            dc_set = None
 
-    voltage_control_tab, voltage_control_component = None, None
-    if dc_set is not None:
-        voltage_control_component = VoltageControlComponent(
-            component_id="Voltage_Control",
-            dc_set=dc_set,
-            update_interval_ms=1000,
-        )
-        from qua_dashboards.video_mode.tab_controllers import (
-            VoltageControlTabController,
-        )
+        if dc_set is not None:
+            voltage_control_component = VoltageControlComponent(
+                component_id="Voltage_Control",
+                dc_set=dc_set,
+                update_interval_ms=1000,
+            )
+            from qua_dashboards.video_mode.tab_controllers import (
+                VoltageControlTabController,
+            )
 
-        voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
+            voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
 
     virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
     data_acquirer = OPXDataAcquirer(

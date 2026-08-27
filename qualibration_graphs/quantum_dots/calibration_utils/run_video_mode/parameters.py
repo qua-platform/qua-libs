@@ -14,6 +14,14 @@ class NodeSpecificParameters(RunnableParameters):
     """Name of the X axis in your VirtualGateSet. Can be a physical gate id or virtual gate id."""
     y_axis_name: str = None
     """Name of the Y axis in your VirtualGateSet. Can be a physical gate id or virtual gate id."""
+    x_points: int = 121
+    """The number of measurement points on the X axis. Default is 121."""
+    y_points: int = 121
+    """The number of measurement points on the Y axis. Default is 121."""
+    x_span: float = 0.05
+    """The X axis span in volts. Default is 0.05V."""
+    y_span: float = 0.05
+    """The Y axis span in volts. Default is 0.05V."""
     x_axis_mode: Literal["Voltage", "Frequency", "Amplitude"] = "Voltage"
     """Axis type of the X axis. Can be 'Voltage', 'Frequency', 'Amplitude'."""
     y_axis_mode: Literal["Voltage", "Frequency", "Amplitude"] = "Voltage"
@@ -24,6 +32,10 @@ class NodeSpecificParameters(RunnableParameters):
     """Whether to include DC Control channels in Video Mode"""
     result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
     """Result type to display. Can be 'I', 'Q', 'Amplitude', 'Phase'."""
+    video_mode_port: int = 8050
+    """The localhost port to open video mode on."""
+    per_line_compensation: bool = True
+    """Optionally run a compensation pulse after each line sweep of video mode."""
 
 
 class Parameters(

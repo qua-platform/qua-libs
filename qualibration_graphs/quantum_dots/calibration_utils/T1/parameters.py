@@ -1,0 +1,27 @@
+from qualibrate.core import NodeParameters
+from qualibrate.core.parameters import RunnableParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from calibration_utils.heralded_initialization_utils.parameters import HeraldedInitializeParameters
+from calibration_utils.measurement_utils.parameters import ParityDiffAnalysisParameters
+
+
+class NodeSpecificParameters(RunnableParameters):
+    num_shots: int = 100
+    """Number of averages to perform. Default is 100."""
+    tau_min: int = 16
+    """Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns."""
+    tau_max: int = 10_000
+    """Maximum pulse duration in nanoseconds. Default is 100000 ns (10 µs)."""
+    tau_step: int = 16
+    """Step size for the pulse duration sweep in nanoseconds. Default is 16 ns."""
+
+
+class Parameters(
+    NodeParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+    HeraldedInitializeParameters,
+    QubitsExperimentNodeParameters,
+    ParityDiffAnalysisParameters,
+):
+    pass
