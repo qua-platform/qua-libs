@@ -235,18 +235,6 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     )
 
 
-def _qubit_names(
-    ds: xr.Dataset,
-    analysis_signal: str,
-    qubits,
-) -> list[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
-
 def _as_n_pulses_amp_signal(da: xr.DataArray, qname: str) -> np.ndarray:
     if "qubit" in da.dims:
         qubit_coord = da.coords.get("qubit")
@@ -286,7 +274,11 @@ def fit_raw_data(
     """Fit optimal amplitude per qubit from error-amplified power-Rabi data."""
     qubits = node.namespace["qubits"]
     analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = _qubit_names(ds, analysis_signal, qubits)
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
     amps = np.asarray(ds.amp_prefactor.values, dtype=float)
     n_pulses_array = np.asarray(ds.n_pulses.values, dtype=float)

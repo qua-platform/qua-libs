@@ -22,18 +22,6 @@ from calibration_utils.time_rabi.analysis import (
 )
 
 
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
-    qubits: List[Any],
-    analysis_signal: str,
-) -> List[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
-
 def _plot_rabi_trace_ax(
     ax: plt.Axes,
     pdiff: np.ndarray,
@@ -117,7 +105,11 @@ def plot_rabi_traces(
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot time-Rabi traces with fit overlays (one panel per qubit)."""
-    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
+    qubit_names = get_parity_item_names(
+        ds_fit,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     if not qubit_names:
         return empty_figure("No qubit data found in ds_fit.")
 
@@ -162,7 +154,11 @@ def plot_fft_spectra(
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot FFT magnitude spectra (one panel per qubit)."""
-    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
+    qubit_names = get_parity_item_names(
+        ds_fit,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     if not qubit_names:
         return empty_figure("No qubit data found in ds_fit.")
 

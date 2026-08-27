@@ -31,18 +31,6 @@ def _get_freq_axis_hz(ds: xr.Dataset, qubit: Any) -> np.ndarray:
     return nominal + detuning
 
 
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
-    qubits: List[Any],
-    analysis_signal: str,
-) -> List[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
-
 def _resolve_qubit(
     qname: str,
     qubits: List[Any],
@@ -227,7 +215,11 @@ def _iter_qubit_plot_context(
     fit_results: dict,
     analysis_signal: str,
 ):
-    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
+    qubit_names = get_parity_item_names(
+        ds_fit,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
     qubit_by_index = dict(zip(qubit_names, (qubits[i] for i in range(min(len(qubits), len(qubit_names))))))
     durations_ns = np.asarray(ds_fit.pulse_duration.values, dtype=float)

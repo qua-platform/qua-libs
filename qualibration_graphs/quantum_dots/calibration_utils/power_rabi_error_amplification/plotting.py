@@ -17,18 +17,6 @@ from calibration_utils.common_utils.plot_style import (
 from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
-    qubits: List[Any],
-    analysis_signal: str,
-) -> List[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
-
 def _plot_heatmap_ax(
     ax: plt.Axes,
     signal_2d: np.ndarray,
@@ -113,7 +101,11 @@ def plot_heatmaps(
     fit_results: dict,
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
-    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
+    qubit_names = get_parity_item_names(
+        ds_fit,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     if not qubit_names:
         return empty_figure("No qubit data found in ds_fit.")
 
@@ -148,7 +140,11 @@ def plot_resonance_profiles(
     fit_results: dict,
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
-    qubit_names = _get_qubit_names_from_ds(ds_fit, qubits, analysis_signal)
+    qubit_names = get_parity_item_names(
+        ds_fit,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     if not qubit_names:
         return empty_figure("No qubit data found in ds_fit.")
 

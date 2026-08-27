@@ -14,28 +14,8 @@ from calibration_utils.common_utils.plot_style import (
     empty_figure,
     qubit_success,
 )
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 from calibration_utils.power_rabi.analysis import FFT_FREQ_MIN, FFT_FREQ_MAX, compute_fft_diagnostic
-
-
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
-    analysis_signal: str = "E_p1_given_p0_0",
-) -> List[str]:
-    signal_prefix = f"{analysis_signal}_"
-    signal_vars = [v for v in ds.data_vars if v.startswith(signal_prefix) and not v.endswith("_fit")]
-    if signal_vars:
-        return [v.replace(signal_prefix, "") for v in sorted(signal_vars)]
-
-    p0_p0_vars = [v for v in ds.data_vars if v.startswith("p0_p0_")]
-    if p0_p0_vars:
-        return [v.replace("p0_p0_", "") for v in sorted(p0_p0_vars)]
-    names: List[str] = []
-    for v in sorted(ds.data_vars):
-        if v.startswith("p_") and not v.startswith(("p0_", "p1_", "pdiff_", "E_")):
-            rest = v[2:]
-            if rest:
-                names.append(rest)
-    return names
 
 
 def _reference_amplitude(qubit: Any) -> float:
@@ -173,7 +153,11 @@ def plot_rabi_traces(
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot power-Rabi traces with fit overlays (one panel per qubit)."""
-    qubit_names = _get_qubit_names_from_ds(ds_fit, analysis_signal)
+    qubit_names = get_parity_item_names(
+        ds_fit,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     if not qubit_names:
         return empty_figure(_empty_message())
 
@@ -218,11 +202,16 @@ def plot_rabi_traces(
 
 def plot_fft_spectra(
     ds_fit: xr.Dataset,
+    qubits: List[Any],
     fit_results: dict,
     analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot FFT magnitude spectra (one panel per qubit)."""
-    qubit_names = _get_qubit_names_from_ds(ds_fit, analysis_signal)
+    qubit_names = get_parity_item_names(
+        ds_fit,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
     if not qubit_names:
         return empty_figure(_empty_message())
 
@@ -259,5 +248,5 @@ def plot_all(
     fit_results = fit_results or {}
     return {
         "rabi": plot_rabi_traces(ds_fit, qubits, fit_results, analysis_signal),
-        "fft": plot_fft_spectra(ds_fit, fit_results, analysis_signal),
+        "fft": plot_fft_spectra(ds_fit, qubits, fit_results, analysis_signal),
     }

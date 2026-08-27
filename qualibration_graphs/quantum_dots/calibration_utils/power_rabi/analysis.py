@@ -18,6 +18,8 @@ from scipy.optimize import curve_fit
 
 from qualibrate.core import QualibrationNode
 
+from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
+
 _logger = logging.getLogger(__name__)
 
 # ── FFT frequency bounds (cycles / unit amplitude) ──────────────────────────
@@ -313,29 +315,6 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     )
 
 
-def _power_rabi_qubit_names(
-    ds: xr.Dataset,
-    analysis_signal: str,
-    qubits,
-) -> list[str]:
-    signal_prefix = f"{analysis_signal}_"
-    signal_vars = [v for v in sorted(ds.data_vars) if v.startswith(signal_prefix) and not v.endswith("_fit")]
-    names = [v.removeprefix(signal_prefix) for v in signal_vars]
-
-    if not names:
-        p0_p0_vars = [v for v in ds.data_vars if v.startswith("p0_p0_")]
-        names = [v.replace("p0_p0_", "") for v in sorted(p0_p0_vars)]
-    if not names:
-        names = [
-            v[2:]
-            for v in sorted(ds.data_vars)
-            if v.startswith("p_") and "qubit" not in ds[v].dims and not v.startswith(("p0_", "p1_", "pdiff_", "E_"))
-        ]
-    if not names:
-        names = [getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)]
-    return names
-
-
 def _as_amp_trace(da: xr.DataArray, qname: str) -> np.ndarray:
     if "qubit" in da.dims:
         qubit_coord = da.coords.get("qubit")
@@ -374,7 +353,11 @@ def fit_raw_data(
     """Fit optimal amplitude per qubit from power-Rabi data."""
     qubits = node.namespace["qubits"]
     analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = _power_rabi_qubit_names(ds, analysis_signal, qubits)
+    qubit_names = get_parity_item_names(
+        ds,
+        analysis_signal,
+        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
+    )
 
     amps = np.asarray(ds.amp_prefactor.values, dtype=float)
 
