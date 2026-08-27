@@ -28,7 +28,10 @@ from scipy.optimize import curve_fit
 
 from qualibrate.core import QualibrationNode
 
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
+from calibration_utils.measurement_utils.measurement_streams import (
+    get_parity_item_names,
+    process_streams,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -381,8 +384,6 @@ def _fft_analyse_single_qubit(
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """Build conditional expectations and plotting coords from joint-outcome streams."""
-    from calibration_utils.measurement_utils.measurement_streams import process_streams
-
     qubits = node.namespace["qubits"]
     ds = process_streams(
         ds,

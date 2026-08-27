@@ -11,7 +11,10 @@ import xarray as xr
 from scipy.optimize import curve_fit, differential_evolution
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
+from calibration_utils.measurement_utils.measurement_streams import (
+    get_parity_item_names,
+    process_streams,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -224,8 +227,6 @@ def _analyse_single_qubit(
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
-    from calibration_utils.measurement_utils.measurement_streams import process_streams
-
     qubits = node.namespace["qubits"]
     return process_streams(
         ds,
