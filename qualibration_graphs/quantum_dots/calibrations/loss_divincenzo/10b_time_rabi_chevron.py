@@ -160,8 +160,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ── MIDDLE LOOP: sweep drive detuning ────────────────────
                 with for_(*from_array(df, dfs)):
 
-                    # ── INNER LOOP: sweep pulse duration ─────────────────
-                    with for_(*from_array(t, pulse_durations)):
+                    # ── INNER LOOP: sweep pulse duration in clock cycles ─────────────────
+                    with for_(*from_array(t, pulse_durations // 4)):
 
                         # Retune the XY drive to (calibrated IF + df)
                         qubit.xy.update_frequency(intermediate_frequency + df)

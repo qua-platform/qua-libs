@@ -138,8 +138,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
-                # ── INNER LOOP: sweep pulse duration ─────────────────────
-                with for_(*from_array(t, pulse_durations)):
+                # ── INNER LOOP: sweep pulse duration in  clock cycles ─────────────────────
+                with for_(*from_array(t, pulse_durations // 4)):
 
                     if node.parameters.parity_measurement:
                         qubit.empty()
