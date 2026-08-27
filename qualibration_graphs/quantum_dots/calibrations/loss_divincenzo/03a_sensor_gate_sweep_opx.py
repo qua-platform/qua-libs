@@ -13,7 +13,7 @@ from qualang_tools.results import progress_counter
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 
-from calibration_utils.common_utils.experiment import get_sensors
+from calibration_utils.common_utils.experiment import get_sensors, ensure_single_gate_set
 from calibration_utils.sensor_dot import (
     Parameters,
     process_raw_dataset,
@@ -97,6 +97,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_avg = node.parameters.num_shots  # number of repetitions averaged at each sensor plunger voltage
     ramp_duration = node.parameters.ramp_duration  # duration of the ramp to the next plunger voltage
 
+    # Ensure that the sensors list only contains a single VirtualGateSet, and reset the VoltageSequence
+    # to track the integrated voltage for use with the compensation pulse. 
+    vgs_id = ensure_single_gate_set(node.machine, sensors, reset_with_voltage_tracking = True)
+
     # The voltage bias offset - set of voltages to apply on the sensor's plunger gate
     # E.g. offset_min=0 & offset_max=0.1 → sweep from Vg=0V to Vg=+0.1V
     bias_offsets = np.arange(
@@ -113,6 +117,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
+        seq = node.machine.voltage_sequences[vgs_id]
 
         # Allocate real-time variables on the OPX:
         #   I[i], Q[i]   : demodulated quadratures for sensor i
@@ -125,7 +130,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # If several sensors share the same OPX resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
-            refresh_voltage_sequences(node, multiplexed_sensors)
 
             align()  # sync all channels in this batch before starting
 
@@ -142,7 +146,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         # Ramp the plunger gate voltage to the correct coordinate and hold the voltage (duration) to include the readout time
-                        sensor.ramp_to_voltages(
+                        seq.ramp_to_voltages(
                             {sensor.name: offset},
                             duration=readout_len + node.parameters.duration_after_step,
                             ramp_duration=ramp_duration,
@@ -159,7 +163,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                 # At the end of each 1D sweep, play a compensation pulse to account for any charge build-up in the bias tee
-                apply_compensation_pulse(multiplexed_sensors, node.parameters.max_compensation_voltage)
+                seq.apply_compensation_pulse(node.parameters.max_compensation_voltage)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
