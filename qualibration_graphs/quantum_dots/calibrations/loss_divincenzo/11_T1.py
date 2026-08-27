@@ -145,10 +145,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Global align before and after the operate -> wait -> measure shot
                     align()
 
-                    # Prepare the excited state, wait for the variable idle time,
-                    # then measure the decayed population.
+                    # Prepare the excited state and wait for the variable idle time
                     qubit.x180()
-                    # Wait the length of the x180 pulse on the relevant elements in the gate_set, and the readout_resoantor.
+                    qubit.idle(t)
+                    # Align drive and plunger before readout so the idle window is complete.
                     align(qubit.xy.name, qubit.physical_channel.name)
                     # Measure the post-sequence state
                     a2 = qubit.measure()
