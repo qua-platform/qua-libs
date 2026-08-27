@@ -383,19 +383,14 @@ def _fft_analyse_single_qubit(
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Build conditional expectations and plotting coords from joint-outcome streams."""
+    """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
     qubits = node.namespace["qubits"]
-    ds = process_streams(
+    return process_streams(
         ds,
         [q.name for q in qubits],
         parity_measurement=node.parameters.parity_measurement,
         sweep_dims=("detuning", "pulse_duration"),
     )
-    if qubits:
-        f = _get_drive_frequencies_hz(ds, qubits[0])
-        ds = ds.assign_coords(full_freq=(["detuning"], f))
-        ds.full_freq.attrs = {"long_name": "drive frequency", "units": "Hz"}
-    return ds
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
