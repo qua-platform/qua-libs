@@ -21,8 +21,6 @@ from calibration_utils.sensor_dot import (
     log_fitted_results,
     plot_all,
     generate_simulated_dataset,
-    apply_compensation_pulse,
-    refresh_voltage_sequences,
 )
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibration_libs.data import XarrayDataFetcher
