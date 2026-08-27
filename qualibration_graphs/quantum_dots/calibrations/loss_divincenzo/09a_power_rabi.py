@@ -118,12 +118,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Real-time variables:
         # a  : current amplitude prefactor for the manipulation gate
         # n  : shot counter
-        # p2 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
-        # p1 : pre-manipulation measurement outcome (only used when parity_measurement=True)
+        # p1 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
+        # p0 : pre-manipulation measurement outcome (only used when parity_measurement=True)
         a = declare(fixed)
         n = declare(int)
 
-        p2, p1, parity_streams = declare_streams(node, qubits, stream_fn=declare_output_stream)
+        # p0 is None when parity_measurement is False
+        p1, p0, parity_streams = declare_streams(node, qubits)
         n_st = declare_output_stream()  # exposes shot index "n" to the PC (progress bar)
 
         # One qubit at a time (sequential voltage sequencing on the dot gates)
@@ -139,7 +140,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # Optional pre-measurement at the empty bias point (parity readout)
                     if node.parameters.parity_measurement:
                         qubit.empty()
-                        a1 = qubit.measure()
+                        a0 = qubit.measure()
 
                     # Heralded initialization to the target spin state at the manipulation bias
                     qubit.initialize(
@@ -154,18 +155,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                     # Post-measurement: did the manipulation flip the spin?
-                    a2 = qubit.measure()
+                    a1 = qubit.measure()
 
                     # Return gate voltages to zero before the next shot
                     qubit.voltage_sequence.ramp_to_zero()
                     align()  # sync before the next iteration (avoids pulses playing too early)
 
-                    assign(p2, Cast.to_int(a2))
+                    assign(p1, Cast.to_int(a1))
                     if node.parameters.parity_measurement:
-                        assign(p1, Cast.to_int(a1))
+                        assign(p0, Cast.to_int(a0))
 
                     # Route outcome to joint-outcome streams (p0_p0, p1_p0, … or p)
-                    save_measurement(node, qubit.name, p1, p2, parity_streams)
+                    save_measurement(node, qubit.name, p0, p1, parity_streams)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():

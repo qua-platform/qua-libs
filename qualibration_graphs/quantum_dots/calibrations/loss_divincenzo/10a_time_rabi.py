@@ -123,12 +123,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Real-time variables:
         # t  : current manipulation pulse duration [ns]
         # n  : shot counter
-        # p2 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
-        # p1 : pre-manipulation measurement outcome (only used when parity_measurement=True)
+        # p1 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
+        # p0 : pre-manipulation measurement outcome (only used when parity_measurement=True)
         t = declare(int)
         n = declare(int)
 
-        p2, p1, parity_streams = declare_streams(node, qubits)
+        # p0 is None when parity_measurement is False
+        p1, p0, parity_streams = declare_streams(node, qubits)
         n_st = declare_output_stream()
 
         for qubit in qubits:
@@ -142,7 +143,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     if node.parameters.parity_measurement:
                         qubit.empty()
-                        a1 = qubit.measure()
+                        a0 = qubit.measure()
 
                     qubit.initialize(
                         target_state=node.parameters.target_state,
@@ -155,16 +156,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.macros[operation].apply(duration=t)
                     align()
 
-                    a2 = qubit.measure()
+                    a1 = qubit.measure()
 
                     qubit.voltage_sequence.ramp_to_zero()
                     align()
 
-                    assign(p2, Cast.to_int(a2))
+                    assign(p1, Cast.to_int(a1))
                     if node.parameters.parity_measurement:
-                        assign(p1, Cast.to_int(a1))
+                        assign(p0, Cast.to_int(a0))
 
-                    save_measurement(node, qubit.name, p1, p2, parity_streams)
+                    save_measurement(node, qubit.name, p0, p1, parity_streams)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
