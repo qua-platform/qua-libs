@@ -87,17 +87,18 @@ def quantize_pulse_length_ns(pulse_length_ns: int | float) -> int:
 
     return rounded_length_ns
 
-def ensure_single_gate_set(machine: BaseQuamQD, elements: Sequence, reset_with_voltage_tracking: bool = False) -> str: 
-    """
-    Given a list of elements (SensorDots, QuantumDots, Qubits, QubitPairs, QuantumDotPairs, BarrierGate), 
-    find the associated VirtualGateSet, and validate that there is only one. For multiple VirtualGateSets, 
-    raises an error. Multi-VirtualGateSet functionality will be added in a future update. 
 
-    Optionally also reset the VoltageSequence associated with this VirtualGateSet with voltage tracking. 
+def ensure_single_gate_set(machine: BaseQuamQD, elements: Sequence, reset_with_voltage_tracking: bool = False) -> str:
+    """
+    Given a list of elements (SensorDots, QuantumDots, Qubits, QubitPairs, QuantumDotPairs, BarrierGate),
+    find the associated VirtualGateSet, and validate that there is only one. For multiple VirtualGateSets,
+    raises an error. Multi-VirtualGateSet functionality will be added in a future update.
+
+    Optionally also reset the VoltageSequence associated with this VirtualGateSet with voltage tracking.
     """
     set_of_gate_sets = set()
-    for el in elements: 
-        # Assume that the element is SensorDot, QuantumDot, Qubit, QubitPair, QuantumDotPair, or BarrierGate
+    for el in elements:
+        # Assume that the element is SensorDot, QuantumDot, Qubit, QubitPair, QuantumDotPair, or BarrierGate
         gate_set_id = el.voltage_sequence.gate_set.name
 
         # If the element list is a list of physical_channel objects, this will be implemented in a future version
@@ -105,18 +106,20 @@ def ensure_single_gate_set(machine: BaseQuamQD, elements: Sequence, reset_with_v
 
     number_of_gate_sets = len(set_of_gate_sets)
 
-    if number_of_gate_sets > 1: 
-        raise NotImplementedError(f"Recieved elements from {number_of_gate_sets} VirtualGateSets. Please run this node with a elements from a single VirtualGateSet.")
-    elif number_of_gate_sets == 0: 
+    if number_of_gate_sets > 1:
+        raise NotImplementedError(
+            f"Recieved elements from {number_of_gate_sets} VirtualGateSets. Please run this node with a elements from a single VirtualGateSet."
+        )
+    elif number_of_gate_sets == 0:
         raise ValueError("Zero VirtualGateSets found. Please identify some elements")
-    
+
     vgs_id = next(iter(set_of_gate_sets))
 
     # Optional VoltageSequence reset
-    if reset_with_voltage_tracking: 
+    if reset_with_voltage_tracking:
         machine.reset_voltage_sequence(
-            gate_set_id = vgs_id,
-            track_integrated_voltage = True,
+            gate_set_id=vgs_id,
+            track_integrated_voltage=True,
         )
 
     return vgs_id

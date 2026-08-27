@@ -98,8 +98,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     ramp_duration = node.parameters.ramp_duration  # duration of the ramp to the next plunger voltage
 
     # Ensure that the sensors list only contains a single VirtualGateSet, and reset the VoltageSequence
-    # to track the integrated voltage for use with the compensation pulse. 
-    vgs_id = ensure_single_gate_set(node.machine, sensors, reset_with_voltage_tracking = True)
+    # to track the integrated voltage for use with the compensation pulse.
+    vgs_id = ensure_single_gate_set(node.machine, sensors, reset_with_voltage_tracking=True)
 
     # The voltage bias offset - set of voltages to apply on the sensor's plunger gate
     # E.g. offset_min=0 & offset_max=0.1 → sweep from Vg=0V to Vg=+0.1V
