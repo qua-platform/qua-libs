@@ -29,9 +29,9 @@ def test_09b_power_rabi_error_amplification_analysis_and_plot_actions(analysis_r
     )
 
     ds_raw = node.results["ds_raw"]
-    assert f"p_{QUBIT_NAME}" in ds_raw.data_vars
-    assert set(ds_raw.dims) >= {"n_pulses", "amp_prefactor"}
-    assert not any(name.startswith("E_") for name in ds_raw.data_vars)
+    assert "state" in ds_raw.data_vars
+    assert set(ds_raw["state"].dims) >= {"qubit", "n_pulses", "amp_prefactor"}
+    assert QUBIT_NAME in set(map(str, ds_raw.qubit.values.tolist()))
 
     fit = node.results["fit_results"][QUBIT_NAME]
     assert fit["success"], f"Error-amplification fit should succeed, got: {fit}"

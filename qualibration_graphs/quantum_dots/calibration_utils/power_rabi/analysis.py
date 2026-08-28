@@ -1,9 +1,8 @@
 """Power-Rabi analysis: FFT-seeded damped-sinusoid fit.
 
-Extracts the optimal amplitude prefactor (a_π) from a conditional-
-expectation sweep over drive amplitude.  The FFT is used to seed a
-damped-cosine fit in the amplitude domain, giving accurate estimates
-of a_π and the decay rate.
+Extracts the optimal amplitude prefactor (a_π) from a thresholded ``state``
+sweep over drive amplitude.  The FFT is used to seed a damped-cosine fit in
+the amplitude domain, giving accurate estimates of a_π and the decay rate.
 """
 
 from __future__ import annotations
@@ -17,11 +16,6 @@ import xarray as xr
 from scipy.optimize import curve_fit
 
 from qualibrate.core import QualibrationNode
-
-from calibration_utils.measurement_utils.measurement_streams import (
-    get_parity_item_names,
-    process_streams,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -246,6 +240,7 @@ def _analyse_single_qubit(
             gamma,
         )
     else:
+        # Keep FFT-only estimates for diagnostics, but do not mark success.
         f_rabi = mu
         omega = 2.0 * np.pi * f_rabi
         a_pi = 1.0 / (2.0 * f_rabi)
@@ -257,7 +252,12 @@ def _analyse_single_qubit(
             gamma,
         )
 
-    success = bool(np.isfinite(a_pi) and a_pi > 0)
+    amp_min, amp_max = float(amps.min()), float(amps.max())
+    success = bool(
+        sinusoid_result is not None
+        and np.isfinite(a_pi)
+        and amp_min <= a_pi <= amp_max
+    )
 
     return {
         "opt_amp": float(a_pi),
@@ -306,82 +306,24 @@ def compute_fft_diagnostic(
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
-    qubits = node.namespace["qubits"]
-    return process_streams(
-        ds,
-        [q.name for q in qubits],
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("amp_prefactor",),
-    )
-
-
-def _as_amp_trace(da: xr.DataArray, qname: str) -> np.ndarray:
-    if "qubit" in da.dims:
-        qubit_coord = da.coords.get("qubit")
-        if qubit_coord is not None and qname in set(qubit_coord.values.tolist()):
-            da = da.sel(qubit=qname, drop=True)
-        elif da.sizes["qubit"] == 1:
-            da = da.isel(qubit=0, drop=True)
-        else:
-            raise ValueError(
-                f"{da.name!r} for {qname!r} still has a non-singleton qubit "
-                f"dimension. Run process_raw_dataset before fit_raw_data."
-            )
-
-    if "amp_prefactor" not in da.dims:
-        raise ValueError(
-            f"{da.name!r} for {qname!r} must contain an 'amp_prefactor' " f"dimension; dims are {da.dims}."
-        )
-
-    for dim in list(da.dims):
-        if dim == "amp_prefactor":
-            continue
-        if da.sizes[dim] != 1:
-            raise ValueError(
-                f"{da.name!r} for {qname!r} has unexpected non-singleton "
-                f"dimension {dim!r} with size {da.sizes[dim]}."
-            )
-        da = da.isel({dim: 0}, drop=True)
-
-    return np.asarray(da.transpose("amp_prefactor").values, dtype=float)
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no stream post-processing)."""
+    return ds
 
 
 def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
-    """Fit optimal amplitude per qubit from power-Rabi data."""
-    qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
+    """Fit optimal amplitude per qubit from power-Rabi ``state`` data."""
+    qubit_names = [str(v) for v in ds.qubit.values]
     amps = np.asarray(ds.amp_prefactor.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
-    fit_arrays: Dict[str, tuple] = {}
+    fit_curves: Dict[str, np.ndarray] = {}
 
     for qname in qubit_names:
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars and f"p_{qname}" in ds.data_vars:
-            signal_var = f"p_{qname}"
-        if signal_var not in ds.data_vars:
-            fp = FitParameters(
-                opt_amp=np.nan,
-                rabi_frequency=np.nan,
-                decay_rate=np.nan,
-                success=False,
-            )
-            fit_results[qname] = asdict(fp)
-            continue
-
-        trace = _as_amp_trace(ds[signal_var], qname)
+        trace = ds.state.sel(qubit=qname, drop=True).transpose("amp_prefactor").values.astype(float)
         result = _analyse_single_qubit(trace, amps)
-
         fp = FitParameters(
             opt_amp=result["opt_amp"],
             rabi_frequency=result["rabi_frequency"],
@@ -392,12 +334,12 @@ def fit_raw_data(
 
         sinusoid = result.get("sinusoid_fit")
         if sinusoid is not None:
-            fit_arrays[f"{signal_var}_fit"] = (
-                ["amp_prefactor"],
-                np.asarray(sinusoid["fitted_curve"], dtype=float),
-            )
+            fit_curves[qname] = np.asarray(sinusoid["fitted_curve"], dtype=float)
+        else:
+            fit_curves[qname] = np.full_like(amps, np.nan)
 
-    ds_fit = ds.assign(**fit_arrays) if fit_arrays else ds.copy()
+    fit_stack = np.stack([fit_curves[q] for q in qubit_names], axis=0)
+    ds_fit = ds.assign(state_fit=(["qubit", "amp_prefactor"], fit_stack))
     return ds_fit, fit_results
 
 
@@ -405,19 +347,25 @@ def log_fitted_results(
     fit_results: Dict[str, Any],
     log_callable=None,
 ) -> None:
-    """Log fitted results for all qubits."""
+    """Log fitted results for all qubits.
+
+    Parameters
+    ----------
+    fit_results : dict
+        ``fit_results[qubit_name]`` mapping to the fitted values.
+    log_callable : callable, optional
+        Logging function (typically ``node.log``). Defaults to the module logger.
+    """
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for qname, r in fit_results.items():
-        a_pi = r.get("opt_amp", 0)
-        omega = r.get("rabi_frequency", 0)
-        gamma = r.get("decay_rate", 0)
-        success = r.get("success", False)
-        msg = (
-            f"Results for {qname}: "
-            f"a_π={a_pi:.4f}, "
-            f"Ω={omega:.3f} rad/u.a., "
-            f"γ={gamma:.4f} 1/u.a., "
-            f"success={success}"
-        )
+        if r.get("success", False):
+            msg = (
+                f"[{qname}] SUCCESS | "
+                f"a_π = {r.get('opt_amp', 0):.4f} | "
+                f"Ω = {r.get('rabi_frequency', 0):.3f} rad/u.a. | "
+                f"γ = {r.get('decay_rate', 0):.4f} 1/u.a."
+            )
+        else:
+            msg = f"[{qname}] FAIL | fit did not pass sanity checks"
         log_callable(msg)

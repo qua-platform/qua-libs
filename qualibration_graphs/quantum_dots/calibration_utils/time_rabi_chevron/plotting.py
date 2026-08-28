@@ -14,7 +14,6 @@ from calibration_utils.common_utils.plot_style import (
     empty_figure,
     qubit_success,
 )
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 from calibration_utils.time_rabi_chevron.analysis import (
     FFT_FREQ_MIN,
     FFT_FREQ_MAX,
@@ -42,13 +41,12 @@ def _resolve_qubit(
 
 def _plot_chevron_ax(
     ax: plt.Axes,
-    pdiff: np.ndarray,
+    state_2d: np.ndarray,
     freq_hz: np.ndarray,
     duration_ns: np.ndarray,
     qubit_name: str,
     fit_result: dict | None = None,
     show_fit: bool = True,
-    analysis_signal: str = "E_p1_given_p0_0",
     success: bool | None = None,
 ) -> None:
     """Plot a single chevron heatmap on the given axes."""
@@ -61,7 +59,7 @@ def _plot_chevron_ax(
         float(detuning_mhz[-1]),
     )
     im = ax.imshow(
-        pdiff,
+        state_2d,
         aspect="auto",
         origin="lower",
         extent=extent,
@@ -73,7 +71,7 @@ def _plot_chevron_ax(
     ax.set_xlabel("Pulse duration (ns)")
     ax.set_ylabel("Drive detuning (MHz)")
     apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Chevron data")
-    plt.colorbar(im, ax=ax, label=analysis_signal)
+    plt.colorbar(im, ax=ax, label="state")
 
     if fit_result and show_fit and fit_result.get("success"):
         f_res = fit_result.get("optimal_frequency", 0)
@@ -86,7 +84,7 @@ def _plot_chevron_ax(
 
 def _plot_fft_2d_ax(
     ax: plt.Axes,
-    pdiff: np.ndarray,
+    state_2d: np.ndarray,
     freq_hz: np.ndarray,
     durations_ns: np.ndarray,
     qubit_name: str,
@@ -94,12 +92,12 @@ def _plot_fft_2d_ax(
     success: bool | None = None,
 ) -> dict:
     """Plot 2D FFT heatmap with ridge fit overlaid; return diagnostics dict."""
-    diag = compute_fft_diagnostics(pdiff, freq_hz, durations_ns)
+    diag = compute_fft_diagnostics(state_2d, freq_hz, durations_ns)
     freqs_fft = diag["fft_freqs"]
     mask = (freqs_fft >= FFT_FREQ_MIN) & (freqs_fft <= FFT_FREQ_MAX)
     f_plot = freqs_fft[mask] * 1e3
 
-    n_freqs = pdiff.shape[0]
+    n_freqs = state_2d.shape[0]
     mag_2d = np.array([diag["magnitude_per_slice"][i][mask] for i in range(n_freqs)])
 
     detuning_mhz = (freq_hz - freq_hz.mean()) * 1e-6
@@ -209,17 +207,20 @@ def _plot_fft_diagnostics_panels(
     ax_tpi.legend(loc="upper right", fontsize=8)
 
 
+def _empty_message() -> str:
+    return (
+        "No qubit data found in ds_fit.\n"
+        "Check that generate_simulated_data / analyse_data ran successfully\n"
+        "and that node.parameters.qubits (or active_qubit_names) is set."
+    )
+
+
 def _iter_qubit_plot_context(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str,
 ):
-    qubit_names = get_parity_item_names(
-        ds_fit,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
     qubit_by_index = dict(zip(qubit_names, (qubits[i] for i in range(min(len(qubits), len(qubit_names))))))
     durations_ns = np.asarray(ds_fit.pulse_duration.values, dtype=float)
@@ -230,44 +231,37 @@ def _iter_qubit_plot_context(
         fr = fit_results.get(qname, {})
         f_res = fr.get("optimal_frequency") if fr.get("success") else None
         success = qubit_success(fit_results, qname)
-        signal_var = f"{analysis_signal}_{qname}"
-        signal_2d = np.asarray(ds_fit[signal_var].values) if signal_var in ds_fit.data_vars else None
-        yield qname, signal_2d, freq_hz, durations_ns, fr, f_res, success
+        state_2d = np.asarray(ds_fit.state.sel(qubit=qname).values, dtype=float)
+        yield qname, state_2d, freq_hz, durations_ns, fr, f_res, success
 
 
 def plot_chevron_data(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot chevron data heatmaps (one panel per qubit)."""
-    contexts = list(_iter_qubit_plot_context(ds_fit, qubits, fit_results, analysis_signal))
+    contexts = list(_iter_qubit_plot_context(ds_fit, qubits, fit_results))
     if not contexts:
-        return empty_figure("No qubit data found in ds_fit.", figsize=(8, 4))
+        return empty_figure(_empty_message(), figsize=(8, 4))
 
     n = len(contexts)
     fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 5), squeeze=False)
     axes = axes.flatten()
 
-    for ax, (qname, signal_2d, freq_hz, durations_ns, fr, _, success) in zip(axes, contexts):
-        if signal_2d is None:
-            apply_qubit_outcome_style(ax, qname, success, subtitle="Chevron data")
-            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
-            continue
+    for ax, (qname, state_2d, freq_hz, durations_ns, fr, _, success) in zip(axes, contexts):
         _plot_chevron_ax(
             ax,
-            signal_2d,
+            state_2d,
             freq_hz,
             durations_ns,
             qname,
             fit_result=fr,
             show_fit=True,
-            analysis_signal=analysis_signal,
             success=success,
         )
 
-    fig.suptitle(f"Time Rabi chevron data ({analysis_signal})")
+    fig.suptitle("Time Rabi chevron data (state)")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
@@ -276,25 +270,20 @@ def plot_fft_2d(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot 2-D FFT heatmaps (one panel per qubit)."""
-    contexts = list(_iter_qubit_plot_context(ds_fit, qubits, fit_results, analysis_signal))
+    contexts = list(_iter_qubit_plot_context(ds_fit, qubits, fit_results))
     if not contexts:
-        return empty_figure("No qubit data found in ds_fit.", figsize=(8, 4))
+        return empty_figure(_empty_message(), figsize=(8, 4))
 
     n = len(contexts)
     fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 5), squeeze=False)
     axes = axes.flatten()
 
-    for ax, (qname, signal_2d, freq_hz, durations_ns, _, f_res, success) in zip(axes, contexts):
-        if signal_2d is None:
-            apply_qubit_outcome_style(ax, qname, success, subtitle="FFT per detuning")
-            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
-            continue
-        _plot_fft_2d_ax(ax, signal_2d, freq_hz, durations_ns, qname, f_res, success)
+    for ax, (qname, state_2d, freq_hz, durations_ns, _, f_res, success) in zip(axes, contexts):
+        _plot_fft_2d_ax(ax, state_2d, freq_hz, durations_ns, qname, f_res, success)
 
-    fig.suptitle(f"Time Rabi chevron 2D FFT ({analysis_signal})")
+    fig.suptitle("Time Rabi chevron 2D FFT (state)")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
@@ -303,26 +292,21 @@ def plot_fft_diagnostics(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot FFT-at-resonance and t_π-vs-detuning diagnostics (one column per qubit)."""
-    contexts = list(_iter_qubit_plot_context(ds_fit, qubits, fit_results, analysis_signal))
+    contexts = list(_iter_qubit_plot_context(ds_fit, qubits, fit_results))
     if not contexts:
-        return empty_figure("No qubit data found in ds_fit.", figsize=(8, 4))
+        return empty_figure(_empty_message(), figsize=(8, 4))
 
     n = len(contexts)
     fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 6), squeeze=False)
     axes = axes.flatten()
 
-    for ax, (qname, signal_2d, freq_hz, durations_ns, _, f_res, success) in zip(axes, contexts):
-        if signal_2d is None:
-            apply_qubit_outcome_style(ax, qname, success, subtitle="Diagnostics")
-            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
-            continue
-        diag = compute_fft_diagnostics(signal_2d, freq_hz, durations_ns)
+    for ax, (qname, state_2d, freq_hz, durations_ns, _, f_res, success) in zip(axes, contexts):
+        diag = compute_fft_diagnostics(state_2d, freq_hz, durations_ns)
         _plot_fft_diagnostics_panels(fig, ax, diag, freq_hz, qname, f_res, success)
 
-    fig.suptitle(f"Time Rabi chevron FFT diagnostics ({analysis_signal})")
+    fig.suptitle("Time Rabi chevron FFT diagnostics (state)")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
@@ -331,12 +315,11 @@ def plot_all(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict | None = None,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Dict[str, Figure]:
     """Return all standard figures for time-Rabi chevron analysis."""
     fit_results = fit_results or {}
     return {
-        "chevron": plot_chevron_data(ds_fit, qubits, fit_results, analysis_signal),
-        "fft_2d": plot_fft_2d(ds_fit, qubits, fit_results, analysis_signal),
-        "diagnostics": plot_fft_diagnostics(ds_fit, qubits, fit_results, analysis_signal),
+        "chevron": plot_chevron_data(ds_fit, qubits, fit_results),
+        "fft_2d": plot_fft_2d(ds_fit, qubits, fit_results),
+        "diagnostics": plot_fft_diagnostics(ds_fit, qubits, fit_results),
     }

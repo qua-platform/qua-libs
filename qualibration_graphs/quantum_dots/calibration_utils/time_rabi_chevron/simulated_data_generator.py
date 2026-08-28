@@ -33,30 +33,6 @@ def _rabi_chevron(
     return baseline + contrast * envelope * oscillation
 
 
-def _assign_stream(
-    data_vars: dict,
-    qname: str,
-    probability: np.ndarray,
-    dims: tuple[str, ...],
-    *,
-    parity_measurement: bool,
-    rng: np.random.Generator,
-) -> None:
-    prob = np.clip(
-        np.asarray(probability, dtype=float) + rng.normal(0.0, 0.012, probability.shape),
-        0.0,
-        1.0,
-    )
-    if parity_measurement:
-        leak = 0.01
-        data_vars[f"p1_p0_{qname}"] = (dims, prob)
-        data_vars[f"p0_p0_{qname}"] = (dims, np.clip(1.0 - prob, 0.0, 1.0))
-        data_vars[f"p0_p1_{qname}"] = (dims, leak * (1.0 - prob))
-        data_vars[f"p1_p1_{qname}"] = (dims, leak * prob)
-    else:
-        data_vars[f"p_{qname}"] = (dims, prob)
-
-
 def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     """Generate simulated Rabi-chevron data so the full analysis pipeline can run without hardware."""
     u = unit(coerce_to_integer=True)
@@ -71,17 +47,18 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     detuning = np.arange(-span // 2, span // 2, step, dtype=float)
+    qubit_names = qubits.get_names()
 
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(qubits.get_names()),
+        "qubit": xr.DataArray(qubit_names),
         "detuning": xr.DataArray(detuning, attrs={"long_name": "qubit frequency", "units": "Hz"}),
         "pulse_duration": xr.DataArray(pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
     }
 
     rng = np.random.default_rng(42)
-    data_vars: dict[str, tuple[tuple[str, ...], np.ndarray]] = {}
+    state = np.empty((len(qubits), len(detuning), len(pulse_durations)), dtype=float)
 
-    for index, qubit in enumerate(qubits):
+    for index, _qubit in enumerate(qubits):
         probability = _rabi_chevron(
             detuning,
             pulse_durations,
@@ -89,18 +66,16 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
             contrast=0.35 + 0.03 * (index % 2),
             baseline=0.08 + 0.01 * (index % 2),
         )
-        _assign_stream(
-            data_vars,
-            qubit.name,
-            probability,
-            ("detuning", "pulse_duration"),
-            parity_measurement=node.parameters.parity_measurement,
-            rng=rng,
+        state[index] = np.clip(
+            probability + rng.normal(0.0, 0.012, probability.shape),
+            0.0,
+            1.0,
         )
 
     return xr.Dataset(
-        {name: (dims, values) for name, (dims, values) in data_vars.items()},
+        {"state": (["qubit", "detuning", "pulse_duration"], state)},
         coords={
+            "qubit": qubit_names,
             "detuning": detuning,
             "pulse_duration": pulse_durations,
             "n": np.array([0], dtype=int),

@@ -1,7 +1,7 @@
 """1D time-Rabi analysis: FFT-seeded damped-sinusoid fit.
 
-Extracts t_π (= π/Ω) and γ (decay rate ≈ 1/T₂*) from a single
-pulse-duration sweep.  The FFT is used to seed a time-domain
+Extracts t_π (= π/Ω) and γ (decay rate ≈ 1/T₂*) from a thresholded ``state``
+sweep over pulse duration.  The FFT is used to seed a time-domain
 least-squares fit of a damped cosine, giving more accurate
 estimates than the FFT alone.
 """
@@ -17,10 +17,6 @@ import xarray as xr
 from scipy.optimize import curve_fit
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils.measurement_streams import (
-    get_parity_item_names,
-    process_streams,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -272,7 +268,12 @@ def _fft_analyse_single_qubit(
             gamma,
         )
 
-    success = bool(np.isfinite(t_pi) and t_pi > 0)
+    dur_min, dur_max = float(durations_ns.min()), float(durations_ns.max())
+    success = bool(
+        sinusoid_result is not None
+        and np.isfinite(t_pi)
+        and dur_min <= t_pi <= dur_max
+    )
 
     return {
         "optimal_duration": float(t_pi),
@@ -321,47 +322,23 @@ def compute_fft_diagnostic(
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
-    qubits = node.namespace["qubits"]
-    return process_streams(
-        ds,
-        [q.name for q in qubits],
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("pulse_duration",),
-    )
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no stream post-processing)."""
+    return ds
 
 
 def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
-    """Fit t_π per qubit from 1D time-Rabi data.  Returns ``(ds_fit, fit_results)``."""
-    qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
+    """Fit t_π per qubit from 1D time-Rabi ``state`` data.  Returns ``(ds_fit, fit_results)``."""
+    qubit_names = [str(v) for v in ds.qubit.values]
     durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
-    fit_arrays: Dict[str, tuple] = {}
+    fit_curves: Dict[str, np.ndarray] = {}
 
     for qname in qubit_names:
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars:
-            fp = FitParameters(
-                optimal_duration=np.nan,
-                rabi_frequency=np.nan,
-                decay_rate=np.nan,
-                success=False,
-            )
-            fit_results[qname] = asdict(fp)
-            continue
-
-        trace = np.asarray(ds[signal_var].values, dtype=float)
+        trace = ds.state.sel(qubit=qname, drop=True).transpose("pulse_duration").values.astype(float)
         result = _fft_analyse_single_qubit(trace, durations_ns)
 
         fp = FitParameters(
@@ -374,12 +351,12 @@ def fit_raw_data(
 
         sinusoid = result.get("sinusoid_fit")
         if sinusoid is not None:
-            fit_arrays[f"{signal_var}_fit"] = (
-                ["pulse_duration"],
-                np.asarray(sinusoid["fitted_curve"], dtype=float),
-            )
+            fit_curves[qname] = np.asarray(sinusoid["fitted_curve"], dtype=float)
+        else:
+            fit_curves[qname] = np.full_like(durations_ns, np.nan)
 
-    ds_fit = ds.assign(**fit_arrays) if fit_arrays else ds.copy()
+    fit_stack = np.stack([fit_curves[q] for q in qubit_names], axis=0)
+    ds_fit = ds.assign(state_fit=(["qubit", "pulse_duration"], fit_stack))
     return ds_fit, fit_results
 
 
@@ -391,16 +368,15 @@ def log_fitted_results(
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for qname, r in fit_results.items():
-        t_pi = r.get("optimal_duration", 0)
-        omega = r.get("rabi_frequency", 0)
-        gamma = r.get("decay_rate", 0)
-        t2_star = 1.0 / gamma if gamma > 0 else float("inf")
-        success = r.get("success", False)
-        msg = (
-            f"Results for {qname}: "
-            f"t_π={t_pi:.0f} ns, "
-            f"Ω={omega:.5f} rad/ns, "
-            f"γ={gamma:.5f} 1/ns (T₂*={t2_star:.0f} ns), "
-            f"success={success}"
-        )
+        if r.get("success", False):
+            gamma = r.get("decay_rate", 0)
+            t2_star = 1.0 / gamma if gamma > 0 else float("inf")
+            msg = (
+                f"[{qname}] SUCCESS | "
+                f"t_π = {r.get('optimal_duration', 0):.0f} ns | "
+                f"Ω = {r.get('rabi_frequency', 0):.5f} rad/ns | "
+                f"γ = {gamma:.5f} 1/ns (T₂*={t2_star:.0f} ns)"
+            )
+        else:
+            msg = f"[{qname}] FAIL | fit did not pass sanity checks"
         log_callable(msg)

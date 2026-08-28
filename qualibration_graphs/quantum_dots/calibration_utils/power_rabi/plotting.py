@@ -1,4 +1,4 @@
-"""Plot power-Rabi conditional expectation: raw trace and FFT diagnostics."""
+"""Plot power-Rabi thresholded state: raw trace and FFT diagnostics."""
 
 from __future__ import annotations
 
@@ -14,8 +14,11 @@ from calibration_utils.common_utils.plot_style import (
     empty_figure,
     qubit_success,
 )
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
-from calibration_utils.power_rabi.analysis import FFT_FREQ_MIN, FFT_FREQ_MAX, compute_fft_diagnostic
+from calibration_utils.power_rabi.analysis import (
+    FFT_FREQ_MIN,
+    FFT_FREQ_MAX,
+    compute_fft_diagnostic,
+)
 
 
 def _reference_amplitude(qubit: Any) -> float:
@@ -27,12 +30,6 @@ def _reference_amplitude(qubit: Any) -> float:
     except Exception:
         pass
     return 1.0
-
-
-def _resolve_signal_var(plot_ds: xr.Dataset, qname: str, analysis_signal: str) -> tuple[str, str]:
-    if f"{analysis_signal}_{qname}" in plot_ds.data_vars:
-        return f"{analysis_signal}_{qname}", analysis_signal
-    return f"p_{qname}", "P(measure)"
 
 
 def _add_prefactor_top_axis(
@@ -56,18 +53,17 @@ def _plot_rabi_trace_ax(
     trace: np.ndarray,
     prefactors: np.ndarray,
     qubit_name: str,
-    analysis_signal: str,
     fit_result: dict | None = None,
     fitted_curve: np.ndarray | None = None,
     reference_amplitude: float = 1.0,
     success: bool | None = None,
 ) -> None:
-    """Plot analysis trace vs pulse amplitude with prefactor on the top axis."""
+    """Plot state vs pulse amplitude with prefactor on the top axis."""
     pulse_amps = np.asarray(prefactors, dtype=float) * reference_amplitude
     ax.plot(pulse_amps, trace, "b-", lw=1, alpha=0.8)
     ax.scatter(pulse_amps, trace, c="b", s=6, alpha=0.5, zorder=3)
     ax.set_xlabel("Pulse amplitude")
-    ax.set_ylabel(analysis_signal)
+    ax.set_ylabel("state")
     apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Power Rabi")
     ax.set_ylim(-0.05, 1.05)
 
@@ -150,14 +146,9 @@ def plot_rabi_traces(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot power-Rabi traces with fit overlays (one panel per qubit)."""
-    qubit_names = get_parity_item_names(
-        ds_fit,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     if not qubit_names:
         return empty_figure(_empty_message())
 
@@ -168,34 +159,30 @@ def plot_rabi_traces(
 
     amps = np.asarray(ds_fit.amp_prefactor.values, dtype=float)
     for ax, qname in zip(axes, qubit_names):
-        signal_var, y_label = _resolve_signal_var(ds_fit, qname, analysis_signal)
         success = qubit_success(fit_results, qname)
         fr = fit_results.get(qname, {})
-
-        if signal_var not in ds_fit.data_vars:
-            apply_qubit_outcome_style(ax, qname, success, subtitle="Power Rabi")
-            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
-            continue
+        trace = np.asarray(ds_fit.state.sel(qubit=qname).values, dtype=float)
 
         qubit = qubits_by_name.get(qname)
         ref_amp = _reference_amplitude(qubit) if qubit is not None else 1.0
-        trace = np.asarray(ds_fit[signal_var].values, dtype=float)
-        fit_var = f"{signal_var}_fit"
-        fitted_curve = np.asarray(ds_fit[fit_var].values, dtype=float) if fit_var in ds_fit.data_vars else None
+        fitted_curve = None
+        if "state_fit" in ds_fit.data_vars:
+            fitted_curve = np.asarray(ds_fit.state_fit.sel(qubit=qname).values, dtype=float)
+            if not np.any(np.isfinite(fitted_curve)):
+                fitted_curve = None
+
         _plot_rabi_trace_ax(
             ax,
             trace,
             amps,
             qname,
-            y_label,
             fit_result=fr,
             fitted_curve=fitted_curve,
             reference_amplitude=ref_amp,
             success=success,
         )
 
-    parity_measurement = any(v.startswith(f"{analysis_signal}_") or v.startswith("p0_p0_") for v in ds_fit.data_vars)
-    fig.suptitle(f"Power Rabi ({analysis_signal})" if parity_measurement else "Power Rabi (single measurement)")
+    fig.suptitle("Power Rabi (state)")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
@@ -204,14 +191,9 @@ def plot_fft_spectra(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
     """Plot FFT magnitude spectra (one panel per qubit)."""
-    qubit_names = get_parity_item_names(
-        ds_fit,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     if not qubit_names:
         return empty_figure(_empty_message())
 
@@ -221,19 +203,12 @@ def plot_fft_spectra(
 
     amps = np.asarray(ds_fit.amp_prefactor.values, dtype=float)
     for ax, qname in zip(axes, qubit_names):
-        signal_var, _ = _resolve_signal_var(ds_fit, qname, analysis_signal)
         success = qubit_success(fit_results, qname)
         fr = fit_results.get(qname, {})
-
-        if signal_var not in ds_fit.data_vars:
-            apply_qubit_outcome_style(ax, qname, success, subtitle="FFT spectrum")
-            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
-            continue
-
-        trace = np.asarray(ds_fit[signal_var].values, dtype=float)
+        trace = np.asarray(ds_fit.state.sel(qubit=qname).values, dtype=float)
         _plot_fft_ax(ax, qname, trace, amps, fit_result=fr, success=success)
 
-    fig.suptitle(f"Power Rabi FFT ({analysis_signal})")
+    fig.suptitle("Power Rabi FFT (state)")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
@@ -242,11 +217,10 @@ def plot_all(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict | None = None,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Dict[str, Figure]:
     """Return all standard figures for power-Rabi analysis."""
     fit_results = fit_results or {}
     return {
-        "rabi": plot_rabi_traces(ds_fit, qubits, fit_results, analysis_signal),
-        "fft": plot_fft_spectra(ds_fit, qubits, fit_results, analysis_signal),
+        "rabi": plot_rabi_traces(ds_fit, qubits, fit_results),
+        "fft": plot_fft_spectra(ds_fit, qubits, fit_results),
     }

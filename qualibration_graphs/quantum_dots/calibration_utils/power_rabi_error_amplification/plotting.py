@@ -14,7 +14,6 @@ from calibration_utils.common_utils.plot_style import (
     empty_figure,
     qubit_success,
 )
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 
 def _plot_heatmap_ax(
@@ -30,7 +29,7 @@ def _plot_heatmap_ax(
     vmax = float(np.nanmax(signal_2d))
     vcenter = (vmin + vmax) / 2.0
     half = max(vmax - vcenter, vcenter - vmin, 1e-9)
-    ax.pcolormesh(
+    im = ax.pcolormesh(
         amps,
         n_pulses,
         signal_2d,
@@ -39,6 +38,7 @@ def _plot_heatmap_ax(
         vmax=vcenter + half,
         shading="auto",
     )
+    plt.colorbar(im, ax=ax, label="state")
     ax.set_xlabel("Amplitude prefactor")
     ax.set_ylabel("Number of pulses")
     apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Error-amplified Rabi")
@@ -70,8 +70,8 @@ def _plot_resonance_ax(
         ax.text(0.5, 0.5, "No diagnostics", transform=ax.transAxes, ha="center")
         return
 
-    ax.plot(amps, mean_signal, "bo-", ms=3, lw=1, label="Mean signal")
-    if mean_signal_fit is not None:
+    ax.plot(amps, mean_signal, "bo-", ms=3, lw=1, label="Mean state")
+    if mean_signal_fit is not None and np.any(np.isfinite(mean_signal_fit)):
         ax.plot(amps, mean_signal_fit, "r-", lw=1.5, label="Analytic fit")
 
     if fit_result and fit_result.get("success"):
@@ -90,24 +90,28 @@ def _plot_resonance_ax(
         )
 
     ax.set_xlabel("Amplitude prefactor")
-    ax.set_ylabel("Mean signal")
+    ax.set_ylabel("state")
     apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Optimal amplitude")
+    ax.set_ylim(-0.05, 1.05)
     ax.legend(loc="upper right", fontsize=7)
+
+
+def _empty_message() -> str:
+    return (
+        "No qubit data found in ds_fit.\n"
+        "Check that generate_simulated_data / analyse_data ran successfully\n"
+        "and that node.parameters.qubits (or active_qubit_names) is set."
+    )
 
 
 def plot_heatmaps(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
-    qubit_names = get_parity_item_names(
-        ds_fit,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     if not qubit_names:
-        return empty_figure("No qubit data found in ds_fit.")
+        return empty_figure(_empty_message())
 
     n = len(qubit_names)
     fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 4), squeeze=False)
@@ -117,19 +121,12 @@ def plot_heatmaps(
     n_pulses = np.asarray(ds_fit.n_pulses.values, dtype=float)
 
     for ax, qname in zip(axes, qubit_names):
-        signal_var = f"{analysis_signal}_{qname}"
         success = qubit_success(fit_results, qname)
         fr = fit_results.get(qname, {})
-
-        if signal_var not in ds_fit.data_vars:
-            apply_qubit_outcome_style(ax, qname, success, subtitle="Error-amplified Rabi")
-            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
-            continue
-
-        signal_2d = np.asarray(ds_fit[signal_var].values, dtype=float)
+        signal_2d = np.asarray(ds_fit.state.sel(qubit=qname).values, dtype=float)
         _plot_heatmap_ax(ax, signal_2d, amps, n_pulses, qname, fr, success)
 
-    fig.suptitle(f"Error-amplified Power Rabi heatmap ({analysis_signal})")
+    fig.suptitle("Error-amplified Power Rabi heatmap (state)")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
@@ -138,15 +135,10 @@ def plot_resonance_profiles(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Figure:
-    qubit_names = get_parity_item_names(
-        ds_fit,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     if not qubit_names:
-        return empty_figure("No qubit data found in ds_fit.")
+        return empty_figure(_empty_message())
 
     n = len(qubit_names)
     fig, axes = plt.subplots(1, n, figsize=(max(5 * n, 8), 4), squeeze=False)
@@ -155,21 +147,16 @@ def plot_resonance_profiles(
     amps = np.asarray(ds_fit.amp_prefactor.values, dtype=float)
 
     for ax, qname in zip(axes, qubit_names):
-        signal_var = f"{analysis_signal}_{qname}"
         success = qubit_success(fit_results, qname)
         fr = fit_results.get(qname, {})
 
-        if signal_var not in ds_fit.data_vars:
-            apply_qubit_outcome_style(ax, qname, success, subtitle="Optimal amplitude")
-            ax.text(0.5, 0.5, f"No data for {qname}", transform=ax.transAxes, ha="center")
-            continue
+        mean_signal = None
+        mean_signal_fit = None
+        if "state_mean" in ds_fit.data_vars:
+            mean_signal = np.asarray(ds_fit.state_mean.sel(qubit=qname).values, dtype=float)
+        if "state_mean_fit" in ds_fit.data_vars:
+            mean_signal_fit = np.asarray(ds_fit.state_mean_fit.sel(qubit=qname).values, dtype=float)
 
-        mean_var = f"{signal_var}_mean"
-        mean_fit_var = f"{signal_var}_mean_fit"
-        mean_signal = np.asarray(ds_fit[mean_var].values, dtype=float) if mean_var in ds_fit.data_vars else None
-        mean_signal_fit = (
-            np.asarray(ds_fit[mean_fit_var].values, dtype=float) if mean_fit_var in ds_fit.data_vars else None
-        )
         _plot_resonance_ax(
             ax,
             amps,
@@ -180,7 +167,7 @@ def plot_resonance_profiles(
             success=success,
         )
 
-    fig.suptitle(f"Error-amplified Power Rabi resonance ({analysis_signal})")
+    fig.suptitle("Error-amplified Power Rabi resonance (state)")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     return fig
 
@@ -189,10 +176,9 @@ def plot_all(
     ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict | None = None,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> Dict[str, Figure]:
     fit_results = fit_results or {}
     return {
-        "heatmap": plot_heatmaps(ds_fit, qubits, fit_results, analysis_signal),
-        "resonance": plot_resonance_profiles(ds_fit, qubits, fit_results, analysis_signal),
+        "heatmap": plot_heatmaps(ds_fit, qubits, fit_results),
+        "resonance": plot_resonance_profiles(ds_fit, qubits, fit_results),
     }

@@ -4,14 +4,9 @@
 
 
         TIME RABI
-After heralded initialization to the target spin state, this sequence optionally records a pre-measurement
-outcome (when ``parity_measurement`` is True), applies an XY drive pulse whose duration is swept, and
-measures the dot again afterward. Each shot contributes to joint-outcome streams (e.g. ``p0_p0``, ``p1_p0``,
-``p0_p1``, ``p1_p1``) that are averaged on the OPX and fetched as ``ds_raw``.
-
-In ``analyse_data``, those streams are converted to conditional expectations. By default the analysis signal is
-``E_p1_given_p0_0`` (spin-up probability given the dot was empty before the manipulation window). Rabi
-oscillations in that signal versus pulse duration are fitted to extract the π-pulse duration. The node does not form a parity-difference (XOR) scalar from the two measurements.
+After heralded initialization to the target spin state, this sequence applies an XY drive pulse whose duration is
+swept and measures the spin state with thresholded PSB readout. Averaged state probabilities versus pulse duration
+are fitted to extract the π-pulse duration.
 
 Prerequisites:
     - Having calibrated the resonators coupled to the sensor dots.
@@ -19,9 +14,8 @@ Prerequisites:
     - Having a rough qubit XY drive calibration (frequency and amplitude).
 
 Datasets:
-    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
-    - ``ds_fit``: processed sweeps plus analysis outputs (conditional expectations and fitted traces). Used by
-      ``plot_data``.
+    - ``ds_raw``: untouched ``state`` stream fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (fitted traces). Used by ``plot_data``.
     - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
       logging, ``node.outcomes``, and ``update_state``.
 
@@ -31,10 +25,8 @@ Results (``node.results["fit_results"][qubit]``):
     - ``rabi_frequency`` [rad / ns]: fitted Rabi frequency in the time domain.
     - ``decay_rate`` [1 / ns]: fitted decay rate of the Rabi envelope (γ ≈ 1/T₂*).
 
-The default ``analysis_signal`` is ``E_p1_given_p0_0``; set ``E_p1_given_p0_1`` to post-select on a loaded dot.
-
 Figures (``node.results["figures"]``):
-    - ``"rabi"``: conditional expectation vs pulse duration with damped-sinusoid fit overlay.
+    - ``"rabi"``: state vs pulse duration with damped-sinusoid fit overlay.
     - ``"fft"``: FFT magnitude spectrum with peak fit per qubit.
 
 State update:
@@ -45,10 +37,6 @@ State update:
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `analysis_signal` | `E_p1_given_p0_0` | Which conditional expectation to use for fitting.
-E_p1_given_p0_0: P(second=1 | first=0) — post-select on empty dot.
-E_p1_given_p0_1: P(second=1 | first=1) — post-select on loaded dot. |
-| `parity_measurement` | `False` | Whether or not to perform parity measurement. |
 | `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
 or to play the experiment sequentially for each qubit (False). Default is False. |
 | `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated

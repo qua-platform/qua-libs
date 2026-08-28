@@ -5,7 +5,6 @@ from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
 from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
-from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -31,7 +30,6 @@ class Parameters(
     NodeSpecificParameters,
     HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
-    ParityDiffAnalysisParameters,
 ):
     """Parameter set for 09b_power_rabi_error_amplification."""
 

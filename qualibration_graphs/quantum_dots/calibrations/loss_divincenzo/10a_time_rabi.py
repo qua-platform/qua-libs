@@ -12,11 +12,6 @@ from qualang_tools.results import progress_counter
 from qualibrate.core import QualibrationNode
 from quam_config import Quam
 
-from calibration_utils.measurement_utils import (
-    buffer_streams,
-    declare_streams,
-    save_measurement,
-)
 from calibration_utils.time_rabi import (
     Parameters,
     fit_raw_data,
@@ -32,14 +27,9 @@ from qualibration_libs.runtime import simulate_and_plot
 # %% {Node initialisation}
 description = """
         TIME RABI
-After heralded initialization to the target spin state, this sequence optionally records a pre-measurement
-outcome (when ``parity_measurement`` is True), applies an XY drive pulse whose duration is swept, and
-measures the dot again afterward. Each shot contributes to joint-outcome streams (e.g. ``p0_p0``, ``p1_p0``,
-``p0_p1``, ``p1_p1``) that are averaged on the OPX and fetched as ``ds_raw``.
-
-In ``analyse_data``, those streams are converted to conditional expectations. By default the analysis signal is
-``E_p1_given_p0_0`` (spin-up probability given the dot was empty before the manipulation window). Rabi
-oscillations in that signal versus pulse duration are fitted to extract the π-pulse duration. The node does not form a parity-difference (XOR) scalar from the two measurements.
+After initialization to the target spin state, this sequence applies an XY drive pulse whose duration is
+swept and measures the spin state with thresholded PSB readout. Averaged state probabilities versus pulse duration
+are fitted to extract the π-pulse duration.
 
 Prerequisites:
     - Having calibrated the resonators coupled to the sensor dots.
@@ -47,9 +37,8 @@ Prerequisites:
     - Having a rough qubit XY drive calibration (frequency and amplitude).
 
 Datasets:
-    - ``ds_raw``: untouched joint-outcome streams fetched from the OPX (never modified after acquisition).
-    - ``ds_fit``: processed sweeps plus analysis outputs (conditional expectations and fitted traces). Used by
-      ``plot_data``.
+    - ``ds_raw``: untouched ``state`` stream fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (fitted traces). Used by ``plot_data``.
     - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with ``asdict``). Used by
       logging, ``node.outcomes``, and ``update_state``.
 
@@ -59,10 +48,8 @@ Results (``node.results["fit_results"][qubit]``):
     - ``rabi_frequency`` [rad / ns]: fitted Rabi frequency in the time domain.
     - ``decay_rate`` [1 / ns]: fitted decay rate of the Rabi envelope (γ ≈ 1/T₂*).
 
-The default ``analysis_signal`` is ``E_p1_given_p0_0``; set ``E_p1_given_p0_1`` to post-select on a loaded dot.
-
 Figures (``node.results["figures"]``):
-    - ``"rabi"``: conditional expectation vs pulse duration with damped-sinusoid fit overlay.
+    - ``"rabi"``: state vs pulse duration with damped-sinusoid fit overlay.
     - ``"fft"``: FFT magnitude spectrum with peak fit per qubit.
 
 State update:
@@ -100,6 +87,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── Experiment parameters (Python side) ──────────────────────────────
 
     node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
 
     n_avg = node.parameters.num_shots  # repetitions averaged at each duration point
     operation = node.parameters.operation  # qubit gate whose duration is swept (x180 or x90)
@@ -111,7 +99,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.time_step_in_ns,
     )
 
-    # Metadata for data fetching: labels joint-outcome streams when results come back from the OPX
+    # Metadata for data fetching: labels the saved state arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "pulse_duration": xr.DataArray(pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
@@ -121,18 +109,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
 
         # Real-time variables:
-        # t  : current manipulation pulse duration [ns]
-        # n  : shot counter
-        # p1 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
-        # p0 : pre-manipulation measurement outcome (only used when parity_measurement=True)
+        # t         : current manipulation pulse duration [ns]
+        # n         : shot counter
+        # state[i]  : thresholded post-manipulation measurement (0/1) for qubit i
         t = declare(int)
         n = declare(int)
-
-        # p0 is None when parity_measurement is False
-        p1, p0, parity_streams = declare_streams(node, qubits)
+        state = [declare(int) for _ in range(num_qubits)]
+        state_st = [declare_stream() for _ in range(num_qubits)]
         n_st = declare_output_stream()
 
-        for qubit in qubits:
+        for i, qubit in enumerate(qubits):
 
             # ── OUTER LOOP: average over shots ───────────────────────────
             with for_(n, 0, n < n_avg, n + 1):
@@ -140,10 +126,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                 # ── INNER LOOP: sweep pulse duration in  clock cycles ─────────────────────
                 with for_(*from_array(t, pulse_durations // 4)):
-
-                    if node.parameters.parity_measurement:
-                        qubit.empty()
-                        a0 = qubit.measure()
 
                     # Perform the initialize macro
                     qubit.initialize()
@@ -153,14 +135,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.macros[operation].apply(duration=t)
                     align()
 
-                    # Post-measurement: did the manipulation flip the spin?
-                    a1 = qubit.measure()
-                    assign(p1, Cast.to_int(a1))
-                    if node.parameters.parity_measurement:
-                        assign(p0, Cast.to_int(a0))
-
-                    # Route outcome to joint-outcome streams (p0_p0, p1_p0, … or p)
-                    save_measurement(node, qubit.name, p0, p1, parity_streams)
+                    # Thresholded PSB readout → averaged state probability
+                    assign(state[i], Cast.to_int(qubit.measure()))
+                    save(state[i], state_st[i])
 
                     # Return gate voltages to zero before the next shot to avoid accumulation of fixed point errors
                     align()
@@ -169,12 +146,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
-            for qubit in qubits:
+            for i in range(num_qubits):
                 # Each save() is one duration point.
-                # .buffer(n_durations) : group points along the duration axis
-                # .average()           : average over all shots (n_avg repetitions)
-                # Result: 1D joint-outcome counts vs pulse_duration per qubit
-                buffer_streams(node, qubit.name, parity_streams, len(pulse_durations))
+                # .buffer(len(pulse_durations)) : group points along the duration axis
+                # .average()                    : average over all shots (n_avg repetitions)
+                # Result: 1D state vs pulse_duration per qubit
+                state_st[i].buffer(len(pulse_durations)).average().save(f"state{i + 1}")
 
 
 # %% {Simulate}
@@ -251,7 +228,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Process joint-outcome streams, fit time-Rabi data, and store results."""
+    """Process state streams, fit time-Rabi data, and store results."""
     ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = fit_results
@@ -267,7 +244,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_fit"],
         node.namespace["qubits"],
         node.results.get("fit_results", {}),
-        analysis_signal=node.parameters.analysis_signal,
     )
     if not node.modes.external:
         plt.show()

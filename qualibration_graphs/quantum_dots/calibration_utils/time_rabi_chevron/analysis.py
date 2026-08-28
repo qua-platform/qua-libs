@@ -1,8 +1,8 @@
 """Chevron analysis via per-slice FFT peak detection.
 
 Extracts f_res, t_π (= π/Ω), and γ (decay rate ≈ 1/T₂*) from per-frequency-
-slice FFTs without assuming a specific pulse envelope.  Works for both square
-and Gaussian pulses.
+slice FFTs of a thresholded ``state`` chevron without assuming a specific
+pulse envelope.  Works for both square and Gaussian pulses.
 
 Strategy
 --------
@@ -27,11 +27,6 @@ import xarray as xr
 from scipy.optimize import curve_fit
 
 from qualibrate.core import QualibrationNode
-
-from calibration_utils.measurement_utils.measurement_streams import (
-    get_parity_item_names,
-    process_streams,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -101,7 +96,7 @@ def _fit_peak_to_fft(
 
 
 def compute_fft_diagnostics(
-    pdiff: np.ndarray,
+    state_2d: np.ndarray,
     freqs_hz: np.ndarray,
     durations_ns: np.ndarray,
 ) -> Dict[str, Any]:
@@ -110,7 +105,7 @@ def compute_fft_diagnostics(
     Returns a dict with all diagnostic arrays needed by the plotting and
     analysis modules.
     """
-    n_freqs, n_dur = pdiff.shape
+    n_freqs, n_dur = state_2d.shape
     dt_ns = float(durations_ns[1] - durations_ns[0]) if len(durations_ns) > 1 else 1.0
     if dt_ns <= 0:
         dt_ns = 1.0
@@ -125,10 +120,10 @@ def compute_fft_diagnostics(
     peak_curve_per_slice: List[np.ndarray | None] = []
 
     for i in range(n_freqs):
-        trace = np.asarray(pdiff[i, :], dtype=float) - np.mean(pdiff[i, :])
+        trace = np.asarray(state_2d[i, :], dtype=float) - np.mean(state_2d[i, :])
         magnitude_per_slice.append(np.abs(np.fft.rfft(trace)))
 
-        if np.ptp(pdiff[i, :]) < 0.05:
+        if np.ptp(state_2d[i, :]) < 0.05:
             peak_curve_per_slice.append(None)
             continue
 
@@ -261,7 +256,7 @@ def _extract_lorentzian_hwhm(
 
 
 def _estimate_f_res_and_omega_from_chevron(
-    pdiff: np.ndarray,
+    state_2d: np.ndarray,
     freqs_hz: np.ndarray,
     durations_ns: np.ndarray,
     nominal_freq_hz: float,
@@ -283,11 +278,11 @@ def _estimate_f_res_and_omega_from_chevron(
     omega_est : float  (rad / ns)
     gamma_est : float  (1 / ns, decay rate)
     """
-    n_freqs, n_dur = pdiff.shape
+    n_freqs, n_dur = state_2d.shape
     if n_freqs < 3 or n_dur < 4:
         return nominal_freq_hz, np.pi / 200.0, 0.0
 
-    diag = compute_fft_diagnostics(pdiff, freqs_hz, durations_ns)
+    diag = compute_fft_diagnostics(state_2d, freqs_hz, durations_ns)
     f_res_est = diag["f_res_est"]
     omega_est = diag["omega_est"]
     valid = np.isfinite(diag["t_pi_per_freq"]) & (diag["t_pi_per_freq"] > 4)
@@ -346,20 +341,19 @@ def _get_drive_frequencies_hz(
 
 
 def _fft_analyse_single_qubit(
-    pdiff: np.ndarray,
+    state_2d: np.ndarray,
     freqs_hz: np.ndarray,
     durations_ns: np.ndarray,
     nominal_freq_hz: float,
-) -> Tuple[Dict[str, float], np.ndarray]:
-    """Analyse one qubit's chevron via per-slice FFT.
-
-    Returns (result_dict, fit_surface_2d) where fit_surface_2d is NaN
-    (no 2D model reconstruction).
-    """
+) -> Dict[str, float]:
+    """Analyse one qubit's chevron via per-slice FFT."""
     f_min, f_max = float(freqs_hz.min()), float(freqs_hz.max())
+    dur_min, dur_max = float(durations_ns.min()), float(durations_ns.max())
 
     try:
-        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(pdiff, freqs_hz, durations_ns, nominal_freq_hz)
+        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(
+            state_2d, freqs_hz, durations_ns, nominal_freq_hz
+        )
     except Exception as exc:
         _logger.warning("FFT analysis failed: %s", exc)
         return {
@@ -368,10 +362,15 @@ def _fft_analyse_single_qubit(
             "rabi_frequency": np.nan,
             "decay_rate": np.nan,
             "success": False,
-        }, np.full_like(pdiff, np.nan)
+        }
 
     t_pi = np.pi / omega if omega > 1e-12 else np.nan
-    success = bool(f_min <= f_res <= f_max and np.isfinite(t_pi) and np.isfinite(f_res))
+    success = bool(
+        f_min <= f_res <= f_max
+        and np.isfinite(t_pi)
+        and dur_min <= t_pi <= dur_max
+        and np.isfinite(f_res)
+    )
 
     return {
         "optimal_frequency": float(f_res),
@@ -379,63 +378,39 @@ def _fft_analyse_single_qubit(
         "rabi_frequency": float(omega),
         "decay_rate": float(gamma),
         "success": success,
-    }, np.full_like(pdiff, np.nan)
+    }
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
-    qubits = node.namespace["qubits"]
-    return process_streams(
-        ds,
-        [q.name for q in qubits],
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("detuning", "pulse_duration"),
-    )
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no stream post-processing)."""
+    return ds
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
-    """Fit f_res and t_π per qubit. Returns (ds_fit, fit_results)."""
+    """Fit f_res and t_π per qubit from chevron ``state`` data. Returns (ds_fit, fit_results)."""
     qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds.qubit.values]
     qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
     if not qubits_by_name and qubit_names:
         qubits_by_name = dict(zip(qubit_names, list(qubits)[: len(qubit_names)]))
     durations_ns = np.asarray(ds.pulse_duration.values, dtype=float)
 
-    fit_results = {}
-    fit_arrays = {}
+    fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
         qubit = qubits_by_name.get(qname)
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars:
-            nominal = (
-                float(np.asarray(ds.detuning).mean())
-                if qubit is None
-                else getattr(qubit.xy, "intermediate_frequency", 0.0)
-            )
-            fp = FitParameters(
-                optimal_frequency=nominal,
-                optimal_duration=np.nan,
-                rabi_frequency=np.nan,
-                decay_rate=np.nan,
-                success=False,
-            )
-            fit_results[qname] = asdict(fp)
-            continue
+        state_2d = (
+            ds.state.sel(qubit=qname, drop=True)
+            .transpose("detuning", "pulse_duration")
+            .values.astype(float)
+        )
 
-        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
         freqs_hz = _get_drive_frequencies_hz(ds, qubit) if qubit else np.asarray(ds.detuning.values, dtype=float)
         nominal_freq = (
             getattr(qubit.xy, "intermediate_frequency", float(freqs_hz.mean())) if qubit else float(freqs_hz.mean())
         )
 
-        result, fit_surface = _fft_analyse_single_qubit(signal_2d, freqs_hz, durations_ns, nominal_freq)
+        result = _fft_analyse_single_qubit(state_2d, freqs_hz, durations_ns, nominal_freq)
 
         fp = FitParameters(
             optimal_frequency=result["optimal_frequency"],
@@ -445,13 +420,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             success=result["success"],
         )
         fit_results[qname] = asdict(fp)
-        fit_arrays[f"{analysis_signal}_{qname}_fit"] = (
-            ["detuning", "pulse_duration"],
-            fit_surface,
-        )
 
-    ds_fit = ds.assign(**fit_arrays)
-    return ds_fit, fit_results
+    return ds.copy(), fit_results
 
 
 def log_fitted_results(
@@ -462,16 +432,16 @@ def log_fitted_results(
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for qname, r in fit_results.items():
-        f_res = r.get("optimal_frequency", 0) * 1e-9
-        t_pi = r.get("optimal_duration", 0)
-        gamma = r.get("decay_rate", 0)
-        t2_star = 1.0 / gamma if gamma > 0 else float("inf")
-        success = r.get("success", False)
-        msg = (
-            f"Results for {qname}: "
-            f"f_res={f_res:.4f} GHz, "
-            f"t_π={t_pi:.0f} ns, "
-            f"γ={gamma:.5f} 1/ns (T₂*={t2_star:.0f} ns), "
-            f"success={success}"
-        )
+        if r.get("success", False):
+            gamma = r.get("decay_rate", 0)
+            t2_star = 1.0 / gamma if gamma > 0 else float("inf")
+            msg = (
+                f"[{qname}] SUCCESS | "
+                f"f_res = {r.get('optimal_frequency', 0) * 1e-9:.4f} GHz | "
+                f"t_π = {r.get('optimal_duration', 0):.0f} ns | "
+                f"Ω = {r.get('rabi_frequency', 0):.5f} rad/ns | "
+                f"γ = {gamma:.5f} 1/ns (T₂*={t2_star:.0f} ns)"
+            )
+        else:
+            msg = f"[{qname}] FAIL | fit did not pass sanity checks"
         log_callable(msg)

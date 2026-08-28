@@ -11,10 +11,6 @@ import xarray as xr
 from scipy.optimize import curve_fit, differential_evolution
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils.measurement_streams import (
-    get_parity_item_names,
-    process_streams,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -132,6 +128,7 @@ def _analyse_single_qubit(
     sigma_g = 0.0
     n_eff = np.nan
     scale = np.nan
+    de_converged = False
 
     try:
         ptp = float(np.ptp(mean_signal))
@@ -181,6 +178,7 @@ def _analyse_single_qubit(
         resonance_idx = int(np.argmin(np.abs(amps - opt_amp)))
         n_eff = _effective_n_eff(decay_rate, sigma_g)
         mean_signal_fit = model(amps, *popt)
+        de_converged = True
         _logger.debug(
             "Error-amp Rabi mean-signal fit (DE): a_π=%.4f, "
             "scale=%.4f c/u.a./pulse, gamma=%.5f, sigma_g=%.5f, N_eff=%.1f",
@@ -207,8 +205,9 @@ def _analyse_single_qubit(
         n_eff,
     )
 
+    amp_min, amp_max = float(amps.min()), float(amps.max())
     rabi_frequency = 2.0 * np.pi * scale if np.isfinite(scale) else np.nan
-    success = np.isfinite(opt_amp) and opt_amp > 0
+    success = bool(de_converged and np.isfinite(opt_amp) and amp_min <= opt_amp <= amp_max)
 
     return {
         "opt_amp": opt_amp,
@@ -226,84 +225,27 @@ def _analyse_single_qubit(
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Build conditional-expectation variables from joint-outcome streams in ``ds_raw``."""
-    qubits = node.namespace["qubits"]
-    return process_streams(
-        ds,
-        [q.name for q in qubits],
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("n_pulses", "amp_prefactor"),
-    )
-
-
-def _as_n_pulses_amp_signal(da: xr.DataArray, qname: str) -> np.ndarray:
-    if "qubit" in da.dims:
-        qubit_coord = da.coords.get("qubit")
-        if qubit_coord is not None and qname in set(qubit_coord.values.tolist()):
-            da = da.sel(qubit=qname, drop=True)
-        elif da.sizes["qubit"] == 1:
-            da = da.isel(qubit=0, drop=True)
-        else:
-            raise ValueError(
-                f"{da.name!r} for {qname!r} still has a non-singleton qubit "
-                f"dimension. Run process_raw_dataset before fit_raw_data."
-            )
-
-    expected_dims = ("n_pulses", "amp_prefactor")
-    if all(dim in da.dims for dim in expected_dims):
-        for dim in list(da.dims):
-            if dim in expected_dims:
-                continue
-            if da.sizes[dim] != 1:
-                raise ValueError(
-                    f"{da.name!r} for {qname!r} has unexpected non-singleton "
-                    f"dimension {dim!r} with size {da.sizes[dim]}."
-                )
-            da = da.isel({dim: 0}, drop=True)
-        return da.transpose(*expected_dims).values.astype(float)
-
-    data = np.asarray(da.values, dtype=float)
-    if data.ndim != 2:
-        raise ValueError(f"{da.name!r} for {qname!r} must be 2-D over {expected_dims}; " f"shape is {data.shape}.")
-    return data
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no stream post-processing)."""
+    return ds
 
 
 def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
-    """Fit optimal amplitude per qubit from error-amplified power-Rabi data."""
-    qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
+    """Fit optimal amplitude per qubit from error-amplified power-Rabi ``state`` data."""
+    qubit_names = [str(v) for v in ds.qubit.values]
     amps = np.asarray(ds.amp_prefactor.values, dtype=float)
     n_pulses_array = np.asarray(ds.n_pulses.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
-    fit_arrays: Dict[str, tuple] = {}
+    mean_curves: Dict[str, np.ndarray] = {}
+    mean_fit_curves: Dict[str, np.ndarray] = {}
 
     for qname in qubit_names:
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars and f"p_{qname}" in ds.data_vars:
-            signal_var = f"p_{qname}"
-        if signal_var not in ds.data_vars:
-            fp = FitParameters(
-                opt_amp=np.nan,
-                rabi_frequency=np.nan,
-                decay_rate=np.nan,
-                gauss_decay_rate=0.0,
-                n_eff=np.nan,
-                success=False,
-            )
-            fit_results[qname] = asdict(fp)
-            continue
-
-        signal_2d = _as_n_pulses_amp_signal(ds[signal_var], qname)
+        signal_2d = (
+            ds.state.sel(qubit=qname, drop=True).transpose("n_pulses", "amp_prefactor").values.astype(float)
+        )
         result = _analyse_single_qubit(signal_2d, amps, n_pulses_array)
 
         fp = FitParameters(
@@ -319,18 +261,19 @@ def fit_raw_data(
         diag = result.get("_diag", {})
         mean_signal = diag.get("mean_signal")
         mean_signal_fit = diag.get("mean_signal_fit")
-        if mean_signal is not None:
-            fit_arrays[f"{signal_var}_mean"] = (
-                ["amp_prefactor"],
-                np.asarray(mean_signal, dtype=float),
-            )
-        if mean_signal_fit is not None:
-            fit_arrays[f"{signal_var}_mean_fit"] = (
-                ["amp_prefactor"],
-                np.asarray(mean_signal_fit, dtype=float),
-            )
+        mean_curves[qname] = (
+            np.asarray(mean_signal, dtype=float) if mean_signal is not None else np.full_like(amps, np.nan)
+        )
+        mean_fit_curves[qname] = (
+            np.asarray(mean_signal_fit, dtype=float) if mean_signal_fit is not None else np.full_like(amps, np.nan)
+        )
 
-    ds_fit = ds.assign(**fit_arrays) if fit_arrays else ds.copy()
+    mean_stack = np.stack([mean_curves[q] for q in qubit_names], axis=0)
+    mean_fit_stack = np.stack([mean_fit_curves[q] for q in qubit_names], axis=0)
+    ds_fit = ds.assign(
+        state_mean=(["qubit", "amp_prefactor"], mean_stack),
+        state_mean_fit=(["qubit", "amp_prefactor"], mean_fit_stack),
+    )
     return ds_fit, fit_results
 
 
@@ -342,19 +285,15 @@ def log_fitted_results(
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for qname, r in fit_results.items():
-        a_pi = r.get("opt_amp", 0)
-        omega = r.get("rabi_frequency", 0)
-        gamma = r.get("decay_rate", 0)
-        sigma_g = r.get("gauss_decay_rate", 0)
-        n_eff = r.get("n_eff", 0)
-        success = r.get("success", False)
-        msg = (
-            f"Results for {qname}: "
-            f"a_π={a_pi:.4f}, "
-            f"Ω={omega:.3f} rad/u.a./pulse, "
-            f"γ={gamma:.5f}/pulse, "
-            f"σ_g={sigma_g:.5f}/pulse, "
-            f"N_eff={n_eff:.0f}, "
-            f"success={success}"
-        )
+        if r.get("success", False):
+            msg = (
+                f"[{qname}] SUCCESS | "
+                f"a_π = {r.get('opt_amp', 0):.4f} | "
+                f"Ω = {r.get('rabi_frequency', 0):.3f} rad/u.a./pulse | "
+                f"γ = {r.get('decay_rate', 0):.5f}/pulse | "
+                f"σ_g = {r.get('gauss_decay_rate', 0):.5f}/pulse | "
+                f"N_eff = {r.get('n_eff', 0):.0f}"
+            )
+        else:
+            msg = f"[{qname}] FAIL | fit did not pass sanity checks"
         log_callable(msg)

@@ -32,9 +32,9 @@ def test_10a_time_rabi_analysis_and_plot_actions(analysis_runner):
     )
 
     ds_raw = node.results["ds_raw"]
-    assert f"p_{QUBIT_NAME}" in ds_raw.data_vars
-    assert "pulse_duration" in ds_raw.dims
-    assert not any(name.startswith("E_") for name in ds_raw.data_vars)
+    assert "state" in ds_raw.data_vars
+    assert set(ds_raw["state"].dims) >= {"qubit", "pulse_duration"}
+    assert QUBIT_NAME in set(map(str, ds_raw.qubit.values.tolist()))
 
     fit = node.results["fit_results"][QUBIT_NAME]
     assert fit["success"], f"Time-Rabi fit should succeed, got: {fit}"

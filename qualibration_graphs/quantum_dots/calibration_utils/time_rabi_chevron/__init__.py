@@ -1,9 +1,3 @@
-"""Time Rabi chevron calibration.
-
-Fits 2D chevron (conditional expectation vs duration × frequency) to extract resonant frequency
-and π-time via generalized Rabi formula.
-"""
-
 from calibration_utils.time_rabi_chevron.parameters import Parameters
 from calibration_utils.time_rabi_chevron.analysis import (
     process_raw_dataset,
