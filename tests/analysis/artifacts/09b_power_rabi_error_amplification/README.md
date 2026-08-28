@@ -71,12 +71,14 @@ quadratures 'I' and 'Q'. Default is False. |
 | Qubit | f_res (GHz) | t_pi (ns) | Omega_R (rad/ns) | gamma (1/ns) | T2* (ns) | success |
 |-------|-------------|----------|--------------|----------|----------|--------|
 | q1 | 0.0000 | nan | 16.101832 | 0.00000 | 1144152697296 | True |
+| q2 | 0.0000 | nan | 5.899262 | 0.00000 | 1133411001578 | True |
 
 ## Updated State
 
 | Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
 |-------|-----------------------------|-----------------------------------------|
 | q1 | 0 | nan |
+| q2 | 0 | nan |
 
 ## Analysis Output
 

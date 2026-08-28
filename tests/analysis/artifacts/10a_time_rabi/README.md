@@ -64,6 +64,7 @@ quadratures 'I' and 'Q'. Default is False. |
 | Qubit | f_res (GHz) | t_pi (ns) | Omega_R (rad/ns) | gamma (1/ns) | T2* (ns) | success |
 |-------|-------------|----------|--------------|----------|----------|--------|
 | q1 | 0.0000 | 179.9 | 0.017463 | 0.00025 | 4011 | True |
+| q2 | 0.0000 | nan | nan | nan | inf | False |
 
 ## Updated State
 

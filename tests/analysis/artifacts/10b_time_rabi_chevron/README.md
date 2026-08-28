@@ -4,7 +4,7 @@
 
 
         TIME RABI CHEVRON
-After heralded initialization to the target spin state, this sequence applies an XY drive pulse whose duration and
+After initialization to the target spin state, this sequence applies an XY drive pulse whose duration and
 frequency detuning are swept and measures the spin state with thresholded PSB readout. Averaged state probabilities
 versus pulse duration and detuning form a 2D chevron that reveals the resonant drive frequency and π-pulse duration.
 
@@ -46,7 +46,7 @@ or to play the experiment sequentially for each qubit (False). Default is False.
 quadratures 'I' and 'Q'. Default is False. |
 | `reset_type` | `thermal` | The qubit reset method to use. Must be implemented as a method of Quam.qubit. Can be "thermal", "active", or
 "active_gef". Default is "thermal". |
-| `qubits` | `['q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
+| `qubits` | `['q1', 'q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
 | `target_state` | `None` | The state you want to initialize into for heralded initialization. |
 | `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
 | `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |
@@ -69,12 +69,14 @@ quadratures 'I' and 'Q'. Default is False. |
 | Qubit | f_res (GHz) | t_pi (ns) | Omega_R (rad/ns) | gamma (1/ns) | T2* (ns) | success |
 |-------|-------------|----------|--------------|----------|----------|--------|
 | q1 | -0.0001 | 204.6 | 0.015355 | 0.00804 | 124 | True |
+| q2 | -0.0001 | 168.1 | 0.018691 | 0.00000 | inf | True |
 
 ## Updated State
 
 | Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
 |-------|-----------------------------|-----------------------------------------|
 | q1 | -143171 | 204.6 |
+| q2 | -92307 | 168.1 |
 
 ## Analysis Output
 
