@@ -8,6 +8,7 @@ from quam.core import QuamRoot
 from qualibrate.core.parameters import RunnableParameters
 from qua_dashboards.video_mode import VideoModeComponent, OPXDataAcquirer, scan_modes
 from qua_dashboards.voltage_control import VoltageControlComponent
+from qua_dashboards.video_mode.tab_controllers import VoltageControlTabController
 from qua_dashboards.core import build_dashboard
 from qua_dashboards.virtual_gates import VirtualLayerEditor, ui_update
 from qcodes.parameters import DelegateParameter
@@ -25,12 +26,11 @@ class VideoModeCommonParameters(RunnableParameters):
     run_in_video_mode: bool = True
     """Optionally open Video Mode with the qualibration node."""
     virtual_gate_set_id: Optional[str] = None
-    """Name of the associated VirtualGateSet in your QPU. """
+    """Name of the associated VirtualGateSet in your QPU."""
     video_mode_port: int = 8002
-    """Localhost port to open VideoMode with"""
-    dc_control: bool = False
-    """If an associated external DC offset exists."""
-    result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
+    """Localhost port to open VideoMode with."""
+    video_mode_result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
+    """Result type to display in Video Mode."""
 
 
 def stop_dashboard(port: int = 8050):
@@ -97,25 +97,21 @@ def launch_video_mode(
             "Spiral_Scan": scan_modes.SpiralScan(),
         }
 
-    qmm = machine.connect()
-    try:
-        machine.create_virtual_dc_set(virtual_gate_id)
-    except:
-        print("Was unable to create virtual DC set. Moving on without DC control. ")
-    dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
+    # Optionally skip the dacs, if DC control is False.
+    qmm = machine.connect(skip_dacs=not dc_control)
 
     voltage_control_tab, voltage_control_component = None, None
-    if dc_set is not None:
-        voltage_control_component = VoltageControlComponent(
-            component_id="Voltage_Control",
-            dc_set=dc_set,
-            update_interval_ms=1000,
-        )
-        from qua_dashboards.video_mode.tab_controllers import (
-            VoltageControlTabController,
-        )
-
-        voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
+    # Get the DC Set
+    dc_set = machine.virtual_dc_sets.get(virtual_gate_id, None)
+    if dc_control:
+        # Only build the voltage control component if the DC Set is not None AND the user wants dc_control
+        if dc_set is not None:
+            voltage_control_component = VoltageControlComponent(
+                component_id="Voltage_Control",
+                dc_set=dc_set,
+                update_interval_ms=1000,
+            )
+            voltage_control_tab = VoltageControlTabController(voltage_control_component=voltage_control_component)
 
     virtual_gate_set = machine.virtual_gate_sets[virtual_gate_id]
     data_acquirer = OPXDataAcquirer(
