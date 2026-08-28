@@ -49,7 +49,7 @@ or to play the experiment sequentially for each qubit (False). Default is False.
 quadratures 'I' and 'Q'. Default is False. |
 | `reset_type` | `thermal` | The qubit reset method to use. Must be implemented as a method of Quam.qubit. Can be "thermal", "active", or
 "active_gef". Default is "thermal". |
-| `qubits` | `['q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
+| `qubits` | `['q1', 'q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
 | `target_state` | `None` | The state you want to initialize into for heralded initialization. |
 | `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
 | `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |

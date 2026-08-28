@@ -4,7 +4,7 @@
 
 
         POWER RABI
-After heralded initialization to the target spin state, this sequence applies an x180 gate whose amplitude
+After initialization to the target spin state, this sequence applies an x180 gate whose amplitude
 prefactor is swept and measures the spin state with thresholded PSB readout. Averaged state probabilities versus
 amplitude prefactor are fitted to extract the π-pulse amplitude.
 
@@ -45,7 +45,7 @@ or to play the experiment sequentially for each qubit (False). Default is False.
 quadratures 'I' and 'Q'. Default is False. |
 | `reset_type` | `thermal` | The qubit reset method to use. Must be implemented as a method of Quam.qubit. Can be "thermal", "active", or
 "active_gef". Default is "thermal". |
-| `qubits` | `['q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
+| `qubits` | `['q1', 'q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
 | `target_state` | `None` | The state you want to initialize into for heralded initialization. |
 | `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
 | `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |
@@ -65,12 +65,14 @@ quadratures 'I' and 'Q'. Default is False. |
 | Qubit | f_res (GHz) | t_pi (ns) | Omega_R (rad/ns) | gamma (1/ns) | T2* (ns) | success |
 |-------|-------------|----------|--------------|----------|----------|--------|
 | q1 | 0.0000 | nan | 20.095538 | 0.04136 | 24 | True |
+| q2 | 0.0000 | nan | 21.360208 | 0.06084 | 16 | True |
 
 ## Updated State
 
 | Qubit | intermediate_frequency (Hz) | xy.operations.x180.length (ns) |
 |-------|-----------------------------|-----------------------------------------|
 | q1 | 0 | nan |
+| q2 | 0 | nan |
 
 ## Analysis Output
 
