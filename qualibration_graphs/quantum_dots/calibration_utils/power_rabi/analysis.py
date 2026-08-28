@@ -253,11 +253,7 @@ def _analyse_single_qubit(
         )
 
     amp_min, amp_max = float(amps.min()), float(amps.max())
-    success = bool(
-        sinusoid_result is not None
-        and np.isfinite(a_pi)
-        and amp_min <= a_pi <= amp_max
-    )
+    success = bool(sinusoid_result is not None and np.isfinite(a_pi) and amp_min <= a_pi <= amp_max)
 
     return {
         "opt_amp": float(a_pi),

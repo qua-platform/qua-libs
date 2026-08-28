@@ -243,9 +243,7 @@ def fit_raw_data(
     mean_fit_curves: Dict[str, np.ndarray] = {}
 
     for qname in qubit_names:
-        signal_2d = (
-            ds.state.sel(qubit=qname, drop=True).transpose("n_pulses", "amp_prefactor").values.astype(float)
-        )
+        signal_2d = ds.state.sel(qubit=qname, drop=True).transpose("n_pulses", "amp_prefactor").values.astype(float)
         result = _analyse_single_qubit(signal_2d, amps, n_pulses_array)
 
         fp = FitParameters(

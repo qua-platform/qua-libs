@@ -351,9 +351,7 @@ def _fft_analyse_single_qubit(
     dur_min, dur_max = float(durations_ns.min()), float(durations_ns.max())
 
     try:
-        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(
-            state_2d, freqs_hz, durations_ns, nominal_freq_hz
-        )
+        f_res, omega, gamma = _estimate_f_res_and_omega_from_chevron(state_2d, freqs_hz, durations_ns, nominal_freq_hz)
     except Exception as exc:
         _logger.warning("FFT analysis failed: %s", exc)
         return {
@@ -365,12 +363,7 @@ def _fft_analyse_single_qubit(
         }
 
     t_pi = np.pi / omega if omega > 1e-12 else np.nan
-    success = bool(
-        f_min <= f_res <= f_max
-        and np.isfinite(t_pi)
-        and dur_min <= t_pi <= dur_max
-        and np.isfinite(f_res)
-    )
+    success = bool(f_min <= f_res <= f_max and np.isfinite(t_pi) and dur_min <= t_pi <= dur_max and np.isfinite(f_res))
 
     return {
         "optimal_frequency": float(f_res),
@@ -399,11 +392,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
     for qname in qubit_names:
         qubit = qubits_by_name.get(qname)
-        state_2d = (
-            ds.state.sel(qubit=qname, drop=True)
-            .transpose("detuning", "pulse_duration")
-            .values.astype(float)
-        )
+        state_2d = ds.state.sel(qubit=qname, drop=True).transpose("detuning", "pulse_duration").values.astype(float)
 
         freqs_hz = _get_drive_frequencies_hz(ds, qubit) if qubit else np.asarray(ds.detuning.values, dtype=float)
         nominal_freq = (

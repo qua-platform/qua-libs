@@ -269,11 +269,7 @@ def _fft_analyse_single_qubit(
         )
 
     dur_min, dur_max = float(durations_ns.min()), float(durations_ns.max())
-    success = bool(
-        sinusoid_result is not None
-        and np.isfinite(t_pi)
-        and dur_min <= t_pi <= dur_max
-    )
+    success = bool(sinusoid_result is not None and np.isfinite(t_pi) and dur_min <= t_pi <= dur_max)
 
     return {
         "optimal_duration": float(t_pi),
