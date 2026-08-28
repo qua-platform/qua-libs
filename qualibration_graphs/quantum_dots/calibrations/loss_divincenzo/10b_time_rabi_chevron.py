@@ -1,5 +1,4 @@
 # %% {Imports}
-import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -30,8 +29,6 @@ from calibration_utils.time_rabi_chevron import (
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-
-logger = logging.getLogger(__name__)
 
 # %% {Node initialisation}
 description = """
@@ -128,7 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Metadata for data fetching: labels joint-outcome streams when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
-        "detuning": xr.DataArray(dfs, attrs={"long_name": "qubit frequency", "units": "Hz"}),
+        "detuning": xr.DataArray(dfs, attrs={"long_name": "drive frequency detuning", "units": "Hz"}),
         "pulse_duration": xr.DataArray(pulse_durations, attrs={"long_name": "qubit pulse duration", "units": "ns"}),
     }
 
@@ -311,15 +308,11 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]
-            try:
-                qubit.macros[node.parameters.operation].update(
-                    duration=fit_result["optimal_duration"],
-                )
-                qubit.larmor_frequency += fit_result["optimal_frequency"] - qubit.xy.intermediate_frequency
-
-            except ValueError as exc:
-                logger.warning("%s: skipping state update — %s", qubit.name, exc)
-                node.outcomes[qubit.name] = "failed"
+            qubit.macros[node.parameters.operation].update(
+                duration=fit_result["optimal_duration"],
+            )
+            # Shift Larmor by the offset between fitted resonance and the current XY IF.
+            qubit.larmor_frequency += fit_result["optimal_frequency"] - qubit.xy.intermediate_frequency
 
 
 # %% {Save_results}
