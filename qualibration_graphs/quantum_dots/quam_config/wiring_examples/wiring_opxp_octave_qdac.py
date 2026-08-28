@@ -17,7 +17,7 @@ def qdac_config(ip: str):
             "address": f"TCPIP::{ip}::5025::SOCKET",
         },
         "channel_method": "channel",
-        "accessor": "dc_constant_V",
+        "accessor": "limited_dc_constant_V",
         "is_qdac": True,
     }
 
@@ -25,12 +25,11 @@ def qdac_config(ip: str):
 ########################################################################################################################
 # %%                                              Define static parameters
 ########################################################################################################################
-# QOP network setting
 host_ip = "127.0.0.1"  # QOP IP address
 cluster_name = "Cluster_1"  # Name of the cluster
 
 # QDAC IP addresses
-qdac_ips = ["127.0.0.2", "127.0.0.3"]
+qdac_ips = ["127.0.0.2"]
 dac_config = {}
 for i, qdac in enumerate(qdac_ips):
     dac_config[f"qdac{i + 1}"] = qdac_config(qdac_ips[i])
@@ -39,65 +38,86 @@ for i, qdac in enumerate(qdac_ips):
 # %%                                      Define the available instrument setup
 ########################################################################################################################
 instruments = Instruments()
-instruments.add_mw_fem(controller=1, slots=[1])
-instruments.add_lf_fem(controller=1, slots=[5, 6])
-instruments.add_qdac2(indices=[1, 2])
+instruments.add_opx_plus(controllers=[1])
+instruments.add_octave(indices=1)
+instruments.add_qdac2(indices=[1])
 
 ########################################################################################################################
 # %%                           Define which quantum elements are present in the system
 ########################################################################################################################
-plunger_dots = [1, 2, 3, 4]  # P1, P2
-sensor_dots = [1, 2]
+plunger_dots = [1, 2, 3]
+sensor_dots = [1]
 
-# Quantum Dot Pairs defines the Barrier Gates
 quantum_dot_pairs = [(plunger_dots[i], plunger_dots[i + 1]) for i in range(len(plunger_dots) - 1)]
 
-# # Example: map qubit pairs to specific sensor dots (supports multiple sensors per pair).
-# # Pair keys: q1_q2 or q1-2. Sensor ids: virtual_sensor_<n>, sensor_<n>, or s<n> (e.g., virtual_sensor_1, sensor_1, s1).
 qubit_pair_sensor_map = {
     "q1_q2": ["sensor_1"],
-    "q2_q3": ["sensor_1", "sensor_2"],
-    "q3_q4": ["sensor_2"],
+    "q2_q3": ["sensor_1"],
 }
+
+########################################################################################################################
+# %%                                 Define OPX+ / Octave / QDAC channel constraints
+########################################################################################################################
+# Convenience spec: QDAC1 coarse bias + OPX+ fine/fast outputs on controller 1.
+qdac_opx_spec = qdac2_spec(1) & opx_spec(con=1)
+
+# Sensor reflectometry: OPX+ input/output resonator line (no Octave on readout).
+sensor_1_readout = opx_spec(con=1, in_port=1)
+
+# Shared spin-qubit ESR drive: OPX+ baseband IQ → Octave RF output.
+drive_ch = opx_iq_octave_spec(con=1, rf_out=1)
 
 ########################################################################################################################
 # %%                Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
 
-# Add plunger gates
-# Given the constraints that we would like to put on the outputs (i.e. which dot is from which channel), we add them individually with their own constraint,
-# Rather than using connectivity.add_quantum_dots(plunger_dots)
+# Plunger gates — same per-dot constraint pattern as wiring_lffem_mwfem_qdac.py,
+# with lf_fem_spec replaced by opx_spec(con=1).
+connectivity.add_quantum_dot_voltage_gate_lines(
+    1, True, opx_spec(con=1) & qdac2_spec(index=1, out_port=1, trigger_in_port=1)
+)
+connectivity.add_quantum_dot_voltage_gate_lines(
+    2, True, opx_spec(con=1) & qdac2_spec(index=1, out_port=2, trigger_in_port=2)
+)
+connectivity.add_quantum_dot_voltage_gate_lines(3, False, qdac_opx_spec)
 
-# The first arg for the spec is the INDEX, i.e. which controller you are referring to. In order to auto-allocate channels from the specified controller, we can
-# make a convenience variable here to combine the OPX CON1 & QDAC1
-qdac_lf_spec = qdac2_spec(1) & lf_fem_spec(1)
+# Global gates on QDAC2
+connectivity.add_voltage_gate_lines("source", name="", constraints=qdac2_spec(index=1, out_port=10))
+connectivity.add_voltage_gate_lines("drain", name="", constraints=qdac2_spec(index=1, out_port=11))
 
-connectivity.add_quantum_dot_voltage_gate_lines(1, True, lf_fem_spec(1) & qdac2_spec(out_port=1, trigger_in_port=1))
-connectivity.add_quantum_dot_voltage_gate_lines(2, True, lf_fem_spec(1) & qdac2_spec(out_port=2, trigger_in_port=2))
-connectivity.add_quantum_dot_voltage_gate_lines(3, False, qdac_lf_spec)
-connectivity.add_quantum_dot_voltage_gate_lines(4, constraints=qdac_lf_spec)
-# Add global gates
-connectivity.add_voltage_gate_lines("source", name="", constraints=qdac2_spec(index=2, out_port=10))
-connectivity.add_voltage_gate_lines("drain", name="", constraints=qdac2_spec(index=2, out_port=11))
-# Add sensor dots
-connectivity.add_sensor_dot_voltage_gate_lines(sensor_dots, constraints=qdac_lf_spec)
-# Add resonators
-connectivity.add_sensor_dot_resonator_line(sensor_dots, shared_line=False)
-# Add drive lines
-connectivity.add_quantum_dot_drive_lines(plunger_dots, shared_line=True, use_mw_fem=True)
-# Add the barrier gates for each quantum dot pair
-connectivity.add_quantum_dot_pairs(quantum_dot_pairs, constraints=lf_fem_spec(out_slot=6) & qdac2_spec(index=1))
-# Allocate the wiring
+# Sensor gate lines (QDAC coarse + OPX+ fine)
+connectivity.add_sensor_dot_voltage_gate_lines(sensor_dots, constraints=qdac_opx_spec)
+
+# Sensor reflectometry (OPX+ input/output; pins in_port, output auto-allocated)
+connectivity.add_sensor_dot_resonator_line(
+    1,
+    shared_line=False,
+    use_mw_fem=False,
+    constraints=sensor_1_readout,
+)
+
+# Shared ESR drive through Octave
+connectivity.add_quantum_dot_drive_lines(
+    plunger_dots,
+    shared_line=True,
+    use_mw_fem=True,
+    constraints=drive_ch,
+)
+
+# Barrier gates (OPX+ fast outputs + QDAC1 bias), analogous to LF-FEM slot 6 in the QDAC example
+connectivity.add_quantum_dot_pairs(
+    quantum_dot_pairs,
+    constraints=opx_spec(con=1) & qdac2_spec(index=1),
+)
+
 allocate_wiring(connectivity, instruments)
 
-# Optional: visualize wiring (requires a GUI backend). Comment out in headless environments.
 visualize(connectivity.elements, instruments.available_channels)
 
 ########################################################################################################################
 # %%                                   Build the wiring and QUAM
 ########################################################################################################################
-
 user_input = input("Do you want to save the updated QUAM? (y/n)")
 if user_input.lower() == "y":
     machine = Quam()
@@ -112,6 +132,6 @@ if user_input.lower() == "y":
         machine,
         qubit_pair_sensor_map=qubit_pair_sensor_map,
         catalogs=[VoltageBalancedMacroCatalog()],
-        connect_qdac=True,
+        connect_qdac=False,
     )
     machine.save()
