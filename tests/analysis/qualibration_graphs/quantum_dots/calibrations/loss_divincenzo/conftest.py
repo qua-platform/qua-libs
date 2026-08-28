@@ -681,9 +681,16 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         analyse_qubit_pairs: Optional[list[str]] = None,
         simulated_data_generator: Optional[Callable[[Any], xr.Dataset]] = None,
     ) -> Any:
-        if analyse_qubits is None and analyse_qubit_pairs is None:
-            analyse_qubits = ANALYSE_QUBITS
         overrides = dict(param_overrides) if param_overrides else {}
+        # Prefer explicit analyse_* args; otherwise mirror qubits/pairs from
+        # param_overrides so ds_raw filtering matches the requested targets.
+        if analyse_qubits is None and analyse_qubit_pairs is None:
+            if overrides.get("qubits"):
+                analyse_qubits = list(overrides["qubits"])
+            elif overrides.get("qubit_pairs"):
+                analyse_qubit_pairs = list(overrides["qubit_pairs"])
+            else:
+                analyse_qubits = ANALYSE_QUBITS
         if analyse_qubits:
             overrides.setdefault("qubits", analyse_qubits)
         if analyse_qubit_pairs:
