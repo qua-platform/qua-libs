@@ -29,8 +29,8 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    QubitsExperimentNodeParameters,
     HeraldedInitializeParameters,
+    QubitsExperimentNodeParameters,
     ParityDiffAnalysisParameters,
 ):
     """Parameter set for 09b_power_rabi_error_amplification."""

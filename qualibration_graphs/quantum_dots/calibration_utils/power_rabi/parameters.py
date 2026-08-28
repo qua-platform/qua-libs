@@ -27,5 +27,3 @@ class Parameters(
     ParityDiffAnalysisParameters,
 ):
     """Parameter set for 09a_power_rabi."""
-
-    amp_default: float = 1
