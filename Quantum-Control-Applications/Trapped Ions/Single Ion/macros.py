@@ -15,6 +15,25 @@ from configuration import (
 # QUA macros #
 ##############
 
+def measure_fluorescence(*,counts, times):
+    play("constant", "detection", duration=detection_len // 4)
+    measure("readout", "pmt", time_tagging.analog(times, detection_len, counts))
+
+
+def measure_state(*,counts, times, state):
+    measure_fluorescence(counts=counts, times=times)
+    assign(state, Cast.to_int(counts <= detection_threshold))
+    
+def harness(body=None, gsc=None, this_measurement=measure_state, **readout_vars): 
+    """Experimental framework for single-ion experiments. It includes Doppler cooling, state preparation, shelving, and state measurement."""
+    doppler_cool()
+    if gsc is not None:
+        gsc()
+    state_preparation()
+    if body is not None:
+        body()
+    shelve()
+    this_measurement(**readout_vars)
 
 def doppler_cool():
     play("constant", "repump", duration=cooling_len // 4)
@@ -44,16 +63,6 @@ def play_raman(freq, operation, duration=None):
         play(operation, "raman_b", duration=duration)
     align()
 
-
-def measure_fluorescence(counts, times):
-    play("constant", "detection", duration=detection_len // 4)
-    measure("readout", "pmt", time_tagging.analog(times, detection_len, counts))
-
-
-def measure_state(counts, times, state):
-    measure_fluorescence(counts, times)
-    assign(state, Cast.to_int(counts <= detection_threshold))
-    
 
 def plot_state_and_histogram(fig, ax_state, ax_hist, 
                              title, state_label_x, state_label_y, pop_x, pop, 
