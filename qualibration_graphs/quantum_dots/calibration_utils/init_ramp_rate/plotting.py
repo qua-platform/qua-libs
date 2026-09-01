@@ -107,7 +107,7 @@ def plot_iq_vs_ramp_duration(
             lines2, labels2 = [], []
 
         lines1, labels1 = ax.get_legend_handles_labels()
-        ax.legend(lines1 + lines2, labels1 + labels2, loc="upper right")
+        ax.legend(lines1 + lines2, labels1 + labels2)
 
         ax.set_xlabel("Ramp duration (ns)")
         ax.set_ylabel("Average I")
