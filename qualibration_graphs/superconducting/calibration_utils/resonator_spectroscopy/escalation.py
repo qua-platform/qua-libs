@@ -13,7 +13,9 @@ the expected frequency the IF sweep is symmetric (±span/2), which for the
 800 MHz ceiling sits exactly at the MW-FEM ±400 MHz IF reach.
 """
 
-from typing import Any
+from dataclasses import dataclass
+
+from .analysis import FitParameters
 
 # MW-FEM upconverter (LO) reach per band — used to refuse an LO move that the
 # hardware cannot express. Matches the guards in node 09b (lower bounds) plus
@@ -26,26 +28,52 @@ _BAND_LO_RANGE = {
 _IF_LIMIT_HZ = 400e6
 
 
+@dataclass
+class SpanEscalationPlan:
+    """Decision produced by :func:`plan_span_escalation` for one no-dip retry rung."""
+
+    retry: bool
+    """Whether another (wider) measurement pass should be attempted."""
+
+    qubits: list[str]
+    """Names of the qubits with no significant dip (the retry's participants, if any)."""
+
+    new_span_hz: float
+    """Span (Hz) to sweep next; equal to `current_span_hz` when `retry` is False."""
+
+
 def plan_span_escalation(
-    fit_results: dict[str, dict[str, Any]],
+    fit_results: dict[str, FitParameters],
     current_span_hz: float,
     max_span_hz: float,
     *,
     growth: float = 2.0,
-) -> dict[str, Any]:
+) -> SpanEscalationPlan:
     """Decide whether/how to widen the sweep after a no-dip analysis pass.
 
-    ``fit_results`` maps qubit name -> dict with at least ``success`` (bool).
-    Only frequency-failures (no significant dip) participate; shape-poor fits
+    ``fit_results`` maps qubit name -> :class:`FitParameters`. Only
+    frequency-failures (no significant dip) participate; shape-poor fits
     already delivered a frequency and are not re-measured.
-
-    Returns dict(retry: bool, qubits: [names], new_span_hz: float).
     """
-    failed = [q for q, r in fit_results.items() if not r.get("success", False)]
+    failed = [q for q, r in fit_results.items() if not r.success]
     if not failed or current_span_hz >= max_span_hz:
-        return dict(retry=False, qubits=failed, new_span_hz=current_span_hz)
+        return SpanEscalationPlan(retry=False, qubits=failed, new_span_hz=current_span_hz)
     new_span = min(current_span_hz * growth, max_span_hz)
-    return dict(retry=True, qubits=failed, new_span_hz=float(new_span))
+    return SpanEscalationPlan(retry=True, qubits=failed, new_span_hz=float(new_span))
+
+
+@dataclass
+class LoRecenterPlan:
+    """Decision produced by :func:`plan_lo_recenter` for one qubit's readout LO."""
+
+    shift: bool
+    """Whether the LO needs to move to fit the wider IF sweep."""
+
+    new_lo_hz: float
+    """LO frequency (Hz) to use; unchanged from the input when `shift` is False."""
+
+    error: str | None
+    """Reason the plan could not honour the requested span/band, or None on success."""
 
 
 def plan_lo_recenter(
@@ -55,7 +83,7 @@ def plan_lo_recenter(
     band: int | None,
     *,
     if_limit_hz: float = _IF_LIMIT_HZ,
-) -> dict[str, Any]:
+) -> LoRecenterPlan:
     """LO plan for a symmetric ±span/2 sweep around ``rf_hz``.
 
     If the sweep fits within the IF limit at the current LO, no move is needed.
@@ -63,25 +91,23 @@ def plan_lo_recenter(
     (IF -> 0), making the required IF reach exactly ±span/2; if even that
     exceeds the IF limit, or the new LO leaves the band, the plan reports an
     error string instead (caller should cap the span or skip the qubit).
-
-    Returns dict(shift: bool, new_lo_hz: float, error: str|None).
     """
     if0 = rf_hz - lo_hz
     lo_min, lo_max = _BAND_LO_RANGE.get(band, (0.0, float("inf")))
     if abs(if0) + span_hz / 2.0 <= if_limit_hz:
-        return dict(shift=False, new_lo_hz=float(lo_hz), error=None)
+        return LoRecenterPlan(shift=False, new_lo_hz=float(lo_hz), error=None)
     if span_hz / 2.0 > if_limit_hz:
-        return dict(
+        return LoRecenterPlan(
             shift=False,
             new_lo_hz=float(lo_hz),
             error=f"span/2 = {span_hz / 2 / 1e6:.0f} MHz exceeds the ±{if_limit_hz / 1e6:.0f} MHz IF reach",
         )
     new_lo = float(rf_hz)  # IF -> 0 at the expected center
     if not (lo_min <= new_lo <= lo_max):
-        return dict(
+        return LoRecenterPlan(
             shift=False,
             new_lo_hz=float(lo_hz),
             error=f"re-centered LO {new_lo / 1e9:.3f} GHz outside band-{band} range "
             f"[{lo_min / 1e9:.2f}, {lo_max / 1e9:.2f}] GHz",
         )
-    return dict(shift=True, new_lo_hz=new_lo, error=None)
+    return LoRecenterPlan(shift=True, new_lo_hz=new_lo, error=None)
