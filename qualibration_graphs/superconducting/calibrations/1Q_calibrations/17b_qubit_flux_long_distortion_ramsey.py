@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import asdict
 
 import matplotlib.pyplot as plt
@@ -105,6 +106,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             dtype=np.int32,
         )
         times = np.unique(times)
+
+    # The finite-pulse model attenuates each component by (1 - exp(-T_pulse/tau)),
+    # so a charging pulse shorter than the longest delay probed leaves the slow
+    # components barely excited and the fit poorly conditioned.
+    settle_ns = node.parameters.flux_settle_time_in_ns
+    max_delay_ns = int(4 * times.max())
+    if settle_ns < max_delay_ns:
+        warnings.warn(
+            f"flux_settle_time_in_ns={settle_ns} is shorter than the longest delay probed "
+            f"({max_delay_ns} ns). Components with tau near the sweep range are only charged to "
+            f"1 - exp(-{settle_ns / max_delay_ns:.2f}) = {1 - np.exp(-settle_ns / max_delay_ns):.0%} "
+            f"of their amplitude, and the fit caps tau at 20x the pulse length. Either raise "
+            f"flux_settle_time_in_ns to >= duration_in_ns or lower duration_in_ns."
+        )
 
     qubit_flux_amp = node.parameters.qubit_flux_amplitude_in_v
     frames = np.arange(0, 1, 1 / node.parameters.num_frame_rotations)

@@ -26,7 +26,11 @@ Key equations
        phi(t_delay) = 2 pi * Delta_f(A_eff(t_delay)) * T_wait
 
 2. Reference calibration (no preceding long pulse) gives phi_ref(A_flux);
-   invert via 1-D interpolation to map measured phi -> A_eff.
+   invert via 1-D interpolation to map measured phi -> A_eff. The reference is
+   monotonised in amplitude first (np.interp needs an increasing abscissa and a
+   phase-sort alone would scramble the amplitude correspondence), and phases
+   falling outside the reference window are dropped rather than clamped to its
+   endpoints.
 
 3. Step-rise reformulation: a positive residual delta(t) (long-pulse tail
    that has not yet decayed) is recast as the equivalent step-rise response
@@ -124,6 +128,50 @@ def extract_phases(ds: xr.Dataset) -> Tuple[xr.DataArray, Optional[xr.DataArray]
 # --- Phase → flux response ---
 
 
+def _monotonic_reference(ref_amps: np.ndarray, ref_phases: np.ndarray) -> Optional[Tuple[np.ndarray, np.ndarray, int]]:
+    """Build a strictly-increasing-in-phase reference curve for ``np.interp``.
+
+    ``np.interp`` requires an increasing abscissa, so the reference has to be
+    ordered by phase. Sorting the phases alone is not enough: if φ_ref(a) is not
+    monotonic in amplitude (noise, or a span approaching 2π), sorting scrambles
+    the amplitude correspondence and the inversion silently returns nonsense.
+
+    So order by amplitude, orient the curve so phase broadly increases, then keep
+    only the strictly increasing points (first of each repeated/inverted group).
+
+    Returns
+    -------
+    (phase, amp, n_dropped) or None
+        Both arrays ordered by increasing phase. ``None`` if fewer than 2 points
+        survive, in which case the reference cannot be inverted.
+    """
+    order = np.argsort(np.asarray(ref_amps, dtype=float))
+    amps = np.asarray(ref_amps, dtype=float)[order]
+    phases = np.asarray(ref_phases, dtype=float)[order]
+
+    finite = np.isfinite(amps) & np.isfinite(phases)
+    amps, phases = amps[finite], phases[finite]
+    if amps.size < 2:
+        return None
+
+    # Orient so phase increases with index, then enforce strict monotonicity.
+    if phases[-1] < phases[0]:
+        amps, phases = amps[::-1], phases[::-1]
+
+    keep = np.ones(phases.size, dtype=bool)
+    last = -np.inf
+    for i, ph in enumerate(phases):
+        if ph > last:
+            last = ph
+        else:
+            keep[i] = False
+
+    n_dropped = int((~keep).sum())
+    if keep.sum() < 2:
+        return None
+    return phases[keep], amps[keep], n_dropped
+
+
 def _compute_flux_response(
     signal_phase: xr.DataArray,
     ref_cal: Optional[xr.DataArray],
@@ -133,8 +181,14 @@ def _compute_flux_response(
 ) -> Tuple[xr.DataArray, Dict[str, dict]]:
     """Map ``signal_phase(t)`` → Z step response via ``ref_cal``; return branch-risk dict.
 
-    Per qubit: snap each φ to the 2π branch nearest the ref window, interp → A_eff,
-    residual ``delta = A_eff - ramsey_flux_amp``, step-rise ``y = qubit_flux_amp - delta``.
+    Per qubit: snap each φ to the 2π branch nearest the ref window, interpolate
+    the (monotonised) reference to get A_eff, residual
+    ``delta = A_eff - ramsey_flux_amp``, step-rise ``y = qubit_flux_amp - delta``.
+
+    Phases that fall outside the reference window are set to NaN rather than
+    interpolated: ``np.interp`` clamps to the endpoint amplitude, which would
+    silently saturate the step response and bias ``a_dc`` (and therefore every
+    tap) instead of dropping the unusable points.
     """
     flux_response = xr.full_like(signal_phase, np.nan, dtype=float)
     branch_risk: Dict[str, dict] = {}
@@ -152,12 +206,46 @@ def _compute_flux_response(
         ref_phases = np.asarray(ref_cal.sel(qubit=q.name).values, dtype=float)
         sig_phases = np.asarray(signal_phase.sel(qubit=q.name).values, dtype=float)
 
-        # Invert φ_ref(a): sort by phase, snap signal to ref branch, interpolate.
-        order = np.argsort(ref_phases)
-        ref_ph_s, ref_amp_s = ref_phases[order], ref_amps[order]
+        monotonic = _monotonic_reference(ref_amps, ref_phases)
+        if monotonic is None:
+            print(
+                f"WARNING [{q.name}]: reference phase-vs-amplitude curve is not invertible "
+                f"(fewer than 2 usable monotonic points); flux_response left as NaN."
+            )
+            branch_risk[q.name] = {
+                "level": "high",
+                "code": 2,
+                "sig_swing_frac": float("nan"),
+                "ref_span_frac": float("nan"),
+                "oor_frac": 1.0,
+            }
+            continue
+        ref_ph_s, ref_amp_s, n_dropped = monotonic
+        if n_dropped:
+            frac = n_dropped / max(len(ref_phases), 1)
+            print(
+                f"WARNING [{q.name}]: reference phase is non-monotonic in amplitude — dropped "
+                f"{n_dropped}/{len(ref_phases)} points ({frac:.0%}) to invert it. A noisy or "
+                f"folded reference sweep biases the phase->flux map; consider more shots or a "
+                f"narrower ramsey_flux_sweep_range_in_v."
+            )
+
+        # Snap each signal phase into the 2pi window centred on the reference.
         ref_center = 0.5 * (ref_ph_s[0] + ref_ph_s[-1])
         adjusted = sig_phases - np.round((sig_phases - ref_center) / two_pi) * two_pi
+
+        # Outside the reference window np.interp would clamp; drop instead.
+        out_of_range = (adjusted < ref_ph_s[0]) | (adjusted > ref_ph_s[-1]) | ~np.isfinite(adjusted)
         eff_amp = np.interp(adjusted, ref_ph_s, ref_amp_s)
+        eff_amp = np.where(out_of_range, np.nan, eff_amp)
+        oor_frac = float(np.mean(out_of_range)) if out_of_range.size else 0.0
+        if oor_frac > 0:
+            print(
+                f"WARNING [{q.name}]: {int(out_of_range.sum())}/{out_of_range.size} delay points "
+                f"({oor_frac:.0%}) have a Ramsey phase outside the reference sweep window and were "
+                f"dropped. Widen ramsey_flux_sweep_range_in_v (or lower qubit_flux_amplitude_in_v) "
+                f"so the reference covers the full phase excursion."
+            )
 
         distortion = eff_amp - ramsey_flux_amp
         flux_response.loc[{"qubit": q.name}] = -distortion + (qubit_flux_amp if qubit_flux_amp is not None else 0)
@@ -172,17 +260,24 @@ def _compute_flux_response(
             level, code = "marginal", 1
         else:
             level, code = "ok", 0
+        # Dropped points mean the window was actually exceeded, not just at risk.
+        if oor_frac > 0.05 and code < 2:
+            level, code = "high", 2
+        elif oor_frac > 0 and code < 1:
+            level, code = "marginal", 1
         branch_risk[q.name] = {
             "level": level,
             "code": code,
             "sig_swing_frac": sig_frac,
             "ref_span_frac": ref_frac,
+            "oor_frac": oor_frac,
         }
         if level != "ok":
             print(
                 f"WARNING [{q.name}]: phase->flux branch-aliasing risk = {level.upper()}. "
                 f"signal phase swing = {sig_frac:.2f} x 2pi, "
-                f"reference span = {ref_frac:.2f} x 2pi. "
+                f"reference span = {ref_frac:.2f} x 2pi, "
+                f"points dropped = {oor_frac:.0%}. "
                 "Per-point np.round branch selection is exact only while phase stays within "
                 "one 2pi window — fitted distortion shape may be aliased "
                 "(see warning on flux-response figures)."
@@ -252,7 +347,7 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
     if ref_cal is not None:
         ds["ref_phase_cal"] = ref_cal
     ds["flux_response"] = flux_response
-    if ref_cal is not None and branch_risk:
+    if ref_cal is not None and all(n in branch_risk for n in qubit_names):
         ds["branch_risk_code"] = xr.DataArray(
             [branch_risk[n]["code"] for n in qubit_names],
             dims=["qubit"],
@@ -269,6 +364,12 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
             dims=["qubit"],
             coords={"qubit": qubit_names},
             attrs={"long_name": "reference phase span", "units": "2*pi"},
+        )
+        ds["branch_out_of_range"] = xr.DataArray(
+            [branch_risk[n]["oor_frac"] for n in qubit_names],
+            dims=["qubit"],
+            coords={"qubit": qubit_names},
+            attrs={"long_name": "delay points outside the reference phase window", "units": "fraction"},
         )
 
     return _extract_relevant_fit_parameters(ds, node)
