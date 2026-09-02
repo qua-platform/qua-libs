@@ -219,15 +219,33 @@ def _select_fit_outputs(
 ) -> dict[str, Any]:
     """Pick between the fit-ladder result and the raw dip estimate, then apply the strict shape gates.
 
-    A fit is only trusted if its centre landed close to the detected dip
+    A fit is only trusted if its center landed close to the detected dip
     (``best["f0"]`` within ``2*fwhm_init`` or 1 MHz of ``f0_init``) — otherwise
     it ran away and the frequency/FWHM fall back to the pre-fit estimates.
     ``success_shape`` gates on R², FWHM range, and contrast; frequency success
     never depends on it, since the dip's existence and position were already
     established before any fit was attempted.
     """
-    nan5 = np.full(5, np.nan)
-    if best is not None and abs(best["f0"] - f0_init) <= max(2 * fwhm_init, 1e6):
+
+    nan5: NDArray[np.float64] = np.full(5, np.nan)
+    max_allowed_drift_hz: float = max(2 * fwhm_init, 1e6)
+
+    fit_trusted: bool = False
+    if best is not None:
+        fit_centre_drift_hz: float = abs(best["f0"] - f0_init)
+
+        if fit_centre_drift_hz <= max_allowed_drift_hz:
+            fit_trusted = True
+
+    f0_out: float
+    fwhm_out: float
+    r2: float
+    fitted_contrast: float
+    popt: NDArray[np.float64]
+    fit_win_lo: float
+    fit_win_hi: float
+
+    if fit_trusted:
         f0_out, fwhm_out = best["f0"], best["fwhm"]
         r2 = best["r2"]
         fitted_contrast = best["contrast"]
@@ -237,18 +255,31 @@ def _select_fit_outputs(
         # Fit unusable/ran away: the dip existence and position stand on their own.
         f0_out, fwhm_out = f0_init, fwhm_init
         r2 = best["r2"] if best is not None else 0.0
-        fitted_contrast = depth_d / np.median(smoothed) if np.median(smoothed) > 0 else np.nan
         popt = nan5.copy()
         fit_win_lo, fit_win_hi = np.nan, np.nan
 
-    success_shape = bool(
-        best is not None
-        and r2 >= r2_threshold
-        and 0 < fwhm_out <= max_fwhm_mhz * 1e6
-        and fwhm_out / span_hz <= 0.50
-        and fitted_contrast >= min_contrast
-        and best["f_win"][0] <= f0_out <= best["f_win"][1]
+        fitted_contrast = np.nan
+        if np.median(smoothed) > 0:
+            fitted_contrast = depth_d / np.median(smoothed)
+
+    # success_shape is gated on fit_trusted (not just "best is not None") so a
+    # discarded/ran-away fit's R² and window can never grade a report that
+    # carries an all-NaN popt.
+    good_r2: bool = r2 >= r2_threshold
+    fwhm_in_range: bool = 0 < fwhm_out <= max_fwhm_mhz * 1e6
+    fwhm_not_too_broad: bool = fwhm_out / span_hz <= 0.50
+    contrast_ok: bool = fitted_contrast >= min_contrast
+    centre_inside_fit_window: bool = fit_win_lo <= f0_out <= fit_win_hi
+
+    success_shape: bool = bool(
+        fit_trusted
+        and good_r2
+        and fwhm_in_range
+        and fwhm_not_too_broad
+        and contrast_ok
+        and centre_inside_fit_window
     )
+
     return dict(
         f0=f0_out,
         fwhm=fwhm_out,
