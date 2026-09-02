@@ -1,7 +1,7 @@
 """
-This script is made in order to create Node Parameters based on any custom macros that you have built. 
+This script is made in order to create Node Parameters based on any custom macros that you have built.
 
-This example populates the InitializeMacroParameters to be HeraldedBalancedInitializeMacro parameters. 
+This example populates the InitializeMacroParameters to be HeraldedBalancedInitializeMacro parameters.
 """
 
 from typing import Optional, Literal
@@ -9,6 +9,7 @@ from typing import Optional, Literal
 from qualibrate.core.parameters import RunnableParameters
 
 __all__ = ["MacroParameters"]
+
 
 class InitializeMacroParameters(RunnableParameters):
     target_state: Optional[int] = None
@@ -20,12 +21,12 @@ class InitializeMacroParameters(RunnableParameters):
     qubit_role: Literal["target", "control"] = "control"
     """Specify which qubit, related to the qubit_pair, to pulse. """
 
-class MeasureMacroParameters(RunnableParameters): 
+
+class MeasureMacroParameters(RunnableParameters):
     pass
 
-class MacroParameters(
-    InitializeMacroParameters, 
-    MeasureMacroParameters
-): 
+
+class MacroParameters(InitializeMacroParameters, MeasureMacroParameters):
     """Batch all the macro related parameters to export in a single class"""
+
     pass
