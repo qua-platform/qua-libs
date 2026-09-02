@@ -39,6 +39,7 @@ Key equations
    Fitted with ``multi_exp_fit_global``. IIR taps follow
    A_i = a_i / a_dc (Rol et al. arXiv:1907.04818 Eq. (S22)).
 """
+
 from __future__ import annotations
 
 from typing import Dict, List, Literal, Optional, Tuple
@@ -223,8 +224,7 @@ def extract_center_freqs(
             candidates = ["IQ_abs"]
 
     stacked = {
-        name: np.asarray(ds[name].transpose("qubit", "time", freq_dim).values, dtype=float)
-        for name in candidates
+        name: np.asarray(ds[name].transpose("qubit", "time", freq_dim).values, dtype=float) for name in candidates
     }
     qubit_names = list(np.atleast_1d(ds["qubit"].values)) if "qubit" in ds.coords else []
     n_qubits, n_times = next(iter(stacked.values())).shape[:2]
@@ -239,10 +239,7 @@ def extract_center_freqs(
             ranked = sorted(candidates, key=lambda name: _trace_roughness(traces[name]))
             best_name = ranked[0]
             if not np.isfinite(_trace_roughness(traces[best_name])):
-                print(
-                    f"  WARNING: {label}: no usable resonance in any quadrature; "
-                    f"falling back to {best_name}."
-                )
+                print(f"  WARNING: {label}: no usable resonance in any quadrature; " f"falling back to {best_name}.")
             else:
                 print(f"  {label}: center-frequency extraction used the {best_name} quadrature.")
         center_freqs[i] = traces[best_name]
@@ -265,9 +262,7 @@ def extract_center_freqs(
             )
 
     template = ds[candidates[0]].transpose("qubit", "time", freq_dim).isel({freq_dim: 0}, drop=True)
-    return xr.DataArray(center_freqs, dims=template.dims, coords=template.coords).rename(
-        "center_frequency"
-    )
+    return xr.DataArray(center_freqs, dims=template.dims, coords=template.coords).rename("center_frequency")
 
 
 def _compute_flux_response(
@@ -323,9 +318,7 @@ def _compute_flux_response(
             qt = getattr(q, "freq_vs_flux_01_quad_term", None) or np.nan
             if np.isfinite(qt) and qt != 0:
                 sign = 1.0 if flux_branch == "right" else -1.0
-                flux_response.values[i, :] = sign * np.sqrt(
-                    np.abs(center_freqs.sel(qubit=q.name).values / qt)
-                )
+                flux_response.values[i, :] = sign * np.sqrt(np.abs(center_freqs.sel(qubit=q.name).values / qt))
 
     return flux_response, spec_curves
 
@@ -360,9 +353,7 @@ def _attach_spec_curve_vars(
     return ds
 
 
-def _extract_relevant_fit_parameters(
-    ds: xr.Dataset, node
-) -> tuple[xr.Dataset, Dict[str, FitParameters]]:
+def _extract_relevant_fit_parameters(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParameters]]:
     """Fit the flux step response per qubit and package ``FitParameters``.
 
     Mirrors the qubit-spectroscopy helper of the same name: after the dataset has
@@ -410,9 +401,7 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
     center_freqs = extract_center_freqs(
         ds,
         dfs,
-        use_state_discrimination=bool(
-            node.parameters.use_state_discrimination and "state" in ds.data_vars
-        ),
+        use_state_discrimination=bool(node.parameters.use_state_discrimination and "state" in ds.data_vars),
     )
 
     spec_run_id = getattr(node.parameters, "spectroscopy_run_id", None)

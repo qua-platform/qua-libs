@@ -45,6 +45,7 @@ Key equations
    s(t)=g(1+A e^{-t/tau_IIR})u(t), with g <-> a_dc and A <-> a_i/a_dc) yields the
    correct per-pole pre-distortion strength directly.
 """
+
 from __future__ import annotations
 
 from typing import Dict, Optional, Tuple
@@ -56,7 +57,6 @@ from calibration_utils.common_utils.flux_distortions import (
     multi_exp_fit_global,
 )
 from qualibration_libs.data import convert_IQ_to_V
-
 
 # --- Dataset preprocessing ---
 
@@ -160,9 +160,7 @@ def _compute_flux_response(
         eff_amp = np.interp(adjusted, ref_ph_s, ref_amp_s)
 
         distortion = eff_amp - ramsey_flux_amp
-        flux_response.loc[{"qubit": q.name}] = -distortion + (
-            qubit_flux_amp if qubit_flux_amp is not None else 0
-        )
+        flux_response.loc[{"qubit": q.name}] = -distortion + (qubit_flux_amp if qubit_flux_amp is not None else 0)
 
         # Branch-aliasing diagnostic (shape risk if swing ≳ π…2π).
         ref_span = float(np.ptp(ref_phases)) if ref_phases.size else 0.0
@@ -196,9 +194,7 @@ def _compute_flux_response(
 # --- Fit packaging ---
 
 
-def _extract_relevant_fit_parameters(
-    ds: xr.Dataset, node
-) -> tuple[xr.Dataset, Dict[str, FitParameters]]:
+def _extract_relevant_fit_parameters(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParameters]]:
     """Fit the flux step response per qubit and package ``FitParameters``."""
     qubits = node.namespace["qubits"]
     n_exponentials = int(getattr(node.parameters, "n_exponentials", 3))

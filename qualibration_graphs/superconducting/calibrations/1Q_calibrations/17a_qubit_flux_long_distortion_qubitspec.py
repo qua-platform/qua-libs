@@ -28,7 +28,6 @@ from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-
 description = """
 Long cryoscope (π vs flux) calibration.
 
@@ -57,9 +56,8 @@ node = QualibrationNode[Parameters, Quam](
     name="17a_qubit_flux_long_distortion_qubitspec",
     description=description,
     parameters=Parameters(),
-    machine = Quam.load()
+    machine=Quam.load(),
 )
-
 
 
 # %% {Custom_param}
@@ -90,9 +88,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         if hasattr(qubit.xy.operations, node.parameters.operation):
             operation_names[qubit.name] = node.parameters.operation
         else:
-            warnings.warn(
-                f"Qubit {qubit.name} has no operation '{node.parameters.operation}', defaulting to 'x180'"
-            )
+            warnings.warn(f"Qubit {qubit.name} has no operation '{node.parameters.operation}', defaulting to 'x180'")
             operation_names[qubit.name] = "x180"
 
     operation_amp_scale = node.parameters.operation_amplitude_factor or 1.0
@@ -248,8 +244,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     if debug:
         from pathlib import Path
         from qm import generate_qua_script
+
         file_name = Path(__file__).stem
-        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", 'w') as sourceFile:
+        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", "w") as sourceFile:
             print(generate_qua_script(node.namespace["qua_program"], config), file=sourceFile)
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}

@@ -7,7 +7,6 @@ import numpy as np
 import xarray as xr
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
-
 # ---------------------------------------------------------------------------
 # Default figures (always produced by ``plot_raw_data_with_fit``)
 # ---------------------------------------------------------------------------
@@ -84,8 +83,13 @@ def plot_individual_raw_data_with_fit(ax_lin, ax_log, t_data, y_data, components
     ax_lin.plot(t_data, y_data, ".--", label="Data")
     ax_lin.plot(t_data, y_fit, label="Fit")
     ax_lin.text(
-        0.98, 0.5, fit_text, transform=ax_lin.transAxes, fontsize=10,
-        horizontalalignment="right", verticalalignment="center",
+        0.98,
+        0.5,
+        fit_text,
+        transform=ax_lin.transAxes,
+        fontsize=10,
+        horizontalalignment="right",
+        verticalalignment="center",
     )
     ax_lin.set_xlabel("Time (ns)")
     ax_lin.set_ylabel("Flux Response")
@@ -96,8 +100,13 @@ def plot_individual_raw_data_with_fit(ax_lin, ax_log, t_data, y_data, components
     ax_log.plot(t_data, y_data, ".--", label="Data")
     ax_log.plot(t_data, y_fit, label="Fit")
     ax_log.text(
-        0.98, 0.5, fit_text, transform=ax_log.transAxes, fontsize=10,
-        horizontalalignment="right", verticalalignment="center",
+        0.98,
+        0.5,
+        fit_text,
+        transform=ax_log.transAxes,
+        fontsize=10,
+        horizontalalignment="right",
+        verticalalignment="center",
     )
     ax_log.set_xlabel("Time (ns)")
     ax_log.set_ylabel("Flux Response")
@@ -131,9 +140,7 @@ def plot_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit_results: Dict):
         if a_dc is None or (isinstance(a_dc, (float, np.floating)) and np.isnan(a_dc)):
             a_dc = float(y_data[-5:].mean()) if len(y_data) >= 5 else float(y_data.mean())
 
-        plot_individual_raw_data_with_fit(
-            ax_lin, ax_log, t_data, y_data, components=components, a_dc=a_dc
-        )
+        plot_individual_raw_data_with_fit(ax_lin, ax_log, t_data, y_data, components=components, a_dc=a_dc)
         ax_lin.set_title(qname)
         ax_log.set_title(f"{qname} (log)")
 
@@ -251,8 +258,13 @@ def plot_phase_heatmap(ds: xr.Dataset, qubits):
         phase = q_ds["phase"].transpose(_fd, "time").values
 
         im = ax.pcolormesh(
-            times, freq_ghz, phase,
-            shading="auto", cmap="RdBu_r", vmin=-np.pi, vmax=np.pi,
+            times,
+            freq_ghz,
+            phase,
+            shading="auto",
+            cmap="RdBu_r",
+            vmin=-np.pi,
+            vmax=np.pi,
         )
         fig.colorbar(im, ax=ax).set_label("Phase (rad)")
         ax.set_xlabel("Time (ns)")
@@ -313,9 +325,7 @@ def plot_ramsey_curve(qubits, run_id: Optional[int] = None) -> Optional[plt.Figu
         ax.set_ylabel("Qubit frequency (GHz)")
         ax.set_title(qubit.name)
     fig.suptitle(
-        "Ramsey vs Z-flux (param override or extras load id)"
-        if n_loaded
-        else "Ramsey vs Z-flux — no run IDs found"
+        "Ramsey vs Z-flux (param override or extras load id)" if n_loaded else "Ramsey vs Z-flux — no run IDs found"
     )
     fig.tight_layout()
     return fig

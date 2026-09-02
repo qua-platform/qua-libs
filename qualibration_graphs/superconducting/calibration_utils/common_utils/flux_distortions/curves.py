@@ -74,8 +74,7 @@ def load_spectroscopy_curve(
         ds_fit = data.get("ds_fit")
         if ds_fit is None or "peak_freq" not in ds_fit:
             print(
-                f"  WARNING: run #{run_id} has no ds_fit.peak_freq for {qubit_name}; "
-                "cannot load spectroscopy curve"
+                f"  WARNING: run #{run_id} has no ds_fit.peak_freq for {qubit_name}; " "cannot load spectroscopy curve"
             )
             return None
         flux = np.asarray(ds_fit.flux_bias.values, dtype=float)
@@ -422,11 +421,7 @@ def resolve_flux_amplitudes(
         if amp is None and use_ramsey_data:
             curve = load_ramsey_curve(q, ramsey_run_id)
             if curve is not None:
-                rid_label = (
-                    f"#{ramsey_run_id}"
-                    if ramsey_run_id is not None
-                    else "extras"
-                )
+                rid_label = f"#{ramsey_run_id}" if ramsey_run_id is not None else "extras"
                 for br in (flux_branch, _OPPOSITE[flux_branch]):
                     amp = flux_amp_from_curve(detuning_hz, idle, curve, br)
                     if amp is not None:
@@ -457,8 +452,7 @@ def resolve_flux_amplitudes(
 
         if abs(amp) > 0.5:
             warnings.warn(
-                f"{q.name}: derived flux_amp={amp:.4f} V exceeds 0.5 V. "
-                f"Verify detuning_in_mhz is correct."
+                f"{q.name}: derived flux_amp={amp:.4f} V exceeds 0.5 V. " f"Verify detuning_in_mhz is correct."
             )
 
         amplitudes.append(float(amp))

@@ -8,7 +8,6 @@ import xarray as xr
 # Shared fit overlay (identical to 17a)
 from calibration_utils.qubit_flux_long_distortion_qubitspec.plotting import plot_fit
 
-
 # ---------------------------------------------------------------------------
 # Default figures (always produced by ``plot_raw_data_with_fit``)
 # ---------------------------------------------------------------------------
@@ -36,7 +35,13 @@ def annotate_branch_risk(fig, ds: xr.Dataset) -> bool:
         + "\n(true phase approaches/exceeds one 2π window; see _compute_flux_response)"
     )
     fig.text(
-        0.5, 0.01, msg, ha="center", va="bottom", fontsize=8, color="white",
+        0.5,
+        0.01,
+        msg,
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color="white",
         bbox=dict(boxstyle="round", facecolor="crimson", alpha=0.9),
     )
     try:
