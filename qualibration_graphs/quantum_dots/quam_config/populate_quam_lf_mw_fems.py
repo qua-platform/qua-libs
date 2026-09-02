@@ -3,7 +3,6 @@ from qualang_tools.units import unit
 from quam_config import QubitQuam as Quam
 from quam_builder.architecture.quantum_dots.operations.names import DrivePulseName, VoltagePointName
 
-
 ########################################################################################################################
 # %%                                 QUAM loading and auxiliary functions
 ########################################################################################################################
