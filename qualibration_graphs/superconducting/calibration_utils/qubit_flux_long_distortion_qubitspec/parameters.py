@@ -32,8 +32,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Total frequency sweep width in MHz centered on the detuning point; covers [detuning - span/2, detuning + span/2]. Default is 200.0."""
     frequency_step_in_mhz: float = 1.0
     """Frequency step in MHz for the uniform spectroscopy sweep passed to QUA from_array. Default is 1.0."""
-    flux_branch: Literal["left", "right"] = "right"
-    """Which branch of the freq-vs-flux curve to use (as seen on the spectroscopy plot). e.g. 'right' = flux >= idle flux (positive flux direction from sweetspot)."""
     n_exponentials: int = 2
     """Number of exponential components to fit in the flux step response model."""
     update_state: bool = False

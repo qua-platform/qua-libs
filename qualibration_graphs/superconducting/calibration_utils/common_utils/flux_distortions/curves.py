@@ -20,9 +20,13 @@ A single node parameter picks the freq→flux source (see
 spectroscopy, then the quadratic ``freq_vs_flux_01_quad_term``; the other
 values force one specific source.
 
-Branch convention: ``"right"`` means flux ≥ idle (sweetspot) flux on the
-parabola; ``"left"`` means flux ≤ idle. All returned flux offsets are relative
-to idle (ΔΦ), not absolute DAC volts.
+Branch handling: the qubit is assumed to sit at its flux sweetspot, where
+``f(Φ)`` is symmetric about idle and both flux directions detune downwards by the
+same amount. Which side of the parabola is used is therefore not a user choice
+— these helpers pick whichever side reaches (pre-run) or covers (post-run) the
+target and return the **magnitude** of the offset from idle, |ΔΦ|. That is all
+the IIR taps ``A_i = a_i / a_dc`` depend on: a global sign on the step response
+cancels in the ratio. Offsets are relative to idle, not absolute DAC volts.
 """
 
 from __future__ import annotations
@@ -33,8 +37,9 @@ from typing import Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 
+#: Side of the parabola, for the low-level curve helpers only. Not a node
+#: parameter: at the sweetspot both sides are equivalent (see module docstring).
 Branch = Literal["left", "right"]
-_OPPOSITE: dict[str, Branch] = {"left": "right", "right": "left"}
 
 #: Which freq↔flux relation to use. ``"auto"`` walks ``AUTO_SOURCE_ORDER`` and
 #: falls back to ``freq_vs_flux_01_quad_term``; the other values force one source
@@ -408,25 +413,93 @@ def flux_amp_from_curve(
     return abs(best)
 
 
+def _strictly_increasing_in_freq(b_flux: np.ndarray, b_freq: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Sort a branch by frequency and drop non-increasing repeats.
+
+    ``CubicSpline`` requires a strictly increasing abscissa. Measured curves can
+    repeat or invert a frequency (noise on adjacent flux points, or a sample
+    straddling the vertex), so keep the first point of each such group.
+    """
+    order = np.argsort(b_freq)
+    f_sorted, x_sorted = b_freq[order], b_flux[order]
+    keep = np.ones(len(f_sorted), dtype=bool)
+    last = -np.inf
+    for i, f in enumerate(f_sorted):
+        if f > last:
+            last = f
+        else:
+            keep[i] = False
+    return x_sorted[keep], f_sorted[keep]
+
+
+def _pick_inversion_branch(
+    curve_flux: np.ndarray,
+    curve_freq: np.ndarray,
+    idle_freq: float,
+    measured_abs_freq: np.ndarray,
+) -> Optional[Tuple[np.ndarray, np.ndarray, float]]:
+    """Return the branch of ``curve`` that best covers the measured frequencies.
+
+    At the sweetspot both sides of the parabola are physically equivalent, so the
+    only thing that distinguishes them is sampling: pick the side that brackets
+    more of ``measured_abs_freq``, breaking ties on the number of points.
+
+    The split is by **index** around the idle sample rather than by flux value,
+    so a sample sitting just off the vertex cannot land on both sides and make
+    the branch non-monotonic in frequency.
+
+    Returns
+    -------
+    (branch_flux, branch_freq, idle_flux) or None
+        Arrays are strictly increasing in frequency, ready for a cubic spline.
+        ``None`` when neither side keeps the >= 4 points a spline needs.
+    """
+    order = np.argsort(np.asarray(curve_flux, dtype=float))
+    flux = np.asarray(curve_flux, dtype=float)[order]
+    freq = np.asarray(curve_freq, dtype=float)[order]
+
+    idle_idx = int(np.argmin(np.abs(freq - idle_freq)))
+    idle_flux = float(flux[idle_idx])
+
+    measured = np.asarray(measured_abs_freq, dtype=float).ravel()
+    finite = measured[np.isfinite(measured)]
+    best: Optional[Tuple[np.ndarray, np.ndarray, float]] = None
+    best_score = (-1, -1)
+
+    for b_flux, b_freq in (
+        (flux[idle_idx:], freq[idle_idx:]),
+        (flux[: idle_idx + 1], freq[: idle_idx + 1]),
+    ):
+        b_flux, b_freq = _strictly_increasing_in_freq(b_flux, b_freq)
+        if len(b_flux) < 4:
+            continue
+        covered = int(np.sum((finite >= b_freq.min()) & (finite <= b_freq.max()))) if finite.size else 0
+        score = (covered, len(b_flux))
+        if score > best_score:
+            best, best_score = (b_flux, b_freq, idle_flux), score
+
+    return best
+
+
 def frequency_to_flux_deviation(
     measured_abs_freq: np.ndarray,
     curve_flux: np.ndarray,
     curve_freq: np.ndarray,
     idle_freq: float,
-    use_upper_branch: bool = True,
 ) -> np.ndarray:
-    """Map measured absolute qubit frequency → signed flux deviation from idle.
+    """Map measured absolute qubit frequency → flux offset magnitude from idle.
 
     Used in analysis after center frequencies vs time are extracted: invert the
     same freq↔flux curve so the cryoscope / π-vs-flux trace becomes a flux step
-    response ΔΦ(t).
+    response |ΔΦ|(t).
 
-    Method: mask to the chosen branch (flux ≥ idle if ``use_upper_branch``, else
-    ≤), sort by frequency, fit a ``scipy.interpolate.CubicSpline`` of
-    flux(freq), evaluate at ``measured_abs_freq``, subtract idle flux.
+    Method: pick the better-sampled branch with ``_pick_inversion_branch`` (both
+    are equivalent at the sweetspot), fit a ``scipy.interpolate.CubicSpline`` of
+    flux(freq) on it, evaluate at ``measured_abs_freq``, and take
+    ``|flux - idle_flux|``.
 
-    Points that land far outside the branch (ΔΦ < −0.01 V or > 2× the branch
-    flux span) are set to NaN.
+    Points landing further than 2x the branch flux span from idle are set to NaN
+    (well outside where the curve constrains anything).
 
     Parameters
     ----------
@@ -436,35 +509,26 @@ def frequency_to_flux_deviation(
         Dispersion curve arrays (same convention as the loaders).
     idle_freq :
         Idle frequency (Hz) used to locate idle flux on the curve.
-    use_upper_branch :
-        ``True`` → right branch (flux ≥ idle); ``False`` → left.
 
     Returns
     -------
     np.ndarray
-        Signed ΔΦ in volts, same shape as ``measured_abs_freq``. All-NaN if the
-        branch has fewer than 4 points.
+        |ΔΦ| in volts, same shape as ``measured_abs_freq``. All-NaN if neither
+        branch has at least 4 usable points.
     """
     from scipy.interpolate import CubicSpline
 
-    idle_idx = int(np.argmin(np.abs(curve_freq - idle_freq)))
-    idle_flux = float(curve_flux[idle_idx])
+    branch = _pick_inversion_branch(curve_flux, curve_freq, idle_freq, measured_abs_freq)
+    if branch is None:
+        return np.full_like(np.asarray(measured_abs_freq, dtype=float), np.nan)
+    b_flux, b_freq, idle_flux = branch
 
-    branch_mask = curve_flux >= idle_flux if use_upper_branch else curve_flux <= idle_flux
-    b_flux = curve_flux[branch_mask]
-    b_freq = curve_freq[branch_mask]
-
-    if len(b_flux) < 4:
-        return np.full_like(measured_abs_freq, np.nan, dtype=float)
-
-    sort_idx = np.argsort(b_freq)
-    cs_inv = CubicSpline(b_freq[sort_idx], b_flux[sort_idx], extrapolate=True)
+    cs_inv = CubicSpline(b_freq, b_flux, extrapolate=True)
     measured_flat = np.asarray(measured_abs_freq, dtype=float).ravel()
-    result = cs_inv(measured_flat) - idle_flux
+    result = np.abs(cs_inv(measured_flat) - idle_flux)
 
-    flux_range = float(b_flux.max() - idle_flux)
-    bad = (result < -0.01) | (result > 2.0 * flux_range)
-    result[bad] = np.nan
+    flux_range = float(np.abs(b_flux - idle_flux).max())
+    result[result > 2.0 * flux_range] = np.nan
     return result.reshape(np.shape(measured_abs_freq))
 
 
@@ -480,41 +544,26 @@ class ResolvedFluxAmps:
     Attributes
     ----------
     amplitudes :
-        Signed Z-pulse amplitudes (V) aligned with the input qubit list.
+        Z-pulse amplitude magnitudes (V) aligned with the input qubit list.
+        Positive by construction: at the sweetspot either flux direction reaches
+        the target detuning, and the sign never reaches the IIR taps.
     sources :
-        Human-readable origin per qubit, e.g.
-        ``\"Ramsey #42 (right)\"`` or ``\"quad_term=1.2e9\"``.
+        Human-readable origin per qubit, e.g. ``"Ramsey #42"`` or
+        ``"quad_term=1.2e9"``.
     curves :
         The ``FreqFluxCurve`` chosen per qubit, keyed by qubit name — the same
         selection analysis will make, so it can be reported to the user.
-    effective_branch :
-        Branch actually used. May differ from the requested branch if the
-        preferred side had no crossing and the opposite side was used.
     """
 
     amplitudes: List[float]
     sources: List[str]
-    effective_branch: Branch
     curves: Dict[str, FreqFluxCurve] = field(default_factory=dict)
-
-    @property
-    def flux_amp_for_detuning_sentinel(self) -> float:
-        """±999 sentinel encoding ``effective_branch`` for analysis.
-
-        Analysis historically keyed branch off the sign of a namespace amp
-        (positive → right / upper, negative → left). Real amps are overwritten
-        elsewhere; this sentinel preserves branch without threading a string
-        through the fit path. Prefer passing ``flux_branch`` explicitly when
-        possible.
-        """
-        return 999.0 if self.effective_branch == "right" else -999.0
 
 
 def resolve_flux_amplitudes(
     qubits,
     *,
     detuning_hz: float,
-    flux_branch: Branch,
     freq_to_flux_source: FreqFluxSource = "auto",
 ) -> ResolvedFluxAmps:
     """Derive per-qubit Z-pulse amplitudes for a target detuning.
@@ -526,13 +575,16 @@ def resolve_flux_amplitudes(
 
     Given that relation:
 
-    * **Measured curve** (Ramsey / spectroscopy) → ``flux_amp_from_curve`` on
-      ``flux_branch``, falling back to the opposite branch if the target
-      detuning has no crossing there.
-    * **Quadratic** → ``sign(flux_branch) * sqrt(|detuning| / |quad_term|)``.
+    * **Measured curve** (Ramsey / spectroscopy) → ``flux_amp_from_curve`` over
+      the whole curve, taking the smallest-|ΔΦ| crossing on either side.
+    * **Quadratic** → ``sqrt(|detuning| / |quad_term|)``.
+
+    Amplitudes are magnitudes: the qubit is assumed to be at its sweetspot, so
+    both flux directions detune downwards equally and the sign is irrelevant to
+    the fitted taps.
 
     Raises ``ValueError`` if no relation is usable for a qubit. Warns if
-    ``|amp| > 0.5`` V.
+    ``amp > 0.5`` V.
 
     Parameters
     ----------
@@ -541,59 +593,42 @@ def resolve_flux_amplitudes(
         and optionally ``.freq_vs_flux_01_quad_term`` / ``.extras``).
     detuning_hz :
         Target |Δf| below idle (Hz).
-    flux_branch :
-        Preferred parabola side (``\"left\"`` / ``\"right\"``).
     freq_to_flux_source :
-        ``\"auto\"`` (Ramsey → spectroscopy → quad_term) or a forced source.
+        ``"auto"`` (Ramsey → spectroscopy → quad_term) or a forced source.
 
     Returns
     -------
     ResolvedFluxAmps
-        Amplitudes, source labels, the per-qubit chosen curves, and the
-        effective branch (last qubit's branch is stored on the dataclass — fine
-        for single-qubit / shared branch runs).
+        Amplitudes, source labels, and the per-qubit chosen curves.
     """
     amplitudes: List[float] = []
     sources: List[str] = []
     curves: Dict[str, FreqFluxCurve] = {}
-    effective_branch: Branch = flux_branch
 
     for q in qubits:
         amp: Optional[float] = None
         label: Optional[str] = None
-        used_branch: Branch = flux_branch
         idle = q.xy.RF_frequency
 
         selected = resolve_freq_flux_curve(q, freq_to_flux_source)
         curves[q.name] = selected
 
         if selected.is_measured:
-            for br in (flux_branch, _OPPOSITE[flux_branch]):
-                amp = flux_amp_from_curve(detuning_hz, idle, selected.curve, br)
-                if amp is not None:
-                    used_branch = br
-                    if br != flux_branch:
-                        warnings.warn(
-                            f"{q.name}: target detuning not found on {flux_branch} branch of "
-                            f"{selected.label}, trying {br}"
-                        )
-                        label = f"{selected.label} ({br}, fallback)"
-                    else:
-                        label = f"{selected.label} ({br})"
-                    break
+            # branch=None: smallest |ΔΦ| crossing on either side of idle.
+            amp = flux_amp_from_curve(detuning_hz, idle, selected.curve, None)
             if amp is None:
                 warnings.warn(
                     f"{q.name}: target detuning {detuning_hz / 1e6:.1f} MHz is not reachable on "
-                    f"either branch of {selected.label}; falling back to freq_vs_flux_01_quad_term."
+                    f"{selected.label}; falling back to freq_vs_flux_01_quad_term."
                 )
+            else:
+                label = selected.label
 
         if amp is None:
             qt = selected.quad_term if selected.quad_term is not None else getattr(q, "freq_vs_flux_01_quad_term", None)
             if qt is not None and qt != 0 and np.isfinite(qt):
-                sign = 1.0 if flux_branch == "right" else -1.0
-                amp = sign * float(np.sqrt(abs(detuning_hz) / abs(qt)))
+                amp = float(np.sqrt(abs(detuning_hz) / abs(qt)))
                 label = f"quad_term={qt:.3e}"
-                used_branch = flux_branch
                 if selected.kind != "quad_term":
                     curves[q.name] = FreqFluxCurve(
                         kind="quad_term", label=f"quad_term={float(qt):.3e}", quad_term=float(qt)
@@ -606,18 +641,14 @@ def resolve_flux_amplitudes(
                 f"is missing or zero."
             )
 
-        if abs(amp) > 0.5:
+        if amp > 0.5:
             warnings.warn(
-                f"{q.name}: derived flux_amp={amp:.4f} V exceeds 0.5 V. " f"Verify detuning_in_mhz is correct."
+                f"{q.name}: derived flux_amp={amp:.4f} V exceeds 0.5 V. Verify detuning_in_mhz "
+                f"is correct — note the OPX output range must also accommodate the standing "
+                f"flux offset, so usable headroom is less than the derived amplitude suggests."
             )
 
         amplitudes.append(float(amp))
         sources.append(label or "unknown")
-        effective_branch = used_branch
 
-    return ResolvedFluxAmps(
-        amplitudes=amplitudes,
-        sources=sources,
-        effective_branch=effective_branch,
-        curves=curves,
-    )
+    return ResolvedFluxAmps(amplitudes=amplitudes, sources=sources, curves=curves)

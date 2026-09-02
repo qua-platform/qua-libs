@@ -21,14 +21,17 @@ Key equations
    while the XY drive is swept in detuning. The resonance center f(t) is the
    Gaussian peak (or dip) along the frequency axis of that time slice.
 
-2. Frequency → flux uses the relation named by ``freq_to_flux_source``,
-   restricted to the chosen ``flux_branch`` (left/right of the idle sweet spot).
-   With the default ``"auto"``:
+2. Frequency → flux uses the relation named by ``freq_to_flux_source``. With
+   the default ``"auto"``:
 
        Ramsey vs Z (09a)  →  spectroscopy vs Z (03b)  →  quad_term fallback
 
        |Δf| ≈ q · Φ²     (near idle; quad_term path)
-       Φ(t) = frequency_to_flux_deviation(f(t); curve, branch)
+       |ΔΦ|(t) = frequency_to_flux_deviation(f(t); curve)
+
+   The qubit is assumed to be parked at its sweetspot, so ``f(Φ)`` is symmetric
+   about idle and the side of the parabola is not a user choice; the response is
+   returned as a magnitude, which is what the taps ``A_i = a_i / a_dc`` need.
 
 3. The flux step response is the deviation from idle bias. Late-time asymptote
    is a_dc (the commanded long-pulse amplitude in flux units).
@@ -43,7 +46,7 @@ Key equations
 
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import xarray as xr
@@ -270,10 +273,8 @@ def _compute_flux_response(
     center_freqs: xr.DataArray,
     qubits: list,
     freq_to_flux_source: FreqFluxSource = "auto",
-    flux_amp_for_detuning: Optional[float] = None,
-    flux_branch: Literal["left", "right"] = "right",
 ) -> Tuple[xr.DataArray, Dict[str, Tuple[np.ndarray, np.ndarray]], Dict[str, str]]:
-    """Map extracted ``center_freqs(t)`` to a Z-flux step response.
+    """Map extracted ``center_freqs(t)`` to a Z-flux step response magnitude.
 
     The freq→voltage relation is chosen by ``resolve_freq_flux_curve`` — the
     single decision point also used to pick the Z amplitude before the run — so
@@ -304,23 +305,14 @@ def _compute_flux_response(
             curve = selected.curve
             measured_curves[q.name] = curve
             abs_freq_q = center_freqs.sel(qubit=q.name).values + q.xy.RF_frequency
-            # Branch: namespace sentinel/amp vs idle flux when available, else flux_branch param.
-            use_upper_branch = flux_branch == "right"
-            if flux_amp_for_detuning is not None:
-                idle_idx = int(np.argmin(np.abs(curve[1] - q.xy.RF_frequency)))
-                use_upper_branch = float(flux_amp_for_detuning) >= float(curve[0][idle_idx])
             flux_response.values[i, :] = frequency_to_flux_deviation(
                 abs_freq_q,
                 curve[0],
                 curve[1],
                 q.xy.RF_frequency,
-                use_upper_branch=use_upper_branch,
             )
         elif selected.quad_term is not None:
-            sign = 1.0 if flux_branch == "right" else -1.0
-            flux_response.values[i, :] = sign * np.sqrt(
-                np.abs(center_freqs.sel(qubit=q.name).values / selected.quad_term)
-            )
+            flux_response.values[i, :] = np.sqrt(np.abs(center_freqs.sel(qubit=q.name).values / selected.quad_term))
         else:
             print(
                 f"  WARNING: {q.name}: no freq-vs-flux relation available "
@@ -410,13 +402,10 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
     )
 
     freq_to_flux_source = getattr(node.parameters, "freq_to_flux_source", "auto")
-    flux_amp_for_detuning = node.namespace.get("flux_amp_for_detuning")
     flux_response, spec_curves, sources = _compute_flux_response(
         center_freqs,
         qubits,
         freq_to_flux_source=freq_to_flux_source,
-        flux_amp_for_detuning=flux_amp_for_detuning,
-        flux_branch=getattr(node.parameters, "flux_branch", "right"),
     )
 
     # Record which freq->voltage relation each qubit actually used, so the taps
