@@ -1,6 +1,5 @@
 """Parameter definitions for pi vs flux (long time distortion) calibration experiment."""
 
-
 from typing import Literal, Optional
 
 from qualibrate import NodeParameters

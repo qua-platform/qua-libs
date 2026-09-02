@@ -1,6 +1,5 @@
 """Ramsey-based qubit flux long distortion characterization and filter design."""
 
-
 # %%
 
 from __future__ import annotations
@@ -26,7 +25,6 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-
 
 # %%
 description = """
@@ -63,10 +61,7 @@ Ref: https://arxiv.org/abs/2111.13504
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="17b_qubit_flux_long_distortion_ramsey",
-    description=description,
-    parameters=Parameters(),
-    machine = Quam.load()
+    name="17b_qubit_flux_long_distortion_ramsey", description=description, parameters=Parameters(), machine=Quam.load()
 )
 
 
@@ -253,8 +248,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     if debug:
         from pathlib import Path
         from qm import generate_qua_script
+
         file_name = Path(__file__).stem
-        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", 'w') as sourceFile:
+        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", "w") as sourceFile:
             print(generate_qua_script(node.namespace["qua_program"], config), file=sourceFile)
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
@@ -305,6 +301,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # separate `fetching_tool` subscription here, with `wait_for_all`
         # mode so it blocks until the server has all values.
         from qualang_tools.results import fetching_tool as _fetching_tool
+
         _existing_keys = list(job.result_handles.keys())
         _present_ref_keys = [n for n in ref_handle_names if n in _existing_keys]
         _ref_data_map = {}
