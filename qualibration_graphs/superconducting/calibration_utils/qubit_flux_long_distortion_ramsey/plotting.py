@@ -26,7 +26,12 @@ def annotate_branch_risk(fig, ds: xr.Dataset) -> bool:
         sw = float(ds["branch_sig_swing"].sel(qubit=nm).values)
         rs = float(ds["branch_ref_span"].sel(qubit=nm).values)
         tag = "HIGH" if code >= 2 else "marginal"
-        lines.append(f"{nm}: {tag} — phase swing {sw:.2f}×2π, ref span {rs:.2f}×2π")
+        detail = f"{nm}: {tag} — phase swing {sw:.2f}×2π, ref span {rs:.2f}×2π"
+        if "branch_out_of_range" in ds:
+            oor = float(ds["branch_out_of_range"].sel(qubit=nm).values)
+            if oor > 0:
+                detail += f", {oor:.0%} of points dropped (outside ref window)"
+        lines.append(detail)
     if not lines:
         return False
     msg = (
