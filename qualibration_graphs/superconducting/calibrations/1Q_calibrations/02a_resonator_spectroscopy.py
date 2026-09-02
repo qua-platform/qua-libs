@@ -167,7 +167,7 @@ def _analyse(node: QualibrationNode[Parameters, Quam]) -> None:
 
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    
+
     # Keep the typed results around too, for the escalation retry ladder.
     node.namespace["fit_results"] = fit_results
 
