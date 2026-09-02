@@ -1,4 +1,4 @@
-from .analysis import fit_raw_data, log_fitted_results, process_raw_dataset
+from .analysis import FitParameters, fit_raw_data, log_fitted_results, process_raw_dataset
 from .parameters import Parameters
 from .plotting import (
     plot_raw_amplitude_with_fit,
@@ -9,6 +9,7 @@ from .plotting import (
 
 __all__ = [
     "Parameters",
+    "FitParameters",
     "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",

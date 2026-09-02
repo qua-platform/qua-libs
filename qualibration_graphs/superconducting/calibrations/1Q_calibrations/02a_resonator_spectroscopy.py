@@ -23,6 +23,7 @@ from quam_config import Quam
 
 from calibration_utils.resonator_spectroscopy import (
     Parameters,
+    FitParameters,
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
@@ -159,19 +160,22 @@ def _execute_and_fetch(node: QualibrationNode[Parameters, Quam]) -> None:
 
 def _analyse(node: QualibrationNode[Parameters, Quam]) -> None:
     """Process + fit + log + outcomes (shared between the main pass and the retries)."""
+
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
+    fit_results: dict[str, FitParameters]
+
+    node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
+    
+    # Keep the typed results around too, for the escalation retry ladder.
+    node.namespace["fit_results"] = fit_results
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    log_fitted_results(fit_results, log_callable=node.log)
     node.outcomes = {
-        qubit_name: (
-            "successful"
-            if fit_result["success"] and not fit_result.get("ambiguous", False)
-            else "failed"
-        )
-        for qubit_name, fit_result in node.results["fit_results"].items()
+        qubit_name: ("successful" if fit_result.success and not fit_result.ambiguous else "failed")
+        for qubit_name, fit_result in fit_results.items()
     }
 
 
@@ -253,12 +257,12 @@ def escalate_no_dip(node: QualibrationNode[Parameters, Quam]) -> None:
     tracked = node.namespace.setdefault("tracked_lo_qubits", [])
 
     while True:
-        plan = plan_span_escalation(node.results["fit_results"], span, max_span)
-        if not plan["retry"]:
+        plan = plan_span_escalation(node.namespace["fit_results"], span, max_span)
+        if not plan.retry:
             break
-        span = plan["new_span_hz"]
+        span = plan.new_span_hz
         node.log(
-            f"escalation: no dip on {plan['qubits']} -> re-measuring all active qubits " f"at span {span / 1e6:.0f} MHz"
+            f"escalation: no dip on {plan.qubits} -> re-measuring all active qubits " f"at span {span / 1e6:.0f} MHz"
         )
         # Re-center LOs where the wider sweep would push the IF out of reach.
         lo_moves = {}
@@ -270,16 +274,16 @@ def escalate_no_dip(node: QualibrationNode[Parameters, Quam]) -> None:
                 span_hz=span,
                 band=getattr(rr.opx_output, "band", None),
             )
-            if lo_plan["error"]:
-                node.log(f"escalation: {q.name}: {lo_plan['error']} — keeping current LO")
+            if lo_plan.error:
+                node.log(f"escalation: {q.name}: {lo_plan.error} — keeping current LO")
                 continue
-            if lo_plan["shift"]:
+            if lo_plan.shift:
                 with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
-                    q_upd.resonator.opx_output.upconverter_frequency = lo_plan["new_lo_hz"]
+                    q_upd.resonator.opx_output.upconverter_frequency = lo_plan.new_lo_hz
                     tracked.append(q_upd)
-                lo_moves[q.name] = lo_plan["new_lo_hz"]
-                node.log(f"escalation: {q.name}: LO re-centered to {lo_plan['new_lo_hz'] / 1e9:.4f} GHz")
-        audit.append(dict(span_hz=float(span), retried=plan["qubits"], lo_moves=lo_moves))
+                lo_moves[q.name] = lo_plan.new_lo_hz
+                node.log(f"escalation: {q.name}: LO re-centered to {lo_plan.new_lo_hz / 1e9:.4f} GHz")
+        audit.append(dict(span_hz=float(span), retried=plan.qubits, lo_moves=lo_moves))
         _setup_sweep_and_program(node, span)
         _execute_and_fetch(node)
         _analyse(node)

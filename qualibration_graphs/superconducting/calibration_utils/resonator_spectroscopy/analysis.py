@@ -1,7 +1,7 @@
 import logging
 import warnings
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Callable
 
 import numpy as np
 import xarray as xr
@@ -37,6 +37,23 @@ def lorentzian_dip_quadbg(
     return (bg0 + bg1 * x + bg2 * x * x) - amp / (1 + ((f - f0) / (fwhm / 2)) ** 2)
 
 
+@dataclass
+class DipCandidate:
+    """One statistically significant dip found by :func:`find_dip_candidates`."""
+
+    idx: int
+    """Index of the dip minimum within the (smoothed) trace."""
+
+    f: float
+    """Frequency (Hz) of the dip minimum."""
+
+    prom_snr: float
+    """Baseline-subtracted prominence divided by the per-point noise sigma."""
+
+    width_hz: float
+    """Half-prominence width of the dip, in Hz."""
+
+
 def find_dip_candidates(
     freqs: NDArray[np.float64],
     smoothed: NDArray[np.float64],
@@ -45,7 +62,7 @@ def find_dip_candidates(
     min_dip_snr: float = 6.0,
     max_dip_width_hz: float = 22.5e6,
     edge_fraction: float = 0.02,
-) -> list[dict[str, int | float]]:
+) -> list[DipCandidate]:
     """Noise-relative, background-free dip candidates on an arbitrary-width scan.
 
     1. Remove broad structure (cable ripple, bowl) with a rolling-median
@@ -58,8 +75,8 @@ def find_dip_candidates(
     3. Keep only candidates whose half-prominence width looks like a resonator
        (<= ``max_dip_width_hz``).
 
-    Returns a list of dicts ``{idx, f, prom_snr, width_hz}`` sorted by
-    descending prominence (may be empty).
+    Returns a list of :class:`DipCandidate` sorted by descending prominence
+    (may be empty).
     """
     freqs = np.asarray(freqs, dtype=float)
     smoothed = np.asarray(smoothed, dtype=float)
@@ -83,8 +100,8 @@ def find_dip_candidates(
             continue
         if w > max_dip_width_hz:
             continue
-        out.append(dict(idx=int(p), f=float(freqs[p]), prom_snr=float(prom / sigma), width_hz=float(w)))
-    out.sort(key=lambda c: -c["prom_snr"])
+        out.append(DipCandidate(idx=int(p), f=float(freqs[p]), prom_snr=float(prom / sigma), width_hz=float(w)))
+    out.sort(key=lambda c: -c.prom_snr)
     return out
 
 
@@ -144,6 +161,32 @@ def _estimate_initial_fwhm(
     return max(float(fwhm_init), 2 * step), depth_d
 
 
+@dataclass
+class FitLadderResult:
+    """Best fit found by :func:`_fit_lorentzian_dip_ladder` across its window/model ladder."""
+
+    popt: NDArray[np.float64]
+    """Fitted Lorentzian parameters [f0, fwhm, amp, bg0, bg1] (linear-background terms only)."""
+
+    r2: float
+    """Coefficient of determination of the fit over its fit window."""
+
+    f0: float
+    """Fitted dip centre frequency, in Hz."""
+
+    fwhm: float
+    """Fitted full width at half maximum, in Hz."""
+
+    amp: float
+    """Fitted dip depth (Lorentzian amplitude)."""
+
+    contrast: float
+    """Fitted amplitude divided by the background level at f0 (0 when that background is non-positive)."""
+
+    f_win: tuple[float, float]
+    """(lo, hi) frequency bounds, in Hz, of the window this fit was performed on."""
+
+
 def _fit_lorentzian_dip_ladder(
     freqs: NDArray[np.float64],
     amplitude: NDArray[np.float64],
@@ -153,7 +196,7 @@ def _fit_lorentzian_dip_ladder(
     step: float,
     window_fwhm_factor: float,
     min_window_mhz: float,
-) -> dict[str, Any] | None:
+) -> FitLadderResult | None:
     """Try a small ladder of fit windows/models, keep whichever gives the best R².
 
     Tries, in order: a linear background at the standard window, the same
@@ -192,9 +235,9 @@ def _fit_lorentzian_dip_ladder(
         ss_res = float(np.sum((a_win - y_pred) ** 2))
         ss_tot = float(np.sum((a_win - a_win.mean()) ** 2)) + 1e-30
         r2_t = 1.0 - ss_res / ss_tot
-        if best is None or r2_t > best["r2"]:
+        if best is None or r2_t > best.r2:
             bg_at_f0 = popt_t[3] + popt_t[4] * (popt_t[0] - f_win.mean())
-            best = dict(
+            best = FitLadderResult(
                 popt=np.array(popt_t[:5], dtype=float),
                 r2=float(r2_t),
                 f0=float(popt_t[0]),
@@ -206,8 +249,37 @@ def _fit_lorentzian_dip_ladder(
     return best
 
 
+@dataclass
+class SelectedFitOutputs:
+    """Final per-qubit fit outputs chosen by :func:`_select_fit_outputs`."""
+
+    f0: float
+    """Resonance frequency (Hz): the trusted fit's centre, or the pre-fit dip estimate."""
+
+    fwhm: float
+    """Full width at half maximum (Hz): the trusted fit's value, or the pre-fit estimate."""
+
+    r2: float
+    """Coefficient of determination of the fit ladder's best attempt (0.0 if none converged)."""
+
+    contrast: float
+    """Dip depth over background: the fit's value when trusted, else a raw-estimate fallback."""
+
+    popt: NDArray[np.float64]
+    """Lorentzian fit parameters [f0, fwhm, amp, bg0, bg1], or all-NaN when the fit was untrusted."""
+
+    fit_win_lo: float
+    """Lower edge (Hz) of the window the trusted fit was performed on (NaN if untrusted)."""
+
+    fit_win_hi: float
+    """Upper edge (Hz) of the window the trusted fit was performed on (NaN if untrusted)."""
+
+    success_shape: bool
+    """Whether the Lorentzian lineshape passes the strict R²/FWHM/contrast gates."""
+
+
 def _select_fit_outputs(
-    best: dict[str, Any] | None,
+    best: FitLadderResult | None,
     f0_init: float,
     fwhm_init: float,
     depth_d: float,
@@ -216,7 +288,7 @@ def _select_fit_outputs(
     r2_threshold: float,
     max_fwhm_mhz: float,
     min_contrast: float,
-) -> dict[str, Any]:
+) -> SelectedFitOutputs:
     """Pick between the fit-ladder result and the raw dip estimate, then apply the strict shape gates.
 
     A fit is only trusted if its center landed close to the detected dip
@@ -232,7 +304,7 @@ def _select_fit_outputs(
 
     fit_trusted: bool = False
     if best is not None:
-        fit_centre_drift_hz: float = abs(best["f0"] - f0_init)
+        fit_centre_drift_hz: float = abs(best.f0 - f0_init)
 
         if fit_centre_drift_hz <= max_allowed_drift_hz:
             fit_trusted = True
@@ -246,15 +318,15 @@ def _select_fit_outputs(
     fit_win_hi: float
 
     if fit_trusted:
-        f0_out, fwhm_out = best["f0"], best["fwhm"]
-        r2 = best["r2"]
-        fitted_contrast = best["contrast"]
-        popt = best["popt"]
-        fit_win_lo, fit_win_hi = best["f_win"]
+        f0_out, fwhm_out = best.f0, best.fwhm
+        r2 = best.r2
+        fitted_contrast = best.contrast
+        popt = best.popt
+        fit_win_lo, fit_win_hi = best.f_win
     else:
         # Fit unusable/ran away: the dip existence and position stand on their own.
         f0_out, fwhm_out = f0_init, fwhm_init
-        r2 = best["r2"] if best is not None else 0.0
+        r2 = best.r2 if best is not None else 0.0
         popt = nan5.copy()
         fit_win_lo, fit_win_hi = np.nan, np.nan
 
@@ -280,7 +352,7 @@ def _select_fit_outputs(
         and centre_inside_fit_window
     )
 
-    return dict(
+    return SelectedFitOutputs(
         f0=f0_out,
         fwhm=fwhm_out,
         r2=r2,
@@ -290,6 +362,56 @@ def _select_fit_outputs(
         fit_win_hi=fit_win_hi,
         success_shape=success_shape,
     )
+
+
+@dataclass
+class ResonatorFitResult:
+    """Full result of fitting one qubit's resonator trace, as returned by :func:`fit_resonator`."""
+
+    f0: float
+    """Resonance frequency, in Hz (NaN if no significant dip was found)."""
+
+    fwhm: float
+    """Full width at half maximum, in Hz (NaN if no significant dip was found)."""
+
+    r2: float
+    """Coefficient of determination of the Lorentzian fit (NaN if no significant dip was found)."""
+
+    success: bool
+    """FREQUENCY success: a statistically significant, resonator-shaped dip exists and f0 is delivered."""
+
+    success_shape: bool = False
+    """Whether the fitted Lorentzian lineshape passes the strict R²/FWHM/contrast gates."""
+
+    ambiguous: bool = False
+    """Whether a second dip candidate is within `dominance`x of the top one's prominence."""
+
+    dip_snr: float = 0.0
+    """Top dip candidate's prominence divided by the per-point noise sigma."""
+
+    candidates: list[DipCandidate] = field(default_factory=list)
+    """Every statistically significant dip found, sorted by descending prominence."""
+
+    popt: NDArray[np.float64] = field(default_factory=lambda: np.full(5, np.nan))
+    """Lorentzian fit parameters [f0, fwhm, amp, bg0, bg1], or all-NaN when untrusted/no fit."""
+
+    edge_dip: bool = False
+    """Reserved: whether the dip sits at the edge of the swept window (currently always False)."""
+
+    contrast: float = float("nan")
+    """Dip depth over background."""
+
+    dip_idx: int = -1
+    """Index of the top dip candidate within the trace (-1 if none)."""
+
+    reason: str = ""
+    """Human-readable reason for failure when `success` is False."""
+
+    fit_win_lo: float = float("nan")
+    """Lower edge (Hz) of the window the trusted fit was performed on."""
+
+    fit_win_hi: float = float("nan")
+    """Upper edge (Hz) of the window the trusted fit was performed on."""
 
 
 def fit_resonator(
@@ -308,7 +430,7 @@ def fit_resonator(
     smooth_window: int = 11,
     min_dip_snr: float = 6.0,
     dominance: float = 2.0,
-) -> dict[str, Any]:
+) -> ResonatorFitResult:
     """Bring-up-grade resonator-dip fitter.
 
     When override_center_hz and override_span_hz are provided the data is
@@ -332,29 +454,9 @@ def fit_resonator(
 
     Returns
     -------
-    dict with keys:
-        f0, fwhm, r2, success, success_shape, ambiguous, dip_snr,
-        candidates (list of {idx, f, prom_snr, width_hz}),
-        popt (array[5] or all-NaN), edge_dip, contrast, dip_idx, reason
+    ResonatorFitResult
     """
-    _nan5 = np.full(5, np.nan)
-    result = dict(
-        f0=np.nan,
-        fwhm=np.nan,
-        r2=np.nan,
-        success=False,
-        success_shape=False,
-        ambiguous=False,
-        dip_snr=0.0,
-        candidates=[],
-        popt=_nan5.copy(),
-        edge_dip=False,
-        contrast=np.nan,
-        dip_idx=-1,
-        reason="",
-        fit_win_lo=np.nan,
-        fit_win_hi=np.nan,
-    )
+    result = ResonatorFitResult(f0=np.nan, fwhm=np.nan, r2=np.nan, success=False)
 
     freqs = np.asarray(freqs, dtype=float)
     amplitude = np.asarray(amplitude, dtype=float)
@@ -370,7 +472,7 @@ def fit_resonator(
     span_hz = freqs[-1] - freqs[0]
     N = len(freqs)
     if N < 16:
-        result["reason"] = "trace too short"
+        result.reason = "trace too short"
         return result
     step = float(np.median(np.abs(np.diff(freqs)))) if N > 1 else 1e5
 
@@ -385,19 +487,19 @@ def fit_resonator(
         max_dip_width_hz=1.5 * max_fwhm_mhz * 1e6,
         edge_fraction=edge_fraction,
     )
-    result["candidates"] = candidates
+    result.candidates = candidates
     if not candidates:
-        result["reason"] = "no significant dip"
+        result.reason = "no significant dip"
         return result
     top = candidates[0]
-    dip_idx = top["idx"]
-    result["dip_idx"] = dip_idx
-    result["dip_snr"] = top["prom_snr"]
-    result["ambiguous"] = len(candidates) > 1 and candidates[1]["prom_snr"] >= top["prom_snr"] / dominance
+    dip_idx = top.idx
+    result.dip_idx = dip_idx
+    result.dip_snr = top.prom_snr
+    result.ambiguous = len(candidates) > 1 and candidates[1].prom_snr >= top.prom_snr / dominance
     f0_init = float(freqs[dip_idx])
     A_raw = smoothed.max() - smoothed.min()
 
-    fwhm_init, depth_d = _estimate_initial_fwhm(freqs, smoothed, f0_init, top["width_hz"], detrend_window_mhz, step)
+    fwhm_init, depth_d = _estimate_initial_fwhm(freqs, smoothed, f0_init, top.width_hz, detrend_window_mhz, step)
 
     best = _fit_lorentzian_dip_ladder(
         freqs, amplitude, f0_init, fwhm_init, A_raw, step, window_fwhm_factor, min_window_mhz
@@ -409,23 +511,21 @@ def fit_resonator(
 
     # Refine the reported centre to the true dip minimum (asymmetric-tail
     # bias correction; see _refine_dip_minimum).
-    f0_out = _refine_dip_minimum(freqs, smoothed, outputs["f0"], max(outputs["fwhm"], 2 * step))
-    popt = outputs["popt"]
+    f0_out = _refine_dip_minimum(freqs, smoothed, outputs.f0, max(outputs.fwhm, 2 * step))
+    popt = outputs.popt
     if not np.any(np.isnan(popt)):
         popt = np.array(popt, dtype=float)
         popt[0] = f0_out
 
-    result.update(
-        f0=float(f0_out),
-        fwhm=float(outputs["fwhm"]),
-        r2=float(outputs["r2"]),
-        success=True,  # a significant, resonator-shaped dip exists (candidates non-empty)
-        success_shape=outputs["success_shape"],
-        popt=np.array(popt),
-        contrast=float(outputs["contrast"]),
-        fit_win_lo=float(outputs["fit_win_lo"]),
-        fit_win_hi=float(outputs["fit_win_hi"]),
-    )
+    result.f0 = float(f0_out)
+    result.fwhm = float(outputs.fwhm)
+    result.r2 = float(outputs.r2)
+    result.success = True  # a significant, resonator-shaped dip exists (candidates non-empty)
+    result.success_shape = outputs.success_shape
+    result.popt = np.array(popt)
+    result.contrast = float(outputs.contrast)
+    result.fit_win_lo = float(outputs.fit_win_lo)
+    result.fit_win_hi = float(outputs.fit_win_hi)
     return result
 
 
@@ -480,13 +580,13 @@ class FitParameters:
     success_shape: bool = False  # Lorentzian lineshape trustworthy (strict gates)
     ambiguous: bool = False  # >1 comparable dip in the window — needs disambiguation
     dip_snr: float = 0.0  # top dip prominence / noise sigma
-    candidates: list[dict[str, int | float]] = field(default_factory=list)  # all significant dips (desc prominence)
+    candidates: list[DipCandidate] = field(default_factory=list)  # all significant dips (desc prominence)
     fit_win_lo: float = float("nan")  # lower edge (Hz) of the window popt was actually fit on
     fit_win_hi: float = float("nan")  # upper edge (Hz) of the window popt was actually fit on
 
 
 def log_fitted_results(
-    fit_results: dict[str, dict[str, Any]], log_callable: Callable[[str], None] | None = None
+    fit_results: dict[str, FitParameters], log_callable: Callable[[str], None] | None = None
 ) -> None:
     """Log the fitted results for all qubits (three-state + ambiguity in v2)."""
 
@@ -494,22 +594,22 @@ def log_fitted_results(
         log_callable = logging.getLogger(__name__).info
 
     for q, res in fit_results.items():
-        if res["success"] and res.get("success_shape", True):
+        if res.success and res.success_shape:
             status = "SUCCESS!"
-        elif res["success"]:
+        elif res.success:
             status = "FREQUENCY OK (lineshape poor)"
         else:
             status = "FAIL!"
 
-        if res.get("ambiguous"):
-            n = len(res.get("candidates") or [])
+        if res.ambiguous:
+            n = len(res.candidates)
             status += f"  [AMBIGUOUS: {n} comparable dips — verify vs expected freq / punch-out]"
-            
+
         log_callable(
             f"Results for qubit {q}:  {status}\n"
-            f"\tResonator frequency: {1e-9 * res['frequency']:.4f} GHz | "
-            f"FWHM: {1e-3 * res['fwhm']:.1f} kHz | "
-            f"R²: {res['r2']:.3f} | dip SNR: {res.get('dip_snr', 0.0):.1f}"
+            f"\tResonator frequency: {1e-9 * res.frequency:.4f} GHz | "
+            f"FWHM: {1e-3 * res.fwhm:.1f} kHz | "
+            f"R²: {res.r2:.3f} | dip SNR: {res.dip_snr:.1f}"
         )
 
 
@@ -569,17 +669,17 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
             dominance=getattr(params, "dip_dominance", 2.0),
         )
 
-        f0_vals.append(res["f0"])
-        fwhm_vals.append(res["fwhm"])
-        r2_vals.append(res["r2"] if not np.isnan(res["r2"]) else 0.0)
-        success_vals.append(res["success"])
-        shape_vals.append(res["success_shape"])
-        amb_vals.append(res["ambiguous"])
-        snr_vals.append(res["dip_snr"])
-        cand_vals.append(res["candidates"])
-        popt_vals.append(res["popt"])  # shape (5,) or all-NaN
-        fit_win_lo_vals.append(res["fit_win_lo"])
-        fit_win_hi_vals.append(res["fit_win_hi"])
+        f0_vals.append(res.f0)
+        fwhm_vals.append(res.fwhm)
+        r2_vals.append(res.r2 if not np.isnan(res.r2) else 0.0)
+        success_vals.append(res.success)
+        shape_vals.append(res.success_shape)
+        amb_vals.append(res.ambiguous)
+        snr_vals.append(res.dip_snr)
+        cand_vals.append(res.candidates)
+        popt_vals.append(res.popt)  # shape (5,) or all-NaN
+        fit_win_lo_vals.append(res.fit_win_lo)
+        fit_win_hi_vals.append(res.fit_win_hi)
 
     popt_array = np.stack(popt_vals, axis=0)  # (n_qubits, 5)
 
