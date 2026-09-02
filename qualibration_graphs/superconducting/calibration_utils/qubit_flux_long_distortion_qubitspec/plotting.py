@@ -154,7 +154,6 @@ def plot_raw_data_with_fit(
     fit_results: Dict,
     *,
     debug: bool = False,
-    ramsey_run_id: Optional[int] = None,
 ) -> Dict[str, plt.Figure]:
     """Default 17a figures: center freq, flux response, and exponential fit.
 
@@ -163,9 +162,6 @@ def plot_raw_data_with_fit(
     debug :
         If True, also add IQ/phase heatmaps and spectroscopy/Ramsey reference
         curves when available.
-    ramsey_run_id :
-        Optional override for the Ramsey reference plot (only used when
-        ``debug=True``).
 
     Returns
     -------
@@ -190,7 +186,7 @@ def plot_raw_data_with_fit(
         "iq_abs_log": plot_iq_abs_heatmap(ds, qubits, log_scale=True),
         "phase": plot_phase_heatmap(ds, qubits),
         "spectroscopy_curve": plot_spectroscopy_curve(ds, qubits),
-        "ramsey_curve": plot_ramsey_curve(qubits, ramsey_run_id),
+        "ramsey_curve": plot_ramsey_curve(qubits),
     }.items():
         if fig is not None:
             figures[key] = fig
@@ -277,11 +273,11 @@ def plot_phase_heatmap(ds: xr.Dataset, qubits):
 
 
 def plot_spectroscopy_curve(ds: xr.Dataset, qubits) -> Optional[plt.Figure]:
-    """Spectroscopy freq-vs-flux curve attached to ``ds`` during analysis."""
+    """Measured freq-vs-flux curve(s) attached to ``ds`` during analysis."""
     if "spec_curve_flux" not in ds or "spec_curve_freq" not in ds:
         return None
 
-    run_id = ds.attrs.get("spectroscopy_run_id", "?")
+    sources = ds.attrs.get("freq_to_flux_sources", "")
     names = [q.name for q in qubits]
     n = len(names)
     fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
@@ -300,13 +296,13 @@ def plot_spectroscopy_curve(ds: xr.Dataset, qubits) -> Optional[plt.Figure]:
         ax.set_title(qname)
         ax.grid(True)
 
-    fig.suptitle(f"Spectroscopy curve used (run #{run_id})")
+    fig.suptitle(f"Freq-vs-flux curve used ({sources})" if sources else "Freq-vs-flux curve used")
     fig.tight_layout()
     return fig
 
 
-def plot_ramsey_curve(qubits, run_id: Optional[int] = None) -> Optional[plt.Figure]:
-    """Ramsey vs Z-flux reference (reloaded from run id / extras)."""
+def plot_ramsey_curve(qubits) -> Optional[plt.Figure]:
+    """Ramsey vs Z-flux reference, reloaded from each qubit's extras run ID."""
     from calibration_utils.common_utils.flux_distortions.curves import load_ramsey_curve
 
     n = len(qubits)
@@ -315,7 +311,7 @@ def plot_ramsey_curve(qubits, run_id: Optional[int] = None) -> Optional[plt.Figu
     fig, axes = plt.subplots(1, n, figsize=(5 * n, 4), squeeze=False)
     n_loaded = 0
     for ax, qubit in zip(axes[0], qubits):
-        curve = load_ramsey_curve(qubit, run_id)
+        curve = load_ramsey_curve(qubit)
         if curve is None:
             continue
         n_loaded += 1
@@ -324,8 +320,6 @@ def plot_ramsey_curve(qubits, run_id: Optional[int] = None) -> Optional[plt.Figu
         ax.set_xlabel("Z flux (V)")
         ax.set_ylabel("Qubit frequency (GHz)")
         ax.set_title(qubit.name)
-    fig.suptitle(
-        "Ramsey vs Z-flux (param override or extras load id)" if n_loaded else "Ramsey vs Z-flux — no run IDs found"
-    )
+    fig.suptitle("Ramsey vs Z-flux (extras load id)" if n_loaded else "Ramsey vs Z-flux — no extras run IDs found")
     fig.tight_layout()
     return fig

@@ -2,7 +2,7 @@
 
 Extracts the instantaneous qubit frequency vs flux-pulse duration from a 2-D
 spectroscopy map, converts frequency to a Z-flux step response via a
-spectroscopy / Ramsey / quad_term cascade, then fits a sum of decaying
+Ramsey / spectroscopy / quad_term cascade, then fits a sum of decaying
 exponentials for IIR predistortion taps.
 
 Signal -> flux response pipeline:
@@ -21,10 +21,11 @@ Key equations
    while the XY drive is swept in detuning. The resonance center f(t) is the
    Gaussian peak (or dip) along the frequency axis of that time slice.
 
-2. Frequency → flux uses the first available freq↔Z curve, restricted to the
-   chosen ``flux_branch`` (left/right of the idle sweet spot):
+2. Frequency → flux uses the relation named by ``freq_to_flux_source``,
+   restricted to the chosen ``flux_branch`` (left/right of the idle sweet spot).
+   With the default ``"auto"``:
 
-       spectroscopy vs Z  →  Ramsey vs Z (09a)  →  quad_term fallback
+       Ramsey vs Z (09a)  →  spectroscopy vs Z (03b)  →  quad_term fallback
 
        |Δf| ≈ q · Φ²     (near idle; quad_term path)
        Φ(t) = frequency_to_flux_deviation(f(t); curve, branch)
@@ -51,9 +52,9 @@ from calibration_utils.common_utils.flux_distortions import (
     multi_exp_fit_global,
 )
 from calibration_utils.common_utils.flux_distortions.curves import (
+    FreqFluxSource,
     frequency_to_flux_deviation,
-    load_ramsey_curve,
-    load_spectroscopy_curve,
+    resolve_freq_flux_curve,
 )
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 from scipy.optimize import curve_fit
@@ -268,21 +269,27 @@ def extract_center_freqs(
 def _compute_flux_response(
     center_freqs: xr.DataArray,
     qubits: list,
-    use_spec: bool,
-    spec_run_id: Optional[int],
-    use_ramsey: bool = False,
-    ramsey_run_id: Optional[int] = None,
+    freq_to_flux_source: FreqFluxSource = "auto",
     flux_amp_for_detuning: Optional[float] = None,
     flux_branch: Literal["left", "right"] = "right",
-) -> Tuple[xr.DataArray, Dict[str, Tuple[np.ndarray, np.ndarray]]]:
+) -> Tuple[xr.DataArray, Dict[str, Tuple[np.ndarray, np.ndarray]], Dict[str, str]]:
     """Map extracted ``center_freqs(t)`` to a Z-flux step response.
 
-    Per qubit, invert frequency via the first available freq↔flux curve:
-    1. Spectroscopy vs Z-flux (``use_spec`` + ``spec_run_id``)
-    2. Ramsey vs Z-flux / 09a (``use_ramsey`` + run id / extras)
-    3. Quadratic ``freq_vs_flux_01_quad_term`` from QUAM
+    The freq→voltage relation is chosen by ``resolve_freq_flux_curve`` — the
+    single decision point also used to pick the Z amplitude before the run — so
+    ``freq_to_flux_source`` is the only knob. With ``"auto"`` the order is
+    Ramsey vs flux (09a) → spectroscopy vs flux (03b) → quadratic
+    ``freq_vs_flux_01_quad_term``, with run IDs taken from ``qubit.extras``.
+
+    Returns
+    -------
+    (flux_response, measured_curves, sources)
+        ``measured_curves`` holds the measured curve per qubit (for the debug
+        figure); ``sources`` maps qubit name → the relation actually used, so it
+        can be logged and shown on the figures.
     """
-    spec_curves: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
+    measured_curves: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
+    sources: Dict[str, str] = {}
     flux_response = xr.DataArray(
         np.full_like(center_freqs.values, np.nan),
         coords=center_freqs.coords,
@@ -290,17 +297,12 @@ def _compute_flux_response(
     )
 
     for i, q in enumerate(qubits):
-        curve = None
-        # Path 1: spectroscopy vs Z-flux
-        if use_spec and spec_run_id is not None:
-            curve = load_spectroscopy_curve(spec_run_id, q.name, q.xy.RF_frequency)
-            if curve is not None:
-                spec_curves[q.name] = curve
-        # Path 2: Ramsey vs Z-flux (global override or per-qubit extras)
-        if curve is None and use_ramsey:
-            curve = load_ramsey_curve(q, ramsey_run_id)
-        # Path 3: quad_term fallback
-        if curve is not None:
+        selected = resolve_freq_flux_curve(q, freq_to_flux_source)
+        sources[q.name] = selected.label
+
+        if selected.is_measured:
+            curve = selected.curve
+            measured_curves[q.name] = curve
             abs_freq_q = center_freqs.sel(qubit=q.name).values + q.xy.RF_frequency
             # Branch: namespace sentinel/amp vs idle flux when available, else flux_branch param.
             use_upper_branch = flux_branch == "right"
@@ -314,21 +316,25 @@ def _compute_flux_response(
                 q.xy.RF_frequency,
                 use_upper_branch=use_upper_branch,
             )
+        elif selected.quad_term is not None:
+            sign = 1.0 if flux_branch == "right" else -1.0
+            flux_response.values[i, :] = sign * np.sqrt(
+                np.abs(center_freqs.sel(qubit=q.name).values / selected.quad_term)
+            )
         else:
-            qt = getattr(q, "freq_vs_flux_01_quad_term", None) or np.nan
-            if np.isfinite(qt) and qt != 0:
-                sign = 1.0 if flux_branch == "right" else -1.0
-                flux_response.values[i, :] = sign * np.sqrt(np.abs(center_freqs.sel(qubit=q.name).values / qt))
+            print(
+                f"  WARNING: {q.name}: no freq-vs-flux relation available "
+                f"(freq_to_flux_source='{freq_to_flux_source}'); flux response left as NaN."
+            )
 
-    return flux_response, spec_curves
+    return flux_response, measured_curves, sources
 
 
 def _attach_spec_curve_vars(
     ds: xr.Dataset,
     spec_curves: Dict[str, Tuple[np.ndarray, np.ndarray]],
-    spec_run_id: Optional[int],
 ) -> xr.Dataset:
-    """Attach spectroscopy calibration curves (pad to a common length with NaN)."""
+    """Attach the measured freq-vs-flux curves used (pad to a common length with NaN)."""
     if not spec_curves:
         return ds
     qubit_names_sc = list(spec_curves.keys())
@@ -349,7 +355,6 @@ def _attach_spec_curve_vars(
         dims=["spec_qubit", "spec_pts"],
         coords={"spec_qubit": qubit_names_sc},
     )
-    ds.attrs["spectroscopy_run_id"] = int(spec_run_id)
     return ds
 
 
@@ -404,25 +409,26 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
         use_state_discrimination=bool(node.parameters.use_state_discrimination and "state" in ds.data_vars),
     )
 
-    spec_run_id = getattr(node.parameters, "spectroscopy_run_id", None)
-    use_spec = getattr(node.parameters, "use_spectroscopy_data", False)
-    use_ramsey = getattr(node.parameters, "use_ramsey_data", False)
-    ramsey_run_id = getattr(node.parameters, "ramsey_run_id", None)
+    freq_to_flux_source = getattr(node.parameters, "freq_to_flux_source", "auto")
     flux_amp_for_detuning = node.namespace.get("flux_amp_for_detuning")
-    flux_response, spec_curves = _compute_flux_response(
+    flux_response, spec_curves, sources = _compute_flux_response(
         center_freqs,
         qubits,
-        use_spec,
-        spec_run_id,
-        use_ramsey=use_ramsey,
-        ramsey_run_id=ramsey_run_id,
+        freq_to_flux_source=freq_to_flux_source,
         flux_amp_for_detuning=flux_amp_for_detuning,
         flux_branch=getattr(node.parameters, "flux_branch", "right"),
     )
 
+    # Record which freq->voltage relation each qubit actually used, so the taps
+    # written to the state can always be traced back to a specific curve.
+    for qname, label in sources.items():
+        print(f"  {qname}: freq -> flux conversion used {label}")
+
     ds = ds.copy()
     ds["center_freqs"] = center_freqs
     ds["flux_response"] = flux_response
-    ds = _attach_spec_curve_vars(ds, spec_curves, spec_run_id)
+    ds = _attach_spec_curve_vars(ds, spec_curves)
+    ds.attrs["freq_to_flux_source"] = str(freq_to_flux_source)
+    ds.attrs["freq_to_flux_sources"] = "; ".join(f"{k}: {v}" for k, v in sources.items())
 
     return _extract_relevant_fit_parameters(ds, node)

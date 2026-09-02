@@ -3,10 +3,14 @@
 from calibration_utils.common_utils.flux_distortions import (
     FitParameters,
     ResolvedFluxAmps,
+    FreqFluxCurve,
+    FreqFluxSource,
     flux_amp_from_curve,
     load_ramsey_curve,
     load_spectroscopy_curve,
+    load_spectroscopy_curve_for_qubit,
     resolve_flux_amplitudes,
+    resolve_freq_flux_curve,
 )
 from .analysis import (
     extract_center_freqs,
@@ -33,8 +37,12 @@ __all__ = [
     "fit_raw_data",
     "extract_center_freqs",
     "log_fitted_results",
+    "FreqFluxCurve",
+    "FreqFluxSource",
     "resolve_flux_amplitudes",
+    "resolve_freq_flux_curve",
     "load_spectroscopy_curve",
+    "load_spectroscopy_curve_for_qubit",
     "load_ramsey_curve",
     "flux_amp_from_curve",
     "plot_raw_data_with_fit",

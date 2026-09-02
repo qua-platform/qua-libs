@@ -36,7 +36,7 @@ It then processes and fits the extracted flux response to model it as a sum of d
 
 Workflow:
 For each qubit, sweep detuning over the configured span and flux-pulse duration over the configured time axis; play a constant Z pulse with amplitude `flux_amp`, then a chosen XY operation (default π), and measure I/Q or state.
-Analysis: convert raw data to volts and extract the center frequency vs detuning at each time; map frequency to flux via spectroscopy / Ramsey / quad_term cascade; fit a sum of exponentials.
+Analysis: convert raw data to volts and extract the center frequency vs detuning at each time; map frequency to flux via the relation chosen by `freq_to_flux_source`; fit a sum of exponentials.
 State update (optional): convert the fitted sum-of-exponentials to a cascade representation and write it to the state.json.
 
 
@@ -44,7 +44,11 @@ Prerequisites
 - A valid rotation angle and threshold if using state discrimination
 - Calibrated XYZ delay (16a)
 - A calibrated pi-pulse
-- Each qubit must have a known `freq_vs_flux_01_quad_term` and/or a spectroscopy (03b) / Ramsey vs flux (09a) curve for amplitude and freq→flux mapping.
+- A frequency→voltage relation for each qubit, used both to pick the Z amplitude and to invert the measurement. `freq_to_flux_source="auto"` (default) takes the first available of:
+    1. Ramsey vs flux (09a), run ID from `extras['ramsey_vs_flux_calibration_load_id']`
+    2. Qubit spectroscopy vs flux (03b), run ID from `extras['qubit_spectroscopy_vs_flux_load_id']`
+    3. `freq_vs_flux_01_quad_term` in the state
+  Run 09a / 03b with `save_load_id=True` so their run IDs land in the state; no run ID is ever typed into this node. Set `freq_to_flux_source` to `"ramsey"`, `"spectroscopy"` or `"quad_term"` to force one source.
 
 Outputs and state updates
 - Results: processed dataset, fit results, and figures are saved under `node.results`.
@@ -106,15 +110,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         dtype=np.int32,
     )
 
-    # --- Per-qubit flux_amp derivation (spectroscopy → Ramsey → quad_term) ---
+    # --- Per-qubit flux_amp derivation via the selected freq→flux relation ---
     resolved = resolve_flux_amplitudes(
         qubits,
         detuning_hz=center_hz,
         flux_branch=flux_branch,
-        use_spectroscopy_data=node.parameters.use_spectroscopy_data,
-        spectroscopy_run_id=node.parameters.spectroscopy_run_id,
-        use_ramsey_data=node.parameters.use_ramsey_data,
-        ramsey_run_id=node.parameters.ramsey_run_id,
+        freq_to_flux_source=node.parameters.freq_to_flux_source,
     )
     flux_amps = resolved.amplitudes
     # Sentinel for analysis branch selection (right → +999, left → -999)
@@ -310,7 +311,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         qubits,
         node.results["fit_results"],
         debug=node.parameters.debug_plots,
-        ramsey_run_id=node.parameters.ramsey_run_id,
     )
     plt.show()
 

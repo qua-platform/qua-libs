@@ -7,10 +7,18 @@ Two jobs share the same loaded curves:
 2. **Post-run** — invert measured absolute frequency vs time into a signed flux
    step response (``frequency_to_flux_deviation``).
 
-Curves come from prior calibrations:
+Curves come from prior calibrations, and their run IDs are always read from the
+QUAM state (``qubit.extras``) — never entered by hand:
 
-* **03b** qubit spectroscopy vs Z-flux → ``ds_fit.peak_freq`` (relative to RF)
-* **09a** Ramsey vs Z-flux → ``f_qubit_vs_flux`` or unfolded Ramsey frequency
+* **09a** Ramsey vs Z-flux → ``f_qubit_vs_flux`` or unfolded Ramsey frequency,
+  run ID in ``extras['ramsey_vs_flux_calibration_load_id']``
+* **03b** qubit spectroscopy vs Z-flux → ``ds_fit.peak_freq`` (relative to RF),
+  run ID in ``extras['qubit_spectroscopy_vs_flux_load_id']``
+
+A single node parameter picks the freq→flux source (see
+``resolve_freq_flux_curve``): ``"auto"`` (default) tries Ramsey, then
+spectroscopy, then the quadratic ``freq_vs_flux_01_quad_term``; the other
+values force one specific source.
 
 Branch convention: ``"right"`` means flux ≥ idle (sweetspot) flux on the
 parabola; ``"left"`` means flux ≤ idle. All returned flux offsets are relative
@@ -20,13 +28,44 @@ to idle (ΔΦ), not absolute DAC volts.
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass
-from typing import List, Literal, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 
 Branch = Literal["left", "right"]
 _OPPOSITE: dict[str, Branch] = {"left": "right", "right": "left"}
+
+#: Which freq↔flux relation to use. ``"auto"`` walks ``AUTO_SOURCE_ORDER`` and
+#: falls back to ``freq_vs_flux_01_quad_term``; the other values force one source
+#: and warn (instead of silently degrading) when it cannot be loaded.
+FreqFluxSource = Literal["auto", "ramsey", "spectroscopy", "quad_term"]
+
+#: Priority order used by ``source="auto"``: measured curves first (Ramsey is the
+#: most accurate freq↔flux map), quadratic term only as a last resort.
+AUTO_SOURCE_ORDER: Tuple[str, ...] = ("ramsey", "spectroscopy")
+
+#: ``qubit.extras`` keys written by the source calibrations.
+RAMSEY_EXTRAS_KEY = "ramsey_vs_flux_calibration_load_id"  # 09a, when save_load_id=True
+SPECTROSCOPY_EXTRAS_KEY = "qubit_spectroscopy_vs_flux_load_id"  # 03b, when save_load_id=True
+
+
+def extras_run_id(qubit, key: str) -> Optional[int]:
+    """Read a run ID from ``qubit.extras[key]``, or ``None`` if absent/invalid."""
+    extras = getattr(qubit, "extras", None)
+    if not extras:
+        return None
+    try:
+        value = extras.get(key)
+    except AttributeError:
+        return None
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        print(f"  WARNING: {getattr(qubit, 'name', '?')}: extras['{key}']={value!r} is not a run ID")
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -98,17 +137,28 @@ def load_spectroscopy_curve(
         return None
 
 
-def load_ramsey_curve(
-    qubit,
-    run_id: Optional[int] = None,
-) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+def load_spectroscopy_curve_for_qubit(qubit) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    """Load the 03b freq-vs-Z-flux curve for ``qubit`` using its extras run ID.
+
+    Reads ``qubit.extras['qubit_spectroscopy_vs_flux_load_id']`` (written by 03b
+    when ``save_load_id=True``) and delegates to ``load_spectroscopy_curve``.
+
+    Returns
+    -------
+    (flux_V, freq_Hz) or None
+        ``None`` if the qubit has no recorded 03b run or the run cannot be read.
+    """
+    rid = extras_run_id(qubit, SPECTROSCOPY_EXTRAS_KEY)
+    if rid is None:
+        return None
+    return load_spectroscopy_curve(rid, qubit.name, float(qubit.xy.RF_frequency))
+
+
+def load_ramsey_curve(qubit) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     """Load freq-vs-Z-flux from a 09a Ramsey-vs-flux run for ``qubit``.
 
-    Run ID resolution (first hit wins):
-
-    1. Explicit ``run_id`` argument (node param override).
-    2. ``qubit.extras['ramsey_vs_flux_calibration_load_id']`` (written by 09a
-       when ``save_load_id=True``).
+    The run ID comes from ``qubit.extras['ramsey_vs_flux_calibration_load_id']``
+    (written by 09a when ``save_load_id=True``).
 
     Preference order for the frequency axis on ``ds_fit``:
 
@@ -120,21 +170,13 @@ def load_ramsey_curve(
     ----------
     qubit :
         QUAM qubit (needs ``.name``, ``.xy.RF_frequency``, optionally ``.extras``).
-    run_id :
-        Optional Qualibrate run ID override. If ``None``, use extras.
 
     Returns
     -------
     (flux_V, freq_Hz) or None
         Finite points only. ``None`` if no run ID, all-NaN, or load error.
     """
-    if run_id is not None:
-        rid: Optional[int] = int(run_id)
-    elif hasattr(qubit, "extras"):
-        extras_id = qubit.extras.get("ramsey_vs_flux_calibration_load_id")
-        rid = int(extras_id) if extras_id is not None else None
-    else:
-        rid = None
+    rid = extras_run_id(qubit, RAMSEY_EXTRAS_KEY)
     if rid is None:
         return None
 
@@ -168,6 +210,126 @@ def load_ramsey_curve(
     except Exception as e:
         print(f"  WARNING: Failed to load Ramsey curve for {qubit_name} from run #{rid}: {e}")
         return None
+
+
+# ---------------------------------------------------------------------------
+# Source selection: one place that decides which freq↔flux relation is used
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class FreqFluxCurve:
+    """The freq↔flux relation selected for one qubit.
+
+    Attributes
+    ----------
+    kind :
+        ``"ramsey"`` / ``"spectroscopy"`` — a measured ``curve`` is available.
+        ``"quad_term"`` — no curve; use the quadratic ``quad_term``.
+        ``"none"`` — nothing usable for this qubit.
+    label :
+        Human-readable origin for logs and figure titles, e.g.
+        ``"Ramsey #42"`` or ``"quad_term=1.200e+09"``.
+    curve :
+        ``(flux_V, freq_Hz)`` when ``kind`` is a measured source, else ``None``.
+    run_id :
+        Run ID the curve came from, when applicable.
+    quad_term :
+        ``freq_vs_flux_01_quad_term`` when ``kind == "quad_term"``.
+    """
+
+    kind: Literal["ramsey", "spectroscopy", "quad_term", "none"]
+    label: str
+    curve: Optional[Tuple[np.ndarray, np.ndarray]] = None
+    run_id: Optional[int] = None
+    quad_term: Optional[float] = None
+
+    @property
+    def is_measured(self) -> bool:
+        """True when a measured freq-vs-flux ``curve`` is available."""
+        return self.curve is not None
+
+
+def _load_source_curve(qubit, kind: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    """Load the curve for one source ``kind``, or ``None`` if unavailable."""
+    if kind == "ramsey":
+        return load_ramsey_curve(qubit)
+    if kind == "spectroscopy":
+        return load_spectroscopy_curve_for_qubit(qubit)
+    return None
+
+
+def _source_run_id(qubit, kind: str) -> Optional[int]:
+    """Extras run ID backing source ``kind`` for ``qubit``."""
+    if kind == "ramsey":
+        return extras_run_id(qubit, RAMSEY_EXTRAS_KEY)
+    if kind == "spectroscopy":
+        return extras_run_id(qubit, SPECTROSCOPY_EXTRAS_KEY)
+    return None
+
+
+def resolve_freq_flux_curve(qubit, source: FreqFluxSource = "auto") -> FreqFluxCurve:
+    """Pick the freq↔flux relation for one qubit.
+
+    This is the **single** decision point for the freq→voltage method, shared by
+    the pre-run amplitude resolution and the post-run flux inversion so both
+    always agree. Run IDs are read from ``qubit.extras``; the user only chooses
+    ``source``.
+
+    Behaviour
+    ---------
+    * ``"auto"`` — try each source in ``AUTO_SOURCE_ORDER`` (Ramsey, then
+      spectroscopy), then fall back to ``freq_vs_flux_01_quad_term``.
+    * ``"ramsey"`` / ``"spectroscopy"`` — use only that source. If its extras run
+      ID is missing or the run cannot be read, warn loudly and fall back to
+      ``quad_term`` rather than failing silently.
+    * ``"quad_term"`` — skip curve loading entirely.
+
+    Parameters
+    ----------
+    qubit :
+        QUAM qubit (needs ``.name``, ``.xy.RF_frequency``, optionally ``.extras``
+        and ``.freq_vs_flux_01_quad_term``).
+    source :
+        Requested freq→flux source.
+
+    Returns
+    -------
+    FreqFluxCurve
+        ``kind == "none"`` when neither a curve nor a usable quadratic term
+        exists; callers decide whether that is fatal.
+    """
+    if source == "quad_term":
+        candidates: Tuple[str, ...] = ()
+    elif source == "auto":
+        candidates = AUTO_SOURCE_ORDER
+    else:
+        candidates = (source,)
+
+    for kind in candidates:
+        curve = _load_source_curve(qubit, kind)
+        if curve is not None:
+            rid = _source_run_id(qubit, kind)
+            pretty = "Ramsey" if kind == "ramsey" else "spectroscopy"
+            return FreqFluxCurve(kind=kind, label=f"{pretty} #{rid}", curve=curve, run_id=rid)
+        if source != "auto":
+            extras_key = RAMSEY_EXTRAS_KEY if kind == "ramsey" else SPECTROSCOPY_EXTRAS_KEY
+            warnings.warn(
+                f"{qubit.name}: freq_to_flux_source='{kind}' was requested but no usable curve "
+                f"could be loaded (extras['{extras_key}'] missing or unreadable). Falling back to "
+                f"freq_vs_flux_01_quad_term — re-run the source calibration with save_load_id=True."
+            )
+
+    qt = getattr(qubit, "freq_vs_flux_01_quad_term", None)
+    if qt is not None and qt != 0 and np.isfinite(qt):
+        return FreqFluxCurve(kind="quad_term", label=f"quad_term={float(qt):.3e}", quad_term=float(qt))
+
+    return FreqFluxCurve(kind="none", label="unavailable")
+
+
+def resolve_freq_flux_curves(qubits, source: FreqFluxSource = "auto") -> Dict[str, FreqFluxCurve]:
+    """``resolve_freq_flux_curve`` for a qubit batch, keyed by qubit name."""
+    return {q.name: resolve_freq_flux_curve(q, source) for q in qubits}
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +483,10 @@ class ResolvedFluxAmps:
         Signed Z-pulse amplitudes (V) aligned with the input qubit list.
     sources :
         Human-readable origin per qubit, e.g.
-        ``\"spectroscopy #42 (right)\"`` or ``\"quad_term=1.2e9\"``.
+        ``\"Ramsey #42 (right)\"`` or ``\"quad_term=1.2e9\"``.
+    curves :
+        The ``FreqFluxCurve`` chosen per qubit, keyed by qubit name — the same
+        selection analysis will make, so it can be reported to the user.
     effective_branch :
         Branch actually used. May differ from the requested branch if the
         preferred side had no crossing and the opposite side was used.
@@ -330,6 +495,7 @@ class ResolvedFluxAmps:
     amplitudes: List[float]
     sources: List[str]
     effective_branch: Branch
+    curves: Dict[str, FreqFluxCurve] = field(default_factory=dict)
 
     @property
     def flux_amp_for_detuning_sentinel(self) -> float:
@@ -349,24 +515,24 @@ def resolve_flux_amplitudes(
     *,
     detuning_hz: float,
     flux_branch: Branch,
-    use_spectroscopy_data: bool = False,
-    spectroscopy_run_id: Optional[int] = None,
-    use_ramsey_data: bool = False,
-    ramsey_run_id: Optional[int] = None,
+    freq_to_flux_source: FreqFluxSource = "auto",
 ) -> ResolvedFluxAmps:
     """Derive per-qubit Z-pulse amplitudes for a target detuning.
 
     Intended for node setup (e.g. 17a ``create_qua_program``) before the QUA
-    program is built. For each qubit, first successful path wins:
+    program is built. The freq↔flux relation is chosen once per qubit by
+    ``resolve_freq_flux_curve`` — the same call analysis makes — so the amplitude
+    and the later flux inversion always use the same relation.
 
-    1. **Spectroscopy** (``use_spectroscopy_data`` + ``spectroscopy_run_id``):
-       load 03b curve → ``flux_amp_from_curve`` on ``flux_branch``, then
-       opposite branch if needed.
-    2. **Ramsey** (``use_ramsey_data`` + run id / extras): same on the 09a curve.
-    3. **Quadratic fallback**:
-       ``sign(flux_branch) * sqrt(|detuning| / |freq_vs_flux_01_quad_term|)``.
+    Given that relation:
 
-    Raises ``ValueError`` if every path fails. Warns if ``|amp| > 0.5`` V.
+    * **Measured curve** (Ramsey / spectroscopy) → ``flux_amp_from_curve`` on
+      ``flux_branch``, falling back to the opposite branch if the target
+      detuning has no crossing there.
+    * **Quadratic** → ``sign(flux_branch) * sqrt(|detuning| / |quad_term|)``.
+
+    Raises ``ValueError`` if no relation is usable for a qubit. Warns if
+    ``|amp| > 0.5`` V.
 
     Parameters
     ----------
@@ -377,21 +543,19 @@ def resolve_flux_amplitudes(
         Target |Δf| below idle (Hz).
     flux_branch :
         Preferred parabola side (``\"left\"`` / ``\"right\"``).
-    use_spectroscopy_data, spectroscopy_run_id :
-        Enable / identify the 03b source run.
-    use_ramsey_data, ramsey_run_id :
-        Enable Ramsey path; ``ramsey_run_id`` overrides per-qubit extras
-        (see ``load_ramsey_curve``).
+    freq_to_flux_source :
+        ``\"auto\"`` (Ramsey → spectroscopy → quad_term) or a forced source.
 
     Returns
     -------
     ResolvedFluxAmps
-        Amplitudes, source labels, and the effective branch (last qubit's
-        branch is stored on the dataclass — fine for single-qubit / shared
-        branch runs).
+        Amplitudes, source labels, the per-qubit chosen curves, and the
+        effective branch (last qubit's branch is stored on the dataclass — fine
+        for single-qubit / shared branch runs).
     """
     amplitudes: List[float] = []
     sources: List[str] = []
+    curves: Dict[str, FreqFluxCurve] = {}
     effective_branch: Branch = flux_branch
 
     for q in qubits:
@@ -400,54 +564,46 @@ def resolve_flux_amplitudes(
         used_branch: Branch = flux_branch
         idle = q.xy.RF_frequency
 
-        if use_spectroscopy_data and spectroscopy_run_id is not None:
-            curve = load_spectroscopy_curve(spectroscopy_run_id, q.name, idle)
-            if curve is not None:
-                for br in (flux_branch, _OPPOSITE[flux_branch]):
-                    amp = flux_amp_from_curve(detuning_hz, idle, curve, br)
-                    if amp is not None:
-                        used_branch = br
-                        if br != flux_branch:
-                            warnings.warn(
-                                f"{q.name}: target detuning not found on "
-                                f"{flux_branch} branch of spectroscopy "
-                                f"#{spectroscopy_run_id}, trying {br}"
-                            )
-                            label = f"spectroscopy #{spectroscopy_run_id} ({br}, fallback)"
-                        else:
-                            label = f"spectroscopy #{spectroscopy_run_id} ({br})"
-                        break
+        selected = resolve_freq_flux_curve(q, freq_to_flux_source)
+        curves[q.name] = selected
 
-        if amp is None and use_ramsey_data:
-            curve = load_ramsey_curve(q, ramsey_run_id)
-            if curve is not None:
-                rid_label = f"#{ramsey_run_id}" if ramsey_run_id is not None else "extras"
-                for br in (flux_branch, _OPPOSITE[flux_branch]):
-                    amp = flux_amp_from_curve(detuning_hz, idle, curve, br)
-                    if amp is not None:
-                        used_branch = br
-                        if br != flux_branch:
-                            warnings.warn(
-                                f"{q.name}: target detuning not found on "
-                                f"{flux_branch} branch of Ramsey {rid_label}, trying {br}"
-                            )
-                            label = f"Ramsey {rid_label} ({br}, fallback)"
-                        else:
-                            label = f"Ramsey {rid_label} ({br})"
-                        break
+        if selected.is_measured:
+            for br in (flux_branch, _OPPOSITE[flux_branch]):
+                amp = flux_amp_from_curve(detuning_hz, idle, selected.curve, br)
+                if amp is not None:
+                    used_branch = br
+                    if br != flux_branch:
+                        warnings.warn(
+                            f"{q.name}: target detuning not found on {flux_branch} branch of "
+                            f"{selected.label}, trying {br}"
+                        )
+                        label = f"{selected.label} ({br}, fallback)"
+                    else:
+                        label = f"{selected.label} ({br})"
+                    break
+            if amp is None:
+                warnings.warn(
+                    f"{q.name}: target detuning {detuning_hz / 1e6:.1f} MHz is not reachable on "
+                    f"either branch of {selected.label}; falling back to freq_vs_flux_01_quad_term."
+                )
 
         if amp is None:
-            qt = getattr(q, "freq_vs_flux_01_quad_term", None)
+            qt = selected.quad_term if selected.quad_term is not None else getattr(q, "freq_vs_flux_01_quad_term", None)
             if qt is not None and qt != 0 and np.isfinite(qt):
                 sign = 1.0 if flux_branch == "right" else -1.0
                 amp = sign * float(np.sqrt(abs(detuning_hz) / abs(qt)))
                 label = f"quad_term={qt:.3e}"
                 used_branch = flux_branch
+                if selected.kind != "quad_term":
+                    curves[q.name] = FreqFluxCurve(
+                        kind="quad_term", label=f"quad_term={float(qt):.3e}", quad_term=float(qt)
+                    )
 
         if amp is None:
             raise ValueError(
-                f"Cannot derive flux_amp for {q.name}: no curve available and "
-                f"freq_vs_flux_01_quad_term is missing or zero."
+                f"Cannot derive flux_amp for {q.name}: no usable freq-vs-flux curve "
+                f"(freq_to_flux_source='{freq_to_flux_source}') and freq_vs_flux_01_quad_term "
+                f"is missing or zero."
             )
 
         if abs(amp) > 0.5:
@@ -463,4 +619,5 @@ def resolve_flux_amplitudes(
         amplitudes=amplitudes,
         sources=sources,
         effective_branch=effective_branch,
+        curves=curves,
     )
