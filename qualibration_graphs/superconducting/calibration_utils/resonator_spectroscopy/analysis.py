@@ -344,12 +344,7 @@ def _select_fit_outputs(
     centre_inside_fit_window: bool = fit_win_lo <= f0_out <= fit_win_hi
 
     success_shape: bool = bool(
-        fit_trusted
-        and good_r2
-        and fwhm_in_range
-        and fwhm_not_too_broad
-        and contrast_ok
-        and centre_inside_fit_window
+        fit_trusted and good_r2 and fwhm_in_range and fwhm_not_too_broad and contrast_ok and centre_inside_fit_window
     )
 
     return SelectedFitOutputs(
