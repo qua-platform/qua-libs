@@ -458,8 +458,10 @@ def log_fitted_results(
     fit_results: dict[str, dict[str, Any]], log_callable: Callable[[str], None] | None = None
 ) -> None:
     """Log the fitted results for all qubits (three-state + ambiguity in v2)."""
+
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
+
     for q, res in fit_results.items():
         if res["success"] and res.get("success_shape", True):
             status = "SUCCESS!"
@@ -467,9 +469,11 @@ def log_fitted_results(
             status = "FREQUENCY OK (lineshape poor)"
         else:
             status = "FAIL!"
+
         if res.get("ambiguous"):
             n = len(res.get("candidates") or [])
             status += f"  [AMBIGUOUS: {n} comparable dips — verify vs expected freq / punch-out]"
+            
         log_callable(
             f"Results for qubit {q}:  {status}\n"
             f"\tResonator frequency: {1e-9 * res['frequency']:.4f} GHz | "
