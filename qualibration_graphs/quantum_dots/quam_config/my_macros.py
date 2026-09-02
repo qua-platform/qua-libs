@@ -1,20 +1,21 @@
 """
-In this script, you can set up your own custom Quam macros. QuamMacros form 
+In this script, you can set up your own custom Quam macros. QuamMacros form
 an essential part of the spin qubits Quam infrastructure. Quam-builder contains a CustomMacro
-base class, which you can subclass to write your own QUA snippet in the apply() function. 
+base class, which you can subclass to write your own QUA snippet in the apply() function.
 
-When you create a macro, make sure to emit it as one of the following: 
+When you create a macro, make sure to emit it as one of the following:
 - InitializeMacro
 - MeasureMacro
 
 This script builds 2 macros. First, it builds a BalancedInitializeMacro, which performs
 a voltage integral balanced round trip about a DC point. This is particularly useful for
 performing balanced initialization sequences, where the high-pass filter compensation
-happens before the actual desired initialize pulse, keeping the innermost shot clean. 
+happens before the actual desired initialize pulse, keeping the innermost shot clean.
 
-As a second example, this script writes a BalancedHeraldedInitializeMacro. This builds on 
-the BalancedInitializeMacro, but implements an active-reset type initialization sequence. 
+As a second example, this script writes a BalancedHeraldedInitializeMacro. This builds on
+the BalancedInitializeMacro, but implements an active-reset type initialization sequence.
 """
+
 from typing import Optional, Literal
 
 from quam_builder.architecture.quantum_dots.operations import CustomMacro
@@ -24,31 +25,40 @@ from qm.qua import align, strict_timing_, assign, declare, if_, while_, Cast
 
 __all__ = ["InitializeMacro", "MeasureMacro"]
 
+# Defaults that you can write yourself.
+
+# NOTE: This script, by default, emits the heralded/active initialisation as an example.
+# If this is not your desired behaviour, make sure to edit the examples section below.
+
+
 @quam_dataclass
-class InitializeMacro(CustomMacro): 
+class InitializeMacro(CustomMacro):
     @property
     def inferred_duration(self) -> float | None:
         return 0
-    def apply(self): 
+
+    def apply(self):
         pass
 
+
 @quam_dataclass
-class MeasureMacro(CustomMacro): 
+class MeasureMacro(CustomMacro):
     @property
     def inferred_duration(self) -> float | None:
         return 0
-    def apply(self): 
+
+    def apply(self):
         pass
 
 
+# -------- EXAMPLES ---------
 
-#-------- EXAMPLES ---------
+# First we create a BalancedInitializeMacro, which describes a balanced round trip.
+# The real macro that we export from here should be names InitializeMacro, which is listed below.
 
-# First we create a BalancedInitializeMacro, which describes a balanced round trip. 
-# The real macro that we export from here should be names InitializeMacro, which is listed below. 
 
 @quam_dataclass
-class BalancedInitializeMacro(CustomMacro): 
+class InitializeMacroBase(CustomMacro):
     """Balanced round-trip: ramp 0 → -V → +V → 0 through a named voltage point.
 
     Shape (per channel):
@@ -81,10 +91,10 @@ class BalancedInitializeMacro(CustomMacro):
         point_name: str | None = None,
         **kwargs,
     ):
-        owner = self.owner # The QuantumDotPair object that is the ultimate owner of this macro
+        owner = self.owner  # The QuantumDotPair object that is the ultimate owner of this macro
 
-        # Check if any arguments have been passed to the macro, and make sure to fall back to the 
-        # class attribute as a default. 
+        # Check if any arguments have been passed to the macro, and make sure to fall back to the
+        # class attribute as a default.
         ramp = self.ramp_duration if ramp_duration is None else ramp_duration
         hold = self.hold_duration if hold_duration is None else hold_duration
         zero = self.zero_duration if zero_duration is None else zero_duration
@@ -112,7 +122,7 @@ class BalancedInitializeMacro(CustomMacro):
             vs.ramp_to_voltages(
                 positive_voltages,
                 duration=hold,
-                ramp_duration=2*ramp,
+                ramp_duration=2 * ramp,
                 ensure_align=False,
             )
             vs.ramp_to_voltages(
@@ -124,11 +134,11 @@ class BalancedInitializeMacro(CustomMacro):
 
 
 @quam_dataclass
-class BalancedHeraldedInitializeMacro(BalancedInitializeMacro): 
+class InitializeMacro(InitializeMacroBase):
     """
-    An active reset initialize scheme, built on the BalancedInitializeMacro. 
+    An active reset initialize scheme, built on the BalancedInitializeMacro.
 
-    The flow: 
+    The flow:
     - Initialize using the BalancedInitializeMacro
     - Measure the state
     - If the state is NOT the desired state, drive the specified qubit, and repeat the above
@@ -136,6 +146,7 @@ class BalancedHeraldedInitializeMacro(BalancedInitializeMacro):
 
     This class also optionally allows one to extract the number of loops performed as a stream
     """
+
     max_loops: int = 2
     return_n_loops: bool = False
     target_state: Literal[0, 1] = 0
@@ -151,7 +162,7 @@ class BalancedHeraldedInitializeMacro(BalancedInitializeMacro):
         qubit_name: Optional[str] = None,
         meas_ramp_duration: Optional[int] = None,
         meas_buffer_duration: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         owner = self.owner
 
@@ -160,12 +171,12 @@ class BalancedHeraldedInitializeMacro(BalancedInitializeMacro):
             # Extract the qubit pair whose quantum_dot_pair is the owner
             qubit_pair = next(qp for qp in owner.machine.qubit_pairs.values() if qp.quantum_dot_pair is owner)
             qubit_name = getattr(qubit_pair, f"qubit_{qubit_role}", None)
-            if qubit_name is None: 
+            if qubit_name is None:
                 raise ValueError("Failed to resolve qubit")
-        
+
         if target_state is None:
             target_state = 0
-    
+
         vs = owner.voltage_sequence
         gates = [ch_name for ch_name in vs.gate_set.channels.keys()]
         loop_start_n, loop_start_bool = 0, True
@@ -188,7 +199,7 @@ class BalancedHeraldedInitializeMacro(BalancedInitializeMacro):
                 buffer_duration=meas_buffer_duration,
             )
 
-            # As long as the state is in the initial value, the loop will continue until max_loops
+            # As long as the state is in the initial value, the loop will continue until max_loops
             assign(cond, Cast.to_bool(state - target_state))
             assign(n_count, n_count + 1)
             qubit = owner.machine.qubits[qubit_name]
@@ -196,6 +207,6 @@ class BalancedHeraldedInitializeMacro(BalancedInitializeMacro):
                 align(*gates, qubit.xy.name, owner.sensor_dots[0].readout_resonator.id)
                 qubit.apply(operation)
 
-        if return_n_loops: 
+        if return_n_loops:
             return n_count
         return None
