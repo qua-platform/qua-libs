@@ -89,81 +89,69 @@ def _read_node_data_dict(run_id: int) -> dict:
     return read_node_data(node_dir, run_id, base_path)
 
 
-def load_spectroscopy_curve(
-    run_id: int, qubit_name: str, qubit_rf_freq: float
-) -> Optional[Tuple[np.ndarray, np.ndarray]]:
-    """Load freq-vs-Z-flux from a 03b spectroscopy-vs-flux run.
+def load_spectroscopy_curve(qubit, run_id: Optional[int] = None) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    """Load freq-vs-Z-flux from a 03b spectroscopy-vs-flux run for ``qubit``.
 
     Uses ``ds_fit.peak_freq`` (fit peak relative to the RF LO / drive) and adds
-    ``qubit_rf_freq`` so the returned frequency axis is absolute Hz.
+    ``qubit.xy.RF_frequency`` so the returned frequency axis is absolute Hz.
+
+    The run ID comes from ``run_id`` if given, else
+    ``qubit.extras['qubit_spectroscopy_vs_flux_load_id']`` (written by 03b when
+    ``save_load_id=True``) — same pattern as ``load_ramsey_curve``.
 
     Parameters
     ----------
+    qubit :
+        QUAM qubit (needs ``.name``, ``.xy.RF_frequency``, optionally ``.extras``).
     run_id :
-        Qualibrate snapshot / run ID of ``03b_qubit_spectroscopy_vs_flux``.
-    qubit_name :
-        Qubit key in ``ds_fit`` (e.g. ``\"q1\"``).
-    qubit_rf_freq :
-        Idle / RF frequency in Hz used to convert relative peak → absolute freq.
-        Typically ``qubit.xy.RF_frequency``.
+        Optional Qualibrate snapshot / run ID override. When omitted, the extras
+        key is used.
 
     Returns
     -------
     (flux_V, freq_Hz) or None
-        Flux-sorted 1-D arrays. ``None`` if the run is missing, has no
-        ``peak_freq``, or has fewer than two finite points.
+        Flux-sorted 1-D arrays. ``None`` if no run ID, the run is missing / has
+        no ``peak_freq``, or has fewer than two finite points.
     """
+    rid = int(run_id) if run_id is not None else extras_run_id(qubit, SPECTROSCOPY_EXTRAS_KEY)
+    if rid is None:
+        return None
+
+    qubit_name = qubit.name
+    qubit_rf_freq = float(qubit.xy.RF_frequency)
     try:
-        data = _read_node_data_dict(run_id)
+        data = _read_node_data_dict(rid)
         ds_fit = data.get("ds_fit")
         if ds_fit is None or "peak_freq" not in ds_fit:
-            print(
-                f"  WARNING: run #{run_id} has no ds_fit.peak_freq for {qubit_name}; " "cannot load spectroscopy curve"
-            )
+            print(f"  WARNING: run #{rid} has no ds_fit.peak_freq for {qubit_name}; " "cannot load spectroscopy curve")
             return None
         flux = np.asarray(ds_fit.flux_bias.values, dtype=float)
         peak = np.asarray(ds_fit.peak_freq.sel(qubit=qubit_name).values, dtype=float)
         freq = qubit_rf_freq + peak
         mask = np.isfinite(flux) & np.isfinite(freq)
         if mask.sum() < 2:
-            print(f"  WARNING: Too few finite peak_freq points for {qubit_name} in run #{run_id}")
+            print(f"  WARNING: Too few finite peak_freq points for {qubit_name} in run #{rid}")
             return None
         flux_m, freq_m = flux[mask], freq[mask]
         order = np.argsort(flux_m)
         flux_m, freq_m = flux_m[order], freq_m[order]
         print(
-            f"  Loaded spectroscopy curve for {qubit_name} from run #{run_id} "
+            f"  Loaded spectroscopy curve for {qubit_name} from run #{rid} "
             f"(ds_fit.peak_freq): {len(flux_m)} pts, "
             f"flux=[{flux_m[0]:.4f}, {flux_m[-1]:.4f}] V"
         )
         return flux_m, freq_m
     except Exception as e:
-        print(f"  WARNING: Failed to load spectroscopy curve for {qubit_name} from run #{run_id}: {e}")
+        print(f"  WARNING: Failed to load spectroscopy curve for {qubit_name} from run #{rid}: {e}")
         return None
 
 
-def load_spectroscopy_curve_for_qubit(qubit) -> Optional[Tuple[np.ndarray, np.ndarray]]:
-    """Load the 03b freq-vs-Z-flux curve for ``qubit`` using its extras run ID.
-
-    Reads ``qubit.extras['qubit_spectroscopy_vs_flux_load_id']`` (written by 03b
-    when ``save_load_id=True``) and delegates to ``load_spectroscopy_curve``.
-
-    Returns
-    -------
-    (flux_V, freq_Hz) or None
-        ``None`` if the qubit has no recorded 03b run or the run cannot be read.
-    """
-    rid = extras_run_id(qubit, SPECTROSCOPY_EXTRAS_KEY)
-    if rid is None:
-        return None
-    return load_spectroscopy_curve(rid, qubit.name, float(qubit.xy.RF_frequency))
-
-
-def load_ramsey_curve(qubit) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+def load_ramsey_curve(qubit, run_id: Optional[int] = None) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     """Load freq-vs-Z-flux from a 09a Ramsey-vs-flux run for ``qubit``.
 
-    The run ID comes from ``qubit.extras['ramsey_vs_flux_calibration_load_id']``
-    (written by 09a when ``save_load_id=True``).
+    The run ID comes from ``run_id`` if given, else
+    ``qubit.extras['ramsey_vs_flux_calibration_load_id']`` (written by 09a when
+    ``save_load_id=True``).
 
     Preference order for the frequency axis on ``ds_fit``:
 
@@ -175,13 +163,16 @@ def load_ramsey_curve(qubit) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     ----------
     qubit :
         QUAM qubit (needs ``.name``, ``.xy.RF_frequency``, optionally ``.extras``).
+    run_id :
+        Optional Qualibrate snapshot / run ID override. When omitted, the extras
+        key is used.
 
     Returns
     -------
     (flux_V, freq_Hz) or None
         Finite points only. ``None`` if no run ID, all-NaN, or load error.
     """
-    rid = extras_run_id(qubit, RAMSEY_EXTRAS_KEY)
+    rid = int(run_id) if run_id is not None else extras_run_id(qubit, RAMSEY_EXTRAS_KEY)
     if rid is None:
         return None
 
@@ -260,7 +251,7 @@ def _load_source_curve(qubit, kind: str) -> Optional[Tuple[np.ndarray, np.ndarra
     if kind == "ramsey":
         return load_ramsey_curve(qubit)
     if kind == "spectroscopy":
-        return load_spectroscopy_curve_for_qubit(qubit)
+        return load_spectroscopy_curve(qubit)
     return None
 
 
