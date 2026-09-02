@@ -1,6 +1,6 @@
 """Parameter definitions for pi vs flux (long time distortion) calibration experiment."""
 
-from typing import Literal, Optional
+from typing import Literal
 
 from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
@@ -44,14 +44,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Buffer time in ns during the operation to avoid turn-off transient overlapping with the XY pulse."""
     buffer_after_operation_in_ns: int = 800
     """Buffer time in ns after the operation to keep readout clean from the flux turn-off artifact."""
-    use_spectroscopy_data: bool = False
-    """When True, load raw qubit spectroscopy vs flux from spectroscopy_run_id and extract the freq-vs-flux curve, instead of using freq_vs_flux_01_quad_term."""
-    spectroscopy_run_id: Optional[int] = None
-    """Run ID of a previous ``03b_qubit_spectroscopy_vs_flux`` experiment."""
-    use_ramsey_data: bool = False
-    """When True, load Ramsey vs Z-flux data for freq->flux conversion (priority-2 path after spectroscopy, before quad_term fallback)."""
-    ramsey_run_id: Optional[int] = None
-    """Run ID of a previous ``09a_ramsey_vs_flux_calibration`` experiment. If None (default), the ID is read automatically from each qubit's extras['ramsey_vs_flux_calibration_load_id']."""
+    freq_to_flux_source: Literal["auto", "ramsey", "spectroscopy", "quad_term"] = "auto"
+    """Which frequency->voltage relation to use when converting the measured f(t) into a flux step response. 'auto' (default) tries Ramsey vs flux (09a), then qubit spectroscopy vs flux (03b), then the quadratic freq_vs_flux_01_quad_term; the other values force one specific source. Run IDs are never entered by hand: they are read from each qubit's extras ('ramsey_vs_flux_calibration_load_id' for 09a, 'qubit_spectroscopy_vs_flux_load_id' for 03b), so run those nodes with save_load_id=True first."""
     debug_plots: bool = False
     """If True, also generate diagnostic figures (IQ/phase heatmaps, spectroscopy/Ramsey reference curves)."""
 
