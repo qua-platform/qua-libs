@@ -26,11 +26,19 @@ __all__ = ["InitializeMacro", "MeasureMacro"]
 
 @quam_dataclass
 class InitializeMacro(CustomMacro): 
-    pass
+    @property
+    def inferred_duration(self) -> float | None:
+        return 0
+    def apply(self): 
+        pass
 
 @quam_dataclass
 class MeasureMacro(CustomMacro): 
-    pass
+    @property
+    def inferred_duration(self) -> float | None:
+        return 0
+    def apply(self): 
+        pass
 
 
 
