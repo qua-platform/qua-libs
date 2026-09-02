@@ -44,6 +44,7 @@ Prerequisites
 - A valid rotation angle and threshold if using state discrimination
 - Calibrated XYZ delay (16a)
 - A calibrated pi-pulse
+- Each qubit parked at its flux sweetspot. The Z pulse amplitude is derived as a magnitude and `f(Φ)` is assumed symmetric about idle, so either flux direction detunes downwards by the same amount and the side of the parabola is not exposed as a parameter.
 - A frequency→voltage relation for each qubit, used both to pick the Z amplitude and to invert the measurement. `freq_to_flux_source="auto"` (default) takes the first available of:
     1. Ramsey vs flux (09a), run ID from `extras['ramsey_vs_flux_calibration_load_id']`
     2. Qubit spectroscopy vs flux (03b), run ID from `extras['qubit_spectroscopy_vs_flux_load_id']`
@@ -101,7 +102,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     center_hz = node.parameters.detuning_in_mhz * 1e6
     span_hz = node.parameters.frequency_span_in_mhz * 1e6
     step_hz = node.parameters.frequency_step_in_mhz * 1e6
-    flux_branch = node.parameters.flux_branch
 
     dfs = np.arange(
         -center_hz - span_hz / 2,
@@ -114,12 +114,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     resolved = resolve_flux_amplitudes(
         qubits,
         detuning_hz=center_hz,
-        flux_branch=flux_branch,
         freq_to_flux_source=node.parameters.freq_to_flux_source,
     )
     flux_amps = resolved.amplitudes
-    # Sentinel for analysis branch selection (right → +999, left → -999)
-    node.namespace["flux_amp_for_detuning"] = resolved.flux_amp_for_detuning_sentinel
 
     # Time sweep linear of log scale
     if node.parameters.time_axis == "linear":
@@ -161,8 +158,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         lo_hz = if_update[i]
         lo_txt = f"LO shifted by {lo_hz / 1e6:.1f} MHz" if lo_hz else "no LO shift"
         node.log(
-            f"{q.name}: flux_amp={flux_amps[i]:.6f} V ({resolved.sources[i]}, "
-            f"branch={resolved.effective_branch}), RF={q.xy.RF_frequency / 1e9:.3f} GHz, {lo_txt}"
+            f"{q.name}: flux_amp={flux_amps[i]:.6f} V ({resolved.sources[i]}), "
+            f"RF={q.xy.RF_frequency / 1e9:.3f} GHz, {lo_txt}"
         )
 
     node.namespace["if_update"] = if_update
