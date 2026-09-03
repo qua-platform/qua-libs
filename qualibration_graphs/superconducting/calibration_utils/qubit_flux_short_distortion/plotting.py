@@ -87,7 +87,7 @@ def plot_cryoscope_freq(
                 0.5,
                 fit_text,
                 transform=ax.transAxes,
-                fontsize=9,
+                fontsize=12,
                 horizontalalignment="right",
                 verticalalignment="center",
             )
@@ -97,9 +97,11 @@ def plot_cryoscope_freq(
         ax.grid(True, which="both")
     else:
         ax.grid(True)
-    ax.set_xlabel("Time (ns)")
-    ax.set_ylabel("Cryoscope frequency (GHz)")
-    ax.legend(loc="best")
+    ax.set_xlabel("Time (ns)", fontsize=14)
+    ax.set_ylabel("Cryoscope frequency (GHz)", fontsize=14)
+    ax.set_title(qname)
+    ax.tick_params(axis="both", labelsize=12)
+    ax.legend(loc="best", fontsize=12)
 
 
 def plot_flux_response(
@@ -126,7 +128,7 @@ def plot_flux_response(
                 0.5,
                 fit_text,
                 transform=ax.transAxes,
-                fontsize=9,
+                fontsize=12,
                 horizontalalignment="right",
                 verticalalignment="center",
             )
@@ -136,9 +138,11 @@ def plot_flux_response(
         ax.grid(True, which="both")
     else:
         ax.grid(True)
-    ax.set_xlabel("Time (ns)")
-    ax.set_ylabel("Flux response (V)")
-    ax.legend(loc="best")
+    ax.set_xlabel("Time (ns)", fontsize=14)
+    ax.set_ylabel("Flux response (V)", fontsize=14)
+    ax.set_title(qname)
+    ax.tick_params(axis="both", labelsize=12)
+    ax.legend(loc="best", fontsize=12)
 
 
 def plot_raw_data_with_fit(
@@ -152,29 +156,28 @@ def plot_raw_data_with_fit(
     """Default 17c figures: cryoscope freq and flux response (both with IIR fit).
 
     Uses ``QubitGrid`` / ``grid_iter`` and calls the per-axis plotters once per
-    qubit. When ``fir_results`` is set, also builds FIR diagnostic grids the
-    same way.
+    qubit. When ``fir_results`` is set, also builds a compact FIR summary.
 
     Returns
     -------
     dict
         Always: ``cryoscope_freq``, ``flux_response``.
         With ``debug=True``: may also include ``unwrapped_phase``,
-        ``freq_vs_flux_curve``. With FIR results: ``fir_*``.
+        ``freq_vs_flux_curve``. With FIR results: compact ``fir_*`` summary.
     """
     grid_locations = [q.grid_location for q in qubits]
 
     grid_freq = QubitGrid(ds_fit, grid_locations)
     for ax, qubit in grid_iter(grid_freq):
         plot_cryoscope_freq(ax, ds_fit, qubit, fit=fit_results.get(qubit["qubit"]))
-    grid_freq.fig.suptitle("Cryoscope frequency vs time")
+    grid_freq.fig.suptitle("Cryoscope frequency vs time", fontsize=16)
     grid_freq.fig.set_size_inches(15, 9)
     grid_freq.fig.tight_layout()
 
     grid_flux = QubitGrid(ds_fit, grid_locations)
     for ax, qubit in grid_iter(grid_flux):
         plot_flux_response(ax, ds_fit, qubit, fit=fit_results.get(qubit["qubit"]))
-    grid_flux.fig.suptitle("Flux response vs time")
+    grid_flux.fig.suptitle("Flux response vs time", fontsize=16)
     grid_flux.fig.set_size_inches(15, 9)
     grid_flux.fig.tight_layout()
 
@@ -199,13 +202,9 @@ def plot_raw_data_with_fit(
                 continue
             fig_fir, axes_fir = plt.subplots(1, 2, figsize=(12, 4))
             plot_fir(axes_fir, res)
-            fig_fir.suptitle(f"FIR diagnostics — {qname}")
+            fig_fir.suptitle(f"FIR summary — {qname}")
             fig_fir.tight_layout()
             figures[f"fir_{qname}"] = fig_fir
-            if res.get("fig_fir_fit") is not None:
-                figures[f"fir_fit_diagnostic_{qname}"] = res["fig_fir_fit"]
-            if res.get("fig_fir_inverse") is not None:
-                figures[f"fir_inverse_diagnostic_{qname}"] = res["fig_fir_inverse"]
 
     return figures
 
