@@ -37,7 +37,8 @@ Workflow:
 For each qubit, resolve a Z-pulse amplitude that places the qubit at
 `detuning_target_in_mhz` below idle via `freq_to_flux_source`, bake 1 ns flux
 segments, sweep pulse duration and frame, and reconstruct phase → frequency →
-flux step response. Fit a sum of exponentials (IIR); optionally run FIR analysis.
+flux step response. Fit a sum of exponentials (IIR); optionally run fixed-length
+FIR feedforward analysis (``use_fir``) with a compact summary plot.
 
 Prerequisites
 - Resonator spectroscopy performed.
