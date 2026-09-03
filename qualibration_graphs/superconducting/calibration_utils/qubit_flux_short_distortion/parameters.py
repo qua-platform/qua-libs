@@ -64,7 +64,7 @@ class NodeSpecificParameters(RunnableParameters):
     use_fir: bool = False
     """Run FIR analysis after IIR. Default False."""
     fir_max_taps: int = 48
-    """Upper bound for forward and inverse FIR length."""
+    """Forward / inverse FIR length (fixed; no auto length search)."""
 
     update_iir: bool = False
     """Push IIR exponential filter into state on this run."""

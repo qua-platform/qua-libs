@@ -272,32 +272,14 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
 def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
     """Run FIR filter analysis on the cryoscope flux step response.
 
-    Follows the notebook pipeline:
+    Pipeline:
       1. Normalize flux by stable-region tail mean.
-      2. Resample from 1 GS/s to 2 GS/s on ``ds_fit.time`` (same axis as the plot).
-      3. Grid search over (L, lam1, lam2) to fit the best forward FIR.
-      4. Invert to obtain the pre-distortion filter h_inv.
-      5. Validate the corrected response at 1 GS/s.
-
-    Parameters
-    ----------
-    ds_fit : xr.Dataset
-        Fitted dataset containing a ``flux_response`` variable with dimensions
-        ``(qubit, time)``.
-    node : QualibrationNode
-        Node object providing ``node.parameters`` (FIR grid-search settings)
-        and ``node.namespace["qubits"]``.
-
-    Returns
-    -------
-    dict
-        Keyed by qubit name.  Each value is a dict with keys:
-        ``success``, ``forward_fir``, ``inverse_fir``, ``normalized_1gs``,
-        ``corrected_1gs``, ``time_1gs``, ``time_2gs``, ``normalized_2gs``,
-        ``fig_fir_fit``, ``fig_fir_inverse``.
+      2. Resample from 1 GS/s to 2 GS/s on ``ds_fit.time``.
+      3. Fit forward FIR of length ``fir_max_taps`` and invert for feedforward.
+      4. Validate corrected response at 1 GS/s.
     """
     from calibration_utils.common_utils.flux_distortions.fir_utils import (
-        analyze_and_plot_inverse_fir_auto,
+        analyze_inverse_fir,
         estimate_noise_floor,
         resample_to_target_rate,
     )
@@ -327,41 +309,18 @@ def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
             t_original_ns=time_1gs_arr,
         )
 
-        h_fir, h_inv, _best_reconstructed, fig_fir_fit, fig_inv_fir, auto_info = (
-            analyze_and_plot_inverse_fir_auto(
-                response=normalized_2gs,
-                time=time_2gs,
-                Ts=0.5,
-                max_taps=params.fir_max_taps,
-                M=None,
-                sigma_ns=None,
-                alpha=1.0,
-                criterion="both",
-                verbose=True,
-            )
+        h_fir, h_inv, _reconstructed, fir_info = analyze_inverse_fir(
+            response=normalized_2gs,
+            Ts=0.5,
+            L=params.fir_max_taps,
         )
-        chosen_meta = {
-            "auto_chosen_L": auto_info["L"],
-            "auto_chosen_lam": auto_info["lam"],
-            "auto_chosen_lam_smooth": auto_info["lam_smooth"],
-            "auto_chosen_sigma_ns": auto_info["sigma_ns"],
-            "auto_criterion_forward": auto_info["criterion_forward"],
-            "auto_criterion_inverse": auto_info["criterion_inverse"],
-            "auto_forward_nrms": auto_info["forward_nrms"],
-        }
 
         ideal_1gs = np.ones(len(normalized_1gs))
         predistorted = lfilter(h_inv, 1, ideal_1gs)
         corrected = lfilter(h_fir, 1, predistorted)
         corrected_norm = corrected / float(np.nanmean(corrected[-10:]))
 
-        sigma_C = None
-        ht = float(auto_info.get("forward_hat_trace", 0.0))
-        rss = float(auto_info.get("forward_rss", np.nan))
-        dof = len(normalized_2gs) - ht
-        if np.isfinite(rss) and dof > 0:
-            sigma_C = float(np.sqrt(rss / dof))
-        noise_info = estimate_noise_floor(normalized_1gs, Ts=1.0, sigma_C=sigma_C)
+        noise_info = estimate_noise_floor(normalized_1gs, Ts=1.0)
 
         fir_results[dim_name] = {
             "success": True,
@@ -372,40 +331,31 @@ def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
             "time_1gs": ds_fit.time.values.tolist(),
             "time_2gs": time_2gs.tolist(),
             "normalized_2gs": normalized_2gs.tolist(),
-            "mode": "auto",
-            **chosen_meta,
+            "L": fir_info["L"],
+            "lam": fir_info["lam"],
+            "lam_smooth": fir_info["lam_smooth"],
+            "sigma_ns": fir_info["sigma_ns"],
+            "forward_nrms": fir_info["forward_nrms"],
             "noise_sigma_A_tail_std": noise_info["sigma_A"],
             "noise_sigma_B_first_diff": noise_info["sigma_B"],
-            "noise_sigma_C_fit_implied": noise_info["sigma_C"],
-            "noise_sigma_displayed": noise_info["displayed"],
             "noise_ratio_AB": noise_info["ratio_AB"],
-            "noise_ratio_fit": noise_info["ratio_fit"],
-            "noise_ratio_max_min": noise_info["ratio_max_min"],
             "noise_estimate_status": noise_info["status"],
             "noise_estimate_msg": noise_info["msg_short"],
-            "fig_fir_fit": fig_fir_fit,
-            "fig_fir_inverse": fig_inv_fir,
         }
-        sigma_C_str = "n/a" if noise_info["sigma_C"] is None else f"{noise_info['sigma_C']:.2e}"
         node.log(
-            f"  {dim_name}: FIR done (auto) — forward {len(h_fir)} taps, inverse {len(h_inv)} taps"
+            f"  {dim_name}: FIR done — L={fir_info['L']}, "
+            f"NRMS={fir_info['forward_nrms']:.3e}, "
+            f"forward {len(h_fir)} taps, inverse {len(h_inv)} taps"
         )
         node.log(
-            f"  {dim_name}: noise sigma_A={noise_info['sigma_A']:.2e} sigma_B={noise_info['sigma_B']:.2e} "
-            f"sigma_C={sigma_C_str}  ratio_AB={noise_info['ratio_AB']:.2f}  "
-            f"ratio_fit={noise_info['ratio_fit']:.2f}  -> {noise_info['msg_short']}"
+            f"  {dim_name}: noise sigma_A={noise_info['sigma_A']:.2e} "
+            f"sigma_B={noise_info['sigma_B']:.2e} "
+            f"ratio_AB={noise_info['ratio_AB']:.2f} -> {noise_info['msg_short']}"
         )
         if noise_info["status"] == "warn_tail":
             node.log(
                 f"  {dim_name}: tail may not be settled (sigma_A >> sigma_B); "
                 f"try a longer cryoscope_len."
-            )
-        elif noise_info["status"] == "warn_fit":
-            node.log(
-                f"  {dim_name}: tail looks clean but fit residual exceeds noise floor "
-                f"(ratio_fit={noise_info['ratio_fit']:.2f}). Likely upstream IIR underfits "
-                f"a long-tau component; consider raising n_exponentials or revisiting the "
-                f"cryoscope amplitude / detuning."
             )
 
     return fir_results
