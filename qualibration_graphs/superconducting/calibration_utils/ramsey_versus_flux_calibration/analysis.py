@@ -2,7 +2,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import xarray as xr
@@ -18,7 +18,7 @@ class FitParameters:
     quad_term: float
     flux_offset: float
     freq_offset: float
-    t2_star: np.ndarray
+    t2_star: List[float]
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
@@ -260,7 +260,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
             + flux_offset[q] * float(fitvals.sel(qubit=q, degree=1).polyfit_coefficients.values)
             + float(fitvals.sel(qubit=q, degree=0).polyfit_coefficients.values)
         )
-        t2_star[q] = tau.sel(qubit=q).values
+        t2_star[q] = np.asarray(tau.sel(qubit=q).values, dtype=float).tolist()
 
         # Success criterion: fit parameters are finite and flux offset is within swept range
         success[q] = bool(

@@ -19,11 +19,9 @@ from .analysis import (
 )
 from .parameters import Parameters
 from .plotting import (
-    plot_center_freqs,
-    plot_fit,
+    plot_center_freq,
     plot_flux_response,
-    plot_iq_abs_heatmap,
-    plot_phase_heatmap,
+    plot_iq_abs,
     plot_raw_data_with_fit,
     plot_spectroscopy_curve,
 )
@@ -44,11 +42,8 @@ __all__ = [
     "load_ramsey_curve",
     "flux_amp_from_curve",
     "plot_raw_data_with_fit",
-    # Shared helpers (e.g. 21a); not part of 17a default figures
-    "plot_fit",
-    "plot_center_freqs",
+    "plot_center_freq",
     "plot_flux_response",
-    "plot_iq_abs_heatmap",
-    "plot_phase_heatmap",
+    "plot_iq_abs",
     "plot_spectroscopy_curve",
 ]

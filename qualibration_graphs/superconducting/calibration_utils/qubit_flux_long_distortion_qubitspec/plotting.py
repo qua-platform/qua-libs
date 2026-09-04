@@ -1,151 +1,114 @@
 """Plotting utilities for pi vs flux calibration visualizations."""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from quam_builder.architecture.superconducting.qubit import AnyTransmon
-
-# ---------------------------------------------------------------------------
-# Default figures (always produced by ``plot_raw_data_with_fit``)
-# ---------------------------------------------------------------------------
+from matplotlib.axes import Axes
+from qualibration_libs.plotting import QubitGrid, grid_iter
 
 
-def plot_center_freqs(ds: xr.Dataset, qubits, log_scale: bool = False):
-    """Plot qubit frequency vs flux-pulse duration for each qubit.
-
-    When qubit objects expose ``xy.RF_frequency``, the y-axis shows absolute
-    qubit frequency (GHz); otherwise raw ``center_freqs``.
-    """
-    names = [q.name for q in qubits]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
-    times = ds.time.values
-
-    for ax, qname, q in zip(axes[0], names, qubits):
-        cf = ds.sel(qubit=qname).center_freqs.values
-        rf = getattr(getattr(q, "xy", None), "RF_frequency", None)
-        if rf is not None:
-            y = (cf + rf) / 1e9
-            ax.set_ylabel("Qubit frequency (GHz)")
-        else:
-            y = cf / 1e9
-            ax.set_ylabel("Center frequency (GHz)")
-        ax.plot(times, y, marker="o", ms=4, lw=1.2)
-        if log_scale:
-            ax.set_xscale("log")
-            ax.grid(True, which="both")
-        else:
-            ax.grid(True)
-        ax.set_xlabel("Time (ns)")
-        ax.set_title(qname)
-
-    scale = " (log scale)" if log_scale else ""
-    fig.suptitle(f"Qubit frequency shift vs time after flux pulse{scale}")
-    fig.tight_layout()
-    return fig
+def _unpack_fit(q_fit, y_data):
+    """Return ``(a_tau_tuple, a_dc)`` from a dataclass or dict fit result."""
+    if hasattr(q_fit, "a_tau_tuple"):
+        components = q_fit.a_tau_tuple if q_fit.a_tau_tuple is not None else []
+        a_dc = getattr(q_fit, "a_dc", np.nan)
+    elif isinstance(q_fit, dict):
+        components = q_fit.get("a_tau_tuple") or q_fit.get("components") or []
+        a_dc = q_fit.get("a_dc", np.nan)
+    else:
+        components, a_dc = [], np.nan
+    if not components and np.all(np.isnan(y_data)):
+        return [], np.nan
+    return list(components), float(a_dc) if a_dc is not None else np.nan
 
 
-def plot_flux_response(ds: xr.Dataset, qubits, log_scale: bool = False):
-    """Plot flux step response vs time for each qubit."""
-    names = [q.name for q in qubits]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
-    times = ds.time.values
-
-    for ax, qname in zip(axes[0], names):
-        fr = ds.sel(qubit=qname).flux_response.values
-        ax.plot(times, fr, lw=1.5)
-        if log_scale:
-            ax.set_xscale("log")
-            ax.grid(True, which="both")
-        else:
-            ax.grid(True)
-        ax.set_xlabel("Time (ns)")
-        ax.set_ylabel("Flux response (V)")
-        ax.set_title(qname)
-
-    scale = " (log scale)" if log_scale else ""
-    fig.suptitle(f"Flux response vs time after flux pulse{scale}")
-    fig.tight_layout()
-    return fig
-
-
-def plot_individual_raw_data_with_fit(ax_lin, ax_log, t_data, y_data, components, a_dc):
-    """Draw sum-of-exponentials data+fit on a linear and a log axis (one qubit)."""
+def _exp_fit_curve(t_data, components, a_dc):
+    """Return ``(y_fit, fit_text)`` for an exponential sum."""
     fit_text = f"a_dc = {a_dc:.3f}\n"
     y_fit = np.ones_like(t_data, dtype=float) * a_dc
     for i, (amp, tau) in enumerate(components):
         y_fit += amp * np.exp(-t_data / tau)
         fit_text += f"a{i + 1} = {amp / a_dc:.3f}, τ{i + 1} = {tau:.0f}ns\n"
-
-    ax_lin.plot(t_data, y_data, ".--", label="Data")
-    ax_lin.plot(t_data, y_fit, label="Fit")
-    ax_lin.text(
-        0.98,
-        0.5,
-        fit_text,
-        transform=ax_lin.transAxes,
-        fontsize=10,
-        horizontalalignment="right",
-        verticalalignment="center",
-    )
-    ax_lin.set_xlabel("Time (ns)")
-    ax_lin.set_ylabel("Flux Response")
-    ax_lin.legend()
-    ax_lin.grid(True)
-    ax_lin.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
-
-    ax_log.plot(t_data, y_data, ".--", label="Data")
-    ax_log.plot(t_data, y_fit, label="Fit")
-    ax_log.text(
-        0.98,
-        0.5,
-        fit_text,
-        transform=ax_log.transAxes,
-        fontsize=10,
-        horizontalalignment="right",
-        verticalalignment="center",
-    )
-    ax_log.set_xlabel("Time (ns)")
-    ax_log.set_ylabel("Flux Response")
-    ax_log.set_xscale("log")
-    ax_log.legend(loc="best")
-    ax_log.grid(True)
+    return y_fit, fit_text
 
 
-def plot_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fit_results: Dict):
-    """Flux response + multi-exp fit (one linear/log pair per qubit)."""
-    names = [q.name for q in qubits]
-    n = len(names)
-    if n == 0:
-        return None
+# ---------------------------------------------------------------------------
+# Per-axis plotters (qubit-agnostic; used by ``plot_raw_data_with_fit``)
+# ---------------------------------------------------------------------------
 
-    fig, axes = plt.subplots(n, 2, figsize=(12, 5 * n), squeeze=False)
-    t_data = ds.time.values
 
-    for row, qname in enumerate(names):
-        ax_lin, ax_log = axes[row]
-        y_data = ds.flux_response.sel(qubit=qname).values
-        if np.all(np.isnan(y_data)):
-            for ax in (ax_lin, ax_log):
-                ax.set_title(f"{qname} — no data")
-                ax.set_xlabel("Time (ns)")
-                ax.set_ylabel("Flux Response")
-            continue
+def plot_center_freq(
+    ax: Axes,
+    ds: xr.Dataset,
+    qubit: dict,
+    *,
+    rf_frequency: Optional[float] = None,
+    log_scale: bool = False,
+) -> None:
+    """Plot qubit frequency vs flux-pulse duration on one axis."""
+    qname = qubit["qubit"]
+    times = ds.time.values
+    cf = ds.sel(qubit=qname).center_freqs.values
+    if rf_frequency is not None:
+        y = (cf + rf_frequency) / 1e9
+        ylabel = "Qubit frequency (GHz)"
+    else:
+        y = cf / 1e9
+        ylabel = "Center frequency (GHz)"
+    ax.plot(times, y, marker="o", ms=4, lw=1.2)
+    if log_scale:
+        ax.set_xscale("log")
+        ax.grid(True, which="both")
+    else:
+        ax.grid(True)
+    ax.set_xlabel("Time (ns)", fontsize=14)
+    ax.set_ylabel(ylabel, fontsize=14)
+    ax.set_title(qname)
+    ax.tick_params(axis="both", labelsize=12)
 
-        components = fit_results[qname]["a_tau_tuple"]
-        a_dc = fit_results[qname]["a_dc"]
-        if a_dc is None or (isinstance(a_dc, (float, np.floating)) and np.isnan(a_dc)):
-            a_dc = float(y_data[-5:].mean()) if len(y_data) >= 5 else float(y_data.mean())
 
-        plot_individual_raw_data_with_fit(ax_lin, ax_log, t_data, y_data, components=components, a_dc=a_dc)
-        ax_lin.set_title(qname)
-        ax_log.set_title(f"{qname} (log)")
+def plot_flux_response(
+    ax: Axes,
+    ds: xr.Dataset,
+    qubit: dict,
+    fit: Any = None,
+    *,
+    log_scale: bool = False,
+) -> None:
+    """Plot flux step response vs time on one axis, optionally with the IIR fit."""
+    qname = qubit["qubit"]
+    t_data = np.asarray(ds.time.values, dtype=float)
+    y_data = np.asarray(ds.flux_response.sel(qubit=qname).values, dtype=float)
+    ax.plot(t_data, y_data, ".--", label="Data")
 
-    fig.tight_layout()
-    return fig
+    if fit is not None:
+        components, a_dc = _unpack_fit(fit, y_data)
+        if components and np.isfinite(a_dc):
+            y_fit, fit_text = _exp_fit_curve(t_data, components, a_dc)
+            ax.plot(t_data, y_fit, "-", label="Fit")
+            ax.text(
+                0.98,
+                0.5,
+                fit_text,
+                transform=ax.transAxes,
+                fontsize=12,
+                horizontalalignment="right",
+                verticalalignment="center",
+            )
+
+    if log_scale:
+        ax.set_xscale("log")
+        ax.grid(True, which="both")
+    else:
+        ax.grid(True)
+        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+    ax.set_xlabel("Time (ns)", fontsize=14)
+    ax.set_ylabel("Flux response (V)", fontsize=14)
+    ax.set_title(qname)
+    ax.tick_params(axis="both", labelsize=12)
+    ax.legend(loc="best", fontsize=12)
 
 
 def plot_raw_data_with_fit(
@@ -154,42 +117,82 @@ def plot_raw_data_with_fit(
     fit_results: Dict,
     *,
     debug: bool = False,
+    log_scale: bool = False,
 ) -> Dict[str, plt.Figure]:
-    """Default 17a figures: center freq, flux response, and exponential fit.
+    """Default 17a figures: spectroscopy + center freq and flux response (with IIR fit).
 
-    Parameters
-    ----------
-    debug :
-        If True, also add IQ/phase heatmaps and spectroscopy/Ramsey reference
-        curves when available.
+    Uses ``QubitGrid`` / ``grid_iter`` and calls the per-axis plotters once per
+    qubit.
 
     Returns
     -------
     dict
-        Always: ``center_freq_{linear,log}``, ``flux_response_{linear,log}``,
-        ``fitted_data``. With ``debug=True``, may also include ``iq_abs_*``,
-        ``phase``, ``spectroscopy_curve``, ``ramsey_curve``.
+        Always: ``spectroscopy`` (or ``center_freq`` if no 2-D map) and ``flux_response``.
+        With ``debug=True`` and a measured 09a/03b curve: also ``freq_vs_flux_curve``.
     """
-    figures: Dict[str, plt.Figure] = {
-        "center_freq_linear": plot_center_freqs(ds, qubits, log_scale=False),
-        "center_freq_log": plot_center_freqs(ds, qubits, log_scale=True),
-        "flux_response_linear": plot_flux_response(ds, qubits, log_scale=False),
-        "flux_response_log": plot_flux_response(ds, qubits, log_scale=True),
-        "fitted_data": plot_fit(ds, qubits, fit_results),
+    grid_locations = [q.grid_location for q in qubits]
+    rf_by_name = {
+        q.name: getattr(getattr(q, "xy", None), "RF_frequency", None) for q in qubits
     }
+
+    has_spectroscopy_map = "IQ_abs" in ds.data_vars or "state" in ds.data_vars
+    figures: Dict[str, plt.Figure] = {}
+
+    if has_spectroscopy_map and "center_freqs" in ds:
+        title_label = "|IQ|" if "IQ_abs" in ds.data_vars else "State"
+        grid_spec = QubitGrid(ds, grid_locations)
+        grid_spec.fig.set_size_inches(15, 9)
+        for ax, qubit in grid_iter(grid_spec):
+            plot_iq_abs(
+                ax,
+                ds,
+                qubit,
+                grid_spec.fig,
+                log_scale=log_scale,
+                overlay_center_freq=True,
+                rf_frequency=rf_by_name.get(qubit["qubit"]),
+            )
+        grid_spec.fig.suptitle(
+            f"{title_label} vs (time, freq) with extracted center frequency",
+            fontsize=16,
+        )
+        grid_spec.fig.tight_layout()
+        figures["spectroscopy"] = grid_spec.fig
+    elif "center_freqs" in ds:
+        grid_cf = QubitGrid(ds, grid_locations)
+        for ax, qubit in grid_iter(grid_cf):
+            plot_center_freq(
+                ax,
+                ds,
+                qubit,
+                rf_frequency=rf_by_name.get(qubit["qubit"]),
+                log_scale=log_scale,
+            )
+        grid_cf.fig.suptitle("Qubit frequency shift vs time after flux pulse", fontsize=16)
+        grid_cf.fig.set_size_inches(15, 9)
+        grid_cf.fig.tight_layout()
+        figures["center_freq"] = grid_cf.fig
+
+    grid_flux = QubitGrid(ds, grid_locations)
+    for ax, qubit in grid_iter(grid_flux):
+        plot_flux_response(
+            ax,
+            ds,
+            qubit,
+            fit=fit_results.get(qubit["qubit"]),
+            log_scale=log_scale,
+        )
+    grid_flux.fig.suptitle("Flux response vs time after flux pulse", fontsize=16)
+    grid_flux.fig.set_size_inches(15, 9)
+    grid_flux.fig.tight_layout()
+    figures["flux_response"] = grid_flux.fig
 
     if not debug:
         return figures
 
-    for key, fig in {
-        "iq_abs_linear": plot_iq_abs_heatmap(ds, qubits, log_scale=False),
-        "iq_abs_log": plot_iq_abs_heatmap(ds, qubits, log_scale=True),
-        "phase": plot_phase_heatmap(ds, qubits),
-        "spectroscopy_curve": plot_spectroscopy_curve(ds, qubits),
-        "ramsey_curve": plot_ramsey_curve(qubits),
-    }.items():
-        if fig is not None:
-            figures[key] = fig
+    freq_vs_flux = plot_spectroscopy_curve(ds, qubits)
+    if freq_vs_flux is not None:
+        figures["freq_vs_flux_curve"] = freq_vs_flux
 
     return figures
 
@@ -199,127 +202,92 @@ def plot_raw_data_with_fit(
 # ---------------------------------------------------------------------------
 
 
-def plot_iq_abs_heatmap(ds: xr.Dataset, qubits, log_scale: bool = False):
-    """Raw |IQ| (or state) vs (time, frequency) heatmap per qubit."""
+def plot_iq_abs(
+    ax: Axes,
+    ds: xr.Dataset,
+    qubit: dict,
+    fig: plt.Figure,
+    *,
+    log_scale: bool = False,
+    overlay_center_freq: bool = False,
+    rf_frequency: Optional[float] = None,
+) -> None:
+    """Plot |IQ| or state heatmap vs (time, frequency) on one axis."""
     if "IQ_abs" in ds.data_vars:
         signal_var = "IQ_abs"
         cbar_label = "|IQ| (V)"
-        title_label = "|IQ|"
-    elif "state" in ds.data_vars:
+    else:
         signal_var = "state"
         cbar_label = "State"
-        title_label = "State"
-    else:
-        return None
 
-    names = [q.name for q in qubits]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 5), squeeze=False)
+    qname = qubit["qubit"]
     times = ds.time.values
+    q_ds = ds.sel(qubit=qname)
+    freq_ghz = q_ds["freq_full"].values / 1e9
+    freq_dim = "detuning" if "detuning" in q_ds[signal_var].dims else "freq"
+    signal = q_ds[signal_var].transpose(freq_dim, "time").values
+    im = ax.pcolormesh(times, freq_ghz, signal, shading="auto", cmap="viridis")
+    fig.colorbar(im, ax=ax).set_label(cbar_label)
 
-    for ax, qname in zip(axes[0], names):
-        q_ds = ds.sel(qubit=qname)
-        freq_ghz = q_ds["freq_full"].values / 1e9
-        _fd = "detuning" if "detuning" in q_ds[signal_var].dims else "freq"
-        signal = q_ds[signal_var].transpose(_fd, "time").values
-
-        im = ax.pcolormesh(times, freq_ghz, signal, shading="auto", cmap="viridis")
-        fig.colorbar(im, ax=ax).set_label(cbar_label)
-        if log_scale:
-            ax.set_xscale("log")
-        ax.set_xlabel("Time (ns)")
-        ax.set_ylabel("Frequency (GHz)")
-        ax.set_title(qname)
-
-    scale = " [log]" if log_scale else ""
-    fig.suptitle(f"{title_label} vs (time, freq){scale}", y=1.02)
-    fig.tight_layout()
-    return fig
-
-
-def plot_phase_heatmap(ds: xr.Dataset, qubits):
-    """Phase vs (time, frequency) heatmap per qubit (IQ acquisition only)."""
-    if "phase" not in ds.data_vars:
-        return None
-
-    names = [q.name for q in qubits]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 5), squeeze=False)
-    times = ds.time.values
-
-    for ax, qname in zip(axes[0], names):
-        q_ds = ds.sel(qubit=qname)
-        freq_ghz = q_ds["freq_full"].values / 1e9
-        _fd = "detuning" if "detuning" in q_ds["phase"].dims else "freq"
-        phase = q_ds["phase"].transpose(_fd, "time").values
-
-        im = ax.pcolormesh(
+    if overlay_center_freq and "center_freqs" in ds:
+        cf = np.asarray(q_ds.center_freqs.values, dtype=float)
+        if rf_frequency is not None:
+            freq_line_ghz = (cf + rf_frequency) / 1e9
+        else:
+            freq_line_ghz = cf / 1e9
+        ax.plot(
             times,
-            freq_ghz,
-            phase,
-            shading="auto",
-            cmap="RdBu_r",
-            vmin=-np.pi,
-            vmax=np.pi,
+            freq_line_ghz,
+            color="darkred",
+            lw=2.5,
+            marker="o",
+            ms=7,
+            mfc="darkred",
+            mec="white",
+            mew=1.0,
+            label="Center freq",
+            zorder=5,
         )
-        fig.colorbar(im, ax=ax).set_label("Phase (rad)")
-        ax.set_xlabel("Time (ns)")
-        ax.set_ylabel("Frequency (GHz)")
-        ax.set_title(qname)
+        ax.legend(loc="upper right", fontsize=10)
 
-    fig.suptitle("Phase vs (time, freq)", y=1.02)
-    fig.tight_layout()
-    return fig
+    if log_scale:
+        ax.set_xscale("log")
+        ax.grid(True, which="both")
+    ax.set_xlabel("Time (ns)")
+    ax.set_ylabel("Frequency (GHz)")
+    ax.set_title(qname)
+    ax.tick_params(axis="both", labelsize=12)
 
 
 def plot_spectroscopy_curve(ds: xr.Dataset, qubits) -> Optional[plt.Figure]:
-    """Measured freq-vs-flux curve(s) attached to ``ds`` during analysis."""
+    """Plot the measured freq-vs-flux curve(s) embedded in *ds*, if present."""
     if "spec_curve_flux" not in ds or "spec_curve_freq" not in ds:
         return None
 
-    sources = ds.attrs.get("freq_to_flux_sources", "")
+    source_label = ds.attrs.get("freq_to_flux_sources", ds.attrs.get("freq_to_flux_source", "measured"))
     names = [q.name for q in qubits]
     n = len(names)
     fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
-
     spec_qubits = ds["spec_curve_flux"].spec_qubit.values.tolist()
-
+    n_plotted = 0
     for ax, qname in zip(axes[0], names):
         if qname not in spec_qubits:
             ax.set_title(f"{qname} — no curve")
             continue
         flux_arr = ds["spec_curve_flux"].sel(spec_qubit=qname).values
         freq_arr = ds["spec_curve_freq"].sel(spec_qubit=qname).values / 1e9
+        if not np.isfinite(flux_arr).any() or not np.isfinite(freq_arr).any():
+            ax.set_title(f"{qname} — no curve")
+            continue
         ax.plot(flux_arr, freq_arr, lw=1.5)
         ax.set_xlabel("Flux bias (V)")
         ax.set_ylabel("Qubit frequency (GHz)")
         ax.set_title(qname)
         ax.grid(True)
-
-    fig.suptitle(f"Freq-vs-flux curve used ({sources})" if sources else "Freq-vs-flux curve used")
-    fig.tight_layout()
-    return fig
-
-
-def plot_ramsey_curve(qubits) -> Optional[plt.Figure]:
-    """Ramsey vs Z-flux reference, reloaded from each qubit's extras run ID."""
-    from calibration_utils.common_utils.flux_distortions.curves import load_ramsey_curve
-
-    n = len(qubits)
-    if n == 0:
+        n_plotted += 1
+    if not n_plotted:
+        plt.close(fig)
         return None
-    fig, axes = plt.subplots(1, n, figsize=(5 * n, 4), squeeze=False)
-    n_loaded = 0
-    for ax, qubit in zip(axes[0], qubits):
-        curve = load_ramsey_curve(qubit)
-        if curve is None:
-            continue
-        n_loaded += 1
-        flux_bias, qubit_freq = curve
-        ax.plot(flux_bias, np.array(qubit_freq) / 1e9, marker=".", linestyle="-")
-        ax.set_xlabel("Z flux (V)")
-        ax.set_ylabel("Qubit frequency (GHz)")
-        ax.set_title(qubit.name)
-    fig.suptitle("Ramsey vs Z-flux (extras load id)" if n_loaded else "Ramsey vs Z-flux — no extras run IDs found")
+    fig.suptitle(f"Freq-vs-flux curve used ({source_label})")
     fig.tight_layout()
     return fig

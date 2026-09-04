@@ -42,9 +42,10 @@ fails, two taus lie within ``tau_proximity_factor``, or an amplitude falls below
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.optimize import least_squares
 
 # Bounds keep the fit physically usable for IIR generation:
@@ -68,7 +69,7 @@ class FitParameters:
     rms_error: float
 
 
-def _make_residual_weights(t: np.ndarray) -> np.ndarray:
+def _make_residual_weights(t: NDArray[np.floating]) -> NDArray[np.floating]:
     """Uniform weights, or sqrt(log-spacing) on log grids so early points do not dominate."""
     if len(t) < 4:
         return np.ones_like(t, dtype=float)
@@ -90,11 +91,11 @@ def _make_residual_weights(t: np.ndarray) -> np.ndarray:
 
 
 def _seed_params(
-    t: np.ndarray,
-    y: np.ndarray,
+    t: NDArray[np.floating],
+    y: NDArray[np.floating],
     n: int,
     t_pulse_ns: Optional[float] = None,
-) -> Tuple[np.ndarray, np.ndarray, float]:
+) -> Tuple[NDArray[np.floating], NDArray[np.floating], float]:
     """Log-spaced tau seeds plus closed-form linear LS for ``(amps, a_dc)``."""
     pos = t[t > 0]
     lo = float(pos.min()) / 3.0
@@ -117,12 +118,12 @@ def _seed_params(
 
 
 def _fit_once(
-    t: np.ndarray,
-    y: np.ndarray,
+    t: NDArray[np.floating],
+    y: NDArray[np.floating],
     n: int,
-    weights: np.ndarray,
+    weights: NDArray[np.floating],
     t_pulse_ns: Optional[float] = None,
-) -> dict:
+) -> dict[str, Any]:
     """One joint nonlinear LS with ``n`` components; params ``[a_dc, a_1, log_tau_1, …]``."""
     taus_seed, amps_seed, adc_seed = _seed_params(t, y, n, t_pulse_ns=t_pulse_ns)
 
@@ -183,8 +184,8 @@ def _fit_once(
 
 
 def multi_exp_fit_global(
-    t: np.ndarray,
-    y: np.ndarray,
+    t: NDArray[np.floating],
+    y: NDArray[np.floating],
     n_exponentials: int,
     rel_amp_threshold: float = 0.02,
     tau_proximity_factor: float = 1.5,

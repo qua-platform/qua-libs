@@ -14,7 +14,9 @@ from dataclasses import dataclass, field
 from typing import Any, List, Optional, Sequence
 
 import numpy as np
+from numpy.typing import NDArray
 from qualibration_libs.core import tracked_updates
+from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 # Spec edge (±400 MHz) and practical usable ceiling (±500 MHz) for MW-FEM IF.
 IF_WARN_HZ = 400e6
@@ -52,7 +54,7 @@ class LoShiftPlan:
     if_update: List[int] = field(default_factory=list)
     """Hz offset to subtract in ``update_frequency`` (0 = no LO shift)."""
 
-    tracked_qubits: List[Any] = field(default_factory=list)
+    tracked_qubits: List[AnyTransmon] = field(default_factory=list)
     """QUAM objects from ``tracked_updates``; revert in ``save_results``."""
 
     force_thermal_reset: bool = False
@@ -60,8 +62,8 @@ class LoShiftPlan:
 
 
 def plan_lo_shift_for_frequency_window(
-    qubits: Sequence[Any],
-    dfs: np.ndarray,
+    qubits: Sequence[AnyTransmon],
+    dfs: NDArray[np.integer] | NDArray[np.floating],
 ) -> LoShiftPlan:
     """Decide LO shifts so ``intermediate_frequency + dfs`` stays in usable IF reach.
 

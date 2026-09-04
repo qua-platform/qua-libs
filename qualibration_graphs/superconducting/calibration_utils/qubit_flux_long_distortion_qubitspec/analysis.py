@@ -46,7 +46,7 @@ Key equations
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import xarray as xr
@@ -80,7 +80,7 @@ def log_fitted_results(fit_results: Dict, log_callable=print) -> None:
                 f"comps={res['a_tau_tuple']}"
             )
         else:
-            log_callable(f"{qb}: FAILED")
+            log_callable(f"{qb}: fit FAILED — see warnings above (spectroscopy edge or freq→flux curve).")
 
 
 def process_raw_dataset(ds: xr.Dataset, node) -> xr.Dataset:
@@ -205,6 +205,7 @@ def extract_center_freqs(
     freqs: np.ndarray,
     *,
     use_state_discrimination: bool = False,
+    log_callable: Callable[[str], None],
 ) -> xr.DataArray:
     """Extract resonance center frequencies vs time from a 2-D spectroscopy map.
 
@@ -243,9 +244,9 @@ def extract_center_freqs(
             ranked = sorted(candidates, key=lambda name: _trace_roughness(traces[name]))
             best_name = ranked[0]
             if not np.isfinite(_trace_roughness(traces[best_name])):
-                print(f"  WARNING: {label}: no usable resonance in any quadrature; " f"falling back to {best_name}.")
+                log_callable(f"  WARNING: {label}: no clear I/Q resonance; using {best_name} anyway.")
             else:
-                print(f"  {label}: center-frequency extraction used the {best_name} quadrature.")
+                log_callable(f"  {label}: center-frequency extraction used {best_name}.")
         center_freqs[i] = traces[best_name]
 
     # Soft edge check: clipped f(t) vs detuning axis (warn only).
@@ -255,14 +256,15 @@ def extract_center_freqs(
         label = qubit_names[i] if i < len(qubit_names) else f"qubit {i}"
         finite = center_freqs[i][np.isfinite(center_freqs[i])]
         if finite.size == 0:
-            print(f"  WARNING: {label}: no resonance could be extracted from any time slice.")
+            log_callable(f"  WARNING: {label}: no resonance found in any time slice.")
             continue
         n_edge = int(((finite <= f_lo + tol) | (finite >= f_hi - tol)).sum())
         if n_edge:
-            print(
-                f"  WARNING: {label}: {n_edge}/{finite.size} extracted resonances sit at the "
-                f"edge of the detuning sweep. Widen frequency_span_in_mhz or re-centre "
-                f"detuning_in_mhz; continuing with the clipped estimates."
+            lo_mhz, hi_mhz = f_lo / 1e6, f_hi / 1e6
+            log_callable(
+                f"  WARNING: {label}: resonance on spectroscopy sweep edge ({n_edge}/{finite.size} slices). "
+                f"In 17a, increase frequency_span_in_mhz or detuning_in_mhz "
+                f"(current detuning sweep: {lo_mhz:.0f} to {hi_mhz:.0f} MHz vs RF)."
             )
 
     template = ds[candidates[0]].transpose("qubit", "time", freq_dim).isel({freq_dim: 0}, drop=True)
@@ -273,6 +275,8 @@ def _compute_flux_response(
     center_freqs: xr.DataArray,
     qubits: list,
     freq_to_flux_source: FreqFluxSource = "auto",
+    *,
+    log_callable: Callable[[str], None],
 ) -> Tuple[xr.DataArray, Dict[str, Tuple[np.ndarray, np.ndarray]], Dict[str, str]]:
     """Map extracted ``center_freqs(t)`` to a Z-flux step response magnitude.
 
@@ -304,19 +308,37 @@ def _compute_flux_response(
         if selected.is_measured:
             curve = selected.curve
             measured_curves[q.name] = curve
+            flux_c, freq_c = curve
+            freq_span_mhz = (float(np.max(freq_c)) - float(np.min(freq_c))) / 1e6
+            if freq_span_mhz < 10.0:
+                cal_node = "09a" if selected.kind == "ramsey" else "03b"
+                log_callable(
+                    f"  WARNING: {q.name}: {selected.label} spans only {freq_span_mhz:.2f} MHz in frequency "
+                    f"({np.min(freq_c)/1e9:.3f}–{np.max(freq_c)/1e9:.3f} GHz). "
+                    f"Re-run {cal_node} with flux_span ≥ 0.2 V and save_load_id=True."
+                )
             abs_freq_q = center_freqs.sel(qubit=q.name).values + q.xy.RF_frequency
-            flux_response.values[i, :] = frequency_to_flux_deviation(
+            y = frequency_to_flux_deviation(
                 abs_freq_q,
                 curve[0],
                 curve[1],
                 q.xy.RF_frequency,
             )
+            flux_response.values[i, :] = y
+            if not np.isfinite(y).any():
+                f_meas = abs_freq_q[np.isfinite(abs_freq_q)]
+                f_lo = float(np.min(f_meas)) / 1e9 if f_meas.size else float("nan")
+                f_hi = float(np.max(f_meas)) / 1e9 if f_meas.size else float("nan")
+                log_callable(
+                    f"  WARNING: {q.name}: flux_response is all NaN — f(t) is {f_lo:.3f}–{f_hi:.3f} GHz but "
+                    f"{selected.label} only covers {np.min(freq_c)/1e9:.3f}–{np.max(freq_c)/1e9:.3f} GHz. "
+                    f"Re-run 09a/03b with wider flux_span."
+                )
         elif selected.quad_term is not None:
             flux_response.values[i, :] = np.sqrt(np.abs(center_freqs.sel(qubit=q.name).values / selected.quad_term))
         else:
-            print(
-                f"  WARNING: {q.name}: no freq-vs-flux relation available "
-                f"(freq_to_flux_source='{freq_to_flux_source}'); flux response left as NaN."
+            log_callable(
+                f"  WARNING: {q.name}: no freq→flux map (set freq_to_flux_source or run 09a/03b with save_load_id)."
             )
 
     return flux_response, measured_curves, sources
@@ -399,6 +421,7 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
         ds,
         dfs,
         use_state_discrimination=bool(node.parameters.use_state_discrimination and "state" in ds.data_vars),
+        log_callable=node.log,
     )
 
     freq_to_flux_source = getattr(node.parameters, "freq_to_flux_source", "auto")
@@ -406,12 +429,11 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
         center_freqs,
         qubits,
         freq_to_flux_source=freq_to_flux_source,
+        log_callable=node.log,
     )
 
-    # Record which freq->voltage relation each qubit actually used, so the taps
-    # written to the state can always be traced back to a specific curve.
     for qname, label in sources.items():
-        print(f"  {qname}: freq -> flux conversion used {label}")
+        node.log(f"  {qname}: freq→flux via {label}")
 
     ds = ds.copy()
     ds["center_freqs"] = center_freqs

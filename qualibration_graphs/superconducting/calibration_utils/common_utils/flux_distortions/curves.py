@@ -33,9 +33,16 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, Iterable, List, Literal, Optional, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
+from quam_builder.architecture.superconducting.qubit import AnyTransmon
+
+from .node_storage import read_node_data_dict
+
+MeasuredCurve = Tuple[NDArray[np.floating], NDArray[np.floating]]
+FreqFluxKind = Literal["ramsey", "spectroscopy", "quad_term", "none"]
 
 #: Side of the parabola, for the low-level curve helpers only. Not a node
 #: parameter: at the sweetspot both sides are equivalent (see module docstring).
@@ -55,8 +62,34 @@ RAMSEY_EXTRAS_KEY = "ramsey_vs_flux_calibration_load_id"  # 09a, when save_load_
 SPECTROSCOPY_EXTRAS_KEY = "qubit_spectroscopy_vs_flux_load_id"  # 03b, when save_load_id=True
 
 
-def extras_run_id(qubit, key: str) -> Optional[int]:
-    """Read a run ID from ``qubit.extras[key]``, or ``None`` if absent/invalid."""
+def extras_run_id(qubit: AnyTransmon, key: str) -> Optional[int]:
+    """Return the Qualibrate snapshot index stored on a qubit in ``state.json``.
+
+    Prior calibrations that produce a freq-vs-flux curve (09a Ramsey vs Z, 03b
+    spectroscopy vs Z) can record *which run* produced that curve by writing the
+    Qualibrate snapshot index into ``qubit.extras`` when ``save_load_id=True``.
+    Downstream nodes (17a, 17b, …) call this helper to recover that index and
+    load the saved curve — the user never types a run ID into the GUI.
+
+    Typical keys (see module constants above):
+
+    * ``RAMSEY_EXTRAS_KEY`` — written by 09a
+    * ``SPECTROSCOPY_EXTRAS_KEY`` — written by 03b
+
+    Parameters
+    ----------
+    qubit :
+        QUAM qubit object; must expose ``.name`` and optionally ``.extras``.
+    key :
+        Name of the extras field that holds the snapshot index (e.g.
+        ``"ramsey_vs_flux_calibration_load_id"``).
+
+    Returns
+    -------
+    int or None
+        Parsed snapshot index, or ``None`` if the key is missing, ``extras`` is
+        empty, or the stored value is not an integer.
+    """
     extras = getattr(qubit, "extras", None)
     if not extras:
         return None
@@ -78,18 +111,10 @@ def extras_run_id(qubit, key: str) -> Optional[int]:
 # ---------------------------------------------------------------------------
 
 
-def _read_node_data_dict(run_id: int) -> dict:
-    """Load the saved Qualibrate node payload (dict) for ``run_id`` from storage."""
-    from qualibrate.core.utils.node.content import read_node_data
-    from qualibrate.core.utils.node.path_solver import get_node_dir_path
-    from qualibrate_config.resolvers import get_qualibrate_config, get_qualibrate_config_path
-
-    base_path = get_qualibrate_config(get_qualibrate_config_path()).storage.location
-    node_dir = get_node_dir_path(run_id, base_path)
-    return read_node_data(node_dir, run_id, base_path)
-
-
-def load_spectroscopy_curve(qubit, run_id: Optional[int] = None) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+def load_spectroscopy_curve(
+    qubit: AnyTransmon,
+    run_id: Optional[int] = None,
+) -> Optional[MeasuredCurve]:
     """Load freq-vs-Z-flux from a 03b spectroscopy-vs-flux run for ``qubit``.
 
     Uses ``ds_fit.peak_freq`` (fit peak relative to the RF LO / drive) and adds
@@ -120,7 +145,7 @@ def load_spectroscopy_curve(qubit, run_id: Optional[int] = None) -> Optional[Tup
     qubit_name = qubit.name
     qubit_rf_freq = float(qubit.xy.RF_frequency)
     try:
-        data = _read_node_data_dict(rid)
+        data = read_node_data_dict(rid)
         ds_fit = data.get("ds_fit")
         if ds_fit is None or "peak_freq" not in ds_fit:
             print(f"  WARNING: run #{rid} has no ds_fit.peak_freq for {qubit_name}; " "cannot load spectroscopy curve")
@@ -146,7 +171,10 @@ def load_spectroscopy_curve(qubit, run_id: Optional[int] = None) -> Optional[Tup
         return None
 
 
-def load_ramsey_curve(qubit, run_id: Optional[int] = None) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+def load_ramsey_curve(
+    qubit: AnyTransmon,
+    run_id: Optional[int] = None,
+) -> Optional[MeasuredCurve]:
     """Load freq-vs-Z-flux from a 09a Ramsey-vs-flux run for ``qubit``.
 
     The run ID comes from ``run_id`` if given, else
@@ -178,9 +206,9 @@ def load_ramsey_curve(qubit, run_id: Optional[int] = None) -> Optional[Tuple[np.
 
     qubit_name = qubit.name
     qubit_rf_freq = float(qubit.xy.RF_frequency)
-    print(f"  Loading Ramsey curve for {qubit_name} from run #{rid}")
+    print(f"  Loading Ramsey #{rid} for {qubit_name}")
     try:
-        data = _read_node_data_dict(rid)
+        data = read_node_data_dict(rid)
         ds_fit = data["ds_fit"]
         flux_bias = ds_fit.flux_bias.values
 
@@ -198,9 +226,9 @@ def load_ramsey_curve(qubit, run_id: Optional[int] = None) -> Optional[Tuple[np.
             print(f"  WARNING: All NaN in Ramsey curve for {qubit_name} from run #{rid}")
             return None
         print(
-            f"  Loaded Ramsey curve for {qubit_name}: {mask.sum()} pts, "
-            f"flux=[{flux_bias[mask][0]:.4f}, {flux_bias[mask][-1]:.4f}] V, "
-            f"freq=[{freq_hz[mask].min()/1e9:.4f}, {freq_hz[mask].max()/1e9:.4f}] GHz"
+            f"  {qubit_name}: Ramsey #{rid} — {mask.sum()} pts, "
+            f"flux [{flux_bias[mask][0]:.3f}, {flux_bias[mask][-1]:.3f}] V, "
+            f"freq [{freq_hz[mask].min()/1e9:.3f}, {freq_hz[mask].max()/1e9:.3f}] GHz"
         )
         return flux_bias[mask], freq_hz[mask]
     except Exception as e:
@@ -234,9 +262,9 @@ class FreqFluxCurve:
         ``freq_vs_flux_01_quad_term`` when ``kind == "quad_term"``.
     """
 
-    kind: Literal["ramsey", "spectroscopy", "quad_term", "none"]
+    kind: FreqFluxKind
     label: str
-    curve: Optional[Tuple[np.ndarray, np.ndarray]] = None
+    curve: Optional[MeasuredCurve] = None
     run_id: Optional[int] = None
     quad_term: Optional[float] = None
 
@@ -246,7 +274,7 @@ class FreqFluxCurve:
         return self.curve is not None
 
 
-def _load_source_curve(qubit, kind: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+def _load_source_curve(qubit: AnyTransmon, kind: str) -> Optional[MeasuredCurve]:
     """Load the curve for one source ``kind``, or ``None`` if unavailable."""
     if kind == "ramsey":
         return load_ramsey_curve(qubit)
@@ -255,7 +283,7 @@ def _load_source_curve(qubit, kind: str) -> Optional[Tuple[np.ndarray, np.ndarra
     return None
 
 
-def _source_run_id(qubit, kind: str) -> Optional[int]:
+def _source_run_id(qubit: AnyTransmon, kind: str) -> Optional[int]:
     """Extras run ID backing source ``kind`` for ``qubit``."""
     if kind == "ramsey":
         return extras_run_id(qubit, RAMSEY_EXTRAS_KEY)
@@ -264,7 +292,10 @@ def _source_run_id(qubit, kind: str) -> Optional[int]:
     return None
 
 
-def resolve_freq_flux_curve(qubit, source: FreqFluxSource = "auto") -> FreqFluxCurve:
+def resolve_freq_flux_curve(
+    qubit: AnyTransmon,
+    source: FreqFluxSource = "auto",
+) -> FreqFluxCurve:
     """Pick the freq↔flux relation for one qubit.
 
     This is the **single** decision point for the freq→voltage method, shared by
@@ -323,7 +354,10 @@ def resolve_freq_flux_curve(qubit, source: FreqFluxSource = "auto") -> FreqFluxC
     return FreqFluxCurve(kind="none", label="unavailable")
 
 
-def resolve_freq_flux_curves(qubits, source: FreqFluxSource = "auto") -> Dict[str, FreqFluxCurve]:
+def resolve_freq_flux_curves(
+    qubits: Iterable[AnyTransmon],
+    source: FreqFluxSource = "auto",
+) -> Dict[str, FreqFluxCurve]:
     """``resolve_freq_flux_curve`` for a qubit batch, keyed by qubit name."""
     return {q.name: resolve_freq_flux_curve(q, source) for q in qubits}
 
@@ -336,7 +370,7 @@ def resolve_freq_flux_curves(qubits, source: FreqFluxSource = "auto") -> Dict[st
 def flux_amp_from_curve(
     detuning_hz: float,
     idle_freq_hz: float,
-    curve: Tuple[np.ndarray, np.ndarray],
+    curve: MeasuredCurve,
     branch: Optional[Branch] = None,
 ) -> Optional[float]:
     """Invert a freq-vs-flux curve to a Z-pulse amplitude for a target detuning.
@@ -404,7 +438,10 @@ def flux_amp_from_curve(
     return abs(best)
 
 
-def _strictly_increasing_in_freq(b_flux: np.ndarray, b_freq: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def _strictly_increasing_in_freq(
+    b_flux: NDArray[np.floating],
+    b_freq: NDArray[np.floating],
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Sort a branch by frequency and drop non-increasing repeats.
 
     ``CubicSpline`` requires a strictly increasing abscissa. Measured curves can
@@ -424,11 +461,11 @@ def _strictly_increasing_in_freq(b_flux: np.ndarray, b_freq: np.ndarray) -> Tupl
 
 
 def _pick_inversion_branch(
-    curve_flux: np.ndarray,
-    curve_freq: np.ndarray,
+    curve_flux: NDArray[np.floating],
+    curve_freq: NDArray[np.floating],
     idle_freq: float,
-    measured_abs_freq: np.ndarray,
-) -> Optional[Tuple[np.ndarray, np.ndarray, float]]:
+    measured_abs_freq: NDArray[np.floating],
+) -> Optional[Tuple[NDArray[np.floating], NDArray[np.floating], float]]:
     """Return the branch of ``curve`` that best covers the measured frequencies.
 
     At the sweetspot both sides of the parabola are physically equivalent, so the
@@ -473,11 +510,11 @@ def _pick_inversion_branch(
 
 
 def frequency_to_flux_deviation(
-    measured_abs_freq: np.ndarray,
-    curve_flux: np.ndarray,
-    curve_freq: np.ndarray,
+    measured_abs_freq: NDArray[np.floating],
+    curve_flux: NDArray[np.floating],
+    curve_freq: NDArray[np.floating],
     idle_freq: float,
-) -> np.ndarray:
+) -> NDArray[np.floating]:
     """Map measured absolute qubit frequency → flux offset magnitude from idle.
 
     Used in analysis after center frequencies vs time are extracted: invert the
@@ -552,7 +589,7 @@ class ResolvedFluxAmps:
 
 
 def resolve_flux_amplitudes(
-    qubits,
+    qubits: Iterable[AnyTransmon],
     *,
     detuning_hz: float,
     freq_to_flux_source: FreqFluxSource = "auto",
