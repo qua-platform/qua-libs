@@ -318,6 +318,7 @@ def _extract_relevant_fit_parameters(ds: xr.Dataset, node) -> tuple[xr.Dataset, 
             n_exponentials=n_exponentials,
             t_pulse_ns=t_pulse_ns,
             verbose=True,
+            log_callable=node.log,
         )
     return ds, fit_results
 

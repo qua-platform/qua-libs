@@ -302,7 +302,7 @@ def _compute_flux_response(
     )
 
     for i, q in enumerate(qubits):
-        selected = resolve_freq_flux_curve(q, freq_to_flux_source)
+        selected = resolve_freq_flux_curve(q, freq_to_flux_source, log_callable=log_callable)
         sources[q.name] = selected.label
 
         if selected.is_measured:
@@ -398,7 +398,9 @@ def _extract_relevant_fit_parameters(ds: xr.Dataset, node) -> tuple[xr.Dataset, 
                 rms_error=float("nan"),
             )
             continue
-        fit_results[q.name] = multi_exp_fit_global(t_data[mask], y_data[mask], n_exponentials, verbose=True)
+        fit_results[q.name] = multi_exp_fit_global(
+            t_data[mask], y_data[mask], n_exponentials, verbose=True, log_callable=node.log
+        )
     return ds, fit_results
 
 

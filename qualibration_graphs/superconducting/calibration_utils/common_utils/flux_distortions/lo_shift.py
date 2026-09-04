@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Sequence
+from typing import Any, Callable, List, Optional, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
 from qualibration_libs.core import tracked_updates
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
+
+LogCallable = Callable[[str], None]
 
 # Spec edge (±400 MHz) and practical usable ceiling (±500 MHz) for MW-FEM IF.
 IF_WARN_HZ = 400e6
@@ -64,6 +66,8 @@ class LoShiftPlan:
 def plan_lo_shift_for_frequency_window(
     qubits: Sequence[AnyTransmon],
     dfs: NDArray[np.integer] | NDArray[np.floating],
+    *,
+    log_callable: Optional[LogCallable] = None,
 ) -> LoShiftPlan:
     """Decide LO shifts so ``intermediate_frequency + dfs`` stays in usable IF reach.
 
@@ -119,7 +123,8 @@ def plan_lo_shift_for_frequency_window(
                 )
                 plan.if_update.append(dfs_mid)
                 with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
-                    print(f"Updating {q_upd.name} LO to {lo_frequency}")
+                    if log_callable is not None:
+                        log_callable(f"Updating {q_upd.name} LO to {lo_frequency}")
                     q_upd.xy.opx_output.upconverter_frequency = lo_frequency
                     q_upd.xy.RF_frequency += dfs_mid
                     plan.tracked_qubits.append(q_upd)

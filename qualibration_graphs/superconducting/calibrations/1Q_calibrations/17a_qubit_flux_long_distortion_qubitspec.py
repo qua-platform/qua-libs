@@ -115,6 +115,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         qubits,
         detuning_hz=center_hz,
         freq_to_flux_source=node.parameters.freq_to_flux_source,
+        log_callable=node.log,
     )
     flux_amps = resolved.amplitudes
 
@@ -148,7 +149,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
     # LO / IF reach: shift upconverter if dfs pushes outside usable MW-FEM window.
-    lo_plan = plan_lo_shift_for_frequency_window(qubits, dfs)
+    lo_plan = plan_lo_shift_for_frequency_window(qubits, dfs, log_callable=node.log)
     if lo_plan.force_thermal_reset:
         node.parameters.reset_type = "thermal"
     if_update = lo_plan.if_update

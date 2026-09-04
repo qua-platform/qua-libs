@@ -42,11 +42,13 @@ fails, two taus lie within ``tau_proximity_factor``, or an amplitude falls below
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
+
+LogCallable = Callable[[str], None]
 
 # Bounds keep the fit physically usable for IIR generation:
 #   - a_dc in [min(y), max(y)] padded by ADC_PADDING_FRAC · swing
@@ -191,6 +193,8 @@ def multi_exp_fit_global(
     tau_proximity_factor: float = 1.5,
     verbose: bool = True,
     t_pulse_ns: Optional[float] = None,
+    *,
+    log_callable: Optional[LogCallable] = None,
 ) -> FitParameters:
     """Fit ``y(t)`` as DC plus decaying exponentials; return :class:`FitParameters`.
 
@@ -215,8 +219,8 @@ def multi_exp_fit_global(
         res = _fit_once(t, y, n_cur, weights, t_pulse_ns=t_pulse_ns)
 
         if not res["success"]:
-            if verbose:
-                print(f"  multi_exp: n={n_cur} solver failed → retry n-1")
+            if verbose and log_callable is not None:
+                log_callable(f"multi_exp: n={n_cur} solver failed → retry n-1")
             n_cur -= 1
             continue
 
@@ -225,12 +229,11 @@ def multi_exp_fit_global(
 
         keep = [i for i, (amp, _) in enumerate(comps) if abs(amp) >= rel_amp_threshold * signal_swing]
         if len(keep) < len(comps):
-            if verbose:
+            if verbose and log_callable is not None:
                 dropped = [i for i in range(len(comps)) if i not in keep]
-                print(
-                    f"  multi_exp: n={n_cur} components {dropped} have "
-                    f"|amp| < {rel_amp_threshold:.0%}·signal_swing → retry "
-                    f"with n={len(keep)}"
+                log_callable(
+                    f"multi_exp: n={n_cur} components {dropped} have "
+                    f"|amp| < {rel_amp_threshold:.0%}·signal_swing → retry with n={len(keep)}"
                 )
             if len(keep) == 0:
                 return FitParameters(
@@ -250,11 +253,10 @@ def multi_exp_fit_global(
             i, j = int(order[k]), int(order[k + 1])
             if comps[j][1] / max(comps[i][1], 1e-12) < tau_proximity_factor:
                 drop = i if abs(comps[i][0]) < abs(comps[j][0]) else j
-                if verbose:
-                    print(
-                        f"  multi_exp: n={n_cur} taus {comps[i][1]:.2f},"
-                        f"{comps[j][1]:.2f} ns within factor "
-                        f"{tau_proximity_factor} → drop comp {drop}, retry"
+                if verbose and log_callable is not None:
+                    log_callable(
+                        f"multi_exp: n={n_cur} taus {comps[i][1]:.2f},{comps[j][1]:.2f} ns "
+                        f"within factor {tau_proximity_factor} → drop comp {drop}, retry"
                     )
                 n_cur -= 1
                 degenerate = True

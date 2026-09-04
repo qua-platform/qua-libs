@@ -31,15 +31,16 @@ cancels in the ratio. Offsets are relative to idle, not absolute DAC volts.
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Literal, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Literal, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
 from .node_storage import read_node_data_dict
+
+LogCallable = Callable[[str], None]
 
 MeasuredCurve = Tuple[NDArray[np.floating], NDArray[np.floating]]
 FreqFluxKind = Literal["ramsey", "spectroscopy", "quad_term", "none"]
@@ -62,7 +63,12 @@ RAMSEY_EXTRAS_KEY = "ramsey_vs_flux_calibration_load_id"  # 09a, when save_load_
 SPECTROSCOPY_EXTRAS_KEY = "qubit_spectroscopy_vs_flux_load_id"  # 03b, when save_load_id=True
 
 
-def extras_run_id(qubit: AnyTransmon, key: str) -> Optional[int]:
+def extras_run_id(
+    qubit: AnyTransmon,
+    key: str,
+    *,
+    log_callable: Optional[LogCallable] = None,
+) -> Optional[int]:
     """Return the Qualibrate snapshot index stored on a qubit in ``state.json``.
 
     Prior calibrations that produce a freq-vs-flux curve (09a Ramsey vs Z, 03b
@@ -102,7 +108,8 @@ def extras_run_id(qubit: AnyTransmon, key: str) -> Optional[int]:
     try:
         return int(value)
     except (TypeError, ValueError):
-        print(f"  WARNING: {getattr(qubit, 'name', '?')}: extras['{key}']={value!r} is not a run ID")
+        if log_callable is not None:
+            log_callable(f"{getattr(qubit, 'name', '?')}: extras['{key}']={value!r} is not a run ID")
         return None
 
 
@@ -114,6 +121,8 @@ def extras_run_id(qubit: AnyTransmon, key: str) -> Optional[int]:
 def load_spectroscopy_curve(
     qubit: AnyTransmon,
     run_id: Optional[int] = None,
+    *,
+    log_callable: Optional[LogCallable] = None,
 ) -> Optional[MeasuredCurve]:
     """Load freq-vs-Z-flux from a 03b spectroscopy-vs-flux run for ``qubit``.
 
@@ -138,7 +147,7 @@ def load_spectroscopy_curve(
         Flux-sorted 1-D arrays. ``None`` if no run ID, the run is missing / has
         no ``peak_freq``, or has fewer than two finite points.
     """
-    rid = int(run_id) if run_id is not None else extras_run_id(qubit, SPECTROSCOPY_EXTRAS_KEY)
+    rid = int(run_id) if run_id is not None else extras_run_id(qubit, SPECTROSCOPY_EXTRAS_KEY, log_callable=log_callable)
     if rid is None:
         return None
 
@@ -148,32 +157,39 @@ def load_spectroscopy_curve(
         data = read_node_data_dict(rid)
         ds_fit = data.get("ds_fit")
         if ds_fit is None or "peak_freq" not in ds_fit:
-            print(f"  WARNING: run #{rid} has no ds_fit.peak_freq for {qubit_name}; " "cannot load spectroscopy curve")
+            if log_callable is not None:
+                log_callable(
+                    f"run #{rid} has no ds_fit.peak_freq for {qubit_name}; cannot load spectroscopy curve"
+                )
             return None
         flux = np.asarray(ds_fit.flux_bias.values, dtype=float)
         peak = np.asarray(ds_fit.peak_freq.sel(qubit=qubit_name).values, dtype=float)
         freq = qubit_rf_freq + peak
         mask = np.isfinite(flux) & np.isfinite(freq)
         if mask.sum() < 2:
-            print(f"  WARNING: Too few finite peak_freq points for {qubit_name} in run #{rid}")
+            if log_callable is not None:
+                log_callable(f"Too few finite peak_freq points for {qubit_name} in run #{rid}")
             return None
         flux_m, freq_m = flux[mask], freq[mask]
         order = np.argsort(flux_m)
         flux_m, freq_m = flux_m[order], freq_m[order]
-        print(
-            f"  Loaded spectroscopy curve for {qubit_name} from run #{rid} "
-            f"(ds_fit.peak_freq): {len(flux_m)} pts, "
-            f"flux=[{flux_m[0]:.4f}, {flux_m[-1]:.4f}] V"
-        )
+        if log_callable is not None:
+            log_callable(
+                f"Loaded spectroscopy curve for {qubit_name} from run #{rid} "
+                f"(ds_fit.peak_freq): {len(flux_m)} pts, flux=[{flux_m[0]:.4f}, {flux_m[-1]:.4f}] V"
+            )
         return flux_m, freq_m
     except Exception as e:
-        print(f"  WARNING: Failed to load spectroscopy curve for {qubit_name} from run #{rid}: {e}")
+        if log_callable is not None:
+            log_callable(f"Failed to load spectroscopy curve for {qubit_name} from run #{rid}: {e}")
         return None
 
 
 def load_ramsey_curve(
     qubit: AnyTransmon,
     run_id: Optional[int] = None,
+    *,
+    log_callable: Optional[LogCallable] = None,
 ) -> Optional[MeasuredCurve]:
     """Load freq-vs-Z-flux from a 09a Ramsey-vs-flux run for ``qubit``.
 
@@ -200,13 +216,14 @@ def load_ramsey_curve(
     (flux_V, freq_Hz) or None
         Finite points only. ``None`` if no run ID, all-NaN, or load error.
     """
-    rid = int(run_id) if run_id is not None else extras_run_id(qubit, RAMSEY_EXTRAS_KEY)
+    rid = int(run_id) if run_id is not None else extras_run_id(qubit, RAMSEY_EXTRAS_KEY, log_callable=log_callable)
     if rid is None:
         return None
 
     qubit_name = qubit.name
     qubit_rf_freq = float(qubit.xy.RF_frequency)
-    print(f"  Loading Ramsey #{rid} for {qubit_name}")
+    if log_callable is not None:
+        log_callable(f"Loading Ramsey #{rid} for {qubit_name}")
     try:
         data = read_node_data_dict(rid)
         ds_fit = data["ds_fit"]
@@ -223,16 +240,19 @@ def load_ramsey_curve(
 
         mask = ~np.isnan(freq_hz)
         if not np.any(mask):
-            print(f"  WARNING: All NaN in Ramsey curve for {qubit_name} from run #{rid}")
+            if log_callable is not None:
+                log_callable(f"All NaN in Ramsey curve for {qubit_name} from run #{rid}")
             return None
-        print(
-            f"  {qubit_name}: Ramsey #{rid} — {mask.sum()} pts, "
-            f"flux [{flux_bias[mask][0]:.3f}, {flux_bias[mask][-1]:.3f}] V, "
-            f"freq [{freq_hz[mask].min()/1e9:.3f}, {freq_hz[mask].max()/1e9:.3f}] GHz"
-        )
+        if log_callable is not None:
+            log_callable(
+                f"{qubit_name}: Ramsey #{rid} — {mask.sum()} pts, "
+                f"flux [{flux_bias[mask][0]:.3f}, {flux_bias[mask][-1]:.3f}] V, "
+                f"freq [{freq_hz[mask].min() / 1e9:.3f}, {freq_hz[mask].max() / 1e9:.3f}] GHz"
+            )
         return flux_bias[mask], freq_hz[mask]
     except Exception as e:
-        print(f"  WARNING: Failed to load Ramsey curve for {qubit_name} from run #{rid}: {e}")
+        if log_callable is not None:
+            log_callable(f"Failed to load Ramsey curve for {qubit_name} from run #{rid}: {e}")
         return None
 
 
@@ -274,12 +294,17 @@ class FreqFluxCurve:
         return self.curve is not None
 
 
-def _load_source_curve(qubit: AnyTransmon, kind: str) -> Optional[MeasuredCurve]:
+def _load_source_curve(
+    qubit: AnyTransmon,
+    kind: str,
+    *,
+    log_callable: Optional[LogCallable] = None,
+) -> Optional[MeasuredCurve]:
     """Load the curve for one source ``kind``, or ``None`` if unavailable."""
     if kind == "ramsey":
-        return load_ramsey_curve(qubit)
+        return load_ramsey_curve(qubit, log_callable=log_callable)
     if kind == "spectroscopy":
-        return load_spectroscopy_curve(qubit)
+        return load_spectroscopy_curve(qubit, log_callable=log_callable)
     return None
 
 
@@ -295,6 +320,8 @@ def _source_run_id(qubit: AnyTransmon, kind: str) -> Optional[int]:
 def resolve_freq_flux_curve(
     qubit: AnyTransmon,
     source: FreqFluxSource = "auto",
+    *,
+    log_callable: Optional[LogCallable] = None,
 ) -> FreqFluxCurve:
     """Pick the freq↔flux relation for one qubit.
 
@@ -334,18 +361,19 @@ def resolve_freq_flux_curve(
         candidates = (source,)
 
     for kind in candidates:
-        curve = _load_source_curve(qubit, kind)
+        curve = _load_source_curve(qubit, kind, log_callable=log_callable)
         if curve is not None:
             rid = _source_run_id(qubit, kind)
             pretty = "Ramsey" if kind == "ramsey" else "spectroscopy"
             return FreqFluxCurve(kind=kind, label=f"{pretty} #{rid}", curve=curve, run_id=rid)
         if source != "auto":
             extras_key = RAMSEY_EXTRAS_KEY if kind == "ramsey" else SPECTROSCOPY_EXTRAS_KEY
-            warnings.warn(
-                f"{qubit.name}: freq_to_flux_source='{kind}' was requested but no usable curve "
-                f"could be loaded (extras['{extras_key}'] missing or unreadable). Falling back to "
-                f"freq_vs_flux_01_quad_term — re-run the source calibration with save_load_id=True."
-            )
+            if log_callable is not None:
+                log_callable(
+                    f"{qubit.name}: freq_to_flux_source='{kind}' was requested but no usable curve "
+                    f"could be loaded (extras['{extras_key}'] missing or unreadable). Falling back to "
+                    f"freq_vs_flux_01_quad_term — re-run the source calibration with save_load_id=True."
+                )
 
     qt = getattr(qubit, "freq_vs_flux_01_quad_term", None)
     if qt is not None and qt != 0 and np.isfinite(qt):
@@ -357,9 +385,11 @@ def resolve_freq_flux_curve(
 def resolve_freq_flux_curves(
     qubits: Iterable[AnyTransmon],
     source: FreqFluxSource = "auto",
+    *,
+    log_callable: Optional[LogCallable] = None,
 ) -> Dict[str, FreqFluxCurve]:
     """``resolve_freq_flux_curve`` for a qubit batch, keyed by qubit name."""
-    return {q.name: resolve_freq_flux_curve(q, source) for q in qubits}
+    return {q.name: resolve_freq_flux_curve(q, source, log_callable=log_callable) for q in qubits}
 
 
 # ---------------------------------------------------------------------------
@@ -593,6 +623,7 @@ def resolve_flux_amplitudes(
     *,
     detuning_hz: float,
     freq_to_flux_source: FreqFluxSource = "auto",
+    log_callable: Optional[LogCallable] = None,
 ) -> ResolvedFluxAmps:
     """Derive per-qubit Z-pulse amplitudes for a target detuning.
 
@@ -638,17 +669,18 @@ def resolve_flux_amplitudes(
         label: Optional[str] = None
         idle = q.xy.RF_frequency
 
-        selected = resolve_freq_flux_curve(q, freq_to_flux_source)
+        selected = resolve_freq_flux_curve(q, freq_to_flux_source, log_callable=log_callable)
         curves[q.name] = selected
 
         if selected.is_measured:
             # branch=None: smallest |ΔΦ| crossing on either side of idle.
             amp = flux_amp_from_curve(detuning_hz, idle, selected.curve, None)
             if amp is None:
-                warnings.warn(
-                    f"{q.name}: target detuning {detuning_hz / 1e6:.1f} MHz is not reachable on "
-                    f"{selected.label}; falling back to freq_vs_flux_01_quad_term."
-                )
+                if log_callable is not None:
+                    log_callable(
+                        f"{q.name}: target detuning {detuning_hz / 1e6:.1f} MHz is not reachable on "
+                        f"{selected.label}; falling back to freq_vs_flux_01_quad_term."
+                    )
             else:
                 label = selected.label
 
@@ -670,11 +702,12 @@ def resolve_flux_amplitudes(
             )
 
         if amp > 0.5:
-            warnings.warn(
-                f"{q.name}: derived flux_amp={amp:.4f} V exceeds 0.5 V. Verify detuning_in_mhz "
-                f"is correct — note the OPX output range must also accommodate the standing "
-                f"flux offset, so usable headroom is less than the derived amplitude suggests."
-            )
+            if log_callable is not None:
+                log_callable(
+                    f"{q.name}: derived flux_amp={amp:.4f} V exceeds 0.5 V. Verify detuning_in_mhz "
+                    f"is correct — note the OPX output range must also accommodate the standing "
+                    f"flux offset, so usable headroom is less than the derived amplitude suggests."
+                )
 
         amplitudes.append(float(amp))
         sources.append(label or "unknown")
