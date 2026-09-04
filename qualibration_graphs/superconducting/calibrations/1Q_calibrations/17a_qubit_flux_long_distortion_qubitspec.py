@@ -82,7 +82,6 @@ stored_machine = Quam.load()
 # node.parameters with whatever the saved run used).
 loaded_n_exponentials = node.parameters.n_exponentials
 stored_gui_update_flag = node.parameters.update_state_from_GUI
-stored_update_iir = node.parameters.update_iir
 
 
 # %% {Create_qua_program}
@@ -275,7 +274,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # Overwrite the loaded node parameters with the ones defined from the GUI
     node.parameters.n_exponentials = loaded_n_exponentials
     node.parameters.update_state_from_GUI = stored_gui_update_flag
-    node.parameters.update_iir = stored_update_iir
     if node.parameters.update_state_from_GUI:
         node.machine = stored_machine
         node.parameters.update_state = True
@@ -324,7 +322,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             qubits,
             node.machine,
             node.results["fit_results"],
-            update_iir=node.parameters.update_iir,
+            update_iir=True,
             log_callable=node.log,
         )
 

@@ -38,8 +38,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Master gate for writing fitted filters into QUAM state."""
     update_state_from_GUI: bool = False
     """When re-analysing via ``load_data_id``, enable ``update_state`` from the GUI."""
-    update_iir: bool = True
-    """When ``update_state`` is set, append IIR taps to ``exponential_filter``."""
     buffer_during_operation_in_ns: int = 800
     """Buffer time in ns during the operation to avoid turn-off transient overlapping with the XY pulse."""
     buffer_after_operation_in_ns: int = 800

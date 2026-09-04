@@ -46,8 +46,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Master gate for writing fitted filters into QUAM state."""
     update_state_from_GUI: bool = False
     """When re-analysing via ``load_data_id``, enable ``update_state`` from the GUI."""
-    update_iir: bool = True
-    """When ``update_state`` is set, append IIR taps to ``exponential_filter``."""
     debug_plots: bool = False
     """If True, also show Ramsey fringe heatmap (time × frame), extracted Ramsey
     phase vs time, and the reference phase-vs-amplitude calibration curve.
