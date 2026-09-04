@@ -147,7 +147,9 @@ def load_spectroscopy_curve(
         Flux-sorted 1-D arrays. ``None`` if no run ID, the run is missing / has
         no ``peak_freq``, or has fewer than two finite points.
     """
-    rid = int(run_id) if run_id is not None else extras_run_id(qubit, SPECTROSCOPY_EXTRAS_KEY, log_callable=log_callable)
+    rid = (
+        int(run_id) if run_id is not None else extras_run_id(qubit, SPECTROSCOPY_EXTRAS_KEY, log_callable=log_callable)
+    )
     if rid is None:
         return None
 
@@ -158,9 +160,7 @@ def load_spectroscopy_curve(
         ds_fit = data.get("ds_fit")
         if ds_fit is None or "peak_freq" not in ds_fit:
             if log_callable is not None:
-                log_callable(
-                    f"run #{rid} has no ds_fit.peak_freq for {qubit_name}; cannot load spectroscopy curve"
-                )
+                log_callable(f"run #{rid} has no ds_fit.peak_freq for {qubit_name}; cannot load spectroscopy curve")
             return None
         flux = np.asarray(ds_fit.flux_bias.values, dtype=float)
         peak = np.asarray(ds_fit.peak_freq.sel(qubit=qubit_name).values, dtype=float)

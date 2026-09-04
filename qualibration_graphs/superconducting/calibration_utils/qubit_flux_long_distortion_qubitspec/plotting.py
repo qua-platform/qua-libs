@@ -125,9 +125,7 @@ def plot_raw_data_with_fit(
     and the measured freq-vs-flux curve used for inversion when available.
     """
     grid_locations = [q.grid_location for q in qubits]
-    rf_by_name = {
-        q.name: getattr(getattr(q, "xy", None), "RF_frequency", None) for q in qubits
-    }
+    rf_by_name = {q.name: getattr(getattr(q, "xy", None), "RF_frequency", None) for q in qubits}
 
     figures: Dict[str, plt.Figure] = {}
 
