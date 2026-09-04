@@ -331,13 +331,25 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
             # --- IIR exponential filter ---
             if node.parameters.update_iir:
-                components = node.results["fit_results"][q.name]["a_tau_tuple"]
-                a_dc = node.results["fit_results"][q.name]["a_dc"]
-                A_list = [amp / a_dc for amp, _ in components]
-                tau_list = [tau for _, tau in components]
-                node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(
-                    list(zip(A_list, tau_list))
-                )
+                res = node.results["fit_results"][q.name]
+                if not res.get("success"):
+                    node.log(f"{q.name}: skip IIR update — fit did not succeed")
+                    continue
+                z_out = node.machine.qubits[q.name].z.opx_output
+                a_dc = res["a_dc"]
+                new_taps = [(amp / a_dc, tau) for amp, tau in res.get("a_tau_tuple") or []]
+                if not new_taps:
+                    continue
+                iir_max = {"LFFEMAnalogOutputPort": 6, "OPXPlusAnalogOutputPort": 3}.get(type(z_out).__name__)
+                existing = len(z_out.exponential_filter or [])
+                if iir_max is None or existing + len(new_taps) > iir_max:
+                    node.log(
+                        f"{q.name}: skip IIR update — {existing} existing + {len(new_taps)} new"
+                        + (f" > {iir_max} max" if iir_max else f", unsupported port {type(z_out).__name__}")
+                    )
+                    continue
+                z_out.exponential_filter.extend(new_taps)
+                node.log(f"{q.name}: updated IIR ({len(z_out.exponential_filter)}/{iir_max}): {z_out.exponential_filter}")
 
             # --- FIR feedforward filter ---
             if node.parameters.update_fir:
