@@ -11,9 +11,9 @@ Curves come from prior calibrations; run IDs are read from ``qubit.extras`` on t
 measured qubit — never entered by hand:
 
 * **03c** qubit spectroscopy vs coupler flux → ``ds_fit.peak_freq`` (relative to RF),
-  run ID in ``extras['{coupler.name}_spectroscopy_dispersion_load_id']``
+  run ID in ``extras['{coupler.name}_spectroscopy_vs_coupler_load_id']``
 * **09b** Ramsey vs coupler flux → absolute qubit frequency vs coupler flux,
-  run ID in ``extras['{coupler.name}_ramsey_dispersion_load_id']``
+  run ID in ``extras['{coupler.name}_ramsey_vs_coupler_load_id']``
 
 ``resolve_coupler_freq_flux_curve`` is the single source-selection point (mirrors
 ``resolve_freq_flux_curve``). There is no ``quad_term`` fallback; use
@@ -50,10 +50,9 @@ COUPLER_AUTO_SOURCE_ORDER: Tuple[CouplerCurveKind, ...] = ("spectroscopy", "rams
 CouplerFreqFluxCurve = FreqFluxCurve
 
 
-def coupler_extras_key(coupler: TunableCoupler | str, kind: CouplerCurveKind) -> str:
-    """Extras field name for a coupler dispersion run ID on the measured qubit."""
+def _coupler_load_id_key(coupler: TunableCoupler | str, kind: CouplerCurveKind) -> str:
     name = coupler.name if hasattr(coupler, "name") else str(coupler)
-    suffix = "spectroscopy_dispersion_load_id" if kind == "spectroscopy" else "ramsey_dispersion_load_id"
+    suffix = "spectroscopy_vs_coupler_load_id" if kind == "spectroscopy" else "ramsey_vs_coupler_load_id"
     return f"{name}_{suffix}"
 
 
@@ -89,7 +88,7 @@ def load_coupler_spectroscopy_curve(
     rid = (
         int(run_id)
         if run_id is not None
-        else extras_run_id(qubit, coupler_extras_key(coupler, "spectroscopy"), log_callable=log_callable)
+        else extras_run_id(qubit, _coupler_load_id_key(coupler, "spectroscopy"), log_callable=log_callable)
     )
     if rid is None:
         return None
@@ -159,7 +158,7 @@ def load_coupler_ramsey_curve(
     rid = (
         int(run_id)
         if run_id is not None
-        else extras_run_id(qubit, coupler_extras_key(coupler, "ramsey"), log_callable=log_callable)
+        else extras_run_id(qubit, _coupler_load_id_key(coupler, "ramsey"), log_callable=log_callable)
     )
     if rid is None:
         return None
@@ -231,7 +230,7 @@ def resolve_coupler_freq_flux_curve(
             "ramsey": lambda: load_coupler_ramsey_curve(qubit, coupler, node, log_callable=log_callable),
         },
         run_id_for_kind=lambda kind: extras_run_id(
-            qubit, coupler_extras_key(coupler, kind), log_callable=log_callable  # type: ignore[arg-type]
+            qubit, _coupler_load_id_key(coupler, kind), log_callable=log_callable  # type: ignore[arg-type]
         ),
         label_for_kind=lambda kind, rid: (
             f"{'spectroscopy' if kind == 'spectroscopy' else 'Ramsey'} #{rid}"
@@ -241,7 +240,7 @@ def resolve_coupler_freq_flux_curve(
         log_forced_miss=(
             lambda kind: log_callable(
                 f"{qubit.name}/{coupler.name}: freq_to_flux_source='{kind}' was requested but no usable "
-                f"curve could be loaded (extras['{coupler_extras_key(coupler, kind)}'] missing or unreadable)."
+                f"curve could be loaded (extras['{_coupler_load_id_key(coupler, kind)}'] missing or unreadable)."
             )
             if log_callable is not None
             else None
