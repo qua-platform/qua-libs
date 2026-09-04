@@ -52,7 +52,7 @@ Key equations
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
@@ -61,6 +61,8 @@ from calibration_utils.common_utils.flux_distortions import (
     multi_exp_fit_global,
 )
 from qualibration_libs.data import convert_IQ_to_V
+
+LogCallable = Callable[[str], None]
 
 # --- Dataset preprocessing ---
 
@@ -178,6 +180,8 @@ def _compute_flux_response(
     qubits: list,
     ramsey_flux_amp: float,
     qubit_flux_amp: Optional[float],
+    *,
+    log_callable: LogCallable,
 ) -> Tuple[xr.DataArray, Dict[str, dict]]:
     """Map ``signal_phase(t)`` → Z step response via ``ref_cal``; return branch-risk dict.
 
@@ -195,7 +199,7 @@ def _compute_flux_response(
     two_pi = 2 * np.pi
 
     if ref_cal is None:
-        print(
+        log_callable(
             "WARNING: No reference amplitude sweep found in dataset. "
             "Cannot map phase to flux — flux_response will be NaN."
         )
@@ -208,7 +212,7 @@ def _compute_flux_response(
 
         monotonic = _monotonic_reference(ref_amps, ref_phases)
         if monotonic is None:
-            print(
+            log_callable(
                 f"WARNING [{q.name}]: reference phase-vs-amplitude curve is not invertible "
                 f"(fewer than 2 usable monotonic points); flux_response left as NaN."
             )
@@ -223,7 +227,7 @@ def _compute_flux_response(
         ref_ph_s, ref_amp_s, n_dropped = monotonic
         if n_dropped:
             frac = n_dropped / max(len(ref_phases), 1)
-            print(
+            log_callable(
                 f"WARNING [{q.name}]: reference phase is non-monotonic in amplitude — dropped "
                 f"{n_dropped}/{len(ref_phases)} points ({frac:.0%}) to invert it. A noisy or "
                 f"folded reference sweep biases the phase->flux map; consider more shots or a "
@@ -240,7 +244,7 @@ def _compute_flux_response(
         eff_amp = np.where(out_of_range, np.nan, eff_amp)
         oor_frac = float(np.mean(out_of_range)) if out_of_range.size else 0.0
         if oor_frac > 0:
-            print(
+            log_callable(
                 f"WARNING [{q.name}]: {int(out_of_range.sum())}/{out_of_range.size} delay points "
                 f"({oor_frac:.0%}) have a Ramsey phase outside the reference sweep window and were "
                 f"dropped. Widen ramsey_flux_sweep_range_in_v (or lower qubit_flux_amplitude_in_v) "
@@ -273,7 +277,7 @@ def _compute_flux_response(
             "oor_frac": oor_frac,
         }
         if level != "ok":
-            print(
+            log_callable(
                 f"WARNING [{q.name}]: phase->flux branch-aliasing risk = {level.upper()}. "
                 f"signal phase swing = {sig_frac:.2f} x 2pi, "
                 f"reference span = {ref_frac:.2f} x 2pi, "
@@ -341,6 +345,7 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
         qubits,
         ramsey_flux_amp=node.parameters.ramsey_flux_amplitude_in_v,
         qubit_flux_amp=getattr(node.parameters, "qubit_flux_amplitude_in_v", None),
+        log_callable=node.log,
     )
 
     ds = ds.copy()
