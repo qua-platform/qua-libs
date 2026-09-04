@@ -372,7 +372,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
-node.parameters.debug_plots=True
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot flux response and exponential fits (plus debug raw/ref if enabled)."""
