@@ -35,9 +35,11 @@ class NodeSpecificParameters(RunnableParameters):
     n_exponentials: int = 2
     """Number of exponential components to fit in the flux step response model."""
     update_state: bool = False
-    """Whether to update the state. CAUTION: assumes fitting will be acceptable"""
+    """Master gate for writing fitted filters into QUAM state."""
     update_state_from_GUI: bool = False
-    """Whether to update the state from the GUI, select when fitting is successful"""
+    """When re-analysing via ``load_data_id``, enable ``update_state`` from the GUI."""
+    update_iir: bool = True
+    """When ``update_state`` is set, append IIR taps to ``exponential_filter``."""
     buffer_during_operation_in_ns: int = 800
     """Buffer time in ns during the operation to avoid turn-off transient overlapping with the XY pulse."""
     buffer_after_operation_in_ns: int = 800

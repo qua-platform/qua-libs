@@ -6,6 +6,7 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from calibration_utils.common_utils.flux_distortions import update_filters
 from calibration_utils.qubit_flux_short_distortion import (
     Parameters,
     baked_waveform,
@@ -35,15 +36,17 @@ with frame rotation for phase reconstruction.
 
 Workflow:
 For each qubit, resolve a Z-pulse amplitude that places the qubit at
-`detuning_target_in_mhz` below idle via `freq_to_flux_source`, bake 1 ns flux
+`detuning_in_mhz` below idle via `freq_to_flux_source`, bake 1 ns flux
 segments, sweep pulse duration and frame, and reconstruct phase → frequency →
 flux step response. Fit a sum of exponentials (IIR); optionally run fixed-length
 FIR feedforward analysis (``use_fir``) with a compact summary plot.
 
 Prerequisites
-- Resonator spectroscopy performed.
-- Qubit gates (x90, y90) calibrated.
-- Each qubit parked at its flux sweetspot.
+- A valid rotation angle and threshold if using state discrimination
+- Calibrated XYZ delay (16a)
+- Calibrated x90 pulse
+- Each qubit parked at its flux sweetspot. The Z pulse amplitude is derived as a
+  magnitude and `f(Φ)` is assumed symmetric about idle.
 - A frequency→voltage relation for each qubit, used both to pick the Z amplitude
   and to invert the measurement. `freq_to_flux_source="auto"` (default) takes the
   first available of:
@@ -56,8 +59,10 @@ Prerequisites
 
 Outputs and state updates
 - Results: processed dataset, fit results, and figures under `node.results`.
-- If `update_iir=True` / `update_fir=True` and fits succeed, writes
-  `z.opx_output.exponential_filter` and/or `feedforward_filter`.
+- Set `update_state=True` to write filters; use `update_iir` and/or `update_fir`
+  to choose which filters are committed.
+- Re-load a prior run with `load_data_id`, tune fit settings in the GUI, then set
+  `update_state_from_GUI=True` to commit without re-acquiring data.
 REMINDER: digital filters add a global delay — recalibrate IQ blobs
 (rotation_angle & ge_threshold) and (16a) XYZ_delay.
 """
@@ -80,7 +85,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 stored_machine = Quam.load()
 
 loaded_n_exponentials = node.parameters.n_exponentials
-stored_use_fir = node.parameters.use_fir
+stored_gui_update_flag = node.parameters.update_state_from_GUI
 stored_update_iir = node.parameters.update_iir
 stored_update_fir = node.parameters.update_fir
 stored_freq_to_flux_source = node.parameters.freq_to_flux_source
@@ -99,8 +104,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # --- Per-qubit flux_amp derivation via the selected freq→flux relation ---
     resolved = resolve_flux_amplitudes(
         qubits,
-        detuning_hz=node.parameters.detuning_target_in_mhz * 1e6,
+        detuning_hz=node.parameters.detuning_in_mhz * 1e6,
         freq_to_flux_source=node.parameters.freq_to_flux_source,
+        log_callable=node.log,
     )
     amplitudes = resolved.amplitudes
     for i, q in enumerate(qubits):
@@ -261,15 +267,14 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     node.namespace["qubits"] = get_qubits(node)
     node.parameters.n_exponentials = loaded_n_exponentials
-    node.parameters.use_fir = stored_use_fir
+    node.parameters.update_state_from_GUI = stored_gui_update_flag
     node.parameters.update_iir = stored_update_iir
     node.parameters.update_fir = stored_update_fir
     node.parameters.freq_to_flux_source = stored_freq_to_flux_source
-    if stored_update_iir or stored_update_fir:
+    if node.parameters.update_state_from_GUI:
         node.machine = stored_machine
-        node.log(
-            f"State update enabled: IIR={stored_update_iir}, FIR={stored_update_fir}"
-        )
+        node.parameters.update_state = True
+        node.log("State update from GUI is enabled")
 
 
 # %% {Analyse_data}
@@ -317,51 +322,25 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Push IIR and/or FIR filters into state when the corresponding flag is set."""
-    if not (node.parameters.update_iir or node.parameters.update_fir):
+    """Push fitted IIR and/or FIR filters into state when enabled."""
+    if not node.parameters.update_state:
         return
-    if node.parameters.update_iir:
-        for q in node.namespace["qubits"]:
-            z_out = node.machine.qubits[q.name].z.opx_output
-            if z_out.exponential_filter is None:
-                z_out.exponential_filter = []
-    with node.record_state_updates():
-        for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
-                continue
-            # --- IIR exponential filter ---
-            if node.parameters.update_iir:
-                res = node.results["fit_results"][q.name]
-                if not res.get("success"):
-                    node.log(f"{q.name}: skip IIR update — fit did not succeed")
-                    continue
-                z_out = node.machine.qubits[q.name].z.opx_output
-                a_dc = res["a_dc"]
-                new_taps = [(amp / a_dc, tau) for amp, tau in res.get("a_tau_tuple") or []]
-                if not new_taps:
-                    continue
-                iir_max = {"LFFEMAnalogOutputPort": 6, "OPXPlusAnalogOutputPort": 3}.get(type(z_out).__name__)
-                existing = len(z_out.exponential_filter or [])
-                if iir_max is None or existing + len(new_taps) > iir_max:
-                    node.log(
-                        f"{q.name}: skip IIR update — {existing} existing + {len(new_taps)} new"
-                        + (f" > {iir_max} max" if iir_max else f", unsupported port {type(z_out).__name__}")
-                    )
-                    continue
-                z_out.exponential_filter.extend(new_taps)
-                node.log(f"{q.name}: updated IIR ({len(z_out.exponential_filter)}/{iir_max}): {z_out.exponential_filter}")
 
-            # --- FIR feedforward filter ---
-            if node.parameters.update_fir:
-                fir_results = node.namespace.get("fir_results", {})
-                res = fir_results.get(q.name)
-                if res is not None and res.get("success"):
-                    node.machine.qubits[q.name].z.opx_output.feedforward_filter = res["inverse_fir"]
-                else:
-                    node.log(
-                        f"  WARNING: FIR unavailable for {q.name} (use_fir={node.parameters.use_fir}); "
-                        f"skipping feedforward_filter update"
-                    )
+    skip_qubits = {
+        q.name for q in node.namespace["qubits"] if node.outcomes.get(q.name) == "failed"
+    }
+
+    with node.record_state_updates():
+        update_filters(
+            node.namespace["qubits"],
+            node.machine,
+            node.results["fit_results"],
+            update_iir=node.parameters.update_iir,
+            update_fir=node.parameters.update_fir,
+            fir_results=node.namespace.get("fir_results"),
+            skip_qubits=skip_qubits,
+            log_callable=node.log,
+        )
 
 
 # %% {Save_results}

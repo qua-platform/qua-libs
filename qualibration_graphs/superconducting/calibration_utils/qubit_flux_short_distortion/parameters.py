@@ -53,8 +53,8 @@ class NodeSpecificParameters(RunnableParameters):
     reset_type: str = "active"
     """Type of reset to perform: 'active' or 'thermal'."""
 
-    detuning_target_in_mhz: int = 300
-    """Target detuning from sweetspot for the cryoscope pulse in MHz. Default is 300."""
+    detuning_in_mhz: float = 200.0
+    """Target detuning below idle frequency in MHz (positive = below idle). Default is 200.0."""
     cryoscope_len: int = 240
     """Length of the cryoscope operation in nanoseconds. Default is 240."""
     num_frames: int = 17
@@ -66,15 +66,20 @@ class NodeSpecificParameters(RunnableParameters):
     fir_max_taps: int = 48
     """Forward / inverse FIR length (fixed; no auto length search)."""
 
-    update_iir: bool = False
-    """Push IIR exponential filter into state on this run."""
+    update_state: bool = False
+    """Master gate for writing fitted filters into QUAM state."""
+    update_state_from_GUI: bool = False
+    """When re-analysing via ``load_data_id``, enable ``update_state`` from the GUI."""
+    update_iir: bool = True
+    """When ``update_state`` is set, append IIR taps to ``exponential_filter``."""
     update_fir: bool = False
-    """Push FIR feedforward filter into state on this run."""
+    """When ``update_state`` is set, write ``feedforward_filter`` from FIR analysis."""
 
     freq_to_flux_source: Literal["auto", "ramsey", "spectroscopy", "quad_term"] = "auto"
     """Which frequency->voltage relation to use when picking the cryoscope Z amplitude and when converting the measured f(t) into a flux step response. 'auto' (default) tries Ramsey vs flux (09a), then qubit spectroscopy vs flux (03b), then the quadratic freq_vs_flux_01_quad_term; the other values force one specific source. Run IDs are never entered by hand: they are read from each qubit's extras ('ramsey_vs_flux_calibration_load_id' for 09a, 'qubit_spectroscopy_vs_flux_load_id' for 03b), so run those nodes with save_load_id=True first."""
     debug_plots: bool = False
-    """If True, also generate diagnostic figures (unwrapped phase, freq-vs-flux reference curve)."""
+    """If True, also show cryoscope frequency, unwrapped phase, freq-vs-flux curve,
+    and FIR resampling check (each on a ``QubitGrid``)."""
 
 
 class Parameters(

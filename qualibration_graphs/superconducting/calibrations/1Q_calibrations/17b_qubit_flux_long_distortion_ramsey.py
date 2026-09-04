@@ -22,6 +22,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
+from calibration_utils.common_utils.flux_distortions import update_filters
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -78,6 +79,7 @@ stored_machine = Quam.load()
 # Store fit configuration set from GUI so it survives load_from_id round-trips.
 loaded_n_exponentials = node.parameters.n_exponentials
 stored_gui_update_flag = node.parameters.update_state_from_GUI
+stored_update_iir = node.parameters.update_iir
 
 
 # %% {Create_qua_program}
@@ -353,6 +355,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 
     node.parameters.n_exponentials = loaded_n_exponentials
     node.parameters.update_state_from_GUI = stored_gui_update_flag
+    node.parameters.update_iir = stored_update_iir
     if node.parameters.update_state_from_GUI:
         node.machine = stored_machine
         node.parameters.update_state = True
@@ -398,31 +401,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     qubits = node.namespace["qubits"]
 
-    for q in qubits:
-        z_out = node.machine.qubits[q.name].z.opx_output
-        if z_out.exponential_filter is None:
-            z_out.exponential_filter = []
-
     with node.record_state_updates():
-        for q in qubits:
-            res = node.results["fit_results"].get(q.name)
-            if res is None or not res["success"]:
-                continue
-            z_out = node.machine.qubits[q.name].z.opx_output
-            a_dc = res["a_dc"]
-            new_taps = [(amp / a_dc, tau) for amp, tau in res.get("a_tau_tuple") or []]
-            if not new_taps:
-                continue
-            iir_max = {"LFFEMAnalogOutputPort": 6, "OPXPlusAnalogOutputPort": 3}.get(type(z_out).__name__)
-            existing = len(z_out.exponential_filter or [])
-            if iir_max is None or existing + len(new_taps) > iir_max:
-                node.log(
-                    f"{q.name}: skip IIR update — {existing} existing + {len(new_taps)} new"
-                    + (f" > {iir_max} max" if iir_max else f", unsupported port {type(z_out).__name__}")
-                )
-                continue
-            z_out.exponential_filter.extend(new_taps)
-            node.log(f"{q.name}: updated IIR ({len(z_out.exponential_filter)}/{iir_max}): {z_out.exponential_filter}")
+        update_filters(
+            qubits,
+            node.machine,
+            node.results["fit_results"],
+            update_iir=node.parameters.update_iir,
+            log_callable=node.log,
+        )
 
 
 # %% {Save_results}

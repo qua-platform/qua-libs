@@ -20,9 +20,13 @@ from .fitting import (
     FitParameters,
     multi_exp_fit_global,
 )
+from .filter_update import update_filters
 from .lo_shift import LoShiftPlan, plan_lo_shift_for_frequency_window
+from .node_storage import read_node_data_dict
 
 __all__ = [
+    "update_filters",
+    "read_node_data_dict",
     "AUTO_SOURCE_ORDER",
     "FitParameters",
     "FreqFluxCurve",
