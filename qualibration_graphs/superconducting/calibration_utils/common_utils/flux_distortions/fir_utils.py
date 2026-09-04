@@ -75,9 +75,7 @@ def resample_to_target_rate(
     if t_original_ns is not None:
         t_original = np.asarray(t_original_ns, dtype=float).reshape(-1)
         if len(t_original) != len(data):
-            raise ValueError(
-                f"t_original_ns length {len(t_original)} != len(data) {len(data)}"
-            )
+            raise ValueError(f"t_original_ns length {len(t_original)} != len(data) {len(data)}")
     else:
         t_original = np.arange(len(data), dtype=float) * float(original_Ts)
 
@@ -94,9 +92,7 @@ def resample_to_target_rate(
     t_target = t_start + np.arange(n_steps, dtype=float) * dt
     t_target = t_target[t_target <= t_end + 1e-9]
 
-    interp_fun = interp1d(
-        t_original, data, kind=kind, fill_value="extrapolate", bounds_error=False
-    )
+    interp_fun = interp1d(t_original, data, kind=kind, fill_value="extrapolate", bounds_error=False)
     return np.asarray(interp_fun(t_target), dtype=float), t_target
 
 
@@ -245,9 +241,7 @@ def analyze_inverse_fir(
     if sigma_ns is None:
         sigma_ns = 1.3 * Ts
 
-    h_inv = invert_fir(
-        h, Ts=Ts, M=M, method="optimization", sigma_ns=sigma_ns, lam_smooth=lam_smooth
-    )
+    h_inv = invert_fir(h, Ts=Ts, M=M, method="optimization", sigma_ns=sigma_ns, lam_smooth=lam_smooth)
 
     info = {
         "L": L,

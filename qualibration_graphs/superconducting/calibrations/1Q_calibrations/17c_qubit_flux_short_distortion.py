@@ -230,8 +230,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     if debug:
         from pathlib import Path
         from qm import generate_qua_script
+
         file_name = Path(__file__).stem
-        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", 'w') as sourceFile:
+        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", "w") as sourceFile:
             print(generate_qua_script(node.namespace["qua_program"], config), file=sourceFile)
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
@@ -326,9 +327,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     if not node.parameters.update_state:
         return
 
-    skip_qubits = {
-        q.name for q in node.namespace["qubits"] if node.outcomes.get(q.name) == "failed"
-    }
+    skip_qubits = {q.name for q in node.namespace["qubits"] if node.outcomes.get(q.name) == "failed"}
 
     with node.record_state_updates():
         update_filters(

@@ -47,8 +47,7 @@ def _append_iir_taps_from_fit(
 
     z_out.exponential_filter.extend(new_taps)
     log_callable(
-        f"{qubit_name}: updated IIR ({len(z_out.exponential_filter)}/{iir_max}): "
-        f"{z_out.exponential_filter}"
+        f"{qubit_name}: updated IIR ({len(z_out.exponential_filter)}/{iir_max}): " f"{z_out.exponential_filter}"
     )
     return True
 

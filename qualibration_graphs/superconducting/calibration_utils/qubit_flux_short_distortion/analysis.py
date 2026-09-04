@@ -214,9 +214,7 @@ def _extract_relevant_fit_parameters(
                 rms_error=float("nan"),
             )
             continue
-        fit_results[dim_name] = multi_exp_fit_global(
-            time_vals[mask], flux_vals[mask], n_exponentials, verbose=True
-        )
+        fit_results[dim_name] = multi_exp_fit_global(time_vals[mask], flux_vals[mask], n_exponentials, verbose=True)
     return ds, fit_results
 
 
@@ -353,9 +351,6 @@ def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
             f"ratio_AB={noise_info['ratio_AB']:.2f} -> {noise_info['msg_short']}"
         )
         if noise_info["status"] == "warn_tail":
-            node.log(
-                f"  {dim_name}: tail may not be settled (sigma_A >> sigma_B); "
-                f"try a longer cryoscope_len."
-            )
+            node.log(f"  {dim_name}: tail may not be settled (sigma_A >> sigma_B); " f"try a longer cryoscope_len.")
 
     return fir_results
