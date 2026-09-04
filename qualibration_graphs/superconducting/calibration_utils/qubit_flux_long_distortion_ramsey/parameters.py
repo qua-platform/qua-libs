@@ -47,7 +47,11 @@ class NodeSpecificParameters(RunnableParameters):
     update_state_from_GUI: bool = False
     """Whether to update the state from the GUI, select when fitting is successful."""
     debug_plots: bool = False
-    """If True, also generate diagnostic figures (raw Ramsey signal, reference amp sweep)."""
+    """If True, also show Ramsey fringe heatmap (time × frame), extracted Ramsey
+    phase vs time, and the reference phase-vs-amplitude calibration curve.
+
+    Default figure (always): flux response vs time with the IIR fit overlay.
+    """
 
 
 class Parameters(

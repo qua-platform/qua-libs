@@ -10,9 +10,9 @@ from .analysis import (
 from .parameters import Parameters
 from .plotting import (
     annotate_branch_risk,
-    plot_fit,
-    plot_flux_response,
+    plot_ramsey_fringe,
     plot_raw_data_with_fit,
+    plot_ref_phase_cal,
     plot_signal_phase,
 )
 
@@ -24,8 +24,8 @@ __all__ = [
     "extract_phases",
     "log_fitted_results",
     "plot_raw_data_with_fit",
-    "plot_fit",
     "plot_signal_phase",
-    "plot_flux_response",
+    "plot_ramsey_fringe",
+    "plot_ref_phase_cal",
     "annotate_branch_risk",
 ]

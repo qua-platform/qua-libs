@@ -3,14 +3,12 @@
 from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
+import numpy as np
 import xarray as xr
+from matplotlib.axes import Axes
+from qualibration_libs.plotting import QubitGrid, grid_iter
 
-# Shared fit overlay (identical to 17a)
-from calibration_utils.qubit_flux_long_distortion_qubitspec.plotting import plot_fit
-
-# ---------------------------------------------------------------------------
-# Default figures (always produced by ``plot_raw_data_with_fit``)
-# ---------------------------------------------------------------------------
+from calibration_utils.qubit_flux_long_distortion_qubitspec.plotting import plot_flux_response
 
 
 def annotate_branch_risk(fig, ds: xr.Dataset) -> bool:
@@ -56,61 +54,88 @@ def annotate_branch_risk(fig, ds: xr.Dataset) -> bool:
     return True
 
 
-def plot_signal_phase(ds: xr.Dataset, qubits, log_scale: bool = False):
-    """Plot extracted Ramsey signal phase vs delay for each qubit.
+# ---------------------------------------------------------------------------
+# Per-axis plotters (qubit-agnostic; used by ``plot_raw_data_with_fit``)
+# ---------------------------------------------------------------------------
 
-    Analogue of qubitspec ``plot_center_freqs`` — the intermediate before
-    phase→flux inversion.
-    """
-    if "signal_phase" not in ds:
-        return None
-    names = [q.name for q in qubits]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
+
+def plot_signal_phase(
+    ax: Axes,
+    ds: xr.Dataset,
+    qubit: dict,
+    *,
+    log_scale: bool = False,
+) -> None:
+    """Plot extracted Ramsey signal phase vs delay on one axis."""
+    qname = qubit["qubit"]
     times = ds.time.values
-
-    for ax, qname in zip(axes[0], names):
-        phase = ds.sel(qubit=qname).signal_phase.values
-        ax.plot(times, phase, marker="o", ms=4, lw=1.2)
-        if log_scale:
-            ax.set_xscale("log")
-            ax.grid(True, which="both")
-        else:
-            ax.grid(True)
-        ax.set_xlabel("Time (ns)")
-        ax.set_ylabel("Ramsey phase (rad)")
-        ax.set_title(qname)
-
-    scale = " (log scale)" if log_scale else ""
-    fig.suptitle(f"Ramsey signal phase vs time after flux pulse{scale}")
-    fig.tight_layout()
-    return fig
+    phase = ds.sel(qubit=qname).signal_phase.values
+    ax.plot(times, phase, marker="o", ms=4, lw=1.2)
+    if log_scale:
+        ax.set_xscale("log")
+        ax.grid(True, which="both")
+    else:
+        ax.grid(True)
+    ax.set_xlabel("Time (ns)", fontsize=14)
+    ax.set_ylabel("Ramsey phase (rad)", fontsize=14)
+    ax.set_title(qname)
+    ax.tick_params(axis="both", labelsize=12)
 
 
-def plot_flux_response(ds: xr.Dataset, qubits, log_scale: bool = False):
-    """Plot flux step response vs time for each qubit."""
-    names = [q.name for q in qubits]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
-    times = ds.time.values
+def plot_ramsey_fringe(
+    ax: Axes,
+    ds_raw: xr.Dataset,
+    qubit: dict,
+    fig: plt.Figure,
+    *,
+    log_scale: bool = False,
+) -> None:
+    """Plot Ramsey signal vs (time, frame rotation) on one axis."""
+    if "state" in ds_raw.data_vars:
+        signal_var = "state"
+        cbar_label = "State"
+    elif "I" in ds_raw.data_vars:
+        signal_var = "I"
+        cbar_label = "I (V)"
+    else:
+        ax.set_title(f"{qubit['qubit']} — no signal")
+        return
 
-    for ax, qname in zip(axes[0], names):
-        fr = ds.sel(qubit=qname).flux_response.values
-        ax.plot(times, fr, lw=1.5)
-        if log_scale:
-            ax.set_xscale("log")
-            ax.grid(True, which="both")
-        else:
-            ax.grid(True)
-        ax.set_xlabel("Time (ns)")
-        ax.set_ylabel("Flux response (V)")
-        ax.set_title(qname)
+    qname = qubit["qubit"]
+    q_ds = ds_raw.sel(qubit=qname)
+    if "frame" not in q_ds[signal_var].dims:
+        ax.set_title(f"{qname} — no frame axis")
+        return
 
-    scale = " (log scale)" if log_scale else ""
-    fig.suptitle(f"Flux response vs time after flux pulse{scale}")
-    fig.tight_layout()
-    annotate_branch_risk(fig, ds)
-    return fig
+    times = np.asarray(q_ds.time.values, dtype=float)
+    frames = np.asarray(q_ds.frame.values, dtype=float)
+    signal = np.asarray(q_ds[signal_var].transpose("frame", "time").values, dtype=float)
+    im = ax.pcolormesh(times, frames, signal, shading="auto", cmap="viridis")
+    fig.colorbar(im, ax=ax).set_label(cbar_label)
+    if log_scale:
+        ax.set_xscale("log")
+        ax.grid(True, which="both")
+    ax.set_xlabel("Time (ns)")
+    ax.set_ylabel("Frame rotation (×2π)")
+    ax.set_title(qname)
+    ax.tick_params(axis="both", labelsize=12)
+
+
+def plot_ref_phase_cal(
+    ax: Axes,
+    ds: xr.Dataset,
+    qubit: dict,
+) -> None:
+    """Plot reference Ramsey phase vs probe amplitude on one axis."""
+    qname = qubit["qubit"]
+    if "ref_phase_cal" not in ds:
+        ax.set_title(f"{qname} — no reference calibration")
+        return
+    ds["ref_phase_cal"].sel(qubit=qname).plot(ax=ax, marker=".")
+    ax.set_xlabel("Ramsey flux amp (V)")
+    ax.set_ylabel("Phase (rad)")
+    ax.set_title(qname)
+    ax.grid(True)
 
 
 def plot_raw_data_with_fit(
@@ -120,108 +145,61 @@ def plot_raw_data_with_fit(
     *,
     debug: bool = False,
     ds_raw: Optional[xr.Dataset] = None,
+    log_scale: bool = False,
 ) -> Dict[str, plt.Figure]:
-    """Default 17b figures: signal phase, flux response, and exponential fit.
+    """Default figures: flux response (with IIR fit) only.
 
-    Parameters
-    ----------
-    debug :
-        If True, also add raw Ramsey signal and reference amp-sweep plots
-        when ``ds_raw`` is provided.
-    ds_raw :
-        Raw/processed acquisition dataset (needed for debug figures).
-
-    Returns
-    -------
-    dict
-        Always: ``signal_phase_{linear,log}`` (if present),
-        ``flux_response_{linear,log}``, ``fitted_data``.
-        With ``debug=True``: may also include ``raw_data_*``, ``ref_data``,
-        ``ref_phase_cal``.
+    With ``debug=True``: Ramsey fringe heatmap (time × frame), extracted Ramsey
+    phase vs time, and the reference phase-vs-amplitude calibration curve.
     """
-    figures: Dict[str, plt.Figure] = {
-        "signal_phase_linear": plot_signal_phase(ds, qubits, log_scale=False),
-        "signal_phase_log": plot_signal_phase(ds, qubits, log_scale=True),
-        "flux_response_linear": plot_flux_response(ds, qubits, log_scale=False),
-        "flux_response_log": plot_flux_response(ds, qubits, log_scale=True),
-        "fitted_data": plot_fit(ds, qubits, fit_results),
-    }
-    figures = {k: v for k, v in figures.items() if v is not None}
+    grid_locations = [q.grid_location for q in qubits]
+    figures: Dict[str, plt.Figure] = {}
+
+    grid_flux = QubitGrid(ds, grid_locations)
+    for ax, qubit in grid_iter(grid_flux):
+        plot_flux_response(
+            ax,
+            ds,
+            qubit,
+            fit=fit_results.get(qubit["qubit"]),
+            log_scale=log_scale,
+        )
+    grid_flux.fig.suptitle("Flux response vs time after flux pulse", fontsize=16)
+    grid_flux.fig.set_size_inches(15, 9)
+    grid_flux.fig.tight_layout()
+    annotate_branch_risk(grid_flux.fig, ds)
+    figures["flux_response"] = grid_flux.fig
 
     if not debug:
         return figures
 
-    for key, fig in {
-        "raw_data_linear": plot_raw_signal(ds_raw, qubits, log_scale=False),
-        "raw_data_log": plot_raw_signal(ds_raw, qubits, log_scale=True),
-        "ref_data": plot_ref_data(ds_raw, qubits),
-        "ref_phase_cal": plot_ref_phase_cal(ds, qubits),
-    }.items():
-        if fig is not None:
-            figures[key] = fig
+    if ds_raw is not None:
+        signal_key = "state" if "state" in ds_raw.data_vars else "I"
+        if signal_key in ds_raw.data_vars and "frame" in ds_raw[signal_key].dims:
+            grid_fringe = QubitGrid(ds_raw, grid_locations)
+            for ax, qubit in grid_iter(grid_fringe):
+                plot_ramsey_fringe(ax, ds_raw, qubit, grid_fringe.fig, log_scale=log_scale)
+            grid_fringe.fig.suptitle("Debug: Ramsey signal vs (time, frame rotation)", fontsize=16)
+            grid_fringe.fig.set_size_inches(15, 9)
+            grid_fringe.fig.tight_layout()
+            figures["ramsey_fringe"] = grid_fringe.fig
+
+    if "signal_phase" in ds:
+        grid_phase = QubitGrid(ds, grid_locations)
+        for ax, qubit in grid_iter(grid_phase):
+            plot_signal_phase(ax, ds, qubit, log_scale=log_scale)
+        grid_phase.fig.suptitle("Debug: Ramsey phase vs time after flux pulse", fontsize=16)
+        grid_phase.fig.set_size_inches(15, 9)
+        grid_phase.fig.tight_layout()
+        figures["signal_phase"] = grid_phase.fig
+
+    if "ref_phase_cal" in ds:
+        grid_ref = QubitGrid(ds, grid_locations)
+        for ax, qubit in grid_iter(grid_ref):
+            plot_ref_phase_cal(ax, ds, qubit)
+        grid_ref.fig.suptitle("Debug: Reference Ramsey phase vs flux amplitude", fontsize=16)
+        grid_ref.fig.set_size_inches(15, 9)
+        grid_ref.fig.tight_layout()
+        figures["ref_phase_cal"] = grid_ref.fig
 
     return figures
-
-
-# ---------------------------------------------------------------------------
-# Debug figures (``debug_plots=True``)
-# ---------------------------------------------------------------------------
-
-
-def plot_raw_signal(ds_raw: Optional[xr.Dataset], qubits, log_scale: bool = False):
-    """Raw Ramsey signal (state or I) vs time per qubit."""
-    if ds_raw is None:
-        return None
-    signal_key = "state" if "state" in ds_raw.data_vars else "I"
-    if signal_key not in ds_raw.data_vars:
-        return None
-
-    names = [q.name for q in qubits]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
-
-    for ax, qname in zip(axes[0], names):
-        da = ds_raw[signal_key].sel(qubit=qname)
-        if "frame" in da.dims:
-            da = da.mean("frame")
-        da.plot(ax=ax, xscale="log" if log_scale else "linear")
-        ax.set_title(qname)
-        ax.grid(True)
-
-    scale = " (log scale)" if log_scale else ""
-    fig.suptitle(f"Raw Ramsey signal vs time{scale}")
-    fig.tight_layout()
-    return fig
-
-
-def plot_ref_data(ds_raw: Optional[xr.Dataset], qubits) -> Optional[plt.Figure]:
-    """Reference Ramsey amplitude-sweep signal (state_ref / I_ref)."""
-    if ds_raw is None:
-        return None
-    ref_key = "state_ref" if "state_ref" in ds_raw.data_vars else "I_ref"
-    if ref_key not in ds_raw.data_vars:
-        return None
-    fg_ref = ds_raw[ref_key].plot(x="a", col="qubit")
-    return fg_ref.fig
-
-
-def plot_ref_phase_cal(ds: xr.Dataset, qubits) -> Optional[plt.Figure]:
-    """Reference phase-vs-amp calibration curve attached to ``ds`` during analysis."""
-    if "ref_phase_cal" not in ds:
-        return None
-    names = [q.name for q in qubits]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
-    amps = ds["ref_phase_cal"].coords["a"].values
-
-    for ax, qname in zip(axes[0], names):
-        phases = ds["ref_phase_cal"].sel(qubit=qname).values
-        ax.plot(amps, phases, marker=".", lw=1.2)
-        ax.set_xlabel("Ramsey flux amp (V)")
-        ax.set_ylabel("Phase (rad)")
-        ax.set_title(qname)
-        ax.grid(True)
-
-    fig.suptitle("Reference Ramsey phase vs flux amplitude")
-    fig.tight_layout()
-    return fig

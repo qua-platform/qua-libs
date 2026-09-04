@@ -45,12 +45,10 @@ class NodeSpecificParameters(RunnableParameters):
     freq_to_flux_source: Literal["auto", "ramsey", "spectroscopy", "quad_term"] = "auto"
     """Which frequency->voltage relation to use when converting the measured f(t) into a flux step response. 'auto' (default) tries Ramsey vs flux (09a), then qubit spectroscopy vs flux (03b), then the quadratic freq_vs_flux_01_quad_term; the other values force one specific source. Run IDs are never entered by hand: they are read from each qubit's extras ('ramsey_vs_flux_calibration_load_id' for 09a, 'qubit_spectroscopy_vs_flux_load_id' for 03b), so run those nodes with save_load_id=True first."""
     debug_plots: bool = False
-    """If True, also show the freq-vs-flux reference curve used for conversion.
+    """If True, also show diagnostic probe figures (spectroscopy heatmap or center
+    frequency trace, and the measured freq-vs-flux inversion curve when available).
 
-    Default figures (always): spectroscopy map with center-freq overlay and flux
-    response with IIR fit. With ``quad_term`` there is no reference curve to show.
-    With Ramsey (09a) or qubit spectroscopy vs flux (03b), debug adds
-    ``freq_vs_flux_curve`` — one plot for whichever measured source was used.
+    Default figure (always): flux response vs time with the IIR fit overlay.
     """
 
 

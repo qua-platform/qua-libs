@@ -70,9 +70,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
-    # node.parameters.update_state = True
-    # node.parameters.load_data_id = 10954
-    pass
 
 
 # Instantiate machine
@@ -375,6 +372,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Plot_data}
+node.parameters.debug_plots=True
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot flux response and exponential fits (plus debug raw/ref if enabled)."""
@@ -387,6 +385,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["fit_results"],
         ds_raw=node.results.get("ds_raw"),
         debug=node.parameters.debug_plots,
+        log_scale=node.parameters.time_axis == "log",
     )
     plt.show()
 
@@ -408,18 +407,23 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     with node.record_state_updates():
         for q in qubits:
             res = node.results["fit_results"].get(q.name)
-            if res is None:
+            if res is None or not res["success"]:
                 continue
-            fit_success = res["success"]
-            if not fit_success:
+            z_out = node.machine.qubits[q.name].z.opx_output
+            a_dc = res["a_dc"]
+            new_taps = [(amp / a_dc, tau) for amp, tau in res.get("a_tau_tuple") or []]
+            if not new_taps:
                 continue
-
-            best_a_dc = res["a_dc"]
-            components = res["a_tau_tuple"]
-            A_list = [amp / best_a_dc for amp, _ in components]
-            tau_list = [tau for _, tau in components]
-            node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(list(zip(A_list, tau_list)))
-            print(f"Updated {q.name} filter to: {node.machine.qubits[q.name].z.opx_output.exponential_filter}")
+            iir_max = {"LFFEMAnalogOutputPort": 6, "OPXPlusAnalogOutputPort": 3}.get(type(z_out).__name__)
+            existing = len(z_out.exponential_filter or [])
+            if iir_max is None or existing + len(new_taps) > iir_max:
+                node.log(
+                    f"{q.name}: skip IIR update — {existing} existing + {len(new_taps)} new"
+                    + (f" > {iir_max} max" if iir_max else f", unsupported port {type(z_out).__name__}")
+                )
+                continue
+            z_out.exponential_filter.extend(new_taps)
+            node.log(f"{q.name}: updated IIR ({len(z_out.exponential_filter)}/{iir_max}): {z_out.exponential_filter}")
 
 
 # %% {Save_results}
