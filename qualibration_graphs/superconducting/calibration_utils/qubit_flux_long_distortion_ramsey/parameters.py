@@ -43,9 +43,9 @@ class NodeSpecificParameters(RunnableParameters):
     n_exponentials: int = 2
     """Upper bound on the number of exponential components in the flux step response fit."""
     update_state: bool = False
-    """Whether to update the state. CAUTION: assumes fitting will be acceptable."""
+    """Master gate for writing fitted filters into QUAM state."""
     update_state_from_GUI: bool = False
-    """Whether to update the state from the GUI, select when fitting is successful."""
+    """When re-analysing via ``load_data_id``, enable ``update_state`` from the GUI."""
     debug_plots: bool = False
     """If True, also show Ramsey fringe heatmap (time × frame), extracted Ramsey
     phase vs time, and the reference phase-vs-amplitude calibration curve.
