@@ -111,3 +111,37 @@ def update_filters(
                 qubit_name=q.name,
                 log_callable=log_callable,
             )
+
+
+def _init_coupler_exponential_filters(qubit_pairs: Iterable[Any]) -> None:
+    for qp in qubit_pairs:
+        coupler_out = qp.coupler.opx_output
+        if coupler_out.exponential_filter is None:
+            coupler_out.exponential_filter = []
+
+
+def update_coupler_filters(
+    qubit_pairs: Iterable[Any],
+    fit_results: dict[str, Any],
+    *,
+    skip_pairs: Optional[Set[str]] = None,
+    log_callable: LogCallable = print,
+) -> None:
+    """Write IIR taps to each coupler's ``opx_output.exponential_filter``.
+
+    ``fit_results`` must be keyed by qubit-pair name (the ds ``qubit`` coord).
+    Call inside ``node.record_state_updates()`` after the node has checked
+    ``update_state``.
+    """
+    skip = skip_pairs or set()
+    _init_coupler_exponential_filters(qubit_pairs)
+
+    for qp in qubit_pairs:
+        if qp.name in skip:
+            continue
+        _append_iir_taps_from_fit(
+            qp.coupler.opx_output,
+            fit_results.get(qp.name),
+            qubit_name=qp.coupler.name,
+            log_callable=log_callable,
+        )

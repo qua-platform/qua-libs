@@ -8,6 +8,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from quam_config import Quam
+from calibration_utils.common_utils.flux_distortions import coupler_extras_key
 from calibration_utils.ramsey_vs_coupler_flux import (
     Parameters,
     fit_raw_data,
@@ -247,7 +248,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             measured_qubit_name = (
                 qp.qubit_control.name if node.parameters.measure_qubit == "control" else qp.qubit_target.name
             )
-            node.machine.qubits[measured_qubit_name].extras[f"{qp.coupler.name}_dispersion_load_id"] = node.snapshot_idx
+            extras = node.machine.qubits[measured_qubit_name].extras
+            extras[coupler_extras_key(qp.coupler, "ramsey")] = node.snapshot_idx
 
 
 # %% {Save_results}
