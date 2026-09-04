@@ -1,3 +1,5 @@
+"""Pi vs flux calibration for long flux distortion characterization and filter design."""
+
 # %%
 from __future__ import annotations
 
@@ -7,14 +9,20 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.pi_flux import Parameters, fit_raw_data, log_fitted_results, plot_fit, process_raw_dataset
+from calibration_utils.qubit_flux_long_distortion_qubitspec import (
+    Parameters,
+    fit_raw_data,
+    log_fitted_results,
+    plot_raw_data_with_fit,
+    process_raw_dataset,
+    resolve_flux_amplitudes,
+)
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 from qualibrate import QualibrationNode
-from qualibration_libs.core import tracked_updates
+from calibration_utils.common_utils.flux_distortions import plan_lo_shift_for_frequency_window
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -24,70 +32,92 @@ description = """
 Long cryoscope (π vs flux) calibration.
 
 This protocol measures the effective flux-line step response per qubit by sweeping the XY-drive detuning and the Z-flux pulse duration, then extracting the instantaneous qubit frequency versus time.
-It then Processes and fits the extracted flux response to model it as a sum of decaying exponentials and converts to usable filters.
+It then processes and fits the extracted flux response to model it as a sum of decaying exponentials and converts to usable filters.
 
 Workflow:
 For each qubit, sweep detuning over the configured span and flux-pulse duration over the configured time axis; play a constant Z pulse with amplitude `flux_amp`, then a chosen XY operation (default π), and measure I/Q or state.
-Analysis: convert raw data to volts and extract the center frequency vs detuning at each time; derive the flux response using each qubit’s `freq_vs_flux_01_quad_term`; fit a sum of exponentials and determine the best components and DC term.
+Analysis: convert raw data to volts and extract the center frequency vs detuning at each time; map frequency to flux via the relation chosen by `freq_to_flux_source`; fit a sum of exponentials.
 State update (optional): convert the fitted sum-of-exponentials to a cascade representation and write it to the state.json.
 
 
 Prerequisites
 - A valid rotation angle and threshold if using state discrimination
-- Calibrated XYZ delay
+- Calibrated XYZ delay (16a)
 - A calibrated pi-pulse
-- Each qubit must have a known `freq_vs_flux_01_quad_term` stored in the state (obtained via (09)Ramsey vs flux calibration).
+- Each qubit parked at its flux sweetspot. The Z pulse amplitude is derived as a magnitude and `f(Φ)` is assumed symmetric about idle, so either flux direction detunes downwards by the same amount and the side of the parabola is not exposed as a parameter.
+- A frequency→voltage relation for each qubit, used both to pick the Z amplitude and to invert the measurement. `freq_to_flux_source="auto"` (default) takes the first available of:
+    1. Ramsey vs flux (09a), run ID from `extras['ramsey_vs_flux_calibration_load_id']`
+    2. Qubit spectroscopy vs flux (03b), run ID from `extras['qubit_spectroscopy_vs_flux_load_id']`
+    3. `freq_vs_flux_01_quad_term` in the state
+  Run 09a / 03b with `save_load_id=True` so their run IDs land in the state; no run ID is ever typed into this node. Set `freq_to_flux_source` to `"ramsey"`, `"spectroscopy"` or `"quad_term"` to force one source.
 
 Outputs and state updates
 - Results: processed dataset, fit results, and figures are saved under `node.results`.
 - If `update_state=True` and fits succeed, the script updates `state.json` per qubit at `z.opx_output.exponential_filter` with the cascade coefficients `(A_c, tau_c)` derived from the fit.
-REMINDER: Adding digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold) and (15)XYZ_delay. It is also worth looking at (09) Ramsey vs Flux as well
+REMINDER: Adding digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold) and (16a) XYZ_delay. It is also worth looking at (09a) Ramsey vs Flux as well
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="17_pi_vs_flux_long_distortions",
+    name="17a_qubit_flux_long_distortion_qubitspec",
     description=description,
     parameters=Parameters(),
+    machine=Quam.load(),
 )
 
 
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    # node.parameters.qubits = ["q1"]
-    pass
+    """Allow the user to locally set the node parameters."""
 
 
 # Instantiate machine
-node.machine = stored_machine = Quam.load()
+stored_machine = Quam.load()
 
-# store fitting fractions set from GUI
-loaded_fractions = node.parameters.fitting_base_fractions
+# store n_exponentials set from GUI so the value picked at GUI submission time
+# is preserved across the load_from_id() call (which would otherwise overwrite
+# node.parameters with whatever the saved run used).
+loaded_n_exponentials = node.parameters.n_exponentials
 stored_gui_update_flag = node.parameters.update_state_from_GUI
 
 
 # %% {Create_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    u = unit(coerce_to_integer=True)
+    """Create the sweep axes and generate the QUA program for pi vs flux measurement."""
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    operation_name = node.parameters.operation
-
-    # Ensure operation exists and default to x180 if not
+    operation_names = {}
     for qubit in qubits:
-        if hasattr(qubit.xy.operations, operation_name):
-            continue
-        warnings.warn(f"Qubit {qubit.name} has no operation '{operation_name}', defaulting to 'x180'")
-        operation_name = "x180"
+        if hasattr(qubit.xy.operations, node.parameters.operation):
+            operation_names[qubit.name] = node.parameters.operation
+        else:
+            warnings.warn(f"Qubit {qubit.name} has no operation '{node.parameters.operation}', defaulting to 'x180'")
+            operation_names[qubit.name] = "x180"
 
     operation_amp_scale = node.parameters.operation_amplitude_factor or 1.0
 
-    # Frequency sweep
-    span = node.parameters.frequency_span_in_mhz * u.MHz
-    step = node.parameters.frequency_step_in_mhz * u.MHz
-    dfs = np.arange(-span // 2, span // 2, step, dtype=np.int32)
+    # Frequency sweep parameters: detuning + span → idle-referenced dfs (negative Hz)
+    center_hz = node.parameters.detuning_in_mhz * 1e6
+    span_hz = node.parameters.frequency_span_in_mhz * 1e6
+    step_hz = node.parameters.frequency_step_in_mhz * 1e6
+
+    dfs = np.arange(
+        -center_hz - span_hz / 2,
+        -center_hz + span_hz / 2 + step_hz / 2,
+        step_hz,
+        dtype=np.int32,
+    )
+
+    # --- Per-qubit flux_amp derivation via the selected freq→flux relation ---
+    resolved = resolve_flux_amplitudes(
+        qubits,
+        detuning_hz=center_hz,
+        freq_to_flux_source=node.parameters.freq_to_flux_source,
+        log_callable=node.log,
+    )
+    flux_amps = resolved.amplitudes
 
     # Time sweep linear of log scale
     if node.parameters.time_axis == "linear":
@@ -106,7 +136,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         )
         times = np.unique(times)
 
-    flux_amps = [np.sqrt(-node.parameters.detuning_in_mhz * 1e6 / q.freq_vs_flux_01_quad_term) for q in qubits]
+    # buffer time during operation
+    buf_during_op = node.parameters.buffer_during_operation_in_ns // 4
+    # buffer time after operation
+    buf_after_op = node.parameters.buffer_after_operation_in_ns // 4
 
     # Sweep axes for data fetcher
     node.namespace["sweep_axes"] = {
@@ -115,36 +148,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "time": xr.DataArray(4 * times, attrs={"long_name": "Flux pulse duration", "units": "ns"}),
     }
 
-    # Track LO updates
-    tracked_qubits = []
-    if_update = []
+    # LO / IF reach: shift upconverter if dfs pushes outside usable MW-FEM window.
+    lo_plan = plan_lo_shift_for_frequency_window(qubits, dfs, log_callable=node.log)
+    if lo_plan.force_thermal_reset:
+        node.parameters.reset_type = "thermal"
+    if_update = lo_plan.if_update
+    tracked_qubits = lo_plan.tracked_qubits
 
-    for q in qubits:
-        # Decide if updating the LO is needed depending on the detuning request
-        if (
-            q.xy.intermediate_frequency
-            - node.parameters.detuning_in_mhz * 1e6
-            - node.parameters.frequency_span_in_mhz * 1e6 / 2
-        ) < -400e6:
-            node.parameters.reset_type = "thermal"  # Active reset will not work if the lo is changed
-            warnings.warn(
-                "Qubit LO has been changed to reach desired detuning, active reset will not work. Reset type changed to thermal."
-            )
-            if_update.append(0)
-            # track the LO and IF changes to revert later
-            with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
-                rf_frequency = q_upd.xy.intermediate_frequency + q_upd.xy.opx_output.upconverter_frequency
-                lo_frequency = q_upd.xy.opx_output.upconverter_frequency - node.parameters.detuning_in_mhz * 1e6
-                if (q_upd.xy.opx_output.band == 3) and (lo_frequency < 6.5e9):
-                    raise ValueError("Requested detuning is too large for the given MW FEM band")
-                elif (q_upd.xy.opx_output.band == 2) and (lo_frequency < 4.5e9):
-                    raise ValueError("Requested detuning is too large for the given MW FEM band")
-                print(f"Updating {q_upd.name} LO to {lo_frequency}")
-                q_upd.xy.opx_output.upconverter_frequency = lo_frequency
-                q_upd.xy.RF_frequency -= node.parameters.detuning_in_mhz * 1e6
-                tracked_qubits.append(q_upd)
-        else:
-            if_update.append(int(node.parameters.detuning_in_mhz))
+    for i, q in enumerate(qubits):
+        lo_hz = if_update[i]
+        lo_txt = f"LO shifted by {lo_hz / 1e6:.1f} MHz" if lo_hz else "no LO shift"
+        node.log(
+            f"{q.name}: flux_amp={flux_amps[i]:.6f} V ({resolved.sources[i]}), "
+            f"RF={q.xy.RF_frequency / 1e9:.3f} GHz, {lo_txt}"
+        )
 
     node.namespace["if_update"] = if_update
     node.namespace["tracked_qubits"] = tracked_qubits
@@ -185,15 +202,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit.z.play(
                                 "const",
                                 amplitude_scale=flux_amps[i] / qubit.z.operations["const"].amplitude,
-                                duration=t_delay + 200,
+                                duration=t_delay + buf_during_op,
                             )
                             # Wait for a variable time
                             qubit.xy.wait(t_delay)
                             # Play the qubit spectroscopy pulse
-                            qubit.xy.play(operation_name, amplitude_scale=operation_amp_scale)
-                            qubit.xy.update_frequency(qubit.xy.intermediate_frequency)
+                            qubit.xy.play(operation_names[qubit.name], amplitude_scale=operation_amp_scale)
+                            qubit.wait(buf_after_op)
                             qubit.align()
-                            qubit.wait(200)
 
                         for i, qubit in multiplexed_qubits.items():
                             if node.parameters.use_state_discrimination:
@@ -220,6 +236,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Simulate_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
@@ -230,6 +247,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Execute_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
@@ -244,13 +262,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Load_data}
 @node.run_action(skip_if=node.parameters.load_data_id is None)
 def load_data(node: QualibrationNode[Parameters, Quam]):
+    """Load a previously acquired dataset."""
     load_id = node.parameters.load_data_id
     node.load_from_id(load_id)
     node.parameters.load_data_id = load_id
     node.namespace["qubits"] = get_qubits(node)
 
-    # Overwrite the loaded node parrameters with the ones defined from the GUI
-    node.parameters.fitting_base_fractions = loaded_fractions
+    # Overwrite the loaded node parameters with the ones defined from the GUI
+    node.parameters.n_exponentials = loaded_n_exponentials
     node.parameters.update_state_from_GUI = stored_gui_update_flag
     if node.parameters.update_state_from_GUI:
         node.machine = stored_machine
@@ -258,40 +277,39 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
         print("State update from GUI is enabled")
 
 
-# %% {Process_raw}
+# %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def process_raw(node: QualibrationNode[Parameters, Quam]):
-    ds_raw = node.results["ds_raw"]
-    ds_proc = process_raw_dataset(ds_raw, node)
-    node.results["ds_proc_input"] = ds_proc
+def analyse_data(node: QualibrationNode[Parameters, Quam]):
+    """Process raw data and fit exponential components to the flux response data."""
+    ds_proc = process_raw_dataset(node.results["ds_raw"], node)
+    ds_fit, fit_results = fit_raw_data(ds_proc, node)
 
-
-# %% {Analyze_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def analyze_data(node: QualibrationNode[Parameters, Quam]):
-    ds_in = node.results["ds_proc_input"]
-    ds, fit_results = fit_raw_data(ds_in, node)
-
-    node.results["ds_proc"] = ds
+    node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
-    log_fitted_results(fit_results, log_callable=node.log)
+    log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
 
-# %% {Plot}
+# %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
-def plot_results(node: QualibrationNode[Parameters, Quam]):
-    if "ds_proc" not in node.results:
+def plot_data(node: QualibrationNode[Parameters, Quam]):
+    """Plot center freq, flux response, and exponential fits."""
+    if "ds_fit" not in node.results:
         return
-    ds = node.results["ds_proc"]
     qubits = node.namespace.get("qubits", get_qubits(node))
-    fig = plot_fit(ds, qubits, node.results["fit_results"])
+    node.results["figures"] = plot_raw_data_with_fit(
+        node.results["ds_fit"],
+        qubits,
+        node.results["fit_results"],
+        debug=node.parameters.debug_plots,
+        log_scale=node.parameters.time_axis == "log",
+    )
     plt.show()
-    node.results["fitted_data"] = fig
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
+    """Update IIR filter tabs if fitting was successful."""
     if not node.parameters.update_state:
         return
     qubits = node.namespace["qubits"]
@@ -304,22 +322,29 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     with node.record_state_updates():
         for q in qubits:
             res = node.results["fit_results"][q.name]
-            # Support dict or dataclass
-            fit_success = res["fit_successful"]
-            if not fit_success:
+            if not res["success"]:
                 continue
-            best_a_dc = res["a_dc"]
-            components = res["a_tau_tuple"]
-            A_list = [amp / best_a_dc for amp, _ in components]
-            tau_list = [tau for _, tau in components]
-            node.machine.qubits[q.name].z.opx_output.exponential_filter.extend(list(zip(A_list, tau_list)))
-            print(f"Updated {q.name} filter to: {node.machine.qubits[q.name].z.opx_output.exponential_filter}")
+            z_out = node.machine.qubits[q.name].z.opx_output
+            a_dc = res["a_dc"]
+            new_taps = [(amp / a_dc, tau) for amp, tau in res.get("a_tau_tuple") or []]
+            if not new_taps:
+                continue
+            iir_max = {"LFFEMAnalogOutputPort": 6, "OPXPlusAnalogOutputPort": 3}.get(type(z_out).__name__)
+            existing = len(z_out.exponential_filter or [])
+            if iir_max is None or existing + len(new_taps) > iir_max:
+                node.log(
+                    f"{q.name}: skip IIR update — {existing} existing + {len(new_taps)} new"
+                    + (f" > {iir_max} max" if iir_max else f", unsupported port {type(z_out).__name__}")
+                )
+                continue
+            z_out.exponential_filter.extend(new_taps)
+            node.log(f"{q.name}: updated IIR ({len(z_out.exponential_filter)}/{iir_max}): {z_out.exponential_filter}")
 
 
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-
+    """Save all node results, revert tracked qubit changes, and persist state."""
     for qubit in node.namespace.get("tracked_qubits", []):
         try:
             qubit.revert_changes()

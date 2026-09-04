@@ -1,0 +1,63 @@
+"""Parameter definitions for pi vs flux (long time distortion) calibration experiment."""
+
+from typing import Literal
+
+from qualibrate import NodeParameters
+from qualibrate.core.parameters import RunnableParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+
+
+class NodeSpecificParameters(RunnableParameters):
+    """Specific parameters for long flux distortion characterization."""
+
+    num_shots: int = 30
+    """Number of shots to acquire."""
+    operation: str = "x180"
+    """Operation to excite the qubit"""
+    operation_amplitude_factor: float = 1.0
+    """Amplitude factor for the operation."""
+    duration_in_ns: int = 8000
+    """Maximum duration of the sequence."""
+    time_axis: Literal["linear", "log"] = "log"
+    """Time axis for the operation."""
+    time_step_in_ns: int = 48
+    """Time step in nanoseconds. For linear time axis."""
+    time_step_num: int = 100
+    """Number of time steps. Used for log time axis."""
+    min_wait_time_in_ns: int = 32
+    """Minimum wait time in nanoseconds."""
+    detuning_in_mhz: float = 200.0
+    """Target detuning below idle frequency in MHz (positive = below idle); spectroscopy sweep is centered at (idle - detuning). Default is 200.0."""
+    frequency_span_in_mhz: float = 200.0
+    """Total frequency sweep width in MHz centered on the detuning point; covers [detuning - span/2, detuning + span/2]. Default is 200.0."""
+    frequency_step_in_mhz: float = 1.0
+    """Frequency step in MHz for the uniform spectroscopy sweep passed to QUA from_array. Default is 1.0."""
+    n_exponentials: int = 2
+    """Number of exponential components to fit in the flux step response model."""
+    update_state: bool = False
+    """Whether to update the state. CAUTION: assumes fitting will be acceptable"""
+    update_state_from_GUI: bool = False
+    """Whether to update the state from the GUI, select when fitting is successful"""
+    buffer_during_operation_in_ns: int = 800
+    """Buffer time in ns during the operation to avoid turn-off transient overlapping with the XY pulse."""
+    buffer_after_operation_in_ns: int = 800
+    """Buffer time in ns after the operation to keep readout clean from the flux turn-off artifact."""
+    freq_to_flux_source: Literal["auto", "ramsey", "spectroscopy", "quad_term"] = "auto"
+    """Which frequency->voltage relation to use when converting the measured f(t) into a flux step response. 'auto' (default) tries Ramsey vs flux (09a), then qubit spectroscopy vs flux (03b), then the quadratic freq_vs_flux_01_quad_term; the other values force one specific source. Run IDs are never entered by hand: they are read from each qubit's extras ('ramsey_vs_flux_calibration_load_id' for 09a, 'qubit_spectroscopy_vs_flux_load_id' for 03b), so run those nodes with save_load_id=True first."""
+    debug_plots: bool = False
+    """If True, also show diagnostic probe figures (spectroscopy heatmap or center
+    frequency trace, and the measured freq-vs-flux inversion curve when available).
+
+    Default figure (always): flux response vs time with the IIR fit overlay.
+    """
+
+
+class Parameters(
+    NodeParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+    QubitsExperimentNodeParameters,
+):
+    """Combined parameters for pi vs flux calibration node."""
+
+    pass
