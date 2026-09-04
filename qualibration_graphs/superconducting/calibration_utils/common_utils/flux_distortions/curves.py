@@ -294,20 +294,6 @@ class FreqFluxCurve:
         return self.curve is not None
 
 
-def _load_source_curve(
-    qubit: AnyTransmon,
-    kind: str,
-    *,
-    log_callable: Optional[LogCallable] = None,
-) -> Optional[MeasuredCurve]:
-    """Load the curve for one source ``kind``, or ``None`` if unavailable."""
-    if kind == "ramsey":
-        return load_ramsey_curve(qubit, log_callable=log_callable)
-    if kind == "spectroscopy":
-        return load_spectroscopy_curve(qubit, log_callable=log_callable)
-    return None
-
-
 def _source_run_id(qubit: AnyTransmon, kind: str) -> Optional[int]:
     """Extras run ID backing source ``kind`` for ``qubit``."""
     if kind == "ramsey":
@@ -361,7 +347,12 @@ def resolve_freq_flux_curve(
         candidates = (source,)
 
     for kind in candidates:
-        curve = _load_source_curve(qubit, kind, log_callable=log_callable)
+        if kind == "ramsey":
+            curve = load_ramsey_curve(qubit, log_callable=log_callable)
+        elif kind == "spectroscopy":
+            curve = load_spectroscopy_curve(qubit, log_callable=log_callable)
+        else:
+            curve = None
         if curve is not None:
             rid = _source_run_id(qubit, kind)
             pretty = "Ramsey" if kind == "ramsey" else "spectroscopy"

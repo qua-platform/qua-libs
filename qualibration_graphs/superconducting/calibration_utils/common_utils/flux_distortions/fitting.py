@@ -61,7 +61,24 @@ ADC_PADDING_FRAC = 0.1
 
 @dataclass
 class FitParameters:
-    """Long-distortion multi-exp fit parameters for one channel."""
+    """Long-distortion multi-exp fit parameters for one channel.
+
+    Attributes
+    ----------
+    success :
+        ``True`` when the solver converged and at least one exponential remains.
+    n_components_requested :
+        ``n_exponentials`` passed into ``multi_exp_fit_global``.
+    n_components_used :
+        Number of ``(a_i, tau_i)`` pairs returned after amplitude/tau pruning.
+    a_tau_tuple :
+        Fitted amplitudes and time constants ``[(a_i, tau_i), …]`` in ns; IIR
+        taps are ``A_i = a_i / a_dc``.
+    a_dc :
+        Fitted DC / settled level of the step response.
+    rms_error :
+        RMS residual between the input trace and the fitted model.
+    """
 
     success: bool
     n_components_requested: int
