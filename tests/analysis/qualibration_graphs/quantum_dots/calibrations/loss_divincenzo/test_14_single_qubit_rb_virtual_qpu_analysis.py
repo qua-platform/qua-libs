@@ -171,7 +171,7 @@ def _generate_rb_ds(
     num_circuits: int,
     num_shots: int,
     seed: int,
-    state_var: str,
+    qubit_name: str,
 ) -> xr.Dataset:
     """Generate an RB dataset by simulating full pulse sequences.
 
@@ -212,8 +212,13 @@ def _generate_rb_ds(
             )
 
     return xr.Dataset(
-        {state_var: xr.DataArray(state_data, dims=["circuit", "depth"])},
-        coords={"circuit": np.arange(num_circuits), "depth": depths},
+        {
+            "state": xr.DataArray(
+                state_data[np.newaxis, :, :],
+                dims=["qubit", "circuit", "depth"],
+                coords={"qubit": [qubit_name], "circuit": np.arange(num_circuits), "depth": depths},
+            )
+        }
     )
 
 
@@ -273,7 +278,7 @@ def test_14_single_qubit_rb_virtual_qpu_analysis(
         NUM_CIRCUITS,
         NUM_SHOTS,
         RNG_SEED,
-        f"state_{qubit_name_1}",
+        qubit_name_1,
     )
     ds_b = _generate_rb_ds(
         device_b,
@@ -285,20 +290,20 @@ def test_14_single_qubit_rb_virtual_qpu_analysis(
         NUM_CIRCUITS,
         NUM_SHOTS,
         RNG_SEED + 1,
-        f"state_{qubit_name_2}",
+        qubit_name_2,
     )
-    ds_raw = xr.merge([ds_a, ds_b])
+    ds_raw = xr.concat([ds_a, ds_b], dim="qubit")
 
     # 6. Basic dataset sanity checks
-    for var in [f"state_{qubit_name_1}", f"state_{qubit_name_2}"]:
-        assert var in ds_raw.data_vars, f"Missing variable {var}"
-        assert ds_raw[var].shape == (NUM_CIRCUITS, len(depths))
-        assert np.all(ds_raw[var].values >= 0.0)
-        assert np.all(ds_raw[var].values <= 1.0)
+    assert "state" in ds_raw.data_vars
+    assert ds_raw.state.shape == (2, NUM_CIRCUITS, len(depths))
+    assert list(ds_raw.qubit.values) == [qubit_name_1, qubit_name_2]
+    assert np.all(ds_raw.state.values >= 0.0)
+    assert np.all(ds_raw.state.values <= 1.0)
 
     # High-coherence qubit should survive better at long depths
-    mean_a = ds_raw[f"state_{qubit_name_1}"].mean("circuit").values
-    mean_b = ds_raw[f"state_{qubit_name_2}"].mean("circuit").values
+    mean_a = ds_raw.state.sel(qubit=qubit_name_1).mean("circuit").values
+    mean_b = ds_raw.state.sel(qubit=qubit_name_2).mean("circuit").values
     assert (
         mean_a[-1] > mean_b[-1]
     ), "High-coherence qubit should have higher mean survival at max depth"

@@ -16,21 +16,21 @@ import xarray as xr
 
 
 def _get_qubit_state_data(ds_raw: xr.Dataset, qname: str) -> np.ndarray | None:
-    """Extract per-qubit state data, handling both naming conventions.
+    """Extract per-qubit state data, preferring the stacked ``state`` dataset."""
+    if "state" in ds_raw.data_vars:
+        try:
+            return ds_raw.state.sel(qubit=qname, drop=True).transpose("circuit", "depth").values.astype(float)
+        except (KeyError, ValueError):
+            pass
 
-    The ``XarrayDataFetcher`` regex groups ``state_q1``, ``state_q2`` into a
-    single ``state_q`` variable stacked along the ``qubit`` dimension.  This
-    helper checks for a per-qubit variable first, then falls back to a stacked
-    variable with a ``qubit`` dimension.
-    """
     var_name = f"state_{qname}"
     if var_name in ds_raw.data_vars:
-        return ds_raw[var_name].values
+        return ds_raw[var_name].transpose("circuit", "depth").values.astype(float)
     for candidate in ds_raw.data_vars:
         da = ds_raw[candidate]
         if candidate.startswith("state") and "qubit" in da.dims:
             try:
-                return da.sel(qubit=qname).values
+                return da.sel(qubit=qname, drop=True).transpose("circuit", "depth").values.astype(float)
             except (KeyError, ValueError):
                 continue
     return None
@@ -47,8 +47,9 @@ def plot_raw_data_with_fit(
     Parameters
     ----------
     ds_raw : xr.Dataset
-        Raw dataset with ``depth`` and ``circuit`` coordinates and
-        ``state_<qubit>`` variables shaped ``[num_circuits, num_depths]``.
+        Raw dataset with ``depth`` and ``circuit`` coordinates and a
+        stacked ``state(qubit, circuit, depth)`` array or legacy
+        ``state_<qubit>`` variables.
     ds_fit : xr.Dataset or None
         Optional fit dataset containing survival probabilities and fitted
         curves vs depth.
@@ -73,7 +74,7 @@ def plot_raw_data_with_fit(
 
     for idx, qubit in enumerate(qubits):
         ax = axes[idx, 0]
-        qname = qubit.name
+        qname = getattr(qubit, "name", f"q{idx}")
         fit_results = fit_results or {}
 
         state_data = _get_qubit_state_data(ds_raw, qname)
@@ -81,8 +82,8 @@ def plot_raw_data_with_fit(
             ax.set_title(f"{qname} — no data")
             continue
 
-        if ds_fit is not None and f"survival_probability_{qname}" in ds_fit.data_vars:
-            survival_prob = ds_fit[f"survival_probability_{qname}"].values
+        if ds_fit is not None and "survival_probability" in ds_fit.data_vars:
+            survival_prob = ds_fit.survival_probability.sel(qubit=qname, drop=True).transpose("depth").values.astype(float)
         else:
             survival_prob = np.mean(state_data, axis=0)
         n_circuits = state_data.shape[0]
@@ -106,8 +107,8 @@ def plot_raw_data_with_fit(
 
         # Fitted curve
         fitted = None
-        if ds_fit is not None and f"fitted_curve_{qname}" in ds_fit.data_vars:
-            fitted = ds_fit[f"fitted_curve_{qname}"].values
+        if ds_fit is not None and "state_fit" in ds_fit.data_vars:
+            fitted = ds_fit.state_fit.sel(qubit=qname, drop=True).transpose("depth").values.astype(float)
         elif r.get("fitted_curve") is not None:
             fitted = r.get("fitted_curve")
 

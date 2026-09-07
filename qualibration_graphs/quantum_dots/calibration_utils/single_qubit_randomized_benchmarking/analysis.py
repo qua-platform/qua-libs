@@ -169,21 +169,21 @@ def _fit_single_qubit(
 
 
 def _get_qubit_state_data(ds_raw: xr.Dataset, qname: str) -> np.ndarray | None:
-    """Extract per-qubit state data, handling both naming conventions.
+    """Extract per-qubit state data, preferring the stacked ``state`` dataset."""
+    if "state" in ds_raw.data_vars:
+        try:
+            return ds_raw.state.sel(qubit=qname, drop=True).transpose("circuit", "depth").values.astype(float)
+        except (KeyError, ValueError):
+            pass
 
-    The ``XarrayDataFetcher`` regex groups ``state_q1``, ``state_q2`` into a
-    single ``state_q`` variable stacked along the ``qubit`` dimension.  This
-    helper checks for a per-qubit variable first, then falls back to a stacked
-    variable with a ``qubit`` dimension.
-    """
     var_name = f"state_{qname}"
     if var_name in ds_raw.data_vars:
-        return ds_raw[var_name].values
+        return ds_raw[var_name].transpose("circuit", "depth").values.astype(float)
     for candidate in ds_raw.data_vars:
         da = ds_raw[candidate]
         if candidate.startswith("state") and "qubit" in da.dims:
             try:
-                return da.sel(qubit=qname).values
+                return da.sel(qubit=qname, drop=True).transpose("circuit", "depth").values.astype(float)
             except (KeyError, ValueError):
                 continue
     return None
@@ -223,8 +223,8 @@ def fit_raw_data(
     depths = ds_raw.coords["depth"].values.astype(np.float64)
     results: dict[str, dict[str, Any]] = {}
 
-    for qubit in qubits:
-        qname = qubit.name
+    for qi, qubit in enumerate(qubits):
+        qname = getattr(qubit, "name", f"q{qi}")
         state_data = _get_qubit_state_data(ds_raw, qname)
         if state_data is None:
             logger.warning("No state variable for qubit %s — skipping.", qname)
@@ -250,39 +250,49 @@ def analyse_raw_data(
     Returns
     -------
     tuple
-        ``(ds_fit, fit_results)`` where ``ds_fit`` contains per-qubit
-        survival probabilities and fitted curves vs circuit depth.
+        ``(ds_fit, fit_results)`` where ``ds_fit`` contains stacked
+        per-qubit survival probabilities and fitted curves vs circuit depth.
     """
     fit_results = fit_raw_data(ds_raw, qubits, avg_gates_per_clifford)
 
     ds_fit = xr.Dataset(coords={"depth": ds_raw.coords["depth"]})
     depths = ds_raw.coords["depth"]
     qubit_names = []
+    survival_prob_rows = []
+    fitted_curve_rows = []
 
-    for qubit in qubits:
-        qname = qubit.name
+    for qi, qubit in enumerate(qubits):
+        qname = getattr(qubit, "name", f"q{qi}")
         qubit_names.append(qname)
 
         state_data = _get_qubit_state_data(ds_raw, qname)
         if state_data is None:
+            survival_prob_rows.append(np.full(len(depths), np.nan, dtype=float))
+            fitted_curve_rows.append(np.full(len(depths), np.nan, dtype=float))
             continue
 
         survival_prob = np.mean(state_data, axis=0)
-        ds_fit[f"survival_probability_{qname}"] = xr.DataArray(
-            survival_prob,
-            dims=["depth"],
-            coords={"depth": depths},
-        )
+        survival_prob_rows.append(np.asarray(survival_prob, dtype=float))
 
         fitted_curve = fit_results.get(qname, {}).get("fitted_curve")
         if fitted_curve is not None and len(fitted_curve) == len(depths):
-            ds_fit[f"fitted_curve_{qname}"] = xr.DataArray(
-                fitted_curve,
-                dims=["depth"],
-                coords={"depth": depths},
-            )
+            fitted_curve_rows.append(np.asarray(fitted_curve, dtype=float))
+        else:
+            fitted_curve_rows.append(np.full(len(depths), np.nan, dtype=float))
 
-    ds_fit = ds_fit.assign_coords(qubit=("qubit", qubit_names))
+    ds_fit = ds_fit.assign_coords(qubit=("qubit", qubit_names)).assign(
+        survival_probability=(["qubit", "depth"], np.stack(survival_prob_rows, axis=0)),
+        state_fit=(["qubit", "depth"], np.stack(fitted_curve_rows, axis=0)),
+        alpha=("qubit", [fit_results[q]["alpha"] for q in qubit_names]),
+        A=("qubit", [fit_results[q]["A"] for q in qubit_names]),
+        B=("qubit", [fit_results[q]["B"] for q in qubit_names]),
+        error_per_clifford=("qubit", [fit_results[q]["error_per_clifford"] for q in qubit_names]),
+        clifford_fidelity=("qubit", [fit_results[q]["clifford_fidelity"] for q in qubit_names]),
+        avg_gates_per_clifford=("qubit", [fit_results[q]["avg_gates_per_clifford"] for q in qubit_names]),
+        error_per_gate=("qubit", [fit_results[q]["error_per_gate"] for q in qubit_names]),
+        native_gate_fidelity=("qubit", [fit_results[q]["native_gate_fidelity"] for q in qubit_names]),
+        success=("qubit", [fit_results[q]["success"] for q in qubit_names]),
+    )
     return ds_fit, fit_results
 
 

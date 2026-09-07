@@ -23,7 +23,7 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubits
+from qualibration_libs.parameters.experiment import get_qubits
 
 
 # %% {Node initialisation}
@@ -56,9 +56,9 @@ Prerequisites:
     - Native gate operations (x90, x180, -x90, y90, y180, -y90) defined on the qubit XY channel.
 
 Datasets:
-    - `ds_raw`: Averaged survival probability versus circuit depth for each qubit and random circuit.
-    - `ds_fit`: Fitted RB decay traces and derived analysis variables used for plotting.
-    - `fit_results`: Per-qubit scalar fit summary, including fit success and native gate fidelity.
+    - `ds_raw`: untouched `state` stream fetched from the OPX, indexed by qubit, circuit, and depth.
+    - `ds_fit`: fitted RB decay traces and derived analysis variables used for plotting.
+    - `fit_results`: per-qubit scalar fit summary, including fit success and native gate fidelity.
 
 Results:
     - Per-qubit fitted RB decay parameters and the extracted average native gate fidelity.
@@ -84,7 +84,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    node.parameters.max_circuit_depth = 5
     pass
 
 
@@ -110,6 +109,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """
     # Select which qubits participate in this calibration
     node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
 
     # Build the Clifford lookup tables once on the host, before any QUA is generated.
     node.log("Building single-qubit Clifford tables...")
@@ -183,14 +183,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         decomp_length = declare(int)
 
         # Single-shot survival outcome stored per qubit, then averaged in stream processing.
-        state = declare(int)
-        state_st = {qubit.name: declare_output_stream() for qubit in qubits}
+        state = [declare(int) for _ in range(num_qubits)]
+        state_st = [declare_output_stream() for _ in range(num_qubits)]
+        # i_meas = [declare(fixed) for _ in range(num_qubits)]
+        # q_meas = [declare(fixed) for _ in range(num_qubits)]
+        # i_st = [declare_output_stream() for _ in range(num_qubits)]
+        # q_st = [declare_output_stream() for _ in range(num_qubits)]
 
         # RNG for on-PPU Clifford generation
         rng = Random(seed=node.parameters.seed)
 
         # Python loop over the relevant qubits
-        for qubit in qubits:
+        for j, qubit in enumerate(qubits):
             # ═════════════════════════════════════════════════════════════
             # Outermost loop: circuits
             # ═════════════════════════════════════════════════════════════
@@ -242,13 +246,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         # --- Initialize ---
-                        # Prepare the requested initial state before gate playback.
-                        qubit.initialize(
-                            target_state=node.parameters.target_state,
-                            max_loops=node.parameters.max_loops,
-                            conditional_drive=True,
-                        )
-
+                        # Perform the initialize macro
+                        qubit.initialize()
                         align()
 
                         # --- Gate sequence: d-1 random Cliffords ---
@@ -303,41 +302,27 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 clifford_decomp_qua[decomp_offset + gate_idx],
                             )
                             play_rb_gate(qubit, current_gate)
+                        align()
 
                         # --- Measure ---
                         # Measure the survival probability after the full RB sequence.
-                        align()
+                        s = qubit.measure(return_iq=False)
+                        assign(state[j], Cast.to_int(s))
+                        save(state[j], state_st[j])
+                        # save(i_meas, i_st[j])
+                        # save(q_meas, q_st[j])
 
-                        p = qubit.measure(return_iq=False)
-
                         align()
-                        # --- Compensation ---
                         qubit.voltage_sequence.ramp_to_zero()
 
-                        align()
-
-                        assign(
-                            state,
-                            Cast.to_int(p),
-                        )
-
-                        save(state, state_st[qubit.name])
-                        # save(i_meas, i_st[qubit.name])
-                        # save(q_meas, q_st[qubit.name])
-
-        # ── Stream processing ─────────────────────────────────────────
+        # ── Post-processing on the OPX before data reaches the PC ─────────
         # Buffer order matches loop nesting: circuit → depth → shot
         with stream_processing():
             n_st.save("n")
-            for qubit in qubits:
-                (
-                    state_st[qubit.name]
-                    .buffer(num_shots)
-                    .map(FUNCTIONS.average())
-                    .buffer(num_depths)
-                    .buffer(num_circuits)
-                    .save(f"state_{qubit.name}")
-                )
+            for j in range(num_qubits):
+                state_st[j].buffer(num_shots).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_circuits).save(f"state{j + 1}")
+                # i_st[j].buffer(num_shots).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_circuits).save(f"i{j + 1}")
+                # q_st[j].buffer(num_shots).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_circuits).save(f"q{j + 1}")
 
 
 # %% {Simulate}
@@ -395,7 +380,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit the RB exponential decay for each qubit."""
-    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True))
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True))
     node.results["ds_fit"], fit_results = analyse_raw_data(
         ds_processed,
         node.namespace["qubits"],
