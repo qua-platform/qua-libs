@@ -156,6 +156,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Retune the XY drive to (calibrated IF + df)
                         qubit.xy.update_frequency(intermediate_frequency + df)
 
+                        align()
                         # Play the selected gate at the current duration (chevron / time-Rabi)
                         qubit.macros[operation].apply(duration=t)
                         align()
