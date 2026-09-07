@@ -35,7 +35,7 @@ from qualibrate import QualibrationNode
 from quam_builder.architecture.superconducting.components.tunable_coupler import TunableCoupler
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
-from .curves import FreqFluxCurve, MeasuredCurve, _resolve_measured_curve, extras_run_id
+from .qubit_curves import FreqFluxCurve, MeasuredCurve, _resolve_measured_curve, extras_run_id
 from .node_storage import read_node_data_dict
 
 LogCallable = Callable[[str], None]
