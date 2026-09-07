@@ -68,8 +68,8 @@ Compensate distortion on the **moving-qubit** flux line before two-qubit tuning.
 
 | Step            | Node   | File                                                                                     |
 | --------------- | ------ | ---------------------------------------------------------------------------------------- |
-| Long timescale  | **17** | [`17_pi_vs_flux_long_distortions`](../1Q_calibrations/17_pi_vs_flux_long_distortions.py) |
-| Short timescale | **18** | [`18_cryoscope`](../1Q_calibrations/18_cryoscope.py)                                     |
+| Long timescale  | **17a / 17b** | [`17a_qubit_flux_long_distortion_qubitspec`](../1Q_calibrations/17a_qubit_flux_long_distortion_qubitspec.py) / [`17b_qubit_flux_long_distortion_ramsey`](../1Q_calibrations/17b_qubit_flux_long_distortion_ramsey.py) |
+| Short timescale | **17c** | [`17c_qubit_flux_short_distortion`](../1Q_calibrations/17c_qubit_flux_short_distortion.py)                                     |
 
 ### Qubit spectroscopy vs. flux delay (17)
 

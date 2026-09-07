@@ -26,6 +26,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Input line impedance in ohms. Default is 50 Ohm."""
     line_attenuation_in_db: Optional[int] = 0
     """Line attenuation in dB. Default is 0 dB."""
+    save_load_id: bool = False
+    """If True, record this run's snapshot index in each qubit's extras['qubit_spectroscopy_vs_flux_load_id'] so later nodes (e.g. 17a) can reload the freq-vs-flux curve without being given a run ID. Default is False."""
 
 
 class Parameters(
