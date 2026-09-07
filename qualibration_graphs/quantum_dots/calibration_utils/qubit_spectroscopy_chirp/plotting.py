@@ -5,6 +5,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 
+from calibration_utils.common_utils.plot_style import apply_qubit_outcome_style, empty_figure
 from qualang_tools.units import unit
 from qualibration_libs.analysis import lorentzian_peak
 
@@ -42,6 +43,8 @@ def plot_raw_data_with_fit(
     qubit_names = [str(v) for v in ds.qubit.values]
     qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
     n = len(qubit_names)
+    if n == 0:
+        return empty_figure("No qubit data available for chirp spectroscopy.")
     fig, axes = plt.subplots(1, n, figsize=(7 * n, 5), squeeze=False)
 
     for i, qname in enumerate(qubit_names):
@@ -94,6 +97,7 @@ def plot_individual_data_with_fit(
     """
     if "state" not in ds.data_vars:
         ax.text(0.5, 0.5, f"No data for {qubit_name}", transform=ax.transAxes, ha="center")
+        apply_qubit_outcome_style(ax, qubit_name, None, subtitle="No data")
         return
 
     detuning = ds.detuning.values
@@ -104,7 +108,8 @@ def plot_individual_data_with_fit(
     ax.plot(full_freq_GHz, signal)
     ax.set_xlabel("RF frequency [GHz]")
     ax.set_ylabel("State")
-    ax.set_title(f"qubit={qubit_name}", pad=30)
+    success = threshold_result.get("success") if threshold_result is not None else None
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Chirp spectroscopy")
 
     # Secondary x-axis: detuning in MHz
     ax2 = ax.twiny()

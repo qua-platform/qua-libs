@@ -5,6 +5,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 
+from calibration_utils.common_utils.plot_style import apply_qubit_outcome_style, empty_figure
 from qualang_tools.units import unit
 
 u = unit(coerce_to_integer=True)
@@ -14,6 +15,7 @@ def plot_raw_data_with_fit(
     ds: xr.Dataset,
     qubits: List,
     fits: xr.Dataset,
+    fit_results: dict | None = None,
 ):
     """
     Plot the qubit spectroscopy state traces with fitted curves.
@@ -34,12 +36,14 @@ def plot_raw_data_with_fit(
     """
     qubit_names = [str(v) for v in fits.qubit.values]
     n = len(qubit_names)
+    if n == 0:
+        return empty_figure("No qubit data available for qubit spectroscopy.")
     fig, axes = plt.subplots(1, n, figsize=(7 * n, 5), squeeze=False)
 
     for i, qname in enumerate(qubit_names):
         ax = axes[0, i]
         fit = fits.sel(qubit=qname)
-        plot_individual_data_with_fit(ax, ds, qname, fit)
+        plot_individual_data_with_fit(ax, ds, qname, fit, fit_results=(fit_results or {}).get(qname))
 
     fig.suptitle("Qubit spectroscopy")
     fig.tight_layout()
@@ -51,6 +55,7 @@ def plot_individual_data_with_fit(
     ds: xr.Dataset,
     qubit_name: str,
     fit: xr.Dataset = None,
+    fit_results: dict | None = None,
 ):
     """
     Plot one qubit's state trace with optional fit.
@@ -68,12 +73,14 @@ def plot_individual_data_with_fit(
     """
     if fit is None or "state" not in fit.data_vars:
         ax.text(0.5, 0.5, f"No data for {qubit_name}", transform=ax.transAxes, ha="center")
+        apply_qubit_outcome_style(ax, qubit_name, None, subtitle="No data")
         return
 
     (fit.assign_coords(full_freq_GHz=fit.full_freq / u.GHz).state).plot(ax=ax, x="full_freq_GHz")
     ax.set_xlabel("RF frequency [GHz]")
     ax.set_ylabel("State")
-    ax.set_title(f"qubit={qubit_name}", pad=30)
+    success = fit_results.get("success") if fit_results is not None else None
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Qubit spectroscopy")
 
     ax2 = ax.twiny()
     (fit.assign_coords(detuning_MHz=fit.detuning / u.MHz).state).plot(ax=ax2, x="detuning_MHz", label="")
@@ -94,6 +101,8 @@ def _plot_raw_iq_traces(ds: xr.Dataset, qubits: List) -> Figure:
     """Plot the averaged raw I and Q traces versus detuning for each qubit."""
     qubit_names = [str(v) for v in ds.qubit.values]
     n = len(qubit_names)
+    if n == 0:
+        return empty_figure("No IQ data available for qubit spectroscopy.")
     fig_iq, axes = plt.subplots(1, n, figsize=(7 * n, 5), squeeze=False)
 
     for idx, qname in enumerate(qubit_names):
@@ -109,7 +118,7 @@ def _plot_raw_iq_traces(ds: xr.Dataset, qubits: List) -> Figure:
         ax_q.set_ylabel("Q", color="C1")
         ax.tick_params(axis="y", labelcolor="C0")
         ax_q.tick_params(axis="y", labelcolor="C1")
-        ax.set_title(f"IQ vs frequency — {qname}")
+        apply_qubit_outcome_style(ax, qname, None, subtitle="IQ vs frequency")
         ax.legend(handles=[line_i, line_q])
 
     fig_iq.suptitle("Raw IQ signal")
@@ -121,6 +130,7 @@ def plot_all(
     ds: xr.Dataset,
     qubits: List,
     fits: xr.Dataset,
+    fit_results: dict | None = None,
     show: bool = True,
 ) -> dict[str, Figure]:
     """Build and return all 08b spectroscopy figures."""
@@ -129,6 +139,7 @@ def plot_all(
             ds,
             qubits,
             fits,
+            fit_results=fit_results,
         ),
         "iq_scatter": _plot_raw_iq_traces(ds, qubits),
     }

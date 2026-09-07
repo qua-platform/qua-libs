@@ -130,8 +130,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # state_st[i] : per-qubit thresholded state stream
         # n_st : shot counter for progress reporting
         state = [declare(int) for _ in range(num_qubits)]
-        state_st = [declare_stream() for _ in range(num_qubits)]
-        n_st = declare_stream()
+        state_st = [declare_output_stream() for _ in range(num_qubits)]
+        n_st = declare_output_stream()
 
         # Python loop over the qubits specified in the node parameters
         for i, qubit in enumerate(qubits):
