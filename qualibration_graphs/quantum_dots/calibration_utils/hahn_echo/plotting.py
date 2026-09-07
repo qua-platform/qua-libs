@@ -9,9 +9,9 @@ import numpy as np
 import xarray as xr
 from matplotlib.figure import Figure
 
-from calibration_utils.plot_style import (
-    apply_node_outcome_style,
-    node_success,
+from calibration_utils.common_utils.plot_style import (
+    apply_qubit_outcome_style,
+    qubit_success,
 )
 
 _TAU_XLABEL = "Idle delay τ [{unit}]"
@@ -26,6 +26,7 @@ def _tau_axis(tau_ns: np.ndarray) -> tuple[np.ndarray, str]:
 
 def plot_all(
     ds_fit: xr.Dataset,
+    fit_results: dict | None = None,
 ) -> dict[str, Figure]:
     """Create a multi-panel Hahn-echo figure (one column per qubit).
 
@@ -54,7 +55,7 @@ def plot_all(
 
     for i, qname in enumerate(qubit_names):
         ax = axes[0, i]
-        success = node_success(ds_fit, qname)
+        success = qubit_success(fit_results, qname)
 
         if "state" in ds_fit:
             y = ds_fit.state.sel(qubit=qname, drop=True).transpose("tau").values.astype(float)
@@ -77,7 +78,7 @@ def plot_all(
         ax.set_xlabel(_TAU_XLABEL.format(unit=time_unit))
         ax.set_ylabel("State")
         ax.set_ylim(-0.05, 1.05)
-        apply_node_outcome_style(ax, qname, success)
+        apply_qubit_outcome_style(ax, qname, success)
 
         if success is not False and "T2_echo" in ds_fit and qname in ds_fit.qubit.values:
             t2 = float(ds_fit["T2_echo"].sel(qubit=qname).values)

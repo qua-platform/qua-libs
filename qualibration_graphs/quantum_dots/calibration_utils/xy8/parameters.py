@@ -18,8 +18,6 @@ class NodeSpecificParameters(RunnableParameters):
     """Step size for the τ sweep in nanoseconds. Default is 100 ns (25 QUA clock cycle)."""
     use_simulated_data: bool = False
     """Whether to generate simulated data instead of measuring via the OPX."""
-    sim_noise_std: float = 0.03
-    """Gaussian noise std dev on simulated traces before clipping to [0, 1]."""
 
 
 class Parameters(

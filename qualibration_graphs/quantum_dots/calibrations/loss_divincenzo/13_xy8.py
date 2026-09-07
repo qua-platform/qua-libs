@@ -10,7 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 
 from calibration_utils.xy8 import (
     Parameters,
@@ -276,7 +276,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot decay traces and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
         node.results["ds_fit"],
-        node.namespace["qubits"],
+        node.results["fit_results"],
     )
     if not node.modes.external:
         plt.show()

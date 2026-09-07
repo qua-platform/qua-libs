@@ -52,7 +52,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         "tau": xr.DataArray(tau_values, attrs=tau_attrs),
     }
 
-    noise_std = float(getattr(node.parameters, "sim_noise_std", 0.03))
+    noise_std: float = 0.03
     state_rows = []
 
     for qubit in qubits:
