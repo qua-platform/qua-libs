@@ -19,7 +19,6 @@ from .analysis import (
 from .parameters import Parameters, baked_waveform
 from .plotting import (
     plot_fir_figures,
-    plot_fit,
     plot_raw_data,
     plot_raw_data_with_fit,
     plot_spectroscopy_curve,
@@ -41,7 +40,6 @@ __all__ = [
     "baked_waveform",
     "plot_raw_data_with_fit",
     "plot_raw_data",
-    "plot_fit",
     "plot_fir_figures",
     "plot_spectroscopy_curve",
 ]

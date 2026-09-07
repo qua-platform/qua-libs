@@ -14,7 +14,6 @@ from calibration_utils.qubit_flux_short_distortion import (
     fit_raw_data,
     log_fitted_results,
     plot_fir_figures,
-    plot_fit,
     plot_raw_data,
     plot_raw_data_with_fit,
     process_raw_dataset,
@@ -28,6 +27,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
+
 
 # %% {Node_parameters}
 description = """
@@ -80,6 +80,9 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
+    node.parameters.qubits = ["qA2"]
+    node.parameters.num_shots = 100
+    node.parameters.use_fir = True
     pass
 
 
@@ -92,6 +95,7 @@ stored_update_iir = node.parameters.update_iir
 stored_update_fir = node.parameters.update_fir
 stored_freq_to_flux_source = node.parameters.freq_to_flux_source
 stored_debug_plots = node.parameters.debug_plots
+stored_log_time_axis = node.parameters.log_time_axis
 
 
 # %% {Create_QUA_program}
@@ -276,6 +280,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.update_fir = stored_update_fir
     node.parameters.freq_to_flux_source = stored_freq_to_flux_source
     node.parameters.debug_plots = stored_debug_plots
+    node.parameters.log_time_axis = stored_log_time_axis
     if node.parameters.update_state_from_GUI:
         node.machine = stored_machine
         node.parameters.update_state = True
@@ -302,31 +307,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     if node.parameters.use_fir:
         fir_results = fit_fir_data(node.results["ds_fit"], node)
         node.namespace["fir_results"] = fir_results
-        node.results["fir_results"] = {
-            qn: {k: v for k, v in res.items() if not str(k).startswith("fig")} for qn, res in fir_results.items()
-        }
+        node.results["fir_results"] = fir_results
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot cryoscope freq, flux response, and IIR fit (plus debug/FIR when enabled).
-
-    Figure inventory (always generated):
-      flux_response                 — compact grid overview: data + IIR fit (+ FIR overlay).
-      iir_fitted_data                — IIR fit, one row per qubit (linear + log), so the
-                                        long-tau tail is visible on a log axis.
-      fir_fit_diagnostic_<qname>     — forward FIR fit 2x2: reconstruction/residual/NRMS-vs-taps.
-      fir_corrected_<qname>          — corrected response validation at 1 GS/s (the
-                                        "did predistortion flatten the step" figure).
-
-    Debug figures (``debug_plots=True``):
-      cryoscope_freq, unwrapped_phase, freq_vs_flux_curve, fir_resampled — compact
-      grid variants (from ``plot_raw_data_with_fit``).
-      raw_<qname>                    — raw state/I vs frame: line slices + 2D heatmap.
-      fir_inverse_diagnostic_<qname> — inverse FIR 3x2 diagnostic.
-      fir_stem_<qname>                — FIR coefficient stem plots.
-    """
+    """Plot cryoscope freq, flux response, and IIR fit (plus debug/FIR when enabled)."""
     if "ds_fit" not in node.results:
         return
     qubits = node.namespace.get("qubits", get_qubits(node))
@@ -341,13 +328,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fit_results,
         debug=debug_plots,
         fir_results=fir_results,
+        log_scale=node.parameters.log_time_axis,
     )
 
-    figures["iir_fitted_data"] = plot_fit(ds_fit, qubits, fit_results)
     if debug_plots:
         figures.update(plot_raw_data(node.results["ds_raw"], qubits))
-    if fir_results:
-        figures.update(plot_fir_figures(ds_fit, qubits, fir_results, debug=debug_plots))
+        if fir_results:
+            figures.update(plot_fir_figures(ds_fit, qubits, fir_results, debug=True))
 
     node.results["figures"] = figures
     plt.show()

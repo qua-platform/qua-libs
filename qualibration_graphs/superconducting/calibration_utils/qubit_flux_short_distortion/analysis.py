@@ -276,9 +276,9 @@ def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
          ``fir_max_taps`` taps and invert it for feedforward.
       4. Validate corrected response at 1 GS/s.
     """
-    from calibration_utils.qubit_flux_short_distortion.fir_utils import (
-        analyze_and_plot_inverse_fir_auto,
+    from calibration_utils.common_utils.flux_distortions.fir_utils import (
         estimate_noise_floor,
+        fit_inverse_fir_auto,
         resample_to_target_rate,
     )
     from scipy.signal import lfilter
@@ -310,7 +310,7 @@ def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
         # Single data-driven path: AIC selects L (<= fir_max_taps), GCV + L-curve
         # select the forward and inverse regularisation strengths. sigma and
         # lam_smooth are pinned by the cryoscope Nyquist; nothing else to tune.
-        h_fir, h_inv, _best_reconstructed, fig_fir_fit, fig_inv_fir, auto_info = analyze_and_plot_inverse_fir_auto(
+        h_fir, h_inv, _reconstructed, auto_info = fit_inverse_fir_auto(
             response=normalized_2gs,
             time=time_2gs,
             Ts=0.5,
@@ -329,7 +329,18 @@ def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
             "auto_criterion_forward": auto_info["criterion_forward"],
             "auto_criterion_inverse": auto_info["criterion_inverse"],
             "auto_forward_nrms": auto_info["forward_nrms"],
+            "forward_search": auto_info["forward_search"],
         }
+        correction_keys = (
+            "ideal_response",
+            "predistorted_response",
+            "corrected_response",
+            "corrected_from_measured",
+            "delta",
+            "res_fit",
+            "res_corr",
+        )
+        correction_data = {k: auto_info[k].tolist() for k in correction_keys}
 
         ideal_1gs = np.ones(len(normalized_1gs))
         predistorted = lfilter(h_inv, 1, ideal_1gs)
@@ -358,8 +369,10 @@ def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
             "time_1gs": ds_fit.time.values.tolist(),
             "time_2gs": time_2gs.tolist(),
             "normalized_2gs": normalized_2gs.tolist(),
+            "reconstructed_2gs": auto_info["reconstructed_2gs"].tolist(),
             "mode": "auto",
             **chosen_meta,
+            **correction_data,
             "noise_sigma_A_tail_std": noise_info["sigma_A"],
             "noise_sigma_B_first_diff": noise_info["sigma_B"],
             "noise_sigma_C_fit_implied": noise_info["sigma_C"],
@@ -369,9 +382,6 @@ def fit_fir_data(ds_fit: xr.Dataset, node) -> dict:
             "noise_ratio_max_min": noise_info["ratio_max_min"],
             "noise_estimate_status": noise_info["status"],
             "noise_estimate_msg": noise_info["msg_short"],
-            # matplotlib figures — excluded from node.results (not JSON-serialisable)
-            "fig_fir_fit": fig_fir_fit,
-            "fig_fir_inverse": fig_inv_fir,
         }
         sigma_C_str = "n/a" if noise_info["sigma_C"] is None else f"{noise_info['sigma_C']:.2e}"
         node.log(
