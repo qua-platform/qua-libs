@@ -147,7 +147,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # Python loop over the qubits specified in the node parameters
         for i, qubit in enumerate(qubits):
-            # Extract the qubit's intermediate frequency. Stored as an attribute of the qubit's XY drive object
+            # Remember calibrated IF so we can restore it after the detuning sweep
             intermediate_frequency = qubit.xy.intermediate_frequency
 
             # ── OUTER LOOP: average over shots ───────────────────────────
