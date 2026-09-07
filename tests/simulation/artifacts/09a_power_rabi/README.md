@@ -10,7 +10,7 @@ amplitude prefactor are fitted to extract the π-pulse amplitude.
 
 Prerequisites:
     - Having calibrated the resonators coupled to the sensor dots.
-    - Having calibrated the voltage points (empty, initialization, measurement).
+    - Having calibrated the voltage points (initialization, measurement).
     - Having calibrated the qubit frequency.
     - Having set the qubit gate duration.
 
@@ -47,7 +47,7 @@ quadratures 'I' and 'Q'. Default is False. |
 "active_gef". Default is "thermal". |
 | `qubits` | `['q1']` | A list of qubit names which should participate in the execution of the node. Default is None. |
 | `target_state` | `None` | The state you want to initialize into for heralded initialization. |
-| `max_loops` | `100` | Maximum number of initialization loops for heralded initialization. |
+| `max_loops` | `0` | Maximum number of initialization loops for heralded initialization. |
 | `return_n_loops` | `False` | Whether to return the number of times it has looped over the initialise sequence to achieve the desired result. |
 | `num_shots` | `1` | Number of averages to perform. Default is 100. |
 | `min_amp_factor` | `0.001` | Minimum amplitude factor for the x180 operation. Default is 0.001. |
@@ -55,7 +55,7 @@ quadratures 'I' and 'Q'. Default is False. |
 | `amp_factor_step` | `0.01` | Step size for the amplitude factor. Default is 0.01. |
 | `use_simulated_data` | `False` | Whether to generate simulated data instead of measuring via the OPX. Default False. |
 | `simulate` | `True` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
-| `simulation_duration_ns` | `40000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
+| `simulation_duration_ns` | `100000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
 | `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
 | `timeout` | `300` | Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s. |
 | `load_data_id` | `None` | Optional QUAlibrate node run index for loading historical data. Default is None. |
