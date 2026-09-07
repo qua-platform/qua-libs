@@ -274,9 +274,7 @@ def simulate_fir_correction(
 
     distorted_padded = np.concatenate([guard, response, guard])
     corrected_from_measured = conv_causal(distorted_padded, h_inv)[start:end]
-    correction_error_meas = np.linalg.norm(corrected_from_measured - ideal_response) / np.linalg.norm(
-        ideal_response
-    )
+    correction_error_meas = np.linalg.norm(corrected_from_measured - ideal_response) / np.linalg.norm(ideal_response)
 
     return {
         "ideal_response": ideal_response,
