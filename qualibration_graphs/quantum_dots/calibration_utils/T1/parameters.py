@@ -2,7 +2,6 @@ from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
 from calibration_utils.heralded_initialization_utils.parameters import HeraldedInitializeParameters
-from calibration_utils.measurement_utils.parameters import ParityDiffAnalysisParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -22,6 +21,5 @@ class Parameters(
     NodeSpecificParameters,
     HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
-    ParityDiffAnalysisParameters,
 ):
     pass

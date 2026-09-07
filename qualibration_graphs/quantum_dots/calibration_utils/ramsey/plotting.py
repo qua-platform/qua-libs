@@ -1,8 +1,8 @@
-"""Plotting for the ±δ Ramsey parity-difference analysis.
+"""Plotting for the ±δ Ramsey analysis.
 
 Produces a two-panel figure per qubit:
 
-1. **+δ trace** — parity-difference vs idle time at positive detuning,
+1. **+δ trace** — state probability vs idle time at positive detuning,
    with the damped-cosine fit overlaid and fitted frequency annotated.
 2. **−δ trace** — same for the negative detuning.
 """
@@ -15,20 +15,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
-
-
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
-    qubits: List[Any],
-    analysis_signal: str,
-) -> List[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
 
 def _plot_trace_ax(
     ax: "plt.Axes",
@@ -36,7 +22,6 @@ def _plot_trace_ax(
     qubit_name: str,
     trace_fit: dict | None,
     label: str,
-    analysis_signal: str = "E_p1_given_p0_0",
     color: str = "b",
     fit_color: str = "r",
 ) -> None:
@@ -58,7 +43,7 @@ def _plot_trace_ax(
         ax.plot(t_plot, fitted, f"{fit_color}-", lw=1.5, alpha=0.9, label="Damped cosine")
 
     ax.set_xlabel("Idle time (ns)")
-    ax.set_ylabel(analysis_signal)
+    ax.set_ylabel("State")
     ax.set_ylim(-0.05, 1.05)
 
     f_hz = trace_fit.get("ramsey_freq", np.nan)
@@ -74,7 +59,6 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> "plt.Figure":
     """Plot ±δ Ramsey analysis for each qubit.
 
@@ -82,7 +66,7 @@ def plot_raw_data_with_fit(
     * Column 1 — +δ trace with damped-cosine fit.
     * Column 2 — −δ trace with damped-cosine fit.
     """
-    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    qubit_names = [str(v) for v in ds.qubit.values]
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -109,7 +93,6 @@ def plot_raw_data_with_fit(
             qname,
             fit_plus,
             label=f"+δ ({det_plus_mhz:+.1f} MHz)",
-            analysis_signal=analysis_signal,
             color="b",
             fit_color="r",
         )
@@ -119,12 +102,11 @@ def plot_raw_data_with_fit(
             qname,
             fit_minus,
             label=f"−δ ({det_minus_mhz:+.1f} MHz)",
-            analysis_signal=analysis_signal,
             color="C2",
             fit_color="C3",
         )
 
-    fig.suptitle(f"Ramsey ±δ triangulation ({analysis_signal})")
+    fig.suptitle("Ramsey ±δ triangulation")
     fig.tight_layout()
     return fig
 
@@ -135,7 +117,6 @@ def plot_all(
     *,
     ds_fit: xr.Dataset | None = None,
     fit_results: dict | None = None,
-    analysis_signal: str = "E_p1_given_p0_0",
     show: bool = True,
 ) -> dict[str, "plt.Figure"]:
     """Build and return all 11a Ramsey figures."""
@@ -145,7 +126,6 @@ def plot_all(
             ds_fit,
             qubits,
             fit_results or {},
-            analysis_signal=analysis_signal,
         )
     }
     if show:

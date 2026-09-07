@@ -60,7 +60,6 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -98,7 +97,7 @@ class FitParameters:
 
 
 def _fit_single_trace(
-    pdiff: np.ndarray,
+    state_trace: np.ndarray,
     detuning_hz: np.ndarray,
 ) -> Dict[str, Any]:
     r"""Fit a single detuning-sweep trace with free oscillation frequency.
@@ -109,8 +108,8 @@ def _fit_single_trace(
 
     Parameters
     ----------
-    pdiff : 1-D array (n_det,)
-        Parity-difference values.
+    state_trace : 1-D array (n_det,)
+        State-probability values.
     detuning_hz : 1-D array (n_det,)
         Detuning values in Hz.
 
@@ -120,7 +119,7 @@ def _fit_single_trace(
         ``osc_freq`` (Hz⁻¹), ``amplitude``, ``delta0`` (Hz),
         ``bg``, ``C``, ``S``, ``fitted_curve``, ``success``.
     """
-    y = np.asarray(pdiff, dtype=float)
+    y = np.asarray(state_trace, dtype=float)
     delta = np.asarray(detuning_hz, dtype=float)
     n = len(delta)
     d_step = abs(delta[1] - delta[0]) if n > 1 else 1.0
@@ -231,7 +230,7 @@ def _analyse_single_qubit(
     Parameters
     ----------
     signal_2d : 2-D array (n_tau, n_det)
-        Conditional expectation data for each idle time.
+        State-probability data for each idle time.
     detuning_hz : 1-D array (n_det,)
         Detuning values in Hz.
     tau_ns : 1-D array (n_tau,)
@@ -324,24 +323,26 @@ def _analyse_single_qubit(
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no post-processing)."""
+    return ds
+
+
 def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit resonance detuning via independent per-trace DE + joint extraction.
 
-    Expects joint-outcome streams processed by
-    :func:`~calibration_utils.measurement_utils.measurement_streams.process_joint_streams`,
-    so the analysis uses ``{analysis_signal}_{qubit}`` (default
-    ``E_p1_given_p0_0_<qubit>``) of shape ``(n_tau, n_det)``, with
-    coordinates ``tau`` (ns) and ``detuning`` (Hz).
+    Expects ``state(qubit, detuning, tau)`` with coordinates ``tau`` (ns)
+    and ``detuning`` (Hz).
 
     Parameters
     ----------
     ds : xr.Dataset
         Raw measurement data.
     node : QualibrationNode
-        Calibration node (provides qubit list and ``analysis_signal``).
+        Calibration node.
 
     Returns
     -------
@@ -351,23 +352,20 @@ def fit_raw_data(
         ``_diag`` with raw solver outputs for plotting.
     """
     qubits = node.namespace["qubits"]
+    qubit_names = [str(v) for v in ds.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
     tau_ns = np.asarray(ds.tau.values, dtype=float)
     n_tau = len(tau_ns)
     n_det = len(detuning_hz)
 
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars:
+        if qname not in qubits_by_name:
+            raise KeyError(f"Qubit {qname!r} present in dataset but missing from node.namespace['qubits'].")
+
+        if "state" not in ds.data_vars:
             fp = FitParameters(
                 freq_offset=0.0,
                 contrast=0.0,
@@ -378,13 +376,7 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        signal_da = ds[signal_var]
-        if "tau" in signal_da.dims and "detuning" in signal_da.dims:
-            signal_2d = signal_da.transpose("tau", "detuning").values.astype(float)
-        else:
-            signal_2d = np.asarray(signal_da.values, dtype=float)
-            if signal_2d.shape == (n_det, n_tau):
-                signal_2d = signal_2d.T
+        signal_2d = ds.state.sel(qubit=qname, drop=True).transpose("tau", "detuning").values.astype(float)
 
         raw = _analyse_single_qubit(signal_2d, detuning_hz, tau_ns)
 
@@ -407,7 +399,8 @@ def analyse_raw_data(
     node: QualibrationNode,
 ) -> tuple[xr.Dataset, dict, dict]:
     """Fit two-tau detuning data and return public results plus full diagnostics."""
-    ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
+    ds_processed = process_raw_dataset(ds_raw, node)
+    ds_fit, fit_results_full = fit_raw_data(ds_processed, node)
     fit_results_public = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
     return ds_fit, fit_results_public, fit_results_full
 

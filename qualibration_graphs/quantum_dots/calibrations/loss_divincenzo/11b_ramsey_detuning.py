@@ -17,27 +17,21 @@ from qualibrate.core import QualibrationNode
 from quam_config import Quam
 from calibration_utils.ramsey_detuning import (
     Parameters,
-    analyse_raw_data,
+    fit_raw_data,
     log_fitted_results,
     plot_all,
+    process_raw_dataset,
 )
-from qualibration_libs.parameters import get_qubits
-from calibration_utils.measurement_utils.measurement_streams import (
-    declare_streams,
-    save_measurement,
-    buffer_streams,
-    process_streams,
-)
+from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Node initialisation}
 description = """
-RAMSEY DETUNING PARITY DIFFERENCE (TWO-τ)
+RAMSEY DETUNING (TWO-τ)
 
 Sweeps the drive-frequency detuning at two fixed idle times (τ_short
-and τ_long) and measures pre/post parity via joint-outcome streams;
-analysis uses the selected conditional expectation (default: P(second=1|first=0)).
+and τ_long) and measures the resulting state probability with thresholded PSB readout.
 
 The two traces act as a Vernier: wide fringes (short τ) localise the
 resonance coarsely, narrow fringes (long τ) sharpen the estimate.  Each
@@ -50,6 +44,21 @@ gives the exponential decay rate γ and dephasing time T₂*.
 Prerequisites:
     - Calibrated resonators and voltage points (empty - init - measure).
     - Calibrated X90 pulse amplitude and frequency.
+
+Datasets:
+    - ``ds_raw``: untouched ``state`` stream fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs. Used by ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict. Used by logging, ``node.outcomes``, and ``update_state``.
+
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the two-trace joint fit passed the node criteria.
+    - ``freq_offset`` [Hz]: fitted resonance detuning.
+    - ``contrast``: short-τ Ramsey contrast.
+    - ``decay_rate`` [1 / ns]: fitted Ramsey envelope decay rate.
+    - ``t2_star`` [ns]: fitted Ramsey dephasing time.
+
+Figures (``node.results["figures"]``):
+    - ``"raw_data_with_fit"``: short-τ and long-τ detuning sweeps with cosine-fit overlays.
 
 State update:
     - qubit.xy.intermediate_frequency
@@ -78,18 +87,17 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the 2D detuning × two-τ Ramsey sweep and the QUA pulse sequence."""
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # A class for unit conversion
     u = unit(coerce_to_integer=True)
 
     # Select which qubits participate in this calibration
     node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
 
-    # Number of shots per detuning point
-    n_avg = node.parameters.num_shots
+    n_avg = node.parameters.num_shots  # repetitions averaged at each (detuning, tau) point
 
     # Two idle times in clock cycles (4 ns each)
     idle_times_cc = np.array(
@@ -118,91 +126,74 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
         # Real-time variables:
-        # t      : QUA variable representing the idle time
-        # df     : QUA variable representing the frequency detuning
-        # n      : shot counter
-        # p_post, p_pre : post- / pre-manipulation measurement outcomes
+        # t       : idle time in clock cycles
+        # df      : drive-frequency detuning [Hz]
+        # n       : shot counter
+        # state[i]: thresholded post-manipulation measurement (0/1) for qubit i
         t = declare(int)
         df = declare(int)
         n = declare(int)
-        p_post, p_pre, streams = declare_streams(node, qubits)
+        state = [declare(int) for _ in range(num_qubits)]
+        state_st = [declare_output_stream() for _ in range(num_qubits)]
         n_st = declare_output_stream()
 
         # Python loop over the relevant qubits
-        for qubit in qubits:
-            # Extract the current IF of the qubit's XY component
+        for i, qubit in enumerate(qubits):
+            # Remember calibrated IF so we can restore it after the detuning sweep
             intermediate_frequency = qubit.xy.intermediate_frequency
 
             # ── OUTER LOOP: average over shots ───────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)  # tell the PC which shot we are on
+                save(n, n_st)
 
                 # ── MIDDLE LOOP: sweep all detuning values ───────────────────────
                 with for_(*from_array(df, detuning_values)):
 
-                    # ── INNER LOOP: repeat sweep for idle_time_ns and idle_time_ns_long ───────────────────────
+                    # ── INNER LOOP: repeat the sweep at the short and long idle times ─────
                     with for_(*from_array(t, idle_times_cc)):
 
-                        # Reset the drive frequency and frame before each Ramsey shot, for initialization
+                        # Set the qubit drive frequency to the stored IF, for initialization
                         qubit.xy.update_frequency(intermediate_frequency)
                         reset_frame(qubit.xy.name)
-
-                        # Start with global align
                         align()
-
-                        # Optional pre-measurement parity readout for conditional analysis
-                        if node.parameters.parity_measurement:
-                            qubit.empty()
-                            a1 = qubit.measure()
 
                         # Perform the initialize macro
                         qubit.initialize()
-
-                        # Update the frequency after the initialize macro
-                        qubit.xy.update_frequency(intermediate_frequency + df)
-
-                        # Global align before and after the operate -> wait -> operate -> measure shot
                         align()
 
+                        # Retune the XY drive to (calibrated IF + df)
+                        qubit.xy.update_frequency(intermediate_frequency + df)
+
+                        align()
+                        # Apply the Ramsey π/2 – idle – π/2 sequence for this detuning/τ point.
                         with strict_timing_():
-                            # Apply the Ramsey π/2 – idle – π/2 sequence for this detuning/τ point.
                             qubit.x90()
                             wait(t, qubit.xy.name)
                             qubit.x90()
-
                         align()
 
-                        # Measure the post-sequence state
-                        a2 = qubit.measure()
+                        # Thresholded PSB readout → averaged state probability
+                        s = qubit.measure()
+                        assign(state[i], Cast.to_int(s))
+                        save(state[i], state_st[i])
 
-                        # Just in-case there is any residual output, ramp everything down to zero
+                        # Return gate voltages to zero before the next shot.
+                        align()
                         qubit.voltage_sequence.ramp_to_zero()
-                        align()
 
-                        # Cast the bool output of the measurement to an int (0 or 1) for averaging purposes
-                        assign(p_post, Cast.to_int(a2))
-
-                        # Optionally cast the pre-parity measurement to an int too
-                        if node.parameters.parity_measurement:
-                            assign(p_pre, Cast.to_int(a1))
-
-                        # Save the measurements to the relevant streams, dependent on whether node.parameters.parity_measurement
-                        save_measurement(node, qubit.name, p_pre, p_post, streams)
-
-            # Reset the XY freqency to the initially stored IF
+            # Restore the calibrated IF after the detuning sweep.
             qubit.xy.update_frequency(intermediate_frequency)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
-            n_tau = len(idle_times_cc)
-            n_detuning = len(detuning_values)
-            for qubit in qubits:
-                # Save order per stream: for each qubit, sweep all tau values.
-                # n_tau axis - group points along the two idle times axis
-                # n_detuning - group points along the detuning values
-                # Result: 2D joint-outcome counts vs (n_detuning, n_tau) per qubit
-                buffer_streams(node, qubit.name, streams, n_detuning, n_tau)
+            for i in range(num_qubits):
+                # Save order: for each detuning, sweep both idle-time values.
+                # .buffer(len(idle_times_cc))    → inner axis = tau
+                # .buffer(len(detuning_values))  → outer axis = detuning
+                # .average()                     → average over shots
+                # Result: 2D state vs (detuning, tau) per qubit
+                state_st[i].buffer(len(idle_times_cc)).buffer(len(detuning_values)).average().save(f"state{i + 1}")
 
 
 # %% {Simulate}
@@ -226,7 +217,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program, and fetch raw joint-outcome data into ``ds_raw``."""
+    """Connect to the QOP, execute the QUA program, and fetch raw state data into ``ds_raw``."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -259,25 +250,14 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = get_qubits(node)
 
 
-# %% {Process_raw_data}
-@node.run_action(skip_if=node.parameters.simulate)
-def process_raw_data(node: QualibrationNode[Parameters, Quam]):
-    """Compute conditional expectations from joint-outcome streams."""
-    node.results["ds_raw"] = process_streams(
-        node.results["ds_raw"],
-        [q.name for q in node.namespace["qubits"]],
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("tau", "detuning"),
-    )
-
-
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data."""
-    node.results["ds_fit"], fit_results, node.namespace["_fit_results_full"] = analyse_raw_data(
-        node.results["ds_raw"], node
-    )
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results_full = fit_raw_data(ds_processed, node)
+    fit_results = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
+    node.namespace["_fit_results_full"] = fit_results_full
     node.results["fit_results"] = fit_results
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     node.outcomes = {
@@ -296,7 +276,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.namespace["qubits"],
         ds_fit=node.results.get("ds_fit"),
         fit_results=fit_with_diag,
-        analysis_signal=node.parameters.analysis_signal,
+        show=False,
     )
     if not node.modes.external:
         plt.show()

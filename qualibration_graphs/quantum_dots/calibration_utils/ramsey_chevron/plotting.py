@@ -1,10 +1,10 @@
-"""Plotting for the Ramsey chevron joint-outcome / conditional-readout analysis.
+"""Plotting for the Ramsey chevron analysis.
 
 Produces a multi-panel figure per qubit with two columns:
 
-1. **Chevron heatmap** — 2-D map of the analysis signal (detuning vs idle
+1. **Chevron heatmap** — 2-D map of the state response (detuning vs idle
    time) with the fitted resonance frequency overlaid.
-2. **Resonance profile** — tau-averaged signal vs detuning, showing the
+2. **Resonance profile** — tau-averaged state response vs detuning, showing the
    measured data and the analytic sum-of-cosines model fit.
 """
 
@@ -15,20 +15,6 @@ from typing import Any, List
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
-
-
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
-    qubits: List[Any],
-    analysis_signal: str,
-) -> List[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
 
 
 def _plot_chevron_ax(
@@ -72,20 +58,20 @@ def _plot_resonance_ax(
     qubit_name: str,
     fit_result: dict | None = None,
 ) -> None:
-    """Plot mean parity vs detuning with detuning on the y-axis."""
+    """Plot mean state response vs detuning with detuning on the y-axis."""
     diag = (fit_result or {}).get("_diag")
     if diag is None:
         ax.text(0.5, 0.5, "No diagnostics", transform=ax.transAxes, ha="center")
         ax.set_title(f"{qubit_name} — Resonance")
         return
 
-    mean_parity = diag["mean_parity"]
-    mean_parity_fit = diag.get("mean_parity_fit")
+    mean_state = diag["mean_state"]
+    mean_state_fit = diag.get("mean_state_fit")
 
-    ax.scatter(mean_parity, detuning_mhz, s=9, color="blue", alpha=0.6, label="Mean signal")
-    if mean_parity_fit is not None:
+    ax.scatter(mean_state, detuning_mhz, s=9, color="blue", alpha=0.6, label="Mean signal")
+    if mean_state_fit is not None:
         ax.plot(
-            mean_parity_fit,
+            mean_state_fit,
             detuning_mhz,
             "r-",
             lw=1.5,
@@ -117,7 +103,6 @@ def plot_raw_data_with_fit(
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> "plt.Figure":
     """Plot Ramsey chevron for each qubit.
 
@@ -125,13 +110,8 @@ def plot_raw_data_with_fit(
     * Column 1 — Raw chevron heatmap with resonance marker.
     * Column 2 — Mean signal vs detuning with model fit and T2*.
 
-    Parameters
-    ----------
-    analysis_signal
-        Data-variable prefix for the plotted 2-D trace (same as
-        ``node.parameters.analysis_signal``).
     """
-    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    qubit_names = [str(v) for v in ds.qubit.values]
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -148,13 +128,12 @@ def plot_raw_data_with_fit(
     )
 
     for i, qname in enumerate(qubit_names):
-        signal_var = f"{analysis_signal}_{qname}"
         fr = fit_results.get(qname, {})
 
         tau_ns = np.asarray(ds.tau.values, dtype=float)
         detuning_mhz = np.asarray(ds.detuning.values, dtype=float) * 1e-6
 
-        if signal_var not in ds.data_vars:
+        if "state" not in ds.data_vars:
             for j in range(ncol):
                 axes[i, j].text(
                     0.5,
@@ -165,7 +144,7 @@ def plot_raw_data_with_fit(
                 )
             continue
 
-        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
+        signal_2d = ds.state.sel(qubit=qname, drop=True).transpose("detuning", "tau").values.astype(float)
 
         _plot_chevron_ax(axes[i, 0], signal_2d, tau_ns, detuning_mhz, qname, fr)
         _plot_resonance_ax(axes[i, 1], detuning_mhz, qname, fr)
@@ -181,15 +160,17 @@ def plot_all(
     *,
     ds_fit: xr.Dataset | None = None,
     fit_results: dict | None = None,
-    analysis_signal: str = "E_p1_given_p0_0",
+    show: bool = True,
 ) -> dict[str, "plt.Figure"]:
     """Build and return all 11c Ramsey-chevron figures."""
-    return {
+    figures = {
         "raw_data_with_fit": plot_raw_data_with_fit(
             ds_raw,
             ds_fit,
             qubits,
             fit_results or {},
-            analysis_signal=analysis_signal,
         )
     }
+    if show:
+        plt.show()
+    return figures

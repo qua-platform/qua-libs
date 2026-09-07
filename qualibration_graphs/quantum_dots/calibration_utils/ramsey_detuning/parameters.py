@@ -6,7 +6,6 @@ from qualibration_libs.parameters import (
 )
 
 from calibration_utils.heralded_initialization_utils.parameters import HeraldedInitializeParameters
-from calibration_utils.measurement_utils.parameters import ParityDiffAnalysisParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -14,18 +13,6 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 300
     """Number of averages to perform. Default is 100."""
-
-
-class Parameters(
-    NodeParameters,
-    CommonNodeParameters,
-    NodeSpecificParameters,
-    HeraldedInitializeParameters,
-    QubitsExperimentNodeParameters,
-    ParityDiffAnalysisParameters,
-):
-    """Parameter set for 11b_ramsey_detuning."""
-
     detuning_span_in_mhz: float = 5.0
     """Frequency detuning span. Default 5MHz."""
     detuning_step_in_mhz: float = 0.1
@@ -34,3 +21,13 @@ class Parameters(
     """Short idle time in ns (gives wide fringes for coarse localisation)."""
     idle_time_long_ns: int = 400
     """Long idle time in ns (gives narrow fringes for precision + T2* via amplitude ratio)."""
+
+
+class Parameters(
+    NodeParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+    HeraldedInitializeParameters,
+    QubitsExperimentNodeParameters,
+):
+    """Parameter set for 11b_ramsey_detuning."""

@@ -1,8 +1,8 @@
-"""Plotting for the T₁ relaxation analysis (joint-outcome / conditional signals).
+"""Plotting for the T₁ relaxation analysis.
 
 Produces a single-panel figure per qubit showing:
 
-* Selected analysis signal vs idle time τ (scatter + line).
+* Thresholded state probability vs idle time τ (scatter + line).
 * Exponential-decay fit overlaid.
 * Extracted T₁ and amplitude annotated in the title.
 """
@@ -15,34 +15,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
-
-
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
-    qubits: List[Any],
-    analysis_signal: str,
-) -> List[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
 
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> "plt.Figure":
     """Plot T₁ decay with exponential fit for each qubit.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Dataset with ``{analysis_signal}_{qubit}`` and ``tau`` coordinate.
+        Dataset with ``state(qubit, tau)`` and ``tau`` coordinate.
     ds_fit : xr.Dataset or None
         Unused — kept for API consistency with other plotting modules.
     qubits : list
@@ -51,7 +36,7 @@ def plot_raw_data_with_fit(
         Qubit name → fit-result dict as returned by
         :func:`~.analysis.fit_raw_data`.
     """
-    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    qubit_names = [str(v) for v in ds.qubit.values]
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -83,9 +68,8 @@ def plot_raw_data_with_fit(
         offset = fr.get("offset", np.nan)
         success = fr.get("success", False)
 
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var in ds.data_vars:
-            y_trace = np.asarray(ds[signal_var].values, dtype=float)
+        if "state" in ds.data_vars:
+            y_trace = ds.state.sel(qubit=qname, drop=True).transpose("tau").values.astype(float)
         else:
             y_trace = np.full_like(tau_ns, np.nan)
 
@@ -114,7 +98,7 @@ def plot_raw_data_with_fit(
             )
 
         ax.set_xlabel(f"Idle time ({tau_unit})")
-        ax.set_ylabel(analysis_signal)
+        ax.set_ylabel("State")
         ax.set_ylim(-0.05, 1.05)
 
         # Title with fit parameters
@@ -134,7 +118,7 @@ def plot_raw_data_with_fit(
         ax.legend(loc="upper right", fontsize=8)
 
     fig.suptitle(
-        f"T₁ relaxation — exponential decay fit ({analysis_signal})",
+        "T₁ relaxation — exponential decay fit",
         fontsize=12,
     )
     fig.tight_layout()
@@ -147,7 +131,6 @@ def plot_all(
     *,
     ds_fit: xr.Dataset | None = None,
     fit_results: dict | None = None,
-    analysis_signal: str = "E_p1_given_p0_0",
     show: bool = True,
 ) -> dict[str, "plt.Figure"]:
     """Build and return all T1 figures."""
@@ -157,7 +140,6 @@ def plot_all(
             ds_fit,
             qubits,
             fit_results or {},
-            analysis_signal=analysis_signal,
         )
     }
     if show:

@@ -1,8 +1,7 @@
-"""T₁ relaxation-time analysis from conditional readout statistics.
+"""T₁ relaxation-time analysis from thresholded state readout.
 
-This module fits an exponential decay to the selected analysis signal
-(``E_p1_given_p0_0`` or ``E_p1_given_p0_1`` from joint-outcome streams)
-measured after a π–idle–measure sequence:
+This module fits an exponential decay to the thresholded state
+probability measured after a π–idle–measure sequence:
 
 .. math::
 
@@ -23,7 +22,7 @@ that avoids local-minimum traps common with gradient-based methods.
 Extracted quantities
 --------------------
 * **T1** — spin-lattice relaxation time (ns).
-* **amplitude** — decay amplitude A (dimensionless parity units).
+* **amplitude** — decay amplitude A (dimensionless state-probability units).
 * **offset** — asymptotic baseline (τ → ∞).
 * **decay_rate** — 1/T₁ (1/ns).
 """
@@ -39,7 +38,6 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -56,7 +54,7 @@ class FitParameters:
     T1 : float
         Relaxation time T₁ (ns).
     amplitude : float
-        Decay amplitude A (conditional-probability units).
+        Decay amplitude A (state-probability units).
     offset : float
         Asymptotic baseline offset.
     decay_rate : float
@@ -167,23 +165,25 @@ def _fit_single_qubit(
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no post-processing)."""
+    return ds
+
+
 def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit T₁ exponential decay for each qubit.
 
-    Expects a 1-D dataset with coordinate ``tau`` (ns), joint streams
-    ``p0_p0_<qubit>``, …, and processed variables
-    ``E_p1_given_p0_0_<qubit>`` / ``E_p1_given_p0_1_<qubit>`` (from
-    :func:`~calibration_utils.measurement_utils.measurement_streams.process_joint_streams`).
+    Expects a dataset with ``state(qubit, tau)`` and coordinate ``tau`` (ns).
 
     Parameters
     ----------
     ds : xr.Dataset
-        Raw measurement data (after joint-stream processing).
+        Raw measurement data.
     node : QualibrationNode
-        Calibration node (provides qubit list and ``analysis_signal``).
+        Calibration node.
 
     Returns
     -------
@@ -194,19 +194,15 @@ def fit_raw_data(
     """
     qubits = node.namespace["qubits"]
     tau_ns = np.asarray(ds.tau.values, dtype=float)
-
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars:
+        if qname not in qubits_by_name:
+            raise KeyError(f"Qubit {qname!r} present in dataset but missing from node.namespace['qubits'].")
+        if "state" not in ds.data_vars:
             fp = FitParameters(
                 T1=np.nan,
                 amplitude=0.0,
@@ -217,7 +213,7 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        trace = np.asarray(ds[signal_var].values, dtype=float)
+        trace = ds.state.sel(qubit=qname, drop=True).transpose("tau").values.astype(float)
         raw = _fit_single_qubit(trace, tau_ns)
 
         fp = FitParameters(
@@ -239,7 +235,8 @@ def analyse_raw_data(
     node: QualibrationNode,
 ) -> tuple[xr.Dataset, dict, dict]:
     """Fit T1 data and return public results plus full diagnostics."""
-    ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
+    ds_processed = process_raw_dataset(ds_raw, node)
+    ds_fit, fit_results_full = fit_raw_data(ds_processed, node)
     fit_results_public = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
     return ds_fit, fit_results_public, fit_results_full
 

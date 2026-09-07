@@ -1,8 +1,8 @@
-"""Ramsey chevron analysis: mean-parity resonance + T2* extraction.
+"""Ramsey chevron analysis: mean-state resonance + T2* extraction.
 
 Strategy
 --------
-1. **Resonance finding** — The tau-averaged parity vs detuning is fitted
+1. **Resonance finding** — The tau-averaged state response vs detuning is fitted
    to the exact finite-window model using ``differential_evolution``
    (global optimizer).  The model uses the physical (unshifted) tau
    values and a combined exponential + Gaussian decay envelope:
@@ -18,7 +18,7 @@ Strategy
 
 2. **T2* extraction** — The effective T2* is the 1/e time of the
    combined envelope ``exp(-γτ - (σ_g τ)²)``.  The primary estimate
-   comes from the mean-parity model; an exponential-decay fit to the
+   comes from the mean-state model; an exponential-decay fit to the
    near-resonance time trace provides a fallback when the decay is
    poorly constrained.
 """
@@ -34,16 +34,15 @@ import xarray as xr
 from scipy.optimize import curve_fit, differential_evolution
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
 
-# ── Mean-parity resonance model ──────────────────────────────────────────────
+# ── Mean-state resonance model ───────────────────────────────────────────────
 
 
 def _make_mean_ramsey_model(tau_ns: np.ndarray):
-    r"""Return a model for the tau-averaged Ramsey parity vs detuning.
+    r"""Return a model for the tau-averaged Ramsey state response vs detuning.
 
     The exact mean over the finite tau grid is
 
@@ -136,7 +135,7 @@ def _fit_exponential_decay(
 ) -> float | None:
     """Fit a simple exponential decay ``bg + A·exp(-γt)`` to a time trace.
 
-    Used as a fallback T2* estimator when the mean-parity model cannot
+    Used as a fallback T2* estimator when the mean-state model cannot
     reliably constrain the decay rate (e.g. when T2* exceeds the
     measurement window).
 
@@ -145,7 +144,7 @@ def _fit_exponential_decay(
     tau_ns : array
         Idle-time values in nanoseconds.
     trace : array
-        Averaged parity-difference values near resonance.
+        Averaged state-probability values near resonance.
     t_span : float
         Total duration of the measurement window (ns).
 
@@ -186,7 +185,7 @@ def _fit_exponential_decay(
 
 
 def _validate_t2_star(
-    pdiff: np.ndarray,
+    state_2d: np.ndarray,
     tau_ns: np.ndarray,
     freq_offset: float,
     detuning_hz: np.ndarray,
@@ -197,15 +196,15 @@ def _validate_t2_star(
 ) -> tuple[float, float, float]:
     """Validate T2* from the DE fit and fall back if poorly constrained.
 
-    If T2* from the mean-parity model is much larger than the
+    If T2* from the mean-state model is much larger than the
     measurement window, the data cannot distinguish any decay from
     zero.  In that case, try an exponential fit to the near-resonance
     averaged time trace.
 
     Parameters
     ----------
-    pdiff : 2-D array (n_det, n_tau)
-        Parity-difference matrix.
+    state_2d : 2-D array (n_det, n_tau)
+        State-probability matrix.
     tau_ns : 1-D array (n_tau,)
         Idle-time values in nanoseconds.
     freq_offset : float
@@ -215,14 +214,14 @@ def _validate_t2_star(
     resonance_idx : int
         Index into *detuning_hz* closest to resonance.
     decay_rate_de, sigma_g_de, t2_star_de : float
-        Values from the mean-parity DE fit.
+        Values from the mean-state DE fit.
 
     Returns
     -------
     (gamma, sigma_g, t2_star) : tuple of float
         Best available decay-rate components and effective T2* (ns).
     """
-    n_det, n_tau = pdiff.shape
+    n_det, n_tau = state_2d.shape
     t_span = float(tau_ns[-1] - tau_ns[0]) if n_tau > 1 else 1.0
 
     # Accept the DE result if T2* is physically constrained by the data.
@@ -233,7 +232,7 @@ def _validate_t2_star(
     half_w = max(1, n_det // 20)
     lo = max(0, resonance_idx - half_w)
     hi = min(n_det, resonance_idx + half_w + 1)
-    near_trace = np.mean(pdiff[lo:hi, :], axis=0)
+    near_trace = np.mean(state_2d[lo:hi, :], axis=0)
     gamma_exp = _fit_exponential_decay(tau_ns, near_trace, t_span)
     if gamma_exp is not None:
         return gamma_exp, 0.0, 1.0 / gamma_exp
@@ -245,7 +244,7 @@ def _validate_t2_star(
 
 
 def _analyse_single_qubit(
-    pdiff: np.ndarray,
+    state_2d: np.ndarray,
     detuning_hz: np.ndarray,
     tau_ns: np.ndarray,
 ) -> Dict[str, Any]:
@@ -253,7 +252,7 @@ def _analyse_single_qubit(
 
     The analysis proceeds in two stages:
 
-    1. **Resonance finding** — Fit the tau-averaged parity profile to the
+    1. **Resonance finding** — Fit the tau-averaged state profile to the
        exact finite-window sum-of-cosines model using
        ``differential_evolution``.  The model includes a combined
        exponential + Gaussian decay envelope (5 parameters: amp, δ₀, γ,
@@ -265,8 +264,8 @@ def _analyse_single_qubit(
 
     Parameters
     ----------
-    pdiff : 2-D array (n_det, n_tau)
-        Parity-difference measurement matrix.
+    state_2d : 2-D array (n_det, n_tau)
+        State-probability measurement matrix.
     detuning_hz : 1-D array (n_det,)
         Detuning values in Hz.
     tau_ns : 1-D array (n_tau,)
@@ -279,29 +278,29 @@ def _analyse_single_qubit(
         (1/ns), ``gauss_decay_rate`` (1/ns), ``success`` (bool), and
         ``_diag`` (diagnostic data for plotting).
     """
-    n_det, n_tau = pdiff.shape
+    n_det, n_tau = state_2d.shape
 
-    # ── Step 1: Fit mean parity vs detuning ──────────────────────────────
-    mean_parity = np.mean(pdiff, axis=1)
+    # ── Step 1: Fit mean state vs detuning ───────────────────────────────
+    mean_state = np.mean(state_2d, axis=1)
     model = _make_mean_ramsey_model(tau_ns)
 
     # Find the most prominent feature (works for both peak and dip)
-    median_val = float(np.median(mean_parity))
-    abs_dev = np.abs(mean_parity - median_val)
+    median_val = float(np.median(mean_state))
+    abs_dev = np.abs(mean_state - median_val)
     extremum_idx = int(np.argmax(abs_dev))
 
     freq_offset = float(detuning_hz[extremum_idx])
     resonance_idx = extremum_idx
-    mean_parity_fit = None
+    mean_state_fit = None
     decay_rate = np.nan
     sigma_g = 0.0
     t2_star = np.nan
 
     try:
-        ptp = float(np.ptp(mean_parity))
+        ptp = float(np.ptp(mean_state))
         det_min, det_max = float(detuning_hz.min()), float(detuning_hz.max())
         t_span = float(tau_ns[-1] - tau_ns[0]) if n_tau > 1 else 1.0
-        y_min, y_max = float(mean_parity.min()), float(mean_parity.max())
+        y_min, y_max = float(mean_state.min()), float(mean_state.max())
 
         # Parameter bounds: (amp, x0, gamma, sigma_g, bg)
         de_bounds = [
@@ -313,7 +312,7 @@ def _analyse_single_qubit(
         ]
 
         def _objective(params):
-            return np.sum((model(detuning_hz, *params) - mean_parity) ** 2)
+            return np.sum((model(detuning_hz, *params) - mean_state) ** 2)
 
         de_result = differential_evolution(
             _objective,
@@ -330,10 +329,10 @@ def _analyse_single_qubit(
         sigma_g = float(popt[3])
         resonance_idx = int(np.argmin(np.abs(detuning_hz - freq_offset)))
         t2_star = _effective_t2_star(decay_rate, sigma_g)
-        mean_parity_fit = model(detuning_hz, *popt)
+        mean_state_fit = model(detuning_hz, *popt)
         is_peak = popt[0] > 0
         _logger.debug(
-            "Ramsey mean-parity fit (DE, %s): f_offset=%.3f MHz, " "gamma=%.5f 1/ns, sigma_g=%.5f 1/ns, T2*=%.1f ns",
+            "Ramsey mean-state fit (DE, %s): f_offset=%.3f MHz, " "gamma=%.5f 1/ns, sigma_g=%.5f 1/ns, T2*=%.1f ns",
             "peak" if is_peak else "dip",
             freq_offset * 1e-6,
             decay_rate,
@@ -342,13 +341,13 @@ def _analyse_single_qubit(
         )
     except Exception:
         _logger.debug(
-            "Mean-parity fit failed; using raw extremum at %.3f MHz",
+            "Mean-state fit failed; using raw extremum at %.3f MHz",
             freq_offset * 1e-6,
         )
 
     # ── Step 2: Validate / refine T2* ────────────────────────────────────
     decay_rate, sigma_g, t2_star = _validate_t2_star(
-        pdiff,
+        state_2d,
         tau_ns,
         freq_offset,
         detuning_hz,
@@ -367,8 +366,8 @@ def _analyse_single_qubit(
         "gauss_decay_rate": float(sigma_g),
         "success": success,
         "_diag": {
-            "mean_parity": mean_parity,
-            "mean_parity_fit": mean_parity_fit,
+            "mean_state": mean_state,
+            "mean_state_fit": mean_state_fit,
             "resonance_idx": resonance_idx,
         },
     }
@@ -377,25 +376,25 @@ def _analyse_single_qubit(
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no post-processing)."""
+    return ds
+
+
 def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit resonance frequency offset and T2* for each qubit.
 
-    Expects joint-outcome streams processed by
-    :func:`~calibration_utils.measurement_utils.measurement_streams.process_joint_streams`,
-    so the analysis uses ``{analysis_signal}_{qubit}`` (default
-    ``E_p1_given_p0_0_<qubit>``) of shape ``(n_detuning, n_tau)``.
+    Expects ``state(qubit, detuning, tau)``.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Measurement data with coordinates ``detuning`` (Hz) and ``tau``
-        (ns), and conditional-expectation variables after joint-stream
-        processing.
+        Measurement data with coordinates ``detuning`` (Hz) and ``tau`` (ns).
     node : QualibrationNode
-        Calibration node (provides qubit list and ``analysis_signal``).
+        Calibration node.
 
     Returns
     -------
@@ -405,21 +404,18 @@ def fit_raw_data(
         ``_diag`` key with diagnostic arrays for plotting.
     """
     qubits = node.namespace["qubits"]
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
+    qubit_names = [str(v) for v in ds.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
     tau_ns = np.asarray(ds.tau.values, dtype=float)
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars:
+        if qname not in qubits_by_name:
+            raise KeyError(f"Qubit {qname!r} present in dataset but missing from node.namespace['qubits'].")
+
+        if "state" not in ds.data_vars:
             fp = FitParameters(
                 freq_offset=0.0,
                 t2_star=np.nan,
@@ -430,8 +426,8 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
-        result = _analyse_single_qubit(signal_2d, detuning_hz, tau_ns)
+        state_2d = ds.state.sel(qubit=qname, drop=True).transpose("detuning", "tau").values.astype(float)
+        result = _analyse_single_qubit(state_2d, detuning_hz, tau_ns)
 
         fp = FitParameters(
             freq_offset=result["freq_offset"],
@@ -452,7 +448,8 @@ def analyse_raw_data(
     node: QualibrationNode,
 ) -> tuple[xr.Dataset, dict, dict]:
     """Fit Ramsey chevron data and return public results plus full diagnostics."""
-    ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
+    ds_processed = process_raw_dataset(ds_raw, node)
+    ds_fit, fit_results_full = fit_raw_data(ds_processed, node)
     fit_results_public = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
     return ds_fit, fit_results_public, fit_results_full
 

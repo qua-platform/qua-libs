@@ -1,4 +1,4 @@
-"""1-D Ramsey parity-difference analysis with ±δ triangulation.
+"""1-D Ramsey analysis with ±δ triangulation.
 
 This module analyses data from a Ramsey experiment where the idle time τ
 between two π/2 pulses is swept at **two symmetric detunings** ±δ from
@@ -43,7 +43,6 @@ import xarray as xr
 from scipy.optimize import differential_evolution
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
 
 _logger = logging.getLogger(__name__)
 
@@ -66,7 +65,7 @@ def _damped_cosine(
     t : array
         Time values (ns), shifted so t[0] = 0.
     offset : float
-        Baseline (off-resonance parity level).
+        Baseline (off-resonance state level).
     amp : float
         Oscillation amplitude (contrast).
     freq : float
@@ -175,7 +174,7 @@ def _fit_single_trace(
 
 @dataclass
 class FitParameters:
-    """Extracted parameters from a ±δ Ramsey parity-difference measurement.
+    """Extracted parameters from a ±δ Ramsey measurement.
 
     Attributes
     ----------
@@ -219,7 +218,7 @@ def _analyse_single_qubit(
     Parameters
     ----------
     signal_2d : 2-D array (2, n_tau)
-        Analysis signal for [+δ, −δ] detunings (same layout as former ``pdiff``).
+        State-probability traces for [+δ, −δ] detunings.
     tau_ns : 1-D array (n_tau,)
         Idle-time values in nanoseconds.
     detuning_hz : 1-D array (2,)
@@ -281,24 +280,26 @@ def _analyse_single_qubit(
 # ── Public API ───────────────────────────────────────────────────────────────
 
 
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no post-processing)."""
+    return ds
+
+
 def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Fit Ramsey frequency and T₂* for each qubit using ±δ triangulation.
 
-    Expects joint-outcome streams processed by
-    :func:`~calibration_utils.measurement_utils.measurement_streams.process_joint_streams`,
-    so the analysis uses ``{analysis_signal}_{qubit}`` (default
-    ``E_p1_given_p0_0_<qubit>``) of shape (2, n_tau), with coordinates
-    ``detuning`` (2 values: [+δ, −δ] in Hz) and ``tau`` (idle time in ns).
+    Expects ``state(qubit, detuning, tau)`` with coordinates ``detuning``
+    (2 values: ``[+δ, −δ]`` in Hz) and ``tau`` (idle time in ns).
 
     Parameters
     ----------
     ds : xr.Dataset
         Raw measurement data.
     node : QualibrationNode
-        Calibration node (provides qubit list and ``analysis_signal``).
+        Calibration node.
 
     Returns
     -------
@@ -309,21 +310,16 @@ def fit_raw_data(
     """
     qubits = node.namespace["qubits"]
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
-
-    analysis_signal = getattr(node.parameters, "analysis_signal", "E_p1_given_p0_0")
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
     tau_ns = np.asarray(ds.tau.values, dtype=float)
+    qubit_names = [str(v) for v in ds.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
 
     fit_results: Dict[str, Dict[str, Any]] = {}
 
     for qname in qubit_names:
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars:
+        if qname not in qubits_by_name:
+            raise KeyError(f"Qubit {qname!r} present in dataset but missing from node.namespace['qubits'].")
+        if "state" not in ds.data_vars:
             fp = FitParameters(
                 freq_offset=0.0,
                 t2_star=np.nan,
@@ -335,7 +331,7 @@ def fit_raw_data(
             fit_results[qname] = asdict(fp)
             continue
 
-        signal_2d = np.asarray(ds[signal_var].values, dtype=float)
+        signal_2d = ds.state.sel(qubit=qname, drop=True).transpose("detuning", "tau").values.astype(float)
         result = _analyse_single_qubit(signal_2d, tau_ns, detuning_hz)
 
         fp = FitParameters(
@@ -358,7 +354,8 @@ def analyse_raw_data(
     node: QualibrationNode,
 ) -> tuple[xr.Dataset, dict, dict]:
     """Fit Ramsey ±δ data and return public results plus full diagnostics."""
-    ds_fit, fit_results_full = fit_raw_data(ds_raw, node)
+    ds_processed = process_raw_dataset(ds_raw, node)
+    ds_fit, fit_results_full = fit_raw_data(ds_processed, node)
     fit_results_public = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
     return ds_fit, fit_results_public, fit_results_full
 

@@ -1,4 +1,4 @@
-"""Plotting for the two-τ Ramsey detuning-sweep conditional-readout analysis.
+"""Plotting for the two-τ Ramsey detuning-sweep analysis.
 
 Produces a two-row figure per qubit:
 
@@ -17,27 +17,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from calibration_utils.measurement_utils.measurement_streams import get_parity_item_names
-
-
-def _get_qubit_names_from_ds(
-    ds: xr.Dataset,
-    qubits: List[Any],
-    analysis_signal: str,
-) -> List[str]:
-    return get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
-
 
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
     ds_fit: xr.Dataset | None,
     qubits: List[Any],
     fit_results: dict,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> "plt.Figure":
     """Plot two-τ Ramsey detuning-sweep analysis for each qubit.
 
@@ -47,8 +32,7 @@ def plot_raw_data_with_fit(
     Parameters
     ----------
     ds : xr.Dataset
-        Raw dataset with ``{analysis_signal}_<qubit>``, ``detuning``, and ``tau``
-        coordinates.
+        Dataset with ``state(qubit, detuning, tau)``, ``detuning``, and ``tau`` coordinates.
     ds_fit : xr.Dataset or None
         Unused — kept for API consistency with 10a/10c plotting.
     qubits : list
@@ -56,10 +40,8 @@ def plot_raw_data_with_fit(
     fit_results : dict
         Qubit name → fit-result dict as returned by
         :func:`~.analysis.fit_raw_data`.
-    analysis_signal : str
-        Data variable prefix for the plotted signal (same as ``node.parameters.analysis_signal``).
     """
-    qubit_names = _get_qubit_names_from_ds(ds, qubits, analysis_signal)
+    qubit_names = [str(v) for v in ds.qubit.values]
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return fig
@@ -90,15 +72,8 @@ def plot_raw_data_with_fit(
         gamma = fr.get("decay_rate", np.nan)
         success = fr.get("success", False)
 
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var in ds.data_vars:
-            sig_da = ds[signal_var]
-            if "tau" in sig_da.dims and "detuning" in sig_da.dims:
-                signal_2d = sig_da.transpose("tau", "detuning").values.astype(float)
-            else:
-                signal_2d = np.asarray(sig_da.values, dtype=float)
-                if signal_2d.shape == (len(detuning_hz), n_tau):
-                    signal_2d = signal_2d.T
+        if "state" in ds.data_vars:
+            signal_2d = ds.state.sel(qubit=qname, drop=True).transpose("tau", "detuning").values.astype(float)
         else:
             signal_2d = np.full((n_tau, len(detuning_hz)), np.nan)
 
@@ -142,7 +117,7 @@ def plot_raw_data_with_fit(
                 )
 
             ax.set_xlabel("Detuning (MHz)")
-            ax.set_ylabel(analysis_signal)
+            ax.set_ylabel("State")
             ax.set_ylim(-0.05, 1.05)
 
             tf = trace_fits[ti] if ti < len(trace_fits) else {}
@@ -180,7 +155,6 @@ def plot_all(
     *,
     ds_fit: xr.Dataset | None = None,
     fit_results: dict | None = None,
-    analysis_signal: str = "E_p1_given_p0_0",
     show: bool = True,
 ) -> dict[str, "plt.Figure"]:
     """Build and return all 11b Ramsey-detuning figures."""
@@ -190,7 +164,6 @@ def plot_all(
             ds_fit,
             qubits,
             fit_results or {},
-            analysis_signal=analysis_signal,
         )
     }
     if show:
