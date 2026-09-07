@@ -1,9 +1,4 @@
-"""Unit tests for fit_raw_data in 08b_qubit_spectroscopy.
-
-Verifies that fit_raw_data correctly fits Lorentzian peaks and dips,
-selects between 1- and 2-peak models via BIC, and assigns the correct
-frequency to each qubit (and its readout qubit when 2 peaks are found).
-"""
+"""Unit tests for ``fit_raw_data`` in ``08b_qubit_spectroscopy``."""
 
 from __future__ import annotations
 
@@ -13,7 +8,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from calibration_utils.qubit_spectroscopy_parity_diff.analysis import fit_raw_data
+from calibration_utils.qubit_spectroscopy.analysis import fit_raw_data
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -39,9 +34,8 @@ def _make_qubit(name: str, rf_freq: float) -> SimpleNamespace:
     return SimpleNamespace(name=name, xy=xy)
 
 
-def _make_node(analysis_signal: str = "E_p2_given_p1_0") -> SimpleNamespace:
+def _make_node() -> SimpleNamespace:
     params = SimpleNamespace(
-        analysis_signal=analysis_signal,
         frequency_span_in_mhz=20.0,
     )
     qubits = [_make_qubit("q1", RF_FREQ_Q1), _make_qubit("q2", RF_FREQ_Q2)]
@@ -59,7 +53,6 @@ def _detuning_coord() -> xr.DataArray:
 def _make_ds_single_peak(
     centers=None,
     amp=PEAK_AMP,
-    analysis_signal: str = "E_p2_given_p1_0",
 ) -> xr.Dataset:
     """Single Lorentzian peak per qubit with realistic noise."""
     if centers is None:
@@ -67,25 +60,23 @@ def _make_ds_single_peak(
     n = len(DETUNINGS)
     return xr.Dataset(
         {
-            f"{analysis_signal}_q1": xr.DataArray(
-                _lorentzian(DETUNINGS, centers["q1"], PEAK_FWHM, amp)
-                + RNG.normal(0, NOISE_STD, n),
-                dims="detuning",
-            ),
-            f"{analysis_signal}_q2": xr.DataArray(
-                _lorentzian(DETUNINGS, centers["q2"], PEAK_FWHM, amp)
-                + RNG.normal(0, NOISE_STD, n),
-                dims="detuning",
+            "state": xr.DataArray(
+                np.stack(
+                    [
+                        _lorentzian(DETUNINGS, centers["q1"], PEAK_FWHM, amp) + RNG.normal(0, NOISE_STD, n),
+                        _lorentzian(DETUNINGS, centers["q2"], PEAK_FWHM, amp) + RNG.normal(0, NOISE_STD, n),
+                    ]
+                ),
+                dims=("qubit", "detuning"),
             ),
         },
-        coords={"detuning": _detuning_coord()},
+        coords={"qubit": ["q1", "q2"], "detuning": _detuning_coord()},
     )
 
 
 def _make_ds_single_dip(
     centers=None,
     amp=PEAK_AMP,
-    analysis_signal: str = "E_p2_given_p1_0",
 ) -> xr.Dataset:
     """Single Lorentzian dip per qubit (baseline at 0.5) with realistic noise."""
     if centers is None:
@@ -94,24 +85,25 @@ def _make_ds_single_dip(
     n = len(DETUNINGS)
     return xr.Dataset(
         {
-            f"{analysis_signal}_q1": xr.DataArray(
-                baseline - _lorentzian(DETUNINGS, centers["q1"], PEAK_FWHM, amp)
-                + RNG.normal(0, NOISE_STD, n),
-                dims="detuning",
-            ),
-            f"{analysis_signal}_q2": xr.DataArray(
-                baseline - _lorentzian(DETUNINGS, centers["q2"], PEAK_FWHM, amp)
-                + RNG.normal(0, NOISE_STD, n),
-                dims="detuning",
+            "state": xr.DataArray(
+                np.stack(
+                    [
+                        baseline
+                        - _lorentzian(DETUNINGS, centers["q1"], PEAK_FWHM, amp)
+                        + RNG.normal(0, NOISE_STD, n),
+                        baseline
+                        - _lorentzian(DETUNINGS, centers["q2"], PEAK_FWHM, amp)
+                        + RNG.normal(0, NOISE_STD, n),
+                    ]
+                ),
+                dims=("qubit", "detuning"),
             ),
         },
-        coords={"detuning": _detuning_coord()},
+        coords={"qubit": ["q1", "q2"], "detuning": _detuning_coord()},
     )
 
 
-def _make_ds_two_peaks(
-    analysis_signal: str = "E_p2_given_p1_0",
-) -> xr.Dataset:
+def _make_ds_two_peaks() -> xr.Dataset:
     """Two well-separated Lorentzian peaks of equal amplitude with noise.
 
     Uses a dedicated RNG so the result is deterministic regardless of
@@ -122,41 +114,42 @@ def _make_ds_two_peaks(
     n = len(DETUNINGS)
     return xr.Dataset(
         {
-            f"{analysis_signal}_q1": xr.DataArray(
-                _lorentzian(DETUNINGS, 1e6, narrow_fwhm, PEAK_AMP)
-                + _lorentzian(DETUNINGS, 8e6, narrow_fwhm, PEAK_AMP)
-                + rng.normal(0, NOISE_STD, n),
-                dims="detuning",
-            ),
-            f"{analysis_signal}_q2": xr.DataArray(
-                _lorentzian(DETUNINGS, -1e6, narrow_fwhm, PEAK_AMP)
-                + _lorentzian(DETUNINGS, -8e6, narrow_fwhm, PEAK_AMP)
-                + rng.normal(0, NOISE_STD, n),
-                dims="detuning",
+            "state": xr.DataArray(
+                np.stack(
+                    [
+                        _lorentzian(DETUNINGS, 1e6, narrow_fwhm, PEAK_AMP)
+                        + _lorentzian(DETUNINGS, 8e6, narrow_fwhm, PEAK_AMP)
+                        + rng.normal(0, NOISE_STD, n),
+                        _lorentzian(DETUNINGS, -1e6, narrow_fwhm, PEAK_AMP)
+                        + _lorentzian(DETUNINGS, -8e6, narrow_fwhm, PEAK_AMP)
+                        + rng.normal(0, NOISE_STD, n),
+                    ]
+                ),
+                dims=("qubit", "detuning"),
             ),
         },
-        coords={"detuning": _detuning_coord()},
+        coords={"qubit": ["q1", "q2"], "detuning": _detuning_coord()},
     )
 
 
 # ── Tests: dataset structure ─────────────────────────────────────────────────
 
 
-def test_fit_raw_data_adds_pdiff_with_correct_dims():
+def test_fit_raw_data_preserves_state_with_correct_dims():
     node = _make_node()
     ds = _make_ds_single_peak()
     ds_fit, _ = fit_raw_data(ds, node)
 
-    assert "pdiff" in ds_fit.data_vars
-    assert set(ds_fit.pdiff.dims) == {"qubit", "detuning"}
+    assert "state" in ds_fit.data_vars
+    assert set(ds_fit.state.dims) == {"qubit", "detuning"}
 
 
-def test_fit_raw_data_pdiff_has_correct_qubit_coords():
+def test_fit_raw_data_state_has_correct_qubit_coords():
     node = _make_node()
     ds = _make_ds_single_peak()
     ds_fit, _ = fit_raw_data(ds, node)
 
-    assert list(ds_fit.pdiff.qubit.values) == ["q1", "q2"]
+    assert list(ds_fit.state.qubit.values) == ["q1", "q2"]
 
 
 def test_fit_raw_data_adds_full_freq_coord():
@@ -272,11 +265,11 @@ def test_two_peaks_readout_frequency_populated():
 
 
 def test_fit_raw_data_raises_on_missing_signal_var():
-    """fit_raw_data should raise KeyError if signal variables are missing."""
+    """fit_raw_data should raise KeyError if the state variable is missing."""
     node = _make_node()
     ds = xr.Dataset(
         {"random_var": xr.DataArray(np.zeros(len(DETUNINGS)), dims="detuning")},
         coords={"detuning": _detuning_coord()},
     )
-    with pytest.raises(KeyError, match="E_p2_given_p1_0_q1"):
+    with pytest.raises(KeyError, match="Expected variable 'state' not found in dataset."):
         fit_raw_data(ds, node)

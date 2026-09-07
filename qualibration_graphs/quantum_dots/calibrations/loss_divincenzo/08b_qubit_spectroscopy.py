@@ -1,4 +1,5 @@
 # %% {Imports}
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from dataclasses import asdict
@@ -12,7 +13,6 @@ from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
 from quam_config import QubitQuam as Quam
-from calibration_utils.measurement_utils import declare_streams, save_measurement
 from calibration_utils.qubit_spectroscopy import (
     Parameters,
     fit_raw_data,
@@ -23,7 +23,7 @@ from calibration_utils.qubit_spectroscopy import (
 )
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubits
+from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.core import tracked_updates
 
 # %% {Node initialisation}
@@ -33,22 +33,29 @@ QUBIT SPECTROSCOPY
 This node sweeps the qubit drive frequency around the current RF estimate and
 measures the resulting response via PSB. When the drive frequency crosses
 the Larmor frequency, the signal as measured via PSB develops a resonant feature
-that is fitted to extract the updated qubit frequency. Optionally can perform a parity
-measurement, which includes a pre-shot measurement. 
+that is fitted to extract the updated qubit frequency.
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
     - Having calibrated the PSB readout scheme.
     - Having a reasonable initial RF frequency estimate for the selected qubits.
 
-Data:
-    - `ds_raw`: dataarray of raw data
-    - `ds_processed`: averaged parity streams and averaged raw I/Q traces versus detuning.
-    - `ds_fit`: fitted spectroscopy traces, fitted curves, resonance positions, and linewidths.
+Datasets:
+    - `ds_raw`: untouched thresholded `state` and raw I/Q streams fetched from the OPX (never modified after acquisition).
+    - `ds_fit`: processed spectroscopy traces plus fit outputs and derived coordinates. Used by `plot_data`.
+    - `fit_results`: compact per-qubit calibration dict (`asdict(FitParameters)`). Used by logging, `node.outcomes`, and `update_state`.
 
-Plots:
-    - `qubit_spectroscopy`: parity-difference trace and fitted curve for each qubit.
-    - `iq_scatter`: averaged raw I and Q traces versus drive detuning for each qubit.
+Results (`node.results["fit_results"][qubit]`):
+    - `success`: whether the spectroscopy fit passed the node criteria.
+    - `frequency` [Hz]: fitted qubit Larmor frequency.
+    - `relative_freq` [Hz]: fitted detuning relative to the current RF frequency.
+    - `fwhm` [Hz]: linewidth of the primary fitted peak.
+    - `num_peaks`: number of Lorentzian peaks selected by model comparison.
+    - `readout_qubit_frequency` [Hz]: optional fitted frequency for the preferred-readout qubit.
+
+Figures (`node.results["figures"]`):
+    - `"qubit_spectroscopy"`: state-probability trace with fitted curve overlays.
+    - `"iq_scatter"`: averaged raw I and Q traces versus drive detuning.
 
 State update:
     - Update the qubit Larmor frequency from the fitted primary peak.
@@ -79,7 +86,7 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the 1D frequency-detuning sweep and the QUA pulse sequence."""
 
     u = unit(coerce_to_integer=True)
 
@@ -87,21 +94,22 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
 
-    n_avg = node.parameters.num_shots  # The number of averages
+    n_avg = node.parameters.num_shots  # repetitions averaged at each detuning point
 
     # Build the detuning sweep
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span // 2, +span // 2, step)
 
-    # Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
+    # Temporary drive settings applied before calling `qubit.x180()`.
     operation_len = node.parameters.operation_len_in_ns
 
-    # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+    # Pulse amplitude prefactor must stay within [-2, 2) for QUA fixed-point arithmetic.
     operation_amp_factor = node.parameters.operation_amplitude_factor
 
-    # Change the qubit's amplitude and pulse duration as a tracked change, optionally approved as a node update later
+    # Stage temporary pulse settings that are later reverted before permanent state updates.
     node.namespace["tracked_qubits"] = []
     for qubit in qubits:
         with tracked_updates(qubit, auto_revert=False, dont_assign_to_none=True) as q:
@@ -121,111 +129,71 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
 
         # Real-time variables:
-        # n  : shot counter
-        # p1 : post-manipulation measurement outcome (0 = empty, 1 = loaded)
-        # p0 : pre-manipulation measurement outcome (only used when parity_measurement=True, otherwise None)
-        # df : integer frequency detuning value
+        # state[i] : thresholded post-manipulation measurement (0/1) for qubit i
+        # n        : shot counter
+        # df       : integer frequency detuning value
         n = declare(int)
         df = declare(int)
 
         # Streams:
-        # measurement_streams : stores the per-qubit assigned value, parity difference if node.parameters.parity_measurement = True
-        # i_st : stores the per-qubit raw I value from the measurement
-        # q_st : stores the per-qubit raw Q value from the measurement
-        # n_st : stores the shot counter n, allowing the PC to track the progress
-        p1, p0, measurement_streams = declare_streams(node, qubits, stream_fn=declare_output_stream)
-        i_st = {qubit.name: declare_output_stream() for qubit in qubits}
-        q_st = {qubit.name: declare_output_stream() for qubit in qubits}
+        # state_st[i] : per-qubit thresholded state stream
+        # i_st, q_st : averaged raw I/Q readout traces
+        # n_st : shot counter for progress reporting
+        state = [declare(int) for _ in range(num_qubits)]
+        state_st = [declare_output_stream() for _ in range(num_qubits)]
+        i_st = [declare_output_stream() for _ in range(num_qubits)]
+        q_st = [declare_output_stream() for _ in range(num_qubits)]
         n_st = declare_output_stream()
 
         # Python loop over the qubits specified in the node parameters
-        for qubit in qubits:
+        for i, qubit in enumerate(qubits):
             # Extract the qubit's intermediate frequency. Stored as an attribute of the qubit's XY drive object
             intermediate_frequency = qubit.xy.intermediate_frequency
 
             # ── OUTER LOOP: average over shots ───────────────────────────
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)  # tell the PC which shot we are on
+                save(n, n_st)
 
                 # ── INNER LOOP: sweep frequency detuning ────────────────
                 with for_(*from_array(df, dfs)):
-                    # Global align at the start of each shot
-                    align()
 
-                    # ── STEP 1: Preparation & Initialization ────────────────
-
-                    # Optional pre-measurement at the empty bias point (parity readout)
-                    if node.parameters.parity_measurement:
-                        qubit.empty()
-                        a1 = qubit.measure()
+                    # Set the qubit drive frequency to the stored IF, for initialization
+                    qubit.xy.update_frequency(intermediate_frequency)
 
                     # Perform the initialize macro
-                    qubit.initialize(
-                        target_state=node.parameters.target_state,
-                        max_loops=node.parameters.max_loops,
-                    )
+                    qubit.initialize()
+                    align()
 
-                    # Detune the IF of the qubit's XY component
+                    # Retune the XY drive to (calibrated IF + df)
                     qubit.xy.update_frequency(intermediate_frequency + df)
 
-                    # ── STEP 2: Drive ────────────────
-
-                    # Align and play the x180 pulse
                     align()
+                    # Play the x180 gate
                     qubit.x180()
                     align()
 
-                    # ── STEP 3: Measure the resulting state ────────────────
-
-                    # Measure the resulting state, returning the raw IQ values instead of just the thresholded state value
-                    (i, q, a2) = qubit.measure(return_iq=True)
-
-                    # Set any remaining offset to zero. TODO: Consider whether necessary
-                    qubit.voltage_sequence.ramp_to_zero()
+                    # Thresholded PSB readout → averaged state probability
+                    # Also capture the unthresholded I and Q components.
+                    (i_comp, q_comp, s) = qubit.measure(return_iq=True)
+                    assign(state[i], Cast.to_int(s))
+                    save(state[i], state_st[i])
+                    save(i_comp, i_st[i])
+                    save(q_comp, q_st[i])
 
                     align()
+                    # Return gate voltages to zero before the next point.
+                    qubit.voltage_sequence.ramp_to_zero()
 
-                    # If performing a parity measurement, assign the thresholded bool to an integer (0 or 1) for averaging
-                    if node.parameters.parity_measurement:
-                        assign(p0, Cast.to_int(a1))
-
-                    # Assign the thresholded bool to an integer (0 or 1) for averaging
-                    assign(p1, Cast.to_int(a2))
-
-                    # Save the measurement QUA variables to the relevant streams
-                    save_measurement(
-                        node,
-                        qubit.name,
-                        p0,
-                        p1,
-                        measurement_streams,
-                    )
-                    save(i, i_st[qubit.name])
-                    save(q, q_st[qubit.name])
-
-                    # Set the frequency to the value stored in the Quam state
-                    # This is so that for each shot, the initialisation macro uses the previosuly assigned (correct) frequency
-                    qubit.xy.update_frequency(intermediate_frequency)
+            # Restore the qubit's calibrated drive frequency after the sweep
+            qubit.xy.update_frequency(intermediate_frequency)
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
-            n_dfs = len(dfs)
-            for qubit in qubits:
-                # Each save() is one frequency point.
-                # .buffer(n_dfs) : group points along the frequency axis
-                # .average()      : average over all shots (n_avg repetitions)
-                # Result: 1D measured counts vs frequency detuning per qubit
-                # Stream shapes depends on whether parity streams are being used.
-                if node.parameters.parity_measurement:
-                    for key in ("p0_p0", "p0_p1", "p1_p0", "p1_p1"):
-                        measurement_streams[key][qubit.name].buffer(n_dfs).average().save(
-                            f"{key}_{qubit.name}_parity_diff"
-                        )
-                else:
-                    measurement_streams["p"][qubit.name].buffer(n_dfs).average().save(f"p_{qubit.name}_parity_diff")
-                i_st[qubit.name].buffer(n_dfs).average().save(f"I_{qubit.name}_raw")
-                q_st[qubit.name].buffer(n_dfs).average().save(f"Q_{qubit.name}_raw")
+            for i in range(num_qubits): 
+                state_st[i].buffer(len(dfs)).average().save(f"state{i + 1}")
+                i_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
+                q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate}
@@ -298,7 +266,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit the spectroscopy response and store both the fitted dataset and fit summary."""
-    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
@@ -315,17 +283,19 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Build the node figures from the processed dataset and the fitted results."""
     node.results["figures"] = plot_all(
-        node.results["ds_processed"],
+        node.results["ds_fit"],
         node.namespace["qubits"],
         node.results["ds_fit"],
-        analysis_signal=node.parameters.analysis_signal,
+        show=False,
     )
+    if not node.modes.external:
+        plt.show()
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the qubit spectroscopy parity-diff analysis was successful.
+    """Update the relevant parameters if the qubit spectroscopy analysis was successful.
 
     When two peaks are found, the closest to centre updates the qubit under
     study and the second peak updates the preferred-readout qubit.

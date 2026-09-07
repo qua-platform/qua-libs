@@ -17,16 +17,14 @@ def plot_raw_data_with_fit(
     fits: xr.Dataset = None,
     threshold_results: dict = None,
     signal_threshold: float = None,
-    analysis_signal: str = "E_p1_given_p0_0",
 ):
     """
-    Plots the chirp qubit spectroscopy signal with optional threshold and peak-fit overlays.
+    Plot the chirped spectroscopy state trace with optional threshold and peak-fit overlays.
 
     Parameters
     ----------
     ds : xr.Dataset
-        The processed dataset containing ``{analysis_signal}_{qname}`` variables
-        (1-D over ``detuning``) as produced by ``process_raw_dataset``.
+        Dataset containing ``state(qubit, detuning)``.
     qubits : list
         A list of qubits to plot.
     fits : xr.Dataset, optional
@@ -35,33 +33,32 @@ def plot_raw_data_with_fit(
         Per-qubit threshold fit results (as dicts).
     signal_threshold : float, optional
         The signal threshold value to draw as a horizontal line.
-    analysis_signal : str, optional
-        Which processed signal variable to plot (default ``"E_p1_given_p0_0"``).
 
     Returns
     -------
     Figure
         The matplotlib figure object containing the plots.
     """
-    n = len(qubits)
+    qubit_names = [str(v) for v in ds.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
+    n = len(qubit_names)
     fig, axes = plt.subplots(1, n, figsize=(7 * n, 5), squeeze=False)
 
-    for i, q in enumerate(qubits):
+    for i, qname in enumerate(qubit_names):
         ax = axes[0, i]
-        fit = fits.sel(qubit=q.name) if fits is not None else None
-        thr = threshold_results.get(q.name) if threshold_results else None
+        fit = fits.sel(qubit=qname) if fits is not None else None
+        thr = threshold_results.get(qname) if threshold_results else None
         plot_individual_data_with_fit(
             ax,
             ds,
-            q.name,
-            rf_frequency=q.xy.RF_frequency,
+            qname,
+            rf_frequency=qubits_by_name[qname].xy.RF_frequency,
             fit=fit,
             threshold_result=thr,
             signal_threshold=signal_threshold,
-            analysis_signal=analysis_signal,
         )
 
-    fig.suptitle(f"Chirp qubit spectroscopy ({analysis_signal})")
+    fig.suptitle("Chirp qubit spectroscopy")
     fig.tight_layout()
     return fig
 
@@ -74,17 +71,16 @@ def plot_individual_data_with_fit(
     fit: xr.Dataset = None,
     threshold_result: dict = None,
     signal_threshold: float = None,
-    analysis_signal: str = "E_p1_given_p0_0",
 ):
     """
-    Plots individual qubit data on a given axis with optional peak fit and threshold overlay.
+    Plot one qubit's state trace with optional peak-fit and threshold overlays.
 
     Parameters
     ----------
     ax : matplotlib.axes.Axes
         The axis on which to plot the data.
     ds : xr.Dataset
-        The processed dataset containing ``{analysis_signal}_{qname}`` variables.
+        Dataset containing ``state(qubit, detuning)``.
     qubit_name : str
         The qubit name to plot.
     rf_frequency : float
@@ -95,22 +91,19 @@ def plot_individual_data_with_fit(
         Threshold fit result for this qubit.
     signal_threshold : float, optional
         Threshold level to draw as a horizontal line.
-    analysis_signal : str, optional
-        Which processed signal variable to plot (default ``"E_p1_given_p0_0"``).
     """
-    signal_var = f"{analysis_signal}_{qubit_name}"
-    if signal_var not in ds.data_vars:
+    if "state" not in ds.data_vars:
         ax.text(0.5, 0.5, f"No data for {qubit_name}", transform=ax.transAxes, ha="center")
         return
 
     detuning = ds.detuning.values
-    signal = ds[signal_var].values
+    signal = ds.state.sel(qubit=qubit_name, drop=True).transpose("detuning").values.astype(float)
     full_freq_GHz = (detuning + rf_frequency) / u.GHz
 
     # Primary x-axis: RF frequency in GHz
     ax.plot(full_freq_GHz, signal)
     ax.set_xlabel("RF frequency [GHz]")
-    ax.set_ylabel(analysis_signal)
+    ax.set_ylabel("State")
     ax.set_title(f"qubit={qubit_name}", pad=30)
 
     # Secondary x-axis: detuning in MHz
@@ -165,7 +158,6 @@ def plot_all(
     fits: Optional[xr.Dataset] = None,
     threshold_results: Optional[dict] = None,
     signal_threshold: Optional[float] = None,
-    analysis_signal: str = "E_p1_given_p0_0",
     show: bool = True,
 ) -> dict[str, Figure]:
     """Build and return all 08a chirp spectroscopy figures."""
@@ -176,7 +168,6 @@ def plot_all(
             fits=fits,
             threshold_results=threshold_results,
             signal_threshold=signal_threshold,
-            analysis_signal=analysis_signal,
         )
     }
     if show:

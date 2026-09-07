@@ -1,6 +1,5 @@
-from typing import Optional, Literal
+from typing import Optional
 
-import numpy as np
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import (
@@ -8,11 +7,10 @@ from qualibration_libs.parameters import (
     QubitsExperimentNodeParameters,
 )
 from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
-from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """Parameters for node Qubit Spectroscopy Parity Diff"""
+    """Parameters for the 08b qubit spectroscopy node."""
 
     num_shots: int = 300
     """Number of averages to perform. Default is 100."""
@@ -36,6 +34,5 @@ class Parameters(
     NodeSpecificParameters,
     HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
-    ParityDiffAnalysisParameters,
 ):
-    """Parameter set for Qubit Spectroscopy Parity Diff."""
+    """Parameter set for 08b qubit spectroscopy."""

@@ -6,12 +6,11 @@ import xarray as xr
 
 from qualibrate.core import QualibrationNode
 from qualibration_libs.analysis import peaks_dips
-from calibration_utils.measurement_utils import process_streams
 
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy chirp fit parameters for a single qubit"""
+    """Stores the relevant chirped spectroscopy fit parameters for a single qubit."""
 
     frequency: float
     relative_freq: float
@@ -47,59 +46,40 @@ def log_fitted_results(fit_results: Dict, log_callable=None, label: str = ""):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Build the conditional parity expectations from the explicitly named raw streams."""
-    qubits = node.namespace["qubits"]
-    stream_item_names = [f"{q.name}_parity_diff" for q in qubits]
-    ds = process_streams(
-        ds,
-        stream_item_names,
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("detuning",),
-    )
-
-    rename_map = {}
-    for qubit in qubits:
-        stream_name = f"{qubit.name}_parity_diff"
-        for prefix in ("E_p1_given_p0_0", "E_p1_given_p0_1"):
-            source_name = f"{prefix}_{stream_name}"
-            target_name = f"{prefix}_{qubit.name}"
-            if source_name in ds.data_vars:
-                rename_map[source_name] = target_name
-
-    return ds.rename(rename_map) if rename_map else ds
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no stream post-processing)."""
+    return ds
 
 
 def find_frequency_by_threshold(ds: xr.Dataset, node: QualibrationNode) -> Dict[str, FitParameters]:
     """Find the qubit frequency by locating the above-threshold region of the signal.
 
-    For each qubit, reads ``{analysis_signal}_{qname}`` directly from the
-    processed dataset.  All detuning points where the signal is at or above
-    ``signal_threshold`` are collected.  The centre frequency is the
-    signal-weighted mean of those detunings, and the reported FWHM is the full
-    span of the above-threshold region.
+    For each qubit, reads the thresholded ``state(qubit, detuning)`` trace
+    directly from the dataset. All detuning points where the state probability
+    is at or above ``signal_threshold`` are collected. The centre frequency is
+    the signal-weighted mean of those detunings, and the reported FWHM is the
+    full span of the above-threshold region.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Processed dataset containing ``{analysis_signal}_{qname}`` variables
-        (1-D over ``detuning``) as produced by ``process_raw_dataset``.
+        Dataset containing ``state(qubit, detuning)`` as produced by the node.
     node : QualibrationNode
-        Node whose ``parameters.signal_threshold`` and
-        ``parameters.analysis_signal`` are used.
+        Node whose ``parameters.signal_threshold`` is used.
 
     Returns
     -------
     dict[str, FitParameters]
     """
     qubits = node.namespace["qubits"]
-    analysis_signal = node.parameters.analysis_signal
+    qubit_names = [str(v) for v in ds.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
     threshold = node.parameters.signal_threshold
     fit_results: Dict[str, FitParameters] = {}
 
-    for q in qubits:
-        signal_var = f"{analysis_signal}_{q.name}"
-        if signal_var not in ds.data_vars:
-            fit_results[q.name] = FitParameters(
+    for qname in qubit_names:
+        qubit = qubits_by_name[qname]
+        if "state" not in ds.data_vars:
+            fit_results[qname] = FitParameters(
                 frequency=np.nan,
                 relative_freq=np.nan,
                 fwhm=np.nan,
@@ -107,12 +87,12 @@ def find_frequency_by_threshold(ds: xr.Dataset, node: QualibrationNode) -> Dict[
             )
             continue
 
-        signal = ds[signal_var].values
+        signal = ds.state.sel(qubit=qname, drop=True).transpose("detuning").values.astype(float)
         detuning = ds.detuning.values
 
         above = signal >= threshold
         if not np.any(above):
-            fit_results[q.name] = FitParameters(
+            fit_results[qname] = FitParameters(
                 frequency=np.nan,
                 relative_freq=np.nan,
                 fwhm=np.nan,
@@ -125,9 +105,9 @@ def find_frequency_by_threshold(ds: xr.Dataset, node: QualibrationNode) -> Dict[
 
         center_detuning = float(np.average(above_detunings, weights=above_signal))
         width = float(above_detunings.max() - above_detunings.min())
-        abs_frequency = center_detuning + q.xy.RF_frequency
+        abs_frequency = center_detuning + qubit.xy.RF_frequency
 
-        fit_results[q.name] = FitParameters(
+        fit_results[qname] = FitParameters(
             frequency=float(abs_frequency),
             relative_freq=float(center_detuning),
             fwhm=width,
@@ -140,13 +120,12 @@ def find_frequency_by_threshold(ds: xr.Dataset, node: QualibrationNode) -> Dict[
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """Fit the qubit Larmor frequency and FWHM for each qubit in the dataset.
 
-    Expects ``ds`` to already contain ``{analysis_signal}_{qname}`` variables
-    (1-D over ``detuning``) as produced by ``process_raw_dataset``.
+    Expects ``ds`` to contain thresholded ``state(qubit, detuning)`` traces.
 
     Parameters:
     -----------
     ds : xr.Dataset
-        Dataset containing the processed parity-stream signal variables.
+        Dataset containing thresholded state-probability traces.
     node : QualibrationNode
         The node containing parameters and namespace.
 
@@ -157,35 +136,20 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     dict
         Dictionary of FitParameters per qubit.
     """
-    qubits = node.namespace["qubits"]
-    analysis_signal = node.parameters.analysis_signal
-    qubit_names = [q.name for q in qubits]
+    if "state" not in ds.data_vars:
+        raise KeyError("Expected variable 'state' not found in dataset.")
 
-    # Build the (qubit, detuning) pdiff DataArray from the per-qubit signal variables
-    arrays = []
-    for qname in qubit_names:
-        var = f"{analysis_signal}_{qname}"
-        if var not in ds.data_vars:
-            raise KeyError(
-                f"Expected variable {var!r} not found in dataset. "
-                "Did you call process_raw_dataset before fit_raw_data?"
-            )
-        arrays.append(ds[var].values)
+    ds_fit = ds.copy()
 
-    pdiff = xr.DataArray(
-        np.array(arrays),
-        dims=["qubit", "detuning"],
-        coords={"qubit": qubit_names, "detuning": ds.detuning},
-    )
-
-    ds_fit = ds.assign({"pdiff": pdiff})
-
-    # Find the peak with minimal prominence; returns nan if no peak found
-    fit_vals = peaks_dips(pdiff, dim="detuning", prominence_factor=5)
+    # Find the peak with minimal prominence; returns nan if no peak is found.
+    fit_vals = peaks_dips(ds.state, dim="detuning", prominence_factor=5)
     ds_fit = xr.merge([ds_fit, fit_vals])
 
     # Add full-frequency coordinate (carrier + detuning per qubit)
-    rf_freqs = np.array([q.xy.RF_frequency for q in qubits])
+    qubits = node.namespace["qubits"]
+    qubit_names = [str(v) for v in ds.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
+    rf_freqs = np.array([qubits_by_name[qname].xy.RF_frequency for qname in qubit_names], dtype=float)
     full_freq = ds.detuning.values[np.newaxis, :] + rf_freqs[:, np.newaxis]
     ds_fit = ds_fit.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds_fit.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
@@ -199,7 +163,10 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # Add metadata to fit results
     fit.attrs = {"long_name": "frequency", "units": "Hz"}
     # Get the fitted qubit frequency
-    full_freq = np.array([q.xy.RF_frequency for q in node.namespace["qubits"]])
+    qubits = node.namespace["qubits"]
+    qubit_names = [str(v) for v in fit.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
+    full_freq = np.array([qubits_by_name[qname].xy.RF_frequency for qname in qubit_names], dtype=float)
     res_freq = fit.position + full_freq
     rel_freq = fit.position
     fit = fit.assign({"res_freq": ("qubit", res_freq.data)})

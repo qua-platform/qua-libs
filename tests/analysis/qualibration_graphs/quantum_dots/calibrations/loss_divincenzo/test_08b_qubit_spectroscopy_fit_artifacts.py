@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from calibration_utils.qubit_spectroscopy_parity_diff.analysis import fit_raw_data
+from calibration_utils.qubit_spectroscopy.analysis import fit_raw_data
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -56,17 +56,23 @@ def _make_node(qubit_names):
     ]
     return SimpleNamespace(
         parameters=SimpleNamespace(
-            analysis_signal="E_p2_given_p1_0",
             frequency_span_in_mhz=SPAN_MHZ,
         ),
         namespace={"qubits": qubits},
     )
 
 
-def _make_ds(signals: dict[str, np.ndarray], sig="E_p2_given_p1_0") -> xr.Dataset:
+def _make_ds(signals: dict[str, np.ndarray]) -> xr.Dataset:
+    qubit_names = list(signals.keys())
     return xr.Dataset(
-        {f"{sig}_{q}": xr.DataArray(y, dims="detuning") for q, y in signals.items()},
+        {
+            "state": xr.DataArray(
+                np.stack([signals[q] for q in qubit_names]),
+                dims=("qubit", "detuning"),
+            )
+        },
         coords={
+            "qubit": xr.DataArray(qubit_names, dims="qubit"),
             "detuning": xr.DataArray(
                 DETUNINGS, dims="detuning",
                 attrs={"long_name": "drive frequency", "units": "Hz"},
