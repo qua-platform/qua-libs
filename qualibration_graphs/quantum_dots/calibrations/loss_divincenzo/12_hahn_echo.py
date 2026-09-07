@@ -110,6 +110,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             },
         ),
     }
+
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
         # Real-time variables:
