@@ -1,4 +1,4 @@
-"""Ramsey-based coupler flux long distortion characterization and filter design."""
+"""Ramsey vs coupler flux calibration for long flux distortion — Ramsey path in coupler distortion cascade."""
 
 # %%
 from __future__ import annotations
@@ -16,51 +16,48 @@ from calibration_utils.coupler_flux_long_distortion_ramsey import (
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
-from calibration_utils.common_utils.flux_distortions import update_coupler_filters
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
+from calibration_utils.common_utils.flux_distortions import update_coupler_filters
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-
-# %%
 description = """
-Long coupler flux distortion characterization using Ramsey interferometry.
+Long coupler flux distortion (Ramsey path).
 
-This protocol measures the effective coupler flux-line step response by playing a long
-coupler flux pulse and probing the qubit frequency at variable delay times using a
-Ramsey sequence with frame rotation.  A reference Ramsey measurement (without the long
-flux pulse) is acquired for baseline subtraction.
+Same idea as **17b** — see ``17b_qubit_flux_long_distortion_ramsey.py`` for the physics.
 
 Workflow:
-For each qubit pair, sweep the frame rotation and the delay time after the onset of the
-coupler flux pulse.  At each delay a Ramsey sequence (x90 – wait – frame_rotation – x90)
-is played while a short flux probe pulse with amplitude `ramsey_flux_amplitude` is applied
-during the Ramsey wait window.
+For each qubit pair, play a long **coupler** flux pulse and probe the accumulated
+Ramsey phase at variable delay times (with frame rotation). A co-measured reference
+Ramsey amplitude sweep on the coupler (no long pulse) provides the phase→flux
+calibration. Then sweep delay vs frame rotation to characterise the coupler
+flux-line step response.
 Analysis: fit frame-rotation oscillations → phase(t); invert the reference
-phase-vs-amp curve to get effective coupler flux; form the step response; fit a sum of
-decaying exponentials.
-State update (optional): write the fitted exponential filter to the coupler's
-opx_output.exponential_filter.
+phase-vs-amp curve to get effective coupler flux; form the step response; fit a sum
+of decaying exponentials, optionally write IIR taps to the coupler.
+
+Prerequisites:
+- x90 and XY–coupler delay on the measured qubit (``measure_qubit``)
+- ``coupler_flux_amplitude_in_v`` and Ramsey probe/sweep set so the reference covers the phase swing
 
 Prerequisites
-- A valid rotation angle and threshold if using state discrimination.
-- Calibrated XY-Coupler delay.
-- Calibrated x90 pulse.
-- Sensible ``coupler_flux_amplitude_in_v`` / Ramsey probe amp (reference amp sweep covers the phase range).
+- A valid rotation angle and threshold if using state discrimination
+- Calibrated XY-Coupler delay
+- A calibrated x90 pulse
+- Sensible ``coupler_flux_amplitude_in_v`` / Ramsey probe amp (reference amp sweep covers the phase range)
 
 Outputs and state updates
-- Results: processed dataset (including intermediate phase, detuning, flux), fit results,
-  and figures are saved under `node.results`.
-- If `update_state=True` and fits succeed, the script updates the coupler at
-  `coupler.opx_output.exponential_filter` with the cascade coefficients `(A_c, tau_c)`.
-REMINDER: Adding digital filters will add a global delay — need to recalibrate IQ blobs
-(rotation_angle & ge_threshold) and XY-Coupler delay.
+- Results: processed dataset, fit results, and figures are saved under ``node.results``.
+- If ``update_state=True`` and fits succeed, updates ``state.json`` for the coupler at
+  ``coupler.opx_output.exponential_filter`` with cascade coefficients ``(A_c, tau_c)``.
+REMINDER: Adding digital filters will add a global delay --> need to recalibrate IQ
+blobs (rotation_angle & ge_threshold) and XY-Coupler delay.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -76,14 +73,12 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
-    # node.parameters.update_state = True
-    pass
 
 
 # Instantiate machine
 stored_machine = Quam.load()
 
-# Store fitting fractions set from GUI
+# store fitting parameter and GUI flag set from GUI
 loaded_n_exponentials = node.parameters.n_exponentials
 stored_gui_update_flag = node.parameters.update_state_from_GUI
 
@@ -414,6 +409,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
             measured_qubit_name=("qubit", measured_qubit_names)
         )
 
+    # Overwrite the loaded node parameters with the ones defined from the GUI
     node.parameters.n_exponentials = loaded_n_exponentials
     node.parameters.update_state_from_GUI = stored_gui_update_flag
     if node.parameters.update_state_from_GUI:

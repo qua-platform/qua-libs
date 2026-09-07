@@ -32,12 +32,9 @@ from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
 description = """
-Long cryoscope (π vs coupler flux) calibration.
+Long coupler flux distortion (π spectroscopy path).
 
-The coupler flux amplitude and the freq→flux conversion in analysis are derived
-per pair from a previously acquired dispersion curve via ``freq_to_flux_source``
-(default ``auto``): qubit spectroscopy vs coupler flux (03c), then Ramsey vs
-coupler flux (09b), and finally ``coupler_flux_amplitude_in_v``.
+Same idea as **17a** — see ``17a_qubit_flux_long_distortion_qubitspec.py`` for the physics.
 
 Workflow:
 For each qubit pair, load the coupler-flux dispersion curve (played-relative
@@ -46,8 +43,12 @@ at that decouple point, and compute the coupler flux-pulse AMPLITUDE that achiev
 the **signed** ``detuning_in_mhz`` from that reference frequency. Then sweep
 XY-drive detuning vs coupler flux-pulse duration to characterise the coupler
 flux-line step response.
-Analysis: fit a sum of decaying exponentials; optionally write cascade coefficients
-to coupler.opx_output.exponential_filter.
+Analysis: extract center frequency vs time, map to coupler flux via ``freq_to_flux_source``,
+fit a sum of decaying exponentials, optionally write IIR taps to the coupler.
+
+Prerequisites:
+- π pulse and XY–coupler delay on the measured qubit (``measure_qubit``)
+- **03c** and/or **09b** with ``save_load_id=True``
 
 Prerequisites
 - A valid rotation angle and threshold if using state discrimination
