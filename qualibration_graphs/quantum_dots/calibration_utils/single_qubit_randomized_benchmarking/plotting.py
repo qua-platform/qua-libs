@@ -13,6 +13,13 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from matplotlib.figure import Figure
+
+from calibration_utils.common_utils.plot_style import (
+    apply_qubit_outcome_style,
+    empty_figure,
+    qubit_success,
+)
 
 
 def _get_qubit_state_data(ds_raw: xr.Dataset, qname: str) -> np.ndarray | None:
@@ -41,7 +48,7 @@ def plot_raw_data_with_fit(
     qubits: list[Any],
     ds_fit: xr.Dataset | None = None,
     fit_results: dict[str, dict[str, Any]] | None = None,
-) -> plt.Figure:
+) -> Figure:
     """Create a multi-panel RB figure (one row per qubit).
 
     Parameters
@@ -63,6 +70,9 @@ def plot_raw_data_with_fit(
     matplotlib.figure.Figure
     """
     n_qubits = len(qubits)
+    if n_qubits == 0:
+        return empty_figure("No qubits selected for single-qubit RB.")
+
     fig, axes = plt.subplots(
         n_qubits,
         1,
@@ -76,10 +86,11 @@ def plot_raw_data_with_fit(
         ax = axes[idx, 0]
         qname = getattr(qubit, "name", f"q{idx}")
         fit_results = fit_results or {}
+        success = qubit_success(fit_results, qname)
 
         state_data = _get_qubit_state_data(ds_raw, qname)
         if state_data is None:
-            ax.set_title(f"{qname} — no data")
+            apply_qubit_outcome_style(ax, qname, success, subtitle="No data")
             continue
 
         if ds_fit is not None and "survival_probability" in ds_fit.data_vars:
@@ -124,7 +135,6 @@ def plot_raw_data_with_fit(
         fidelity = r.get("native_gate_fidelity", float("nan"))
         epc = r.get("error_per_clifford", float("nan"))
         alpha_val = r.get("alpha", float("nan"))
-        status = "OK" if r.get("success") else "FAIL"
 
         ax.text(
             0.95,
@@ -137,7 +147,7 @@ def plot_raw_data_with_fit(
             bbox={"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5},
         )
 
-        ax.set_title(f"{qname}  [{status}]")
+        apply_qubit_outcome_style(ax, qname, success, subtitle="RB decay")
         ax.set_xlabel("Number of Cliffords")
         ax.set_ylabel("Survival probability")
         # ax.set_ylim([-0.05, 1.05])
