@@ -191,6 +191,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for i in range(num_qubits): 
+                # Each save() is one frequency point.
+                # .buffer(len(dfs)) : group points along the frequency axis
+                # .average()      : average over all shots (n_avg repetitions)
+                # Result: 1D state/I/Q-probability trace vs detuning per qubit.
                 state_st[i].buffer(len(dfs)).average().save(f"state{i + 1}")
                 i_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
                 q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
