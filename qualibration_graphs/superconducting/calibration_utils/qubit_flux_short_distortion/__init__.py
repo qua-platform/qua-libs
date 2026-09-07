@@ -18,11 +18,11 @@ from .analysis import (
 )
 from .parameters import Parameters, baked_waveform
 from .plotting import (
-    plot_cryoscope_freq,
-    plot_flux_response,
+    plot_fir_figures,
+    plot_fit,
+    plot_raw_data,
     plot_raw_data_with_fit,
     plot_spectroscopy_curve,
-    plot_unwrapped_phase,
 )
 
 __all__ = [
@@ -40,8 +40,8 @@ __all__ = [
     "savgol",
     "baked_waveform",
     "plot_raw_data_with_fit",
-    "plot_cryoscope_freq",
-    "plot_flux_response",
-    "plot_unwrapped_phase",
+    "plot_raw_data",
+    "plot_fit",
+    "plot_fir_figures",
     "plot_spectroscopy_curve",
 ]

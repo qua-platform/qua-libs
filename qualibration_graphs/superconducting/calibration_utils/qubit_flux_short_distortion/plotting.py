@@ -54,7 +54,7 @@ def _flux_fit_to_freq(freq: np.ndarray, flux: np.ndarray, flux_fit: np.ndarray) 
 # ---------------------------------------------------------------------------
 
 
-def plot_cryoscope_freq(
+def _plot_cryoscope_freq_ax(
     ax: Axes,
     ds: xr.Dataset,
     qubit: dict,
@@ -97,7 +97,7 @@ def plot_cryoscope_freq(
     ax.legend(loc="best", fontsize=12)
 
 
-def plot_flux_response(
+def _plot_flux_response_ax(
     ax: Axes,
     ds: xr.Dataset,
     qubit: dict,
@@ -144,7 +144,7 @@ def plot_flux_response(
     ax.legend(loc="best", fontsize=12)
 
 
-def plot_unwrapped_phase(ax: Axes, ds: xr.Dataset, qubit: dict) -> None:
+def _plot_unwrapped_phase_ax(ax: Axes, ds: xr.Dataset, qubit: dict) -> None:
     """Plot unwrapped Ramsey phase vs time on one axis."""
     qname = qubit["qubit"]
     if "phase" not in ds:
@@ -218,7 +218,7 @@ def plot_raw_data_with_fit(
     grid_flux = QubitGrid(ds_fit, grid_locations)
     for ax, qubit in grid_iter(grid_flux):
         qname = qubit["qubit"]
-        plot_flux_response(
+        _plot_flux_response_ax(
             ax,
             ds_fit,
             qubit,
@@ -238,7 +238,7 @@ def plot_raw_data_with_fit(
 
     grid_freq = QubitGrid(ds_fit, grid_locations)
     for ax, qubit in grid_iter(grid_freq):
-        plot_cryoscope_freq(ax, ds_fit, qubit, fit=fit_results.get(qubit["qubit"]))
+        _plot_cryoscope_freq_ax(ax, ds_fit, qubit, fit=fit_results.get(qubit["qubit"]))
     grid_freq.fig.suptitle("Debug: Cryoscope frequency vs time", fontsize=16)
     grid_freq.fig.set_size_inches(15, 9)
     grid_freq.fig.tight_layout()
@@ -247,7 +247,7 @@ def plot_raw_data_with_fit(
     if "phase" in ds_fit:
         grid_phase = QubitGrid(ds_fit, grid_locations)
         for ax, qubit in grid_iter(grid_phase):
-            plot_unwrapped_phase(ax, ds_fit, qubit)
+            _plot_unwrapped_phase_ax(ax, ds_fit, qubit)
         grid_phase.fig.suptitle("Debug: Unwrapped phase vs time", fontsize=16)
         grid_phase.fig.set_size_inches(15, 9)
         grid_phase.fig.tight_layout()
@@ -318,3 +318,257 @@ def plot_spectroscopy_curve(ds_fit: xr.Dataset, qubits) -> Optional[plt.Figure]:
     grid_curve.fig.suptitle(f"Debug: Freq-vs-flux curve used ({source_label})", fontsize=16)
     grid_curve.fig.tight_layout()
     return grid_curve.fig
+
+
+# ---------------------------------------------------------------------------
+# Extended plotting (ported from CS_installations' node 20 plotting.py)
+# ---------------------------------------------------------------------------
+#
+# Trimmed to the figures that add information beyond ``plot_raw_data_with_fit``'s
+# existing grid figures: a raw-data view (debug only), a dedicated per-qubit
+# linear+log IIR fit figure (always on), and the two most actionable FIR
+# diagnostics (always on), with the denser FIR diagnostics gated behind debug.
+# Dropped as duplicates of existing (debug-gated) grid figures: standalone
+# cryoscope-frequency/flux-response/unwrapped-phase figures and FIR resampling.
+
+
+def _qubit_names(qubits) -> list:
+    """Return a list of qubit name strings regardless of input type."""
+    if hasattr(qubits, "get_names"):
+        return qubits.get_names()
+    return [q.name if hasattr(q, "name") else str(q) for q in qubits]
+
+
+def _iter_keys_and_labels(ds: xr.Dataset, qubits) -> list:
+    """Return ``(sel_key, display_label)`` pairs for iterating a cryoscope dataset.
+
+    The iteration key is always the dataset ``qubit`` coordinate value, which is
+    guaranteed unique so ``.sel(qubit=key)`` collapses the ``qubit`` dimension.
+    When the dataset carries a ``measured_qubit_name`` side coordinate (coupler
+    nodes elsewhere in the codebase), the label becomes
+    ``"<measured_qubit> (<pair>)"`` for readability; this node has no such
+    coordinate so the branch is defensive/unused here.
+    """
+    if "qubit" in ds.coords or "qubit" in ds.dims:
+        keys = [str(v) for v in ds["qubit"].values]
+    else:
+        keys = _qubit_names(qubits)
+
+    has_measured = "measured_qubit_name" in ds.coords
+    pairs = []
+    for key in keys:
+        if has_measured:
+            measured = str(ds["measured_qubit_name"].sel(qubit=key).values)
+            label = f"{measured} ({key})"
+        else:
+            label = key
+        pairs.append((key, label))
+    return pairs
+
+
+def _draw_individual_fit(ax_lin, ax_log, t_data, y_data, components, a_dc):
+    """Draw the measured flux response + sum-of-exponentials fit into the given
+    linear and log axes (shared by the consolidated multi-qubit ``plot_fit`` figure)."""
+    y_fit, fit_text = _exp_fit_curve(t_data, components, a_dc)
+    for ax in (ax_lin, ax_log):
+        ax.plot(t_data, y_data, ".--", label="Data")
+        ax.plot(t_data, y_fit, label="Fit")
+        ax.text(
+            0.98,
+            0.5,
+            fit_text,
+            transform=ax.transAxes,
+            fontsize=10,
+            horizontalalignment="right",
+            verticalalignment="center",
+        )
+        ax.set_xlabel("Time (ns)")
+        ax.set_ylabel("Flux Response")
+        ax.grid(True)
+        ax.legend(loc="best")
+    ax_lin.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+    ax_log.set_xscale("log")
+
+
+def plot_raw_data(ds_raw: xr.Dataset, qubits) -> Dict[str, plt.Figure]:
+    """Plot raw measurement data per qubit: frame slices and 2D heatmap.
+
+    Parameters
+    ----------
+    ds_raw : xr.Dataset
+        Raw dataset with a ``state`` or ``I`` variable and dimensions
+        ``(qubit, time, frame)``.
+    qubits : list
+        Qubit objects to plot.
+
+    Returns
+    -------
+    dict
+        ``{"raw_<qname>": fig, ...}`` — one figure per qubit.
+    """
+    figures: Dict[str, plt.Figure] = {}
+    data_key = "state" if "state" in ds_raw.data_vars else "I"
+    time_vals = ds_raw.time.values
+
+    for key, label in _iter_keys_and_labels(ds_raw, qubits):
+        q_data = ds_raw[data_key].sel(qubit=key)
+        sample_idx = [0, len(time_vals) // 4, len(time_vals) // 2, len(time_vals) - 1]
+        fig, axes = plt.subplots(1, 2, figsize=(13, 4))
+        for idx in sample_idx:
+            t_sel = time_vals[idx]
+            q_data.sel(time=t_sel).plot(ax=axes[0], label=f"t={t_sel} ns")
+        axes[0].set_title(f"{label}: {data_key} vs frame")
+        axes[0].legend(fontsize=8)
+        axes[0].set_xlabel("Frame")
+        axes[0].grid(True)
+        frame_vals = q_data.frame.values if "frame" in ds_raw.dims else np.linspace(0, 1, q_data.shape[1])
+        im = axes[1].pcolormesh(
+            q_data.time.values,
+            frame_vals,
+            q_data.values.T,
+            shading="auto",
+            cmap="viridis",
+        )
+        fig.colorbar(im, ax=axes[1]).set_label(data_key.capitalize())
+        axes[1].set_title(f"{label}: {data_key}(time, frame)")
+        axes[1].set_xlabel("Time (ns)")
+        axes[1].set_ylabel("Frame")
+        fig.suptitle(f"Raw {data_key} — {label}", y=1.02)
+        fig.tight_layout()
+        figures[f"raw_{key}"] = fig
+
+    return figures
+
+
+def plot_fit(ds: xr.Dataset, qubits, fit_results: dict) -> Optional[plt.Figure]:
+    """Plot cryoscope flux response with exponential decay fits for each qubit.
+
+    One consolidated figure (N rows x 2 cols: linear, log) so every qubit is
+    preserved in a single returned figure.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset containing a ``flux_response`` variable with dimensions
+        ``(qubit, time)``.
+    qubits : list
+        Qubit objects to plot.
+    fit_results : dict
+        Dictionary mapping qubit name to its fit result (either a
+        ``FitParameters`` dataclass or a plain dict with keys
+        ``"a_tau_tuple"``/``"components"`` and ``"a_dc"``).
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+    """
+    key_labels = list(_iter_keys_and_labels(ds, qubits))
+    n = len(key_labels)
+    if n == 0:
+        return None
+    fig, axes = plt.subplots(n, 2, figsize=(12, 5 * n), squeeze=False)
+    t_data = ds.time.values
+    for row, (key, _label) in enumerate(key_labels):
+        ax_lin, ax_log = axes[row]
+        y_data = ds["flux_response"].sel(qubit=key).values
+        if np.all(np.isnan(y_data)):
+            for ax in (ax_lin, ax_log):
+                ax.set_title(f"{key} — no data")
+                ax.set_xlabel("Time (ns)")
+                ax.set_ylabel("Flux Response")
+            continue
+        q_fit = fit_results.get(key, {})
+        components, a_dc = _unpack_fit(q_fit, y_data)
+        _draw_individual_fit(ax_lin, ax_log, t_data, y_data, components=components, a_dc=a_dc)
+        ax_lin.set_title(key)
+    fig.tight_layout()
+    return fig
+
+
+def plot_fir_figures(
+    ds_fit: xr.Dataset,
+    qubits,
+    fir_results: dict,
+    *,
+    debug: bool = False,
+) -> Dict[str, plt.Figure]:
+    """Plot the FIR diagnostic figures for each qubit.
+
+    Always generates (when FIR analysis succeeded):
+      - ``fir_fit_diagnostic_<qname>``: forward FIR fit 2x2 diagnostic — the
+        reconstruction residual and NRMS-vs-tap-count used to judge the
+        auto-chosen filter length.
+      - ``fir_corrected_<qname>``: corrected response validation at 1 GS/s —
+        the "did the predistortion actually flatten the step" figure.
+
+    With ``debug=True``, additionally generates:
+      - ``fir_inverse_diagnostic_<qname>``: inverse FIR 3x2 diagnostic.
+      - ``fir_stem_<qname>``: coefficient stem plots (h and h_inv).
+
+    Parameters
+    ----------
+    ds_fit : xr.Dataset
+        Fitted dataset (used for time axis).
+    qubits : list
+        Qubit objects to plot.
+    fir_results : dict
+        Per-qubit FIR results as returned by ``fit_fir_data``.
+    debug : bool
+        Include the additional inverse-diagnostic and tap-stem figures.
+
+    Returns
+    -------
+    dict
+        Figure name -> ``matplotlib.figure.Figure``.
+    """
+    figures: Dict[str, plt.Figure] = {}
+    for key, label in _iter_keys_and_labels(ds_fit, qubits):
+        qname = key
+        res = fir_results.get(qname)
+        if res is None or not res.get("success"):
+            continue
+
+        t1 = np.array(res["time_1gs"])
+
+        if res.get("fig_fir_fit") is not None:
+            figures[f"fir_fit_diagnostic_{qname}"] = res["fig_fir_fit"]
+
+        if debug and res.get("fig_fir_inverse") is not None:
+            figures[f"fir_inverse_diagnostic_{qname}"] = res["fig_fir_inverse"]
+
+        fig7, ax7 = plt.subplots(figsize=(10, 5))
+        ax7.plot(t1, res["normalized_1gs"], label="data (normalized)")
+        ax7.plot(t1, res["corrected_1gs"], "--", label="expected corrected response")
+        ax7.axhline(1.001, color="k", lw=0.8, ls="--", label="±0.1% tolerance")
+        ax7.axhline(0.999, color="k", lw=0.8, ls="--")
+        ax7.set_ylim([0.95, 1.05])
+        sigma_disp = res.get("noise_sigma_displayed")
+        noise_msg = res.get("noise_estimate_msg")
+        if sigma_disp is not None and noise_msg is not None:
+            ax7.plot([], [], " ", label=f"noise σ≈{sigma_disp:.1e} [{noise_msg}]")
+        ax7.legend()
+        ax7.set_xlabel("Time (ns)")
+        ax7.set_ylabel("Normalized amplitude")
+        ax7.set_title(f"FIR Final Result — {qname}")
+        ax7.grid(True, alpha=0.3)
+        fig7.tight_layout()
+        figures[f"fir_corrected_{qname}"] = fig7
+
+        if debug:
+            h_fir_arr = np.array(res["forward_fir"])
+            h_inv_arr = np.array(res["inverse_fir"])
+            fig8, axes8 = plt.subplots(1, 2, figsize=(14, 4))
+            axes8[0].stem(np.arange(len(h_fir_arr)), h_fir_arr, linefmt="b-", markerfmt="bo", basefmt="k-")
+            axes8[0].set_xlabel("Tap Index")
+            axes8[0].set_ylabel("Coefficient")
+            axes8[0].set_title(f"Forward FIR h (L={len(h_fir_arr)}) — {qname}")
+            axes8[0].grid(True, alpha=0.3)
+            axes8[1].stem(np.arange(len(h_inv_arr)), h_inv_arr, linefmt="r-", markerfmt="rs", basefmt="k-")
+            axes8[1].set_xlabel("Tap Index")
+            axes8[1].set_ylabel("Coefficient")
+            axes8[1].set_title(f"Inverse FIR h_inv (M={len(h_inv_arr)}) — {qname}")
+            axes8[1].grid(True, alpha=0.3)
+            fig8.tight_layout()
+            figures[f"fir_stem_{qname}"] = fig8
+
+    return figures

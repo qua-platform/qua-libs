@@ -13,6 +13,9 @@ from calibration_utils.qubit_flux_short_distortion import (
     fit_fir_data,
     fit_raw_data,
     log_fitted_results,
+    plot_fir_figures,
+    plot_fit,
+    plot_raw_data,
     plot_raw_data_with_fit,
     process_raw_dataset,
     resolve_flux_amplitudes,
@@ -25,7 +28,6 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-
 
 # %% {Node_parameters}
 description = """
@@ -89,6 +91,7 @@ stored_gui_update_flag = node.parameters.update_state_from_GUI
 stored_update_iir = node.parameters.update_iir
 stored_update_fir = node.parameters.update_fir
 stored_freq_to_flux_source = node.parameters.freq_to_flux_source
+stored_debug_plots = node.parameters.debug_plots
 
 
 # %% {Create_QUA_program}
@@ -272,6 +275,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.update_iir = stored_update_iir
     node.parameters.update_fir = stored_update_fir
     node.parameters.freq_to_flux_source = stored_freq_to_flux_source
+    node.parameters.debug_plots = stored_debug_plots
     if node.parameters.update_state_from_GUI:
         node.machine = stored_machine
         node.parameters.update_state = True
@@ -306,17 +310,46 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot cryoscope freq, flux response, and IIR fit (plus debug/FIR when enabled)."""
+    """Plot cryoscope freq, flux response, and IIR fit (plus debug/FIR when enabled).
+
+    Figure inventory (always generated):
+      flux_response                 — compact grid overview: data + IIR fit (+ FIR overlay).
+      iir_fitted_data                — IIR fit, one row per qubit (linear + log), so the
+                                        long-tau tail is visible on a log axis.
+      fir_fit_diagnostic_<qname>     — forward FIR fit 2x2: reconstruction/residual/NRMS-vs-taps.
+      fir_corrected_<qname>          — corrected response validation at 1 GS/s (the
+                                        "did predistortion flatten the step" figure).
+
+    Debug figures (``debug_plots=True``):
+      cryoscope_freq, unwrapped_phase, freq_vs_flux_curve, fir_resampled — compact
+      grid variants (from ``plot_raw_data_with_fit``).
+      raw_<qname>                    — raw state/I vs frame: line slices + 2D heatmap.
+      fir_inverse_diagnostic_<qname> — inverse FIR 3x2 diagnostic.
+      fir_stem_<qname>                — FIR coefficient stem plots.
+    """
     if "ds_fit" not in node.results:
         return
     qubits = node.namespace.get("qubits", get_qubits(node))
-    node.results["figures"] = plot_raw_data_with_fit(
-        node.results["ds_fit"],
+    ds_fit = node.results["ds_fit"]
+    fit_results = node.results["fit_results"]
+    fir_results = node.namespace.get("fir_results")
+    debug_plots = node.parameters.debug_plots
+
+    figures = plot_raw_data_with_fit(
+        ds_fit,
         qubits,
-        node.results["fit_results"],
-        debug=node.parameters.debug_plots,
-        fir_results=node.namespace.get("fir_results"),
+        fit_results,
+        debug=debug_plots,
+        fir_results=fir_results,
     )
+
+    figures["iir_fitted_data"] = plot_fit(ds_fit, qubits, fit_results)
+    if debug_plots:
+        figures.update(plot_raw_data(node.results["ds_raw"], qubits))
+    if fir_results:
+        figures.update(plot_fir_figures(ds_fit, qubits, fir_results, debug=debug_plots))
+
+    node.results["figures"] = figures
     plt.show()
 
 
