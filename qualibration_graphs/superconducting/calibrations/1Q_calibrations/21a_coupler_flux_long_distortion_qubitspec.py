@@ -104,12 +104,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["measured_qubits"] = measured_qubits
     node.namespace["qubits"] = measured_qubits
 
-    operation_name = node.parameters.operation
+    operation_names = {}
     for qubit in measured_qubits:
-        if hasattr(qubit.xy.operations, operation_name):
-            continue
-        warnings.warn(f"Qubit {qubit.name} has no operation '{operation_name}', defaulting to 'x180'")
-        operation_name = "x180"
+        if hasattr(qubit.xy.operations, node.parameters.operation):
+            operation_names[qubit.name] = node.parameters.operation
+        else:
+            warnings.warn(f"Qubit {qubit.name} has no operation '{node.parameters.operation}', defaulting to 'x180'")
+            operation_names[qubit.name] = "x180"
 
     operation_amp_scale = node.parameters.operation_amplitude_factor or 1.0
 
@@ -235,7 +236,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 duration=t_delay + buf_during_op,
                             )
                             protagonist_qubit.xy.wait(t_delay)
-                            protagonist_qubit.xy.play(operation_name, amplitude_scale=operation_amp_scale)
+                            protagonist_qubit.xy.play(
+                                operation_names[protagonist_qubit.name], amplitude_scale=operation_amp_scale
+                            )
                             protagonist_qubit.wait(buf_after_op)
                             align()
 
@@ -353,11 +356,19 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process raw data and fit exponential components to the flux response data."""
     ds_proc = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_proc"] = ds_proc
     ds_fit, fit_results = fit_raw_data(ds_proc, node)
 
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
+    node.outcomes = {
+        pair_name: (
+            "successful" if node.results["fit_results"].get(pair_name, {}).get("success", False) else "failed"
+        )
+        for pair_name in qubit_pair_names
+    }
 
 
 # %% {Plot_data}
@@ -386,10 +397,13 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     if not node.parameters.update_state:
         return
 
+    skip_pairs = {qp.name for qp in node.namespace["qubit_pairs"] if node.outcomes.get(qp.name) == "failed"}
+
     with node.record_state_updates():
         update_coupler_filters(
             node.namespace["qubit_pairs"],
             node.results["fit_results"],
+            skip_pairs=skip_pairs,
             log_callable=node.log,
         )
 
