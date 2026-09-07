@@ -16,8 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Operation to excite the qubit."""
     operation_amplitude_factor: float = 1.0
     """Amplitude factor for the operation."""
-    duration_in_ns: int = 8000
-    """Maximum duration of the sequence."""
+    duration_in_ns: int = 10_000
+    """Maximum duration of the sequence in nanoseconds (default 10 µs)."""
     time_axis: Literal["linear", "log"] = "log"
     """Time axis for the operation."""
     time_step_in_ns: int = 48
