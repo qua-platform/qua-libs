@@ -1,6 +1,6 @@
 """Plotting utilities for coupler flux long distortion (qubitspec variant)."""
 
-from typing import Dict, Optional
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -112,29 +112,3 @@ def plot_raw_data_with_fit(
             plt.close(grid_curve.fig)
 
     return figures
-
-
-def plot_spectroscopy_curve(ds: xr.Dataset, qubit_pairs) -> Optional[plt.Figure]:
-    """Plot measured freq-vs-flux curve(s) on a single multi-pair figure."""
-    if "spec_curve_flux" not in ds or "spec_curve_freq" not in ds:
-        return None
-
-    source_label = ds.attrs.get("freq_to_flux_sources", ds.attrs.get("freq_to_flux_source", "measured"))
-    names = [qp.name for qp in qubit_pairs]
-    n = len(names)
-    fig, axes = plt.subplots(1, n, figsize=(6 * n, 4), squeeze=False)
-    spec_qubits = ds["spec_curve_flux"].spec_qubit.values.tolist()
-    n_plotted = 0
-    for ax, qname in zip(axes[0], names):
-        plot_freq_vs_flux_curve(ax, ds, {"qubit": qname}, source_label=source_label)
-        if qname in spec_qubits:
-            flux_arr = ds["spec_curve_flux"].sel(spec_qubit=qname).values
-            freq_arr = ds["spec_curve_freq"].sel(spec_qubit=qname).values
-            if np.isfinite(flux_arr).any() and np.isfinite(freq_arr).any():
-                n_plotted += 1
-    if not n_plotted:
-        plt.close(fig)
-        return None
-    fig.suptitle(f"Debug: Freq-vs-flux curve used ({source_label})", fontsize=16)
-    fig.tight_layout()
-    return fig
