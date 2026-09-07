@@ -29,7 +29,6 @@ from scipy.optimize import differential_evolution
 
 import xarray as xr
 from qualibrate.core import QualibrationNode
-from calibration_utils.measurement_utils import get_parity_item_names, process_streams
 
 logger = logging.getLogger(__name__)
 
@@ -153,17 +152,8 @@ def _fit_single_qubit(
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Compute conditional expectations from joint-outcome streams.
-
-    Returns a new dataset; ``ds_raw`` in the node is left unchanged.
-    """
-    qubits = node.namespace["qubits"]
-    return process_streams(
-        ds,
-        [q.name for q in qubits],
-        parity_measurement=node.parameters.parity_measurement,
-        sweep_dims=("tau",),
-    )
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no post-processing)."""
+    return ds
 
 
 def fit_raw_data(
@@ -172,43 +162,37 @@ def fit_raw_data(
 ) -> Tuple[xr.Dataset, Dict[str, Dict[str, Any]]]:
     """Run the Hahn echo exponential-decay fit for every qubit.
 
-    Expects data processed by :func:`process_raw_dataset`, which adds
-    ``{analysis_signal}_{qubit}`` variables (default
-    ``E_p1_given_p0_0_<qubit>``) of shape ``(n_tau,)`` with coordinate
-    ``tau`` (Hahn echo idle delay τ in ns, each x90–y180 segment).
+    Expects ``state(qubit, tau)`` with coordinate ``tau`` (Hahn echo idle delay
+    τ in ns, each x90–y180 segment).
 
     Parameters
     ----------
     ds : xr.Dataset
-        Raw measurement data (after joint-stream processing).
+        Raw measurement data.
     node : QualibrationNode
-        Calibration node (provides qubit list and ``analysis_signal``).
+        Calibration node.
 
     Returns
     -------
     (ds_fit, fit_results) : tuple
-        *ds_fit* contains processed streams, per-qubit fitted curves
-        (``{analysis_signal}_fit_{qubit}``), and summary scalars on a
-        ``qubit`` coordinate.  *fit_results* maps qubit name →
-        :class:`FitParameters` fields as plain dicts.
+        *ds_fit* contains the raw state traces, per-qubit fitted curves
+        (``state_fit``), and summary scalars on the ``qubit`` coordinate.
+        *fit_results* maps qubit name → :class:`FitParameters` fields as plain dicts.
     """
     qubits = node.namespace["qubits"]
     tau_ns = np.asarray(ds.tau.values, dtype=float)
-
-    analysis_signal = node.parameters.analysis_signal
-    qubit_names = get_parity_item_names(
-        ds,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds.qubit.values]
+    qubits_by_name = {getattr(q, "name", f"Q{i}"): q for i, q in enumerate(qubits)}
 
     fit_results: Dict[str, Dict[str, Any]] = {}
-    fit_curve_vars: Dict[str, Tuple[list[str], np.ndarray]] = {}
+    fit_curves: Dict[str, np.ndarray] = {}
 
     for qname in qubit_names:
-        signal_var = f"{analysis_signal}_{qname}"
-        if signal_var not in ds.data_vars:
-            logger.warning("No analysis signal for qubit %s — skipping.", qname)
+        if qname not in qubits_by_name:
+            raise KeyError(f"Qubit {qname!r} present in dataset but missing from node.namespace['qubits'].")
+
+        if "state" not in ds.data_vars:
+            logger.warning("No state data for qubit %s — skipping.", qname)
             fp = FitParameters(
                 T2_echo=float("nan"),
                 amplitude=0.0,
@@ -217,17 +201,14 @@ def fit_raw_data(
                 success=False,
             )
             fit_results[qname] = asdict(fp)
-            fit_curve_vars[f"{analysis_signal}_fit_{qname}"] = (
-                ["tau"],
-                np.full_like(tau_ns, np.nan, dtype=float),
-            )
+            fit_curves[qname] = np.full_like(tau_ns, np.nan, dtype=float)
             continue
 
-        signal_1d = np.asarray(ds[signal_var].values, dtype=float)
+        signal_1d = ds.state.sel(qubit=qname, drop=True).transpose("tau").values.astype(float)
         if signal_1d.ndim != 1:
             logger.warning(
-                "Expected 1-D shape (n_tau,) for %s, got %s — skipping.",
-                signal_var,
+                "Expected 1-D state trace (n_tau,) for %s, got %s — skipping.",
+                qname,
                 getattr(signal_1d, "shape", None),
             )
             fp = FitParameters(
@@ -238,10 +219,7 @@ def fit_raw_data(
                 success=False,
             )
             fit_results[qname] = asdict(fp)
-            fit_curve_vars[f"{analysis_signal}_fit_{qname}"] = (
-                ["tau"],
-                np.full_like(tau_ns, np.nan, dtype=float),
-            )
+            fit_curves[qname] = np.full_like(tau_ns, np.nan, dtype=float)
             continue
 
         result = _fit_single_qubit(tau_ns, signal_1d)
@@ -253,21 +231,15 @@ def fit_raw_data(
             success=result["success"],
         )
         fit_results[qname] = asdict(fp)
-        fit_curve_vars[f"{analysis_signal}_fit_{qname}"] = (
-            ["tau"],
-            np.asarray(result["fitted_curve"], dtype=float),
-        )
+        fit_curves[qname] = np.asarray(result["fitted_curve"], dtype=float)
 
+    fit_stack = np.stack([fit_curves[q] for q in qubit_names], axis=0)
     ds_fit = ds.assign(
-        {
-            name: xr.DataArray(
-                data,
-                dims=dims,
-                coords={"tau": ds.tau},
-                attrs={"long_name": "fitted echo decay"},
-            )
-            for name, (dims, data) in fit_curve_vars.items()
-        }
+        state_fit=(
+            ["qubit", "tau"],
+            fit_stack,
+            {"long_name": "fitted echo decay"},
+        )
     )
     ds_fit = ds_fit.assign(
         T2_echo=("qubit", [fit_results[q]["T2_echo"] for q in qubit_names]),

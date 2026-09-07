@@ -20,11 +20,7 @@ from calibration_utils.hahn_echo import (
     plot_all,
     generate_simulated_dataset,
 )
-from calibration_utils.measurement_utils import (
-    declare_streams,
-    save_measurement,
-    buffer_streams,
-)
+
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -45,10 +41,9 @@ Prerequisites:
     - Calibrated x90 and y180 pulses from Rabi measurements.
 
 Datasets:
-    - ``ds_raw``: raw parity streams from the OPX (``p_{qubit}`` or joint-outcome streams).
-      Never modified after acquisition.
-    - ``ds_fit``: processed conditional expectations, fitted decay curves, and per-qubit
-      summary scalars on the ``qubit`` coordinate. Used by ``plot_data``.
+    - ``ds_raw``: untouched ``state`` stream fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (fitted traces and summary scalars).
+      Used by ``plot_data``.
     - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with
       ``asdict``). Used by logging, ``node.outcomes``, and ``update_state``.
 
@@ -60,7 +55,7 @@ Results (``node.results["fit_results"][<qubit>]``):
     - ``decay_rate`` [1/ns]: effective rate 2 / T2_echo.
 
 Figures (``node.results["figures"]``):
-    - ``"decay"``: horizontal subplots of conditional readout vs idle delay tau
+    - ``"decay"``: horizontal subplots of state vs idle delay tau
       (each pi/2-pi segment; 2 tau total evolution) with exponential fit overlay.
 
 State update:
@@ -76,8 +71,6 @@ node = QualibrationNode[Parameters, Quam](name="12_hahn_echo", description=descr
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow local parameter overrides for debugging (ignored in the GUI / graph)."""
-    # node.parameters.qubits = ["q1"]
-    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -88,14 +81,17 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program for the Hahn echo sequence.
+    """Build the 1D Hahn-echo idle-delay sweep and the QUA pulse sequence.
 
-    Sweeps idle delay τ (each x90–y180 segment; total evolution 2τ). Pulse sequence per sweep point:
-        empty → measure(p1) → initialise → x90 → idle(τ) → y180 → idle(τ) → x90 → measure(p2)
+    Sweeps idle delay τ (each x90-y180 segment; total evolution 2τ).
     """
+    # ── Experiment parameters (Python side) ──────────────────────────────
     node.namespace["qubits"] = qubits = get_qubits(node)
+    num_qubits = len(qubits)
 
-    n_avg = node.parameters.num_shots
+    n_avg = node.parameters.num_shots  # repetitions averaged at each idle-delay point
+
+    # Tau axis: An array of wait times
     tau_values = np.arange(
         node.parameters.tau_min,
         node.parameters.tau_max,
@@ -103,70 +99,72 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
     tau_clock_cycles = tau_values // 4  # ns → QUA clock cycles (1 cycle = 4 ns)
 
+    # Metadata for data fetching: labels the saved state arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
         "tau": xr.DataArray(
             tau_values,
             attrs={
-                "long_name": "Hahn echo idle delay τ (each x90–y180 segment)",
+                "long_name": "Hahn echo idle delay τ (each x90-y180 segment)",
                 "units": "ns",
             },
         ),
     }
-
+    # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
+        # Real-time variables:
+        # t         : idle delay in clock cycles
+        # n         : shot counter
+        # state[i]  : thresholded post-manipulation measurement (0/1) for qubit i
         t = declare(int)  # swept τ in QUA clock cycles (1 cycle = 4 ns)
         n = declare(int)  # shot counter
-
-        p2, p1, parity_streams = declare_streams(node, qubits)
+        state = [declare(int) for _ in range(num_qubits)]
+        state_st = [declare_stream() for _ in range(num_qubits)]
         n_st = declare_output_stream()
 
-        for qubit in qubits:
+        for i, qubit in enumerate(qubits):
             # ── OUTER LOOP: average n_avg shots per tau point ────────────────
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)
 
                 # ── INNER LOOP: sweep per-arm idle time tau ────────────────────
                 with for_(*from_array(t, tau_clock_cycles)):
+
+                    # Reset the qubit's XY frame
                     reset_frame(qubit.xy.name)
                     align()
 
-                    if node.parameters.parity_measurement:
-                        qubit.empty()
-                        a1 = qubit.measure()
-
-                    qubit.initialize(
-                        target_state=node.parameters.target_state,
-                        max_loops=node.parameters.max_loops,
-                        conditional_drive=True,
-                    )
+                    # Perform the initialize macro
+                    qubit.initialize()
                     align()
 
+                    # Perform the Hahn-echo sequence.
                     with strict_timing_():
-                        # Hahn echo: x90 - tau - y180 - tau - x90
                         qubit.x90()
                         wait(t, qubit.xy.name)
                         qubit.y180()
                         wait(t, qubit.xy.name)
                         qubit.x90()
-
                     align()
-                    a2 = qubit.measure()
+
+                    # Thresholded PSB readout → averaged state probability
+                    s = qubit.measure()
+                    assign(state[i], Cast.to_int(s))
+                    save(state[i], state_st[i])
+
+                    # Return gate voltages to zero before the next shot to avoid accumulation of fixed point errors
                     align()
                     qubit.voltage_sequence.ramp_to_zero()
-                    align()
-
-                    assign(p2, Cast.to_int(a2))
-                    if node.parameters.parity_measurement:
-                        assign(p1, Cast.to_int(a1))
-                    save_measurement(node, qubit.name, p1, p2, parity_streams)
 
         with stream_processing():
             n_st.save("n")
-            n_tau = len(tau_values)
-            for qubit in qubits:
+            for i in range(num_qubits):
+                # Each save() is one wait time point.
+                # .buffer(len(tau_values)) : group points along the tau axis
+                # .average()               : average over all shots (n_avg repetitions)
+                # Result: 1D state vs tau per qubit
                 # Buffer tau sweep; average over shots -> 1D trace per qubit
-                buffer_streams(node, qubit.name, parity_streams, n_tau)
+                state_st[i].buffer(len(tau_values)).average().save(f"state{i + 1}")
 
 
 # %% {Simulate}
@@ -196,7 +194,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """Connect to the QOP, execute the QUA program, and fetch raw state data into ``ds_raw``."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -240,7 +238,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit an exponential decay to the Hahn echo data for each qubit.
 
-    Processes raw streams, fits each qubit, and stores ``ds_fit`` (with fitted
+    Processes raw state data, fits each qubit, and stores ``ds_fit`` (with fitted
     curves and summary scalars) and ``fit_results``.
     """
     ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
@@ -256,8 +254,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot decay traces and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
         node.results["ds_fit"],
-        node.namespace["qubits"],
-        analysis_signal=node.parameters.analysis_signal,
     )
     if not node.modes.external:
         plt.show()

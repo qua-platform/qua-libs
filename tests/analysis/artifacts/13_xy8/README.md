@@ -20,10 +20,9 @@ Prerequisites:
     - Calibrated pi, pi/2, and y180 pulses from Rabi measurements.
 
 Datasets:
-    - ``ds_raw``: raw parity streams from the OPX (``p_{qubit}`` or joint-outcome streams).
-      Never modified after acquisition.
-    - ``ds_fit``: processed conditional expectations, fitted decay curves, and per-qubit
-      summary scalars on the ``qubit`` coordinate. Used by ``plot_data``.
+    - ``ds_raw``: untouched ``state`` stream fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed sweeps plus analysis outputs (fitted traces and summary scalars).
+      Used by ``plot_data``.
     - ``fit_results``: compact per-qubit calibration dict (``FitParameters`` serialized with
       ``asdict``). Used by logging and ``node.outcomes``.
 
@@ -35,7 +34,7 @@ Results (``node.results["fit_results"][<qubit>]``):
     - ``decay_rate`` [1/ns]: effective rate 16 / T2_xy8.
 
 Figures (``node.results["figures"]``):
-    - ``"decay"``: horizontal subplots of conditional readout vs CPMG half-spacing tau
+    - ``"decay"``: horizontal subplots of state vs CPMG half-spacing tau
       (16 tau total idle) with exponential fit overlay for each qubit.
 
 State update:

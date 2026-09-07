@@ -13,13 +13,6 @@ from calibration_utils.plot_style import (
     apply_node_outcome_style,
     node_success,
 )
-from calibration_utils.measurement_utils import get_parity_item_names
-
-_SIGNAL_LABELS = {
-    "E_p1_given_p0_0": "P(1 | empty dot)",
-    "E_p1_given_p0_1": "P(1 | loaded dot)",
-}
-
 
 _TAU_XLABEL = "Idle delay τ [{unit}]"
 
@@ -33,9 +26,6 @@ def _tau_axis(tau_ns: np.ndarray) -> tuple[np.ndarray, str]:
 
 def plot_all(
     ds_fit: xr.Dataset,
-    qubits: List[Any],
-    *,
-    analysis_signal: str = "E_p1_given_p0_0",
 ) -> dict[str, Figure]:
     """Create a multi-panel Hahn-echo figure (one column per qubit).
 
@@ -45,43 +35,34 @@ def plot_all(
         Fitted dataset with data, fit curves, and summary scalars.
     qubits : list
         Qubit objects (names resolved from the dataset when possible).
-    analysis_signal : str
-        Which conditional expectation to plot.
 
     Returns
     -------
     dict[str, Figure]
         ``{"decay": figure}`` with all qubits as horizontal subplots.
     """
-    qubit_names = get_parity_item_names(
-        ds_fit,
-        analysis_signal,
-        item_names=[getattr(q, "name", f"Q{i}") for i, q in enumerate(qubits)],
-    )
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     if not qubit_names:
         fig, _ = plt.subplots(figsize=(6, 4))
         return {"decay": fig}
 
     tau_ns = np.asarray(ds_fit.tau.values, dtype=float)
     x_plot, time_unit = _tau_axis(tau_ns)
-    y_label = _SIGNAL_LABELS.get(analysis_signal, analysis_signal)
 
     n = len(qubit_names)
     fig, axes = plt.subplots(1, n, figsize=(4 * n, 4), squeeze=False)
 
     for i, qname in enumerate(qubit_names):
         ax = axes[0, i]
-        signal_var = f"{analysis_signal}_{qname}"
-        fit_var = f"{analysis_signal}_fit_{qname}"
         success = node_success(ds_fit, qname)
 
-        if signal_var in ds_fit:
-            y = np.asarray(ds_fit[signal_var].values, dtype=float)
+        if "state" in ds_fit:
+            y = ds_fit.state.sel(qubit=qname, drop=True).transpose("tau").values.astype(float)
             ax.scatter(x_plot, y, c="C0", s=12, alpha=0.6, zorder=3, label="Data")
             ax.plot(x_plot, y, color="C0", lw=0.8, alpha=0.5)
 
-        if success is not False and fit_var in ds_fit:
-            fitted = np.asarray(ds_fit[fit_var].values, dtype=float)
+        if success is not False and "state_fit" in ds_fit:
+            fitted = ds_fit.state_fit.sel(qubit=qname, drop=True).transpose("tau").values.astype(float)
             if np.any(np.isfinite(fitted)):
                 ax.plot(
                     x_plot,
@@ -94,7 +75,7 @@ def plot_all(
                 )
 
         ax.set_xlabel(_TAU_XLABEL.format(unit=time_unit))
-        ax.set_ylabel(y_label)
+        ax.set_ylabel("State")
         ax.set_ylim(-0.05, 1.05)
         apply_node_outcome_style(ax, qname, success)
 

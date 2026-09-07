@@ -30,14 +30,11 @@ def _xy8_decay(
 
 
 def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
-    """Generate synthetic XY8 raw streams.
+    """Generate synthetic XY8 state data.
 
-    Produces averaged post-readout streams ``p_{qubit}`` on the τ axis.
-    The underlying signal is a single exponential decay
-    ``P(τ) = offset + A·exp(−16τ / T₂_XY8)``, matching :func:`fit_raw_data`.
-
-    When ``parity_measurement`` is enabled, joint-outcome count streams are
-    synthesised so that ``E_p1_given_p0_0`` equals the same decay model.
+    Produces a ``state(qubit, tau)`` array whose underlying signal is a single
+    exponential decay ``P(τ) = offset + A·exp(−16τ / T₂_XY8)``, matching
+    :func:`fit_raw_data`.
     """
     node.namespace["qubits"] = qubits = get_qubits(node)
     tau_values = np.arange(
@@ -56,7 +53,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     }
 
     noise_std = float(getattr(node.parameters, "sim_noise_std", 0.03))
-    data_vars: dict[str, tuple[list[str], np.ndarray]] = {}
+    state_rows = []
 
     for qubit in qubits:
         qubit_rng = np.random.default_rng(seed=42 + sum(map(ord, qubit.name)))
@@ -66,18 +63,15 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         signal = _xy8_decay(tau_values, t2, amplitude=amp, offset=off)
         signal = signal + qubit_rng.normal(0.0, noise_std, size=signal.shape)
         signal = np.clip(signal, 0.0, 1.0)
+        state_rows.append(signal)
 
-        if node.parameters.parity_measurement:
-            empty_weight = 0.7
-            data_vars[f"p0_p0_{qubit.name}"] = (["tau"], np.full_like(signal, empty_weight))
-            data_vars[f"p0_p1_{qubit.name}"] = (["tau"], empty_weight * signal)
-            data_vars[f"p1_p0_{qubit.name}"] = (["tau"], np.full_like(signal, 0.1))
-            data_vars[f"p1_p1_{qubit.name}"] = (["tau"], 0.1 * signal)
-        else:
-            data_vars[f"p_{qubit.name}"] = (["tau"], signal)
-
-    tau_coord = xr.DataArray(tau_values, dims="tau", attrs=tau_attrs)
-    data_arrays = {
-        name: xr.DataArray(values, dims=dims, coords={"tau": tau_coord}) for name, (dims, values) in data_vars.items()
-    }
-    return xr.Dataset(data_arrays)
+    return xr.Dataset(
+        {
+            "state": xr.DataArray(
+                np.asarray(state_rows, dtype=float),
+                dims=("qubit", "tau"),
+                coords={"qubit": qubits.get_names(), "tau": tau_values},
+                attrs={"long_name": "thresholded qubit state"},
+            )
+        }
+    )

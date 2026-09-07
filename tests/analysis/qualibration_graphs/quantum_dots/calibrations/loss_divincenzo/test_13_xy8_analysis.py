@@ -36,8 +36,9 @@ def test_13_xy8_analysis_and_plot_actions(analysis_runner):
 
     ds_raw = node.results["ds_raw"]
     assert "tau" in ds_raw.dims
-    for qname in QUBIT_NAMES:
-        assert f"p_{qname}" in ds_raw.data_vars
+    assert "qubit" in ds_raw.dims
+    assert "state" in ds_raw.data_vars
+    assert list(ds_raw.qubit.values) == QUBIT_NAMES
     assert not any(name.startswith("E_") for name in ds_raw.data_vars)
 
     assert "ds_fit" in node.results
