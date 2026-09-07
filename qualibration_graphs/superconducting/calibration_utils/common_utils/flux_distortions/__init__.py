@@ -1,6 +1,6 @@
 """Shared helpers used by flux-distortion calibrations (and similar detuned sweeps)."""
 
-from .curves import (
+from .qubit_curves import (
     AUTO_SOURCE_ORDER,
     RAMSEY_EXTRAS_KEY,
     SPECTROSCOPY_EXTRAS_KEY,
