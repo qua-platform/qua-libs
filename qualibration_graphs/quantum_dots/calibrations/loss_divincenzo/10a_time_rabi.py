@@ -10,7 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 
 from calibration_utils.time_rabi import (
     Parameters,
@@ -33,7 +33,7 @@ are fitted to extract the π-pulse duration.
 
 Prerequisites:
     - Having calibrated the resonators coupled to the sensor dots.
-    - Having calibrated the voltage points (empty, initialization, measurement).
+    - Having calibrated the voltage points (initialization, measurement).
     - Having a rough qubit XY drive calibration (frequency and amplitude).
 
 Datasets:
@@ -136,7 +136,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
 
                     # Thresholded PSB readout → averaged state probability
-                    assign(state[i], Cast.to_int(qubit.measure()))
+                    s = qubit.measure()
+                    assign(state[i], Cast.to_int(s))
                     save(state[i], state_st[i])
 
                     # Return gate voltages to zero before the next shot to avoid accumulation of fixed point errors

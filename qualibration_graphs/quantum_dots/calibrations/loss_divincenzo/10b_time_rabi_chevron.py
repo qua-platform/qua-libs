@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 
 from calibration_utils.time_rabi_chevron import (
     Parameters,
@@ -34,7 +34,7 @@ versus pulse duration and detuning form a 2D chevron that reveals the resonant d
 
 Prerequisites:
     - Having calibrated the resonators coupled to the sensor dots.
-    - Having calibrated the voltage points (empty, initialization, measurement), including sensor dot bias.
+    - Having calibrated the voltage points (initialization, measurement), including sensor dot bias.
     - Having a rough qubit XY drive calibration (amplitude, frequency, and duration).
 
 Datasets:
@@ -146,19 +146,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     # ── INNER LOOP: sweep pulse duration in clock cycles ─────────────────
                     with for_(*from_array(t, pulse_durations // 4)):
 
-                        # Retune the XY drive to (calibrated IF + df)
-                        qubit.xy.update_frequency(intermediate_frequency + df)
+                        # Set the qubit drive frequency to the stored IF, for initialization
+                        qubit.xy.update_frequency(intermediate_frequency)
 
                         # Perform the initialize macro
                         qubit.initialize()
                         align()
+
+                        # Retune the XY drive to (calibrated IF + df)
+                        qubit.xy.update_frequency(intermediate_frequency + df)
 
                         # Play the selected gate at the current duration (chevron / time-Rabi)
                         qubit.macros[operation].apply(duration=t)
                         align()
 
                         # Thresholded PSB readout → averaged state probability
-                        assign(state[i], Cast.to_int(qubit.measure()))
+                        s = qubit.measure()
+                        assign(state[i], Cast.to_int(s))
                         save(state[i], state_st[i])
 
                         # Return gate voltages to zero before the next shot to avoid accumulation of fixed point errors

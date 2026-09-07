@@ -10,7 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 
 from calibration_utils.power_rabi_error_amplification import (
     Parameters,
@@ -33,6 +33,10 @@ number of π pulses is played and the spin state is measured with thresholded PS
 probabilities versus amplitude and pulse number are fitted to refine the π-pulse amplitude. Small amplitude errors
 accumulate over many pulses, enabling a precise refinement of the π-pulse amplitude prefactor in a narrow window
 around the value from node 09a.
+
+When the calibrated operation is x180, then the x90 prefactor is also calibrated together. However, when the calibrated
+operation is x90, the x180 is NOT updated. The intended workflow is to first calibrate the x180 prefactor, and then 
+fine-tune the x90 prefactor independently. 
 
 Prerequisites:
     - Having calibrated the relevant voltage points.
@@ -60,7 +64,8 @@ Figures (``node.results["figures"]``):
 
 State update:
     - The amplitude prefactor of the selected operation (``node.parameters.operation``).
-    - When calibrating x180, x90 is also updated to half the x180 prefactor.
+    - When calibrating x180, x90 is ALSO updated to half the x180 prefactor. 
+    - When calibrating x90, x180 is NOT updated.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -154,7 +159,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         # Thresholded PSB readout → averaged state probability
-                        assign(state[i], Cast.to_int(qubit.measure()))
+                        s = qubit.measure()
+                        assign(state[i], Cast.to_int(s))
                         save(state[i], state_st[i])
 
                         # Return gate voltages to zero before the next shot to avoid accumulation of fixed point errors
