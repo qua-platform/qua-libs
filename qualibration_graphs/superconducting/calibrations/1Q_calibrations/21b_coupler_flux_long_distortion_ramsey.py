@@ -427,10 +427,18 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process raw dataset, extract Ramsey phase, compute flux response, and fit exponentials."""
     ds_proc = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_proc"] = ds_proc
     ds_fit, fit_results = fit_raw_data(ds_proc, node)
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
+    node.outcomes = {
+        pair_name: (
+            "successful" if node.results["fit_results"].get(pair_name, {}).get("success", False) else "failed"
+        )
+        for pair_name in qubit_pair_names
+    }
 
 
 # %% {Plot_data}
@@ -444,7 +452,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_fit"],
         qubit_pairs,
         node.results["fit_results"],
-        ds_raw=node.results.get("ds_raw"),
+        ds_proc=node.results.get("ds_proc"),
         debug=node.parameters.debug_plots,
         log_scale=node.parameters.time_axis == "log",
     )
@@ -458,10 +466,13 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     if not node.parameters.update_state:
         return
 
+    skip_pairs = {qp.name for qp in node.namespace["qubit_pairs"] if node.outcomes.get(qp.name) == "failed"}
+
     with node.record_state_updates():
         update_coupler_filters(
             node.namespace["qubit_pairs"],
             node.results["fit_results"],
+            skip_pairs=skip_pairs,
             log_callable=node.log,
         )
 

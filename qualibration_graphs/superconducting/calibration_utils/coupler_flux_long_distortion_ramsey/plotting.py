@@ -21,7 +21,7 @@ def plot_raw_data_with_fit(
     fit_results: Dict,
     *,
     debug: bool = False,
-    ds_raw: Optional[xr.Dataset] = None,
+    ds_proc: Optional[xr.Dataset] = None,
     log_scale: bool = False,
 ) -> Dict[str, plt.Figure]:
     """Default figures: flux response (with IIR fit) only.
@@ -50,12 +50,12 @@ def plot_raw_data_with_fit(
     if not debug:
         return figures
 
-    if ds_raw is not None:
-        signal_key = "state" if "state" in ds_raw.data_vars else "I"
-        if signal_key in ds_raw.data_vars and "frame" in ds_raw[signal_key].dims:
-            grid_fringe = QubitGrid(ds_raw, grid_locations)
+    if ds_proc is not None:
+        signal_key = "state" if "state" in ds_proc.data_vars else "I"
+        if signal_key in ds_proc.data_vars and "frame" in ds_proc[signal_key].dims:
+            grid_fringe = QubitGrid(ds_proc, grid_locations)
             for ax, qubit in grid_iter(grid_fringe):
-                plot_ramsey_fringe(ax, ds_raw, qubit, grid_fringe.fig, log_scale=log_scale)
+                plot_ramsey_fringe(ax, ds_proc, qubit, grid_fringe.fig, log_scale=log_scale)
             grid_fringe.fig.suptitle("Debug: Ramsey signal vs (time, frame rotation)", fontsize=16)
             grid_fringe.fig.set_size_inches(15, 9)
             grid_fringe.fig.tight_layout()
