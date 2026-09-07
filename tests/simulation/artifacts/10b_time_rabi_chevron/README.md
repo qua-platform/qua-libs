@@ -10,7 +10,7 @@ versus pulse duration and detuning form a 2D chevron that reveals the resonant d
 
 Prerequisites:
     - Having calibrated the resonators coupled to the sensor dots.
-    - Having calibrated the voltage points (empty, initialization, measurement), including sensor dot bias.
+    - Having calibrated the voltage points (initialization, measurement), including sensor dot bias.
     - Having a rough qubit XY drive calibration (amplitude, frequency, and duration).
 
 Datasets:
