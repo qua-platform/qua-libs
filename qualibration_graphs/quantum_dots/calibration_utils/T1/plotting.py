@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.plot_style import apply_qubit_outcome_style, empty_figure
+
 
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
@@ -38,8 +40,7 @@ def plot_raw_data_with_fit(
     """
     qubit_names = [str(v) for v in ds.qubit.values]
     if not qubit_names:
-        fig, _ = plt.subplots(figsize=(6, 4))
-        return fig
+        return empty_figure("No qubit data available for T1.")
 
     tau_ns = np.asarray(ds.tau.values, dtype=float)
     # Display in µs if span is large enough
@@ -114,7 +115,8 @@ def plot_raw_data_with_fit(
                 title += f",  offset = {offset:.3f}"
         elif not success:
             title += "  |  fit failed"
-        ax.set_title(title, fontsize=10)
+        apply_qubit_outcome_style(ax, qname, success, subtitle=title[len(qname):].strip(" |"))
+        ax.title.set_fontsize(10)
         ax.legend(loc="upper right", fontsize=8)
 
     fig.suptitle(

@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.plot_style import apply_qubit_outcome_style, empty_figure
+
 
 def plot_raw_data_with_fit(
     ds: xr.Dataset,
@@ -43,8 +45,7 @@ def plot_raw_data_with_fit(
     """
     qubit_names = [str(v) for v in ds.qubit.values]
     if not qubit_names:
-        fig, _ = plt.subplots(figsize=(6, 4))
-        return fig
+        return empty_figure("No qubit data available for Ramsey detuning.")
 
     detuning_hz = np.asarray(ds.detuning.values, dtype=float)
     detuning_mhz = detuning_hz * 1e-6
@@ -132,7 +133,8 @@ def plot_raw_data_with_fit(
                 title += f", f={f_i:.2e} Hz⁻¹ (τ_eff≈{tau_eff:.0f} ns)"
             if np.isfinite(d0_i):
                 title += f", δ₀_i={d0_i * 1e-6:.3f} MHz"
-            ax.set_title(title, fontsize=9)
+            apply_qubit_outcome_style(ax, qname, success, subtitle=title[len(qname):].strip(" |"))
+            ax.title.set_fontsize(9)
             ax.legend(loc="upper right", fontsize=7)
 
     # Super-title with joint results

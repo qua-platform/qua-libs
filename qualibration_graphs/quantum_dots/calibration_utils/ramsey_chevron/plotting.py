@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.plot_style import apply_qubit_outcome_style, empty_figure
+
 
 def _plot_chevron_ax(
     ax: "plt.Axes",
@@ -37,7 +39,8 @@ def _plot_chevron_ax(
     )
     ax.set_xlabel("Idle time (ns)")
     ax.set_ylabel("Detuning (MHz)")
-    ax.set_title(f"{qubit_name} — Ramsey chevron")
+    success = (fit_result or {}).get("success")
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Ramsey chevron")
 
     if fit_result and fit_result.get("success"):
         freq_off_mhz = fit_result.get("freq_offset", 0) * 1e-6
@@ -60,9 +63,10 @@ def _plot_resonance_ax(
 ) -> None:
     """Plot mean state response vs detuning with detuning on the y-axis."""
     diag = (fit_result or {}).get("_diag")
+    success = (fit_result or {}).get("success")
     if diag is None:
         ax.text(0.5, 0.5, "No diagnostics", transform=ax.transAxes, ha="center")
-        ax.set_title(f"{qubit_name} — Resonance")
+        apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Resonance")
         return
 
     mean_state = diag["mean_state"]
@@ -94,7 +98,7 @@ def _plot_resonance_ax(
         )
 
     ax.set_xlabel("Mean signal")
-    ax.set_title(f"{qubit_name} — Resonance finding")
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle="Resonance finding")
     ax.legend(loc="upper right", fontsize=7)
 
 
@@ -113,8 +117,7 @@ def plot_raw_data_with_fit(
     """
     qubit_names = [str(v) for v in ds.qubit.values]
     if not qubit_names:
-        fig, _ = plt.subplots(figsize=(6, 4))
-        return fig
+        return empty_figure("No qubit data available for Ramsey chevron.")
 
     n = len(qubit_names)
     ncol = 2

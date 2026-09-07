@@ -15,12 +15,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.plot_style import apply_qubit_outcome_style, empty_figure
+
 
 def _plot_trace_ax(
     ax: "plt.Axes",
     tau_ns: np.ndarray,
     qubit_name: str,
     trace_fit: dict | None,
+    success: bool | None,
     label: str,
     color: str = "b",
     fit_color: str = "r",
@@ -28,7 +31,7 @@ def _plot_trace_ax(
     """Plot one detuning trace with its damped-cosine fit."""
     if trace_fit is None:
         ax.text(0.5, 0.5, "No fit data", transform=ax.transAxes, ha="center")
-        ax.set_title(f"{qubit_name} — {label}")
+        apply_qubit_outcome_style(ax, qubit_name, success, subtitle=label)
         return
 
     trace = trace_fit.get("signal", trace_fit.get("pdiff"))
@@ -47,10 +50,10 @@ def _plot_trace_ax(
     ax.set_ylim(-0.05, 1.05)
 
     f_hz = trace_fit.get("ramsey_freq", np.nan)
-    title = f"{qubit_name} — {label}"
+    subtitle = label
     if np.isfinite(f_hz):
-        title += f" (f={f_hz * 1e-6:.3f} MHz)"
-    ax.set_title(title)
+        subtitle += f" (f={f_hz * 1e-6:.3f} MHz)"
+    apply_qubit_outcome_style(ax, qubit_name, success, subtitle=subtitle)
     ax.legend(loc="upper right", fontsize=7)
 
 
@@ -68,8 +71,7 @@ def plot_raw_data_with_fit(
     """
     qubit_names = [str(v) for v in ds.qubit.values]
     if not qubit_names:
-        fig, _ = plt.subplots(figsize=(6, 4))
-        return fig
+        return empty_figure("No qubit data available for Ramsey.")
 
     n = len(qubit_names)
     ncol = 2
@@ -83,6 +85,7 @@ def plot_raw_data_with_fit(
         diag = fr.get("_diag", {})
         fit_plus = diag.get("fit_plus")
         fit_minus = diag.get("fit_minus")
+        success = fr.get("success")
 
         det_plus_mhz = detuning_hz[0] * 1e-6 if len(detuning_hz) > 0 else 0
         det_minus_mhz = detuning_hz[1] * 1e-6 if len(detuning_hz) > 1 else 0
@@ -92,6 +95,7 @@ def plot_raw_data_with_fit(
             tau_ns,
             qname,
             fit_plus,
+            success,
             label=f"+δ ({det_plus_mhz:+.1f} MHz)",
             color="b",
             fit_color="r",
@@ -101,6 +105,7 @@ def plot_raw_data_with_fit(
             tau_ns,
             qname,
             fit_minus,
+            success,
             label=f"−δ ({det_minus_mhz:+.1f} MHz)",
             color="C2",
             fit_color="C3",
