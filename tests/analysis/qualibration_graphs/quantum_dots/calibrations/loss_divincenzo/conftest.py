@@ -681,9 +681,16 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         analyse_qubit_pairs: Optional[list[str]] = None,
         simulated_data_generator: Optional[Callable[[Any], xr.Dataset]] = None,
     ) -> Any:
-        if analyse_qubits is None and analyse_qubit_pairs is None:
-            analyse_qubits = ANALYSE_QUBITS
         overrides = dict(param_overrides) if param_overrides else {}
+        # Prefer explicit analyse_* args; otherwise mirror qubits/pairs from
+        # param_overrides so ds_raw filtering matches the requested targets.
+        if analyse_qubits is None and analyse_qubit_pairs is None:
+            if overrides.get("qubits"):
+                analyse_qubits = list(overrides["qubits"])
+            elif overrides.get("qubit_pairs"):
+                analyse_qubit_pairs = list(overrides["qubit_pairs"])
+            else:
+                analyse_qubits = ANALYSE_QUBITS
         if analyse_qubits:
             overrides.setdefault("qubits", analyse_qubits)
         if analyse_qubit_pairs:
@@ -742,6 +749,8 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
         filter_names = analyse_qubit_pairs or analyse_qubits
         if filter_names and ds_raw is not None:
             keep_vars = []
+            if "state" in ds_raw.data_vars:
+                keep_vars.append("state")
             for q in filter_names:
                 for prefix in (
                     "p1_",
@@ -765,6 +774,10 @@ def analysis_runner(minimal_quam_factory, save_analysis_plot, markdown_generator
                             keep_vars.append(v)
             if keep_vars:
                 ds_raw = ds_raw[[v for v in ds_raw.data_vars if v in keep_vars]]
+                if "state" in ds_raw.data_vars and "qubit" in ds_raw["state"].dims:
+                    present = [q for q in filter_names if q in set(map(str, ds_raw.qubit.values.tolist()))]
+                    if present:
+                        ds_raw = ds_raw.sel(qubit=present)
 
         node.results["ds_raw"] = ds_raw
 
