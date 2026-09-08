@@ -76,7 +76,6 @@ node = QualibrationNode[Parameters, Quam](name="01a_time_of_flight", description
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -87,7 +86,7 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the ADC time-trace acquisition and the QUA pulse sequence."""
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
@@ -129,6 +128,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
+    
         # Allocate real-time variables on the OPX:
         #   adc_st       : stream collecting raw, real-time inputs of the OPX, per sensor
         #   n            : shot counter
@@ -138,13 +138,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_st = declare_stream()
         adc_st = {sensor.name: declare_stream(adc_trace=True) for sensor in sensors}
 
-        # Measure each batch, multiplexed by sensors
+        # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
-            align()  # Start with a global align
+
+            align()  # sync all channels in this batch before starting
 
             # ── OUTER LOOP: repeat the full sweep n_avg times ──
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)  # Tell the PC which shot we are on
+                save(n, n_st)  # tell the PC which shot we are on
 
                 for sensor in multiplexed_sensors.values():
                     # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
@@ -153,11 +154,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     sensor.readout_resonator.measure("readout", stream=adc_st[sensor.name])
                     # Wait 1µs for the resonator to deplete and to let enough time for the stream processing to process the raw ADC traces
                     sensor.readout_resonator.wait(250)
-                align()
+
+                align()  # sync sensors before moving to the next shot
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n")
+            n_st.save("n") # expose shot counter as "n" in the fetched dataset
             for i, s in enumerate(sensors):
                 # Specify the ADC input to save based on which input the sensor is actually connected to
                 inp = adc_st[s.name].input1() if sensor_input[i] == 1 else adc_st[s.name].input2()
@@ -240,7 +242,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
     ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -256,7 +258,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
     if not node.modes.external:
         plt.show()

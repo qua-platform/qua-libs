@@ -73,7 +73,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -88,7 +87,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # Get the active sensors from the node and organize them by batches
+    # Extract the sensors to be used in this measurement
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     # Number of shots per sweep point
@@ -126,6 +125,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
+
         # Allocate real-time variables on the OPX:
         #   adc_st       : stream collecting raw, real-time inputs of the OPX, per sensor
         #   n            : shot counter
@@ -135,13 +135,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n_st = declare_stream()
         adc_st = {sensor.name: declare_stream(adc_trace=True) for sensor in sensors}
 
-        # Measure each batch, multiplexed by sensors
+        # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
-            align()  # Start with a global align
+
+            align()  # sync all channels in this batch before starting
 
             # ── OUTER LOOP: repeat the full sweep n_avg times ──
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)  # Tell the PC which shot we are on
+                save(n, n_st)  # tell the PC which shot we are on
 
                 for sensor in multiplexed_sensors.values():
                     # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
@@ -150,7 +151,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     sensor.readout_resonator.measure("readout", stream=adc_st[sensor.name])
                     # Wait 1µs for the resonator to deplete and to let enough time for the stream processing to process the raw ADC traces
                     sensor.readout_resonator.wait(250)
-                align()
+
+                align()  # sync sensors before moving to the next shot
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():

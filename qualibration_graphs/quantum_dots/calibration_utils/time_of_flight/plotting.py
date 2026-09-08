@@ -1,13 +1,12 @@
 from typing import Dict, List
+
+import matplotlib.pyplot as plt
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 
-from qualang_tools.units import unit
+from calibration_utils.common_utils.plot_style import apply_sensor_outcome_style, sensor_success
 from quam_builder.architecture.quantum_dots.components import SensorDot
-
-u = unit(coerce_to_integer=True)
 
 
 def plot_all(ds_fit: xr.Dataset, sensors: List[SensorDot]) -> Dict[str, Figure]:
@@ -37,28 +36,7 @@ def plot_all(ds_fit: xr.Dataset, sensors: List[SensorDot]) -> Dict[str, Figure]:
 
 
 def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset):
-    """
-    Plots the single run ADC trace with fitted curves for the given sensors.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    sensors : list of SensorDot
-        A list of sensors to plot.
-    fits : xr.Dataset
-        The dataset containing the fit parameters.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each sensor.
-    - Each subplot contains the raw data and the fitted curve.
-    """
+    """Plot the single-run ADC trace with fitted TOF and offset for each sensor."""
     num_sensors = len(sensors)
     fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
@@ -66,7 +44,13 @@ def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.
     for ax, sensor in zip(axes, sensors):
         sensor_data = ds.sel(sensor=sensor.name)
         fit_data = fits.sel(sensor=sensor.name)
-        plot_individual_single_run_with_fit(ax, sensor_data, sensor.name, fit_data)
+        plot_individual_single_run_with_fit(
+            ax,
+            sensor_data,
+            sensor.name,
+            fit_data,
+            sensor_success(ds_fit=fits, sensor_name=sensor.name),
+        )
 
     fig.suptitle("Single run")
     fig.tight_layout()
@@ -74,28 +58,7 @@ def plot_single_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.
 
 
 def plot_averaged_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: xr.Dataset):
-    """
-    Plots the average ADC trace fitted curves for the given sensors.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    sensors : list of SensorDot
-        A list of sensors to plot.
-    fits : xr.Dataset
-        The dataset containing the fit parameters.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each sensor.
-    - Each subplot contains the raw data and the fitted curve.
-    """
+    """Plot the averaged ADC trace with fitted TOF and offset for each sensor."""
     num_sensors = len(sensors)
     fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
@@ -103,32 +66,27 @@ def plot_averaged_run_with_fit(ds: xr.Dataset, sensors: List[SensorDot], fits: x
     for ax, sensor in zip(axes, sensors):
         sensor_data = ds.sel(sensor=sensor.name)
         fit_data = fits.sel(sensor=sensor.name)
-        plot_individual_averaged_run_with_fit(ax, sensor_data, sensor.name, fit_data)
+        plot_individual_averaged_run_with_fit(
+            ax,
+            sensor_data,
+            sensor.name,
+            fit_data,
+            sensor_success(ds_fit=fits, sensor_name=sensor.name),
+        )
 
     fig.suptitle("Averaged run")
     fig.tight_layout()
     return fig
 
 
-def plot_individual_single_run_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_name: str, fit: xr.Dataset = None):
-    """
-    Plots individual sensor data on a given axis with optional fit.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axis on which to plot the data.
-    sensor_data : xr.Dataset
-        The dataset containing the sensor's quadrature data.
-    sensor_name : str
-        The sensor name for the title.
-    fit : xr.Dataset, optional
-        The dataset containing the fit parameters (default is None).
-
-    Notes
-    -----
-    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
-    """
+def plot_individual_single_run_with_fit(
+    ax: Axes,
+    sensor_data: xr.Dataset,
+    sensor_name: str,
+    fit: xr.Dataset = None,
+    success: bool | None = None,
+):
+    """Plot one sensor's single-run ADC trace with optional fit overlays."""
     sensor_data.adc_single_run.plot(ax=ax, x="readout_time", label="ADC", color="b")
 
     if fit is not None:
@@ -145,30 +103,19 @@ def plot_individual_single_run_with_fit(ax: Axes, sensor_data: xr.Dataset, senso
     )
     ax.set_xlabel("Time [ns]")
     ax.set_ylabel("Readout amplitude [V]")
-    ax.set_title(f"Sensor: {sensor_name}")
+    apply_sensor_outcome_style(ax, sensor_name, success)
     ax.legend()
     ax.grid(True, alpha=0.3)
 
 
-def plot_individual_averaged_run_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_name: str, fit: xr.Dataset = None):
-    """
-    Plots individual sensor data on a given axis with optional fit.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axis on which to plot the data.
-    sensor_data : xr.Dataset
-        The dataset containing the sensor's quadrature data.
-    sensor_name : str
-        The sensor name for the title.
-    fit : xr.Dataset, optional
-        The dataset containing the fit parameters (default is None).
-
-    Notes
-    -----
-    - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
-    """
+def plot_individual_averaged_run_with_fit(
+    ax: Axes,
+    sensor_data: xr.Dataset,
+    sensor_name: str,
+    fit: xr.Dataset = None,
+    success: bool | None = None,
+):
+    """Plot one sensor's averaged ADC trace with optional fit overlays."""
     sensor_data.adc.plot(ax=ax, x="readout_time", label="ADC", color="b")
 
     if fit is not None:
@@ -177,6 +124,6 @@ def plot_individual_averaged_run_with_fit(ax: Axes, sensor_data: xr.Dataset, sen
 
     ax.set_xlabel("Time [ns]")
     ax.set_ylabel("Readout amplitude [V]")
-    ax.set_title(f"Sensor: {sensor_name}")
+    apply_sensor_outcome_style(ax, sensor_name, success)
     ax.legend()
     ax.grid(True, alpha=0.3)

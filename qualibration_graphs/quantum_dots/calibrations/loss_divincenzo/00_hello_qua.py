@@ -58,11 +58,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # Number of shots per sweep point
-    n_avg = node.parameters.num_shots
-
-    # Extract the quantum dots and sensors to be used in this measurement
+    # Extract the quantum dots to be stepped in this diagnostic program
     node.namespace["quantum_dot"] = quantum_dots = get_dots(node)
+
+    n_avg = node.parameters.num_shots  # number of repetitions for each voltage sweep
 
     # Set up a symmetric gate sweep
     volts = np.linspace(-0.01, 0.01, 11)
@@ -71,7 +70,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # the quantum dot via quantum_dot.voltage_sequence.gate_set.name
     node.machine.reset_voltage_sequence("main_qpu", track_integrated_voltage=True)
 
-    # Register the sweep axes to be added to the dataset when fetching data
+    # Metadata for data fetching: labels the saved axes when results come back from the OPX
     node.namespace["sweep_axes"] = {
         "quantum_dots": xr.DataArray(quantum_dots),
         "voltage": xr.DataArray(volts, attrs={"long_name": "voltage", "units": ""}),
@@ -81,30 +80,28 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     with program() as node.namespace["qua_program"]:
 
         # Allocate real-time variables on the OPX:
-        #   I_st, Q_st   : buffers collecting I/Q before transfer to PC
-        #   I, Q         : QUA variables storing the outcome of the measurements to be saved into the streams above
-        #   n            : shot counter
-        #   n_st         : stream reporting shot index to PC (progress bar)
-        #   v            : QUA variable holding the voltage value to apply to the plunger
+        #   I, Q, I_st, Q_st : unused placeholder variables from the standard declaration helper
+        #   n                : shot counter
+        #   n_st             : stream reporting shot index to PC (progress bar)
+        #   v                : QUA variable holding the voltage value to apply to the plunger
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=1)
         v = declare(fixed)
 
         # ── OUTER LOOP: repeat the full sweep n_avg times ──
         with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)  # Tell the PC which shot we are on
+            save(n, n_st)  # tell the PC which shot we are on
 
+            align()  # sync all channels before starting
+
+            # Python loop over the quantum dots
             for quantum_dot in quantum_dots:
                 # Extract the quantum dot's run-time helper for voltage stepping and ramping
                 seq = quantum_dot.voltage_sequence
 
-                # Start with a global align
-                align()
-
-                # ── INNER LOOP: Sweep the voltage  ───────────────────────
+                # ── INNER LOOP: sweep the plunger voltage ─────────────────
                 with for_(*from_array(v, volts)):
 
-                    # Use the VoltageSequence run-time helper to ramp to voltages
-                    # This can be used with any physical or virtual voltage in the gate set
+                    # Ramp the selected quantum-dot voltage through the sweep
                     seq.ramp_to_voltages(
                         voltages={quantum_dot.name: v},
                         duration=1000,
