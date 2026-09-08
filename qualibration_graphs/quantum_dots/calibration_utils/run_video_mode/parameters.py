@@ -10,20 +10,32 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of averages to perform. Default is 100."""
     virtual_gate_set_id: Optional[str] = None
     """Name of the VirtualGateSet to measure using Video Mode."""
-    x_axis_name: str = None
+    x_axis_name: Optional[str] = None
     """Name of the X axis in your VirtualGateSet. Can be a physical gate id or virtual gate id."""
-    y_axis_name: str = None
+    y_axis_name: Optional[str] = None
     """Name of the Y axis in your VirtualGateSet. Can be a physical gate id or virtual gate id."""
+    x_points: int = 121
+    """The number of measurement points on the X axis. Default is 121."""
+    y_points: int = 121
+    """The number of measurement points on the Y axis. Default is 121."""
+    x_span: float = 0.05
+    """The X axis span in volts. Default is 0.05V."""
+    y_span: float = 0.05
+    """The Y axis span in volts. Default is 0.05V."""
     x_axis_mode: Literal["Voltage", "Frequency", "Amplitude"] = "Voltage"
     """Axis type of the X axis. Can be 'Voltage', 'Frequency', 'Amplitude'."""
     y_axis_mode: Literal["Voltage", "Frequency", "Amplitude"] = "Voltage"
     """Axis type of the Y axis. Can be 'Voltage', 'Frequency', 'Amplitude'."""
-    sensor_names: List[str] = None
+    sensor_names: Optional[List[str]] = None
     """List of sensor names to include in the measurement. """
     dc_control: bool = False
     """Whether to include DC Control channels in Video Mode"""
     result_type: Literal["I", "Q", "Amplitude", "Phase"] = "I"
     """Result type to display. Can be 'I', 'Q', 'Amplitude', 'Phase'."""
+    video_mode_port: int = 8050
+    """The localhost port to open video mode on."""
+    per_line_compensation: bool = True
+    """Optionally run a compensation pulse after each line sweep of video mode."""
 
 
 class Parameters(
