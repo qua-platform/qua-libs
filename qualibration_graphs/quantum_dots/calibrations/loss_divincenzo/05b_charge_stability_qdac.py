@@ -207,7 +207,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Wait for the trigger to be processed
                         wait(node.parameters.post_trigger_wait_ns // 4)
 
-                        # Perform muliplexed measurements on the sensors
+                        # Perform multiplexed measurements on the sensors
                         # A python for loop is used so that the measurements are performed in parallel.
                         for i, sensor in multiplexed_sensors.items():
                             # Select the resonator tied to the sensor
@@ -215,7 +215,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Measure using said resonator
                             rr.measure("readout", qua_vars=(I[i], Q[i]))
                             # Post-measurement wait (Optional)
-                            rr.wait(500)  # TODO: Make this a parameter
+                            rr.wait(500)
 
                             # Save the I/Q data to the streams
                             save(I[i], I_st[i])
@@ -235,7 +235,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 # %% {Simulate}
 @node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate or node.parameters.use_validation
+    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX and simulate the QUA program."""
@@ -294,19 +294,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Canonicalize to (sensors, x_volts, y_volts) for downstream processing.
-    dataset = dataset.transpose("sensors", "x_volts", "y_volts")
+    # Canonicalize to (sensor, x_volts, y_volts) for downstream processing.
+    dataset = dataset.transpose("sensor", "x_volts", "y_volts")
     # Register the raw dataset, reordering if the scan mode requires it (e.g. spiral).
     node.results["ds_raw"] = node.namespace["scan_mode"].reorder_dataset(dataset)
-
-
-# %% {Simulate validation data}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.use_validation or node.parameters.simulate
-)
-def simulate_data(node: QualibrationNode[Parameters, Quam]):
-    """Generate synthetic charge-stability data for pipeline validation (placeholder)."""
-    pass
 
 
 # %% {Load_historical_data}
@@ -324,7 +315,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=not node.parameters.perform_edge_analysis or node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
+    """Process ``ds_raw``, fit the edge data, and store processed data plus fit outputs in ``ds_fit``."""
     node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
@@ -336,7 +327,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Build the node figures from the raw and fitted charge-stability data."""
+    """Plot raw or fitted charge-stability data; store figures in ``node.results["figures"]``."""
     point_kwargs = {}
     if node.parameters.plot_points and "voltage_points" in node.namespace:
         pair_prefix = node.machine.find_quantum_dot_pair(node.parameters.x_axis_name, node.parameters.y_axis_name)

@@ -78,6 +78,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
+    node.parameters.run_in_video_mode = False
+    node.parameters.num_shots = 5
     pass
 
 
@@ -88,7 +90,7 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the 2D voltage sweep and the QUA pulse sequence."""
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
@@ -127,7 +129,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
-        "sensors": xr.DataArray(sensors.get_names()),
+        "sensor": xr.DataArray(sensors.get_names()),
         "y_volts": xr.DataArray(
             y_axis_ordered,
             attrs={"long_name": "voltage", "units": "V"},
@@ -287,8 +289,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Canonicalize to (sensors, x_volts, y_volts) for downstream processing.
-    dataset = dataset.transpose("sensors", "x_volts", "y_volts")
+    # Canonicalize to (sensor, x_volts, y_volts) for downstream processing.
+    dataset = dataset.transpose("sensor", "x_volts", "y_volts")
     # Register the raw dataset, reordering if the scan mode requires it (e.g. spiral)
     node.results["ds_raw"] = node.namespace["scan_mode"].reorder_dataset(dataset)
 
@@ -310,7 +312,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.simulate or node.parameters.run_in_video_mode or not node.parameters.perform_edge_analysis
 )
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
+    """Process ``ds_raw``, fit the edge data, and store processed data plus fit outputs in ``ds_fit``."""
     node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
@@ -322,7 +324,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.run_in_video_mode)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Build the node figures from the raw and fitted charge-stability data."""
+    """Plot raw or fitted charge-stability data; store figures in ``node.results["figures"]``."""
     point_kwargs = {}
     if node.parameters.plot_points and "voltage_points" in node.namespace:
         pair_prefix = node.machine.find_quantum_dot_pair(node.parameters.x_axis_name, node.parameters.y_axis_name)
@@ -353,7 +355,6 @@ from calibration_utils.run_video_mode import create_video_mode
 def run_video_mode(node: QualibrationNode[Parameters, Quam]):
     """Run Video Mode directly from Qualibrate by checking the bool 'run_in_video_mode'."""
     node.machine.track_integrated_voltage = True
-    # TODO: Remove gate_set_id from video mode params
     x_axis_name, y_axis_name, vgs_id = get_axis_names_and_validate(node)
     node.machine.reset_voltage_sequence(vgs_id)
     x_span, x_points = node.parameters.x_span, node.parameters.x_points

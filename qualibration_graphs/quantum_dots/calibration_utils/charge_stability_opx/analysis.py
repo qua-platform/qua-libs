@@ -150,13 +150,13 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     success_list = []
 
     for sensor in sensors:
-        sensor_data = ds.sel(sensors=sensor.id)
+        sensor_data = ds.sel(sensor=sensor.id)
         fit_params = fit_individual_raw_data(sensor_data, sensor.id, node)
         fit_results[sensor.id] = fit_params
         success_list.append(fit_params.success)
 
     # Add success criteria to the dataset
-    ds_fit = ds_fit.assign_coords(success=("sensors", success_list))
+    ds_fit = ds_fit.assign_coords(success=("sensor", success_list))
 
     return ds_fit, fit_results
 

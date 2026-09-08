@@ -106,7 +106,7 @@ def build_sweep_axes(
     else:
         raise ValueError("Slow/fast axis names must match the node x/y axes when building sweep axes.")
 
-    sweep_axes = {"sensors": xr.DataArray(node.namespace["sensors"].get_names())}
+    sweep_axes = {"sensor": xr.DataArray(node.namespace["sensors"].get_names())}
     for axis_key in axis_order:
         sweep_axes[axis_key] = ordered_axes[axis_key]
     node.namespace["sweep_axes"] = sweep_axes
@@ -133,12 +133,12 @@ def refresh_sweep_axes(node: QualibrationNode) -> None:
     if node.parameters.y_from_qdac:
         y_volts = y_volts + resolved_offsets.get(y_axis_name, 0.0)
 
-    axis_order = [key for key in node.namespace["sweep_axes"] if key != "sensors"]
+    axis_order = [key for key in node.namespace["sweep_axes"] if key != "sensor"]
     updated_axes = {
         "x_volts": _voltage_data_array(node.namespace["scan_mode"].get_x_axis_order(x_volts)),
         "y_volts": _voltage_data_array(node.namespace["scan_mode"].get_y_axis_order(y_volts)),
     }
-    sweep_axes = {"sensors": node.namespace["sweep_axes"]["sensors"]}
+    sweep_axes = {"sensor": node.namespace["sweep_axes"]["sensor"]}
     for axis_key in axis_order:
         sweep_axes[axis_key] = updated_axes[axis_key]
     node.namespace["sweep_axes"] = sweep_axes

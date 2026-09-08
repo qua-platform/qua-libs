@@ -87,7 +87,7 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the 2D voltage sweep and the QUA pulse sequence."""
 
     # ── Experiment parameters (Python side) ──────────────────────────────
     # Extract the relevant sensors from the node
@@ -109,7 +109,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Register the sweep axes to be added to the dataset when fetching data.
     node.namespace["sweep_axes"] = {
-        "sensors": xr.DataArray(sensors.get_names()),
+        "sensor": xr.DataArray(sensors.get_names()),
         "y_volts": xr.DataArray(
             dac_array,
             attrs={"long_name": "voltage", "units": "V"},
@@ -311,7 +311,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # ── RESTORE the DAC offset ─────────
         restore_dac_offset(dac_offset)
 
-    dataset = dataset.transpose("sensors", "x_volts", "y_volts")
+    dataset = dataset.transpose("sensor", "x_volts", "y_volts")
     node.results["ds_raw"] = dataset
 
 
@@ -330,7 +330,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate or not node.parameters.perform_edge_analysis)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Process ``ds_raw``, fit edge data, and store processed outputs in ``ds_fit``."""
+    """Process ``ds_raw``, fit the edge data, and store processed data plus fit outputs in ``ds_fit``."""
     node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
@@ -342,7 +342,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Build the node figures from the raw and fitted charge-stability data."""
+    """Plot raw or fitted charge-stability data; store figures in ``node.results["figures"]``."""
     point_kwargs = {}
     if node.parameters.plot_points and "voltage_points" in node.namespace:
         pair_prefix = node.machine.find_quantum_dot_pair(

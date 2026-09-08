@@ -84,7 +84,7 @@ node.machine = Quam.load()
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
+    """Build the integration-time sweep and the QUA pulse sequence."""
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
@@ -149,17 +149,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         idx = declare(int)
         progress = declare(int)
 
-        I_st_11 = {dp.name: {s.name: declare_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
-        Q_st_11 = {dp.name: {s.name: declare_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
-        I_st_02 = {dp.name: {s.name: declare_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
-        Q_st_02 = {dp.name: {s.name: declare_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
-        n_st = declare_stream()
+        I_st_11 = {dp.name: {s.name: declare_output_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
+        Q_st_11 = {dp.name: {s.name: declare_output_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
+        I_st_02 = {dp.name: {s.name: declare_output_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
+        Q_st_02 = {dp.name: {s.name: declare_output_stream() for s in dp.sensor_dots} for dp in quantum_dot_pairs}
+        n_st = declare_output_stream()
 
         # Loop over the dot pairs chosen.
         for dp_idx, dot_pair in enumerate(quantum_dot_pairs):
             seq = dot_pair.voltage_sequence
 
-            # TODO: Do we need to declare the QUA variables?
             I_11 = {}
             Q_11 = {}
             I_02 = {}
@@ -303,7 +302,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Process ``ds_raw``, fit the integration-time sweep, and store processed outputs."""
+    """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
     node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
@@ -315,7 +314,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Build the node figures from the raw and fitted readout-time optimization data."""
+    """Plot processed readout-time optimization data; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
         node.results["ds_raw"],
         node.namespace["all_sensors"],
@@ -329,9 +328,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the relevant parameters if the sensor_name data analysis was successful."""
+    """Update the relevant parameters if the data analysis was successful."""
 
     # Revert the readout length change done at the beginning of the node
     for tracked_resonator in node.namespace.get("tracked_resonators", []):

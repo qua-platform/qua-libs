@@ -61,16 +61,16 @@ def pca_plotter(ds: xr.Dataset) -> Figure:
     """
     if "I" not in ds.data_vars or "Q" not in ds.data_vars:
         raise KeyError("Dataset must contain 'I' and 'Q' data variables.")
-    if "sensors" not in ds.dims:
-        raise KeyError("Dataset must include a 'sensors' dimension.")
+    if "sensor" not in ds.dims:
+        raise KeyError("Dataset must include a 'sensor' dimension.")
 
-    sensor_ids = ds.coords["sensors"].values
+    sensor_ids = ds.coords["sensor"].values
     num_sensors = len(sensor_ids)
     fig, axes = plt.subplots(1, num_sensors, figsize=(6 * num_sensors, 5), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor_id in zip(axes, sensor_ids):
-        sensor_data = ds.sel(sensors=sensor_id)
+        sensor_data = ds.sel(sensor=sensor_id)
         i_map = np.asarray(sensor_data["I"].values, dtype=float)
         q_map = np.asarray(sensor_data["Q"].values, dtype=float)
 
@@ -162,7 +162,7 @@ def plot_raw_amplitude(
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.id)
+        sensor_data = ds.sel(sensor=sensor.id)
         plot_individual_raw_amplitude(ax, sensor_data, sensor.id, x_axis_name=x_axis_name, y_axis_name=y_axis_name)
         if voltage_points is not None:
             overlay_voltage_points(ax, voltage_points, x_axis_name, y_axis_name, pair_prefix)
@@ -214,7 +214,7 @@ def plot_raw_phase(
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.id)
+        sensor_data = ds.sel(sensor=sensor.id)
         plot_individual_raw_phase(ax, sensor_data, sensor.id, x_axis_name=x_axis_name, y_axis_name=y_axis_name)
         if voltage_points is not None:
             overlay_voltage_points(ax, voltage_points, x_axis_name, y_axis_name, pair_prefix)
@@ -620,7 +620,7 @@ def plot_all(
 
     if perform_edge_analysis and fit_results is not None:
         for sensor in sensors:
-            sensor_data = ds_plot.sel(sensors=sensor.id)
+            sensor_data = ds_plot.sel(sensor=sensor.id)
             sensor_fit = fit_results.get(sensor.id, {})
             figures[f"{sensor.id}_change_points"] = plot_change_point_overlays(
                 sensor_data,
