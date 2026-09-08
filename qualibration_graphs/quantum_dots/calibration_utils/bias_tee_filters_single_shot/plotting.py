@@ -1,35 +1,21 @@
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 
+from calibration_utils.common_utils.plot_style import apply_sensor_outcome_style
 from .analysis import _exponential_decay_model
 
 
 def plot_all(
-    ds: xr.Dataset,
+    ds_fit: xr.Dataset,
     elements: List,
     sensors: List,
     fit_results: Optional[Dict] = None,
 ) -> Dict[str, Figure]:
-    """Plot IQ amplitude vs time with the fitted exponential decay.
-
-    One subplot per element/sensor combination.  Data is shown as scatter
-    points and the fit (when available) as a smooth curve with the extracted
-    time constant annotated.
-
-    Args:
-        ds: Dataset containing ``amplitude_*`` and optionally ``fit_*`` variables.
-        elements: List of element objects from ``node.namespace["elements"]``.
-        sensors: List of sensor objects from ``node.namespace["sensors"]``.
-        fit_results: Optional dict of serialised ``FitParameters`` keyed by
-            ``{el_name}_{sensor_name}``.
-
-    Returns:
-        Matplotlib Figure.
-    """
+    """Plot IQ amplitude vs time with the fitted exponential decay."""
     n_cols = len(elements) * len(sensors)
     fig, axes = plt.subplots(
         1,
@@ -46,19 +32,18 @@ def plot_all(
             key = f"{el.name}_{sensor.name}"
             amp_key = f"amplitude_{el.name}_{i + 1}"
 
-            if amp_key not in ds:
+            if amp_key not in ds_fit:
                 col += 1
                 continue
 
-            time_ns = ds.time.values
+            time_ns = ds_fit.time.values
             time_us = time_ns / 1e3
-            amplitude = ds[amp_key].values
-
+            amplitude = ds_fit[amp_key].values
             ax.plot(time_us, amplitude * 1e3, "o", markersize=3, label="Raw data", alpha=0.7)
 
             amp_corr_key = f"amplitude_corrected_{el.name}_{i + 1}"
-            if amp_corr_key in ds:
-                amp_corr = ds[amp_corr_key].values
+            if amp_corr_key in ds_fit:
+                amp_corr = ds_fit[amp_corr_key].values
                 ax.plot(
                     time_us,
                     amp_corr * 1e3,
@@ -71,19 +56,21 @@ def plot_all(
 
             success = True
             if fit_results is not None and key in fit_results:
-                fr = fit_results[key]
-                if isinstance(fr, dict):
-                    A = fr["amplitude"]
-                    tau_ns = fr["time_constant_ns"]
-                    B = fr["offset"]
-                    success = bool(fr.get("success", True))
+                fit_result = fit_results[key]
+                if isinstance(fit_result, dict):
+                    amplitude_fit = fit_result["amplitude"]
+                    tau_ns = fit_result["time_constant_ns"]
+                    offset = fit_result["offset"]
+                    success = bool(fit_result.get("success", True))
                 else:
-                    A, tau_ns, B = fr.amplitude, fr.time_constant_ns, fr.offset
-                    success = bool(getattr(fr, "success", True))
+                    amplitude_fit = fit_result.amplitude
+                    tau_ns = fit_result.time_constant_ns
+                    offset = fit_result.offset
+                    success = bool(getattr(fit_result, "success", True))
 
                 if success:
                     t_fine = np.linspace(time_ns.min(), time_ns.max(), 300)
-                    fit_fine = _exponential_decay_model(t_fine, A, tau_ns, B)
+                    fit_fine = _exponential_decay_model(t_fine, amplitude_fit, tau_ns, offset)
                     tau_us = tau_ns / 1e3
                     ax.plot(
                         t_fine / 1e3,
@@ -98,8 +85,7 @@ def plot_all(
             ax.set_xlim(time_us.min(), time_us.max())
             ax.set_xlabel("Time [µs]")
             ax.set_ylabel("Amplitude [mV]")
-            title = f"{key}" if success else f"{key}  |  fit failed"
-            ax.set_title(title, color="black" if success else "red")
+            apply_sensor_outcome_style(ax, key, success)
             ax.legend(fontsize=8)
             ax.grid(True, alpha=0.3)
             col += 1

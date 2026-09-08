@@ -30,10 +30,13 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         The function writes ``elements``, ``sensors``, and ``sweep_axes``
         into ``node.namespace``.
     """
-    node.namespace["elements"], _ = elements, vgs_id = get_elements(node)
+    elements, _ = get_elements(node)
+    node.namespace["elements"] = elements
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     num_chunks = node.parameters.measurement_time // node.parameters.integration_time
+    if num_chunks < 1:
+        raise ValueError("measurement_time must be at least integration_time.")
     time_array = (np.arange(num_chunks) + 0.5) * node.parameters.integration_time
 
     node.namespace["sweep_axes"] = {
@@ -49,7 +52,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
 
     data_vars = {}
     for el_idx, el in enumerate(elements):
-        for i, sensor in enumerate(sensors):
+        for i, _sensor in enumerate(sensors):
             scale = 1.0 + 0.05 * el_idx
             A_sim = 5e-4 * scale
             B_sim = 1e-4 * scale

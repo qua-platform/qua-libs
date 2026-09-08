@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from qualibrate.core import QualibrationNode
 from qualibrate.core.parameters import RunnableParameters
@@ -36,5 +36,5 @@ def _get_elements(machine: BaseQuamQD, node_parameters: RunnableParameters):
     return resolved, next(iter(vgs_ids))
 
 
-def get_elements(node: QualibrationNode) -> List:
+def get_elements(node: QualibrationNode) -> Tuple[List, str]:
     return _get_elements(node.machine, node.parameters)
