@@ -114,4 +114,5 @@ if user_input.lower() == "y":
         catalogs=[VoltageBalancedMacroCatalog()],
         connect_qdac=False,
     )
+    machine.save("/Users/kalidu_laptop/merge_libs/quam_state")
     machine.save()
