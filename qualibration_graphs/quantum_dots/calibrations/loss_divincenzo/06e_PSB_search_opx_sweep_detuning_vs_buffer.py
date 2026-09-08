@@ -49,7 +49,6 @@ Datasets
 --------
 - ``ds_raw``: shot-level ``I`` and ``Q`` vs ``detuning`` and ``buffer_duration``
   (dims: ``qubit_pair``, ``n_runs``, ``detuning``, ``buffer_duration``).
-- ``ds_processed``: processed copy of ``ds_raw`` used by the analysis/plotting pipeline.
 - ``ds_fit``: 2D PCA-derived contrast maps (currently ``pc1_std`` and ``iq_trace``).
 - ``fit_results``: per-pair scalar results (serialized dataclass) for logging.
 
@@ -78,6 +77,7 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow local debug-only parameter overrides when running from the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
@@ -145,7 +145,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 align()
                 # Extract the dot pair associated with the qubit pair
                 dot_pair = qubit_pair.quantum_dot_pair
-                # Extract the dot-pair specific readout infomation before the loops
+                # Extract the dot-pair specific readout information before the loops
                 sensor = dot_pair.sensor_dots[0]
                 rr = sensor.readout_resonator
                 op_name = f"readout_{dot_pair.name}"
@@ -288,7 +288,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
     node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_detuning_vs_buffer_raw_data(node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -310,13 +310,12 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         metric_name=node.parameters.pca_metric,
         fit_results=node.results["fit_results"],
     )
-    node.results["figure"] = node.results["figures"]["detuning_vs_buffer_pca_map"]
     if not node.modes.external:
         plt.show()
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
     fit_results = node.results.get("fit_results")

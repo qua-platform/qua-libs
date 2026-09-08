@@ -77,6 +77,7 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow local debug-only parameter overrides when running from the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
@@ -145,7 +146,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 rr = sensor.readout_resonator
                 readout_len = rr.operations[op_name].length
 
-                # ── INNER LOOP: sweep sensor plunger gate voltage ──────────
+                # ── INNER LOOP: sweep detuning ─────────────────────────────
                 with for_(*from_array(detuning, detuning_array)):
 
                     # ── STEP 1 - INITIALIZE: Perform the initialization sequence ──────────
@@ -282,7 +283,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
+    """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
     node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
 
     node.results["ds_fit"], fit_results = fit_raw_data_pca_gaussian(ds_processed, node)
@@ -317,7 +318,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the sensor data analysis was successful."""
     with node.record_state_updates():

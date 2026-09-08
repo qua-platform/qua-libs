@@ -51,6 +51,21 @@ def apply_qubit_outcome_style(
         ax.set_title(base)
 
 
+def qubit_pair_success(fit_results: dict | None, qubit_pair_name: str) -> Optional[bool]:
+    """Return per-qubit-pair fit success from ``fit_results``, if present."""
+    return qubit_success(fit_results, qubit_pair_name)
+
+
+def apply_qubit_pair_outcome_style(
+    ax: Axes,
+    qubit_pair_name: str,
+    success: Optional[bool],
+    subtitle: str = "",
+) -> None:
+    """Style a subplot title to reflect qubit-pair fit success or failure."""
+    apply_qubit_outcome_style(ax, qubit_pair_name, success, subtitle=subtitle)
+
+
 def empty_figure(message: str, *, figsize: tuple[float, float] = (8.0, 4.0)) -> Figure:
     """Return a figure with a centered message (e.g. when no qubit data is available)."""
     fig, ax = plt.subplots(figsize=figsize)

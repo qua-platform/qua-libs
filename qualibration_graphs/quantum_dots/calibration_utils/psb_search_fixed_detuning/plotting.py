@@ -10,6 +10,8 @@ from matplotlib.figure import Figure
 from scipy.stats import norm as _scipy_norm
 import xarray as xr
 
+from calibration_utils.common_utils.plot_style import apply_qubit_outcome_style, qubit_success
+
 __all__ = [
     "plot_all",
     "plot_labeled_histogram_barthel",
@@ -83,7 +85,7 @@ def plot_labeled_iq_blobs(
         ax_raw.plot(Ie * 1e3, Qe * 1e3, ".", alpha=0.4, markersize=2, label="T", color="C1")
         ax_raw.set_xlabel("I [mV]")
         ax_raw.set_ylabel("Q [mV]")
-        ax_raw.set_title(f"{name}  (raw)")
+        apply_qubit_outcome_style(ax_raw, name, qubit_success(fit_results, name), subtitle="raw")
         ax_raw.legend(fontsize=7)
         ax_raw.grid(True, alpha=0.3)
 
@@ -103,7 +105,12 @@ def plot_labeled_iq_blobs(
             )
         ax_rot.set_xlabel("I_rot [mV]")
         ax_rot.set_ylabel("Q_rot [mV]")
-        ax_rot.set_title(f"{name}  (rotated by iw_angle)")
+        apply_qubit_outcome_style(
+            ax_rot,
+            name,
+            qubit_success(fit_results, name),
+            subtitle="rotated by iw_angle",
+        )
         ax_rot.legend(fontsize=7)
         ax_rot.grid(True, alpha=0.3)
 
@@ -117,6 +124,7 @@ def plot_labeled_histogram_barthel(
     ds_fit: xr.Dataset,
     qubits: Sequence[Any],
     *,
+    fit_results: Dict[str, Dict[str, Any]] | None = None,
     n_bins: int = 80,
 ) -> Figure:
     """Per-qubit labeled S/T histograms with the Barthel analytic fit."""
@@ -190,7 +198,12 @@ def plot_labeled_histogram_barthel(
             )
 
         fid = float(np.asarray(fit.fidelity_opt.values).ravel()[0]) * 100
-        ax.set_title(f"{qname}  (F = {fid:.1f} %)")
+        apply_qubit_outcome_style(
+            ax,
+            qname,
+            qubit_success(fit_results, qname),
+            subtitle=f"F = {fid:.1f} %",
+        )
         ax.set_xlabel("PCA readout (normalized)")
         ax.set_ylabel("Density")
         ax.legend(loc="upper right", fontsize=7)
@@ -207,6 +220,7 @@ def plot_labeled_histogram_gmm(
     ds_gmm_fit: xr.Dataset,
     qubits: Sequence[Any],
     *,
+    fit_results: Dict[str, Dict[str, Any]] | None = None,
     n_bins: int = 80,
 ) -> Figure:
     """Per-qubit labeled S/T histograms with fitted GMM Gaussian components.
@@ -277,7 +291,12 @@ def plot_labeled_histogram_gmm(
         if np.isfinite(thr):
             ax.axvline(thr, color="r", ls="--", lw=1.5, label=f"Threshold = {thr:.3g} mV")
 
-        ax.set_title(f"{qname}  (F = {fid:.1f} %)")
+        apply_qubit_outcome_style(
+            ax,
+            qname,
+            qubit_success(fit_results, qname),
+            subtitle=f"F = {fid:.1f} %",
+        )
         ax.set_xlabel("Projected readout [mV]")
         ax.set_ylabel("Density")
         ax.legend(loc="upper right", fontsize=7)
@@ -307,9 +326,9 @@ def plot_all(
     }
 
     if analysis_model == "barthel":
-        figures["histogram"] = plot_labeled_histogram_barthel(ds_labeled, ds_fit, qubits)
+        figures["histogram"] = plot_labeled_histogram_barthel(ds_labeled, ds_fit, qubits, fit_results=fit_results)
     elif analysis_model == "gmm":
-        figures["histogram"] = plot_labeled_histogram_gmm(ds_fit, qubits)
+        figures["histogram"] = plot_labeled_histogram_gmm(ds_fit, qubits, fit_results=fit_results)
     else:
         raise ValueError(f"Unsupported analysis_model={analysis_model!r}.")
 

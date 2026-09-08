@@ -52,7 +52,6 @@ Prerequisites
 Datasets
 --------
 - ``ds_raw``: shot-level ``I_no_pi``, ``Q_no_pi``, ``I_pi``, ``Q_pi`` (dims: ``qubit``, ``n_runs``).
-- ``ds_processed``: labeled ``Ig``, ``Qg``, ``Ie``, ``Qe`` used by the analysis/plotting pipeline.
 - ``ds_fit``: model-specific fitted dataset returned by the selected Barthel or GMM analysis.
 - ``fit_results``: per-qubit scalar results (serialized dataclass) for logging and state updates.
 
@@ -82,6 +81,7 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow local debug-only parameter overrides when running from the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
@@ -206,6 +206,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated fixed-detuning PSB data so the analysis pipeline can run without hardware."""
     node.results["ds_raw"] = generate_simulated_dataset(node)
     node.log("[sim] Simulated fixed-detuning PSB dataset generated successfully.")
 
@@ -252,7 +253,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Fit the labeled readout model using the processed dataset."""
+    """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
     node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_fixed_detuning_raw_data(node)
     node.results["fit_results"] = {str(name): asdict(result) for name, result in fit_results.items()}
@@ -280,7 +281,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Revert temporary patches, then persist fixed-point readout calibration."""
     for _, dot_pair in node.namespace["qubit_dot_pairs"]:

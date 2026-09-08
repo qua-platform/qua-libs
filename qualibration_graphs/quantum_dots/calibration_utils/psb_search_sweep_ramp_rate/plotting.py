@@ -62,13 +62,22 @@ def plot_all(
     """Standard `plot_all` API for 06c-style ramp-duration sweeps."""
     qubit_pairs_list: List[Any] = list(qubit_pairs)
     figs = {
-        "fidelity_vs_ramp_duration": plot_fidelity_vs_sweep(ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name),
-        "visibility_vs_ramp_duration": plot_visibility_vs_sweep(
-            ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name
+        "fidelity_vs_ramp_duration": plot_fidelity_vs_sweep(
+            ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name, fit_results=fit_results
         ),
-        "sweep_summary": plot_sweep_summary(ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name),
+        "visibility_vs_ramp_duration": plot_visibility_vs_sweep(
+            ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name, fit_results=fit_results
+        ),
+        "sweep_summary": plot_sweep_summary(
+            ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name, fit_results=fit_results
+        ),
         "histograms_vs_ramp_duration": plot_histograms_vs_sweep(
-            ds_raw, qubit_pairs_list, ds_fit, sweep_name=sweep_name, normalize_by_sweep=True
+            ds_raw,
+            qubit_pairs_list,
+            ds_fit,
+            sweep_name=sweep_name,
+            normalize_by_sweep=True,
+            fit_results=fit_results,
         ),
         "rotated_iq_density": plot_rotated_iq_density_at_optimum(
             ds_raw,

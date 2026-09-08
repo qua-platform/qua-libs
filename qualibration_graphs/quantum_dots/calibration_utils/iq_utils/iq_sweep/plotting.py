@@ -4,6 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
+from calibration_utils.common_utils.plot_style import (
+    apply_qubit_pair_outcome_style,
+    qubit_pair_success,
+)
 from ..plotting import (
     _grid,
     _sweep_axis_label,
@@ -21,6 +25,7 @@ def plot_metric_vs_sweep(
     metric_field: str,
     metric_label: str,
     optimum_field: Optional[str] = None,
+    fit_results: Optional[dict[str, Any]] = None,
 ) -> Figure:
     """Per-qubit subplot of a scalar metric vs the sweep coordinate.
 
@@ -49,7 +54,7 @@ def plot_metric_vs_sweep(
 
         ax.set_xlabel(x_label)
         ax.set_ylabel(metric_label)
-        ax.set_title(qp.name)
+        apply_qubit_pair_outcome_style(ax, qp.name, qubit_pair_success(fit_results, qp.name))
         ax.grid(True, alpha=0.3)
 
     for idx in range(n, len(axes_flat)):
@@ -65,6 +70,7 @@ def plot_fidelity_vs_sweep(
     qubit_pairs: List[Any],
     fits: xr.Dataset,
     sweep_name: str = "detuning",
+    fit_results: Optional[dict[str, Any]] = None,
 ) -> Figure:
     return plot_metric_vs_sweep(
         ds,
@@ -74,6 +80,7 @@ def plot_fidelity_vs_sweep(
         metric_field="readout_fidelity",
         metric_label="Readout fidelity (%)",
         optimum_field="optimal_sweep_value_fidelity",
+        fit_results=fit_results,
     )
 
 
@@ -82,6 +89,7 @@ def plot_visibility_vs_sweep(
     qubit_pairs: List[Any],
     fits: xr.Dataset,
     sweep_name: str = "detuning",
+    fit_results: Optional[dict[str, Any]] = None,
 ) -> Figure:
     return plot_metric_vs_sweep(
         ds,
@@ -91,6 +99,7 @@ def plot_visibility_vs_sweep(
         metric_field="visibility_opt",
         metric_label="Visibility",
         optimum_field="optimal_sweep_value_visibility",
+        fit_results=fit_results,
     )
 
 
@@ -99,6 +108,7 @@ def plot_sweep_summary(
     qubit_pairs: List[Any],
     fits: xr.Dataset,
     sweep_name: str = "detuning",
+    fit_results: Optional[dict[str, Any]] = None,
 ) -> Figure:
     """Fidelity and visibility on twin y-axes per qubit pair with both optima marked."""
     n = len(qubit_pairs)
@@ -138,7 +148,7 @@ def plot_sweep_summary(
 
         opt_f = float(fit_q.optimal_sweep_value_fidelity.values)
         opt_v = float(fit_q.optimal_sweep_value_visibility.values)
-        title_bits = [qp.name]
+        title_bits = []
         if np.isfinite(opt_f):
             ax.axvline(opt_f, color="C0", ls="--", lw=1, alpha=0.7)
             title_bits.append(f"F* @ {opt_f:.4g}")
@@ -146,7 +156,12 @@ def plot_sweep_summary(
             ax.axvline(opt_v, color="C1", ls=":", lw=1, alpha=0.7)
             title_bits.append(f"V* @ {opt_v:.4g}")
 
-        ax.set_title("  |  ".join(title_bits))
+        apply_qubit_pair_outcome_style(
+            ax,
+            qp.name,
+            qubit_pair_success(fit_results, qp.name),
+            subtitle="  |  ".join(title_bits),
+        )
         ax.grid(True, alpha=0.3)
 
     for idx in range(n, len(axes_flat)):
@@ -166,6 +181,7 @@ def plot_histograms_vs_sweep(
     n_bins: int = 256,
     log_counts: bool = False,
     normalize_by_sweep: bool = False,
+    fit_results: Optional[dict[str, Any]] = None,
 ) -> Figure:
     """Per qubit pair: 2D map of shot histograms along the sweep coordinate.
 
@@ -290,7 +306,7 @@ def plot_histograms_vs_sweep(
         ax.set_ylim(y_min, y_max)
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
-        ax.set_title(qp.name)
+        apply_qubit_pair_outcome_style(ax, qp.name, qubit_pair_success(fit_results, qp.name))
         ax.legend(loc="upper right", fontsize=8)
         plt.colorbar(
             im,

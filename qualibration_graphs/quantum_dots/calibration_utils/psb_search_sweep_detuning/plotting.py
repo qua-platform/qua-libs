@@ -42,24 +42,28 @@ def plot_all(
         list(qubit_pairs),
         ds_fit,
         sweep_name=sweep_name,
+        fit_results=fit_results,
     )
     figures["visibility_vs_detuning"] = plot_visibility_vs_sweep(
         ds_raw,
         list(qubit_pairs),
         ds_fit,
         sweep_name=sweep_name,
+        fit_results=fit_results,
     )
     figures["sweep_summary"] = plot_sweep_summary(
         ds_raw,
         list(qubit_pairs),
         ds_fit,
         sweep_name=sweep_name,
+        fit_results=fit_results,
     )
     figures["histograms_vs_detuning"] = plot_histograms_vs_sweep(
         ds_raw,
         list(qubit_pairs),
         ds_fit,
         sweep_name=sweep_name,
+        fit_results=fit_results,
     )
     figures["rotated_iq_density"] = plot_rotated_iq_density_at_optimum(
         ds_raw,

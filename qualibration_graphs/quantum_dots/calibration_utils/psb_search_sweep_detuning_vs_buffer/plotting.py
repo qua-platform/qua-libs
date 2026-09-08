@@ -3,6 +3,8 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import xarray as xr
 
+from calibration_utils.common_utils.plot_style import apply_qubit_pair_outcome_style, qubit_pair_success
+
 __all__ = ["plot_detuning_vs_buffer_pca_map", "plot_all"]
 
 
@@ -50,7 +52,12 @@ def plot_detuning_vs_buffer_pca_map(
                     zorder=5,
                 )
 
-        ax.set_title(f"{pair_name} - {metric_label}")
+        apply_qubit_pair_outcome_style(
+            ax,
+            str(pair_name),
+            qubit_pair_success(fit_results, str(pair_name)),
+            subtitle=metric_label,
+        )
         ax.set_xlabel("Detuning (V)")
         ax.set_ylabel("Buffer duration (ns)")
 

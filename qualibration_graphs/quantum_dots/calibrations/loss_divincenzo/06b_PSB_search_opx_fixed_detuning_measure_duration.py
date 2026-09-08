@@ -86,6 +86,7 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow local debug-only parameter overrides when running from the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
@@ -236,7 +237,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Each save() above is one voltage point.
                 # .buffer(array_size) : group points along the readout_length axis
                 # .buffer(n_avg) : group points along the repetitions axis
-                # Result : 2D trace I(detuning, n_avg), Q(detuning, n_avg) per qubit pair
+                # Result : 2D trace I(readout_length, n_runs), Q(readout_length, n_runs) per qubit pair
                 I_st[i].buffer(array_size).buffer(n_avg).save(f"I_{qubit_pair.name}")
                 Q_st[i].buffer(array_size).buffer(n_avg).save(f"Q_{qubit_pair.name}")
 
@@ -262,6 +263,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated PSB readout-length data so the analysis pipeline can run without hardware."""
     node.results["ds_raw"] = generate_simulated_dataset(node)
     node.log("[sim] Simulated PSB readout-length dataset generated successfully.")
 
@@ -311,7 +313,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Fit PCA + two-Gaussian readout model at each readout length (same stack as 06a)."""
+    """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
     node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_measure_duration_raw_data(node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -344,7 +346,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Revert temporary patches, then persist optimal readout length and readout calibration."""
     for tracked_resonator in node.namespace.get("tracked_resonators", []):
@@ -378,7 +380,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             operation.length = optimal_ns
 
             operation.integration_weights_angle -= float(fit_result["iw_angle"])
-            print(
+            node.log(
                 f"For sensor {sensor_dot.name}, pair {dot_pair.name}, threshold calculated to be {fit_result['I_threshold']} and angle {float(fit_result['iw_angle'])}"
             )
             sensor_dot._add_readout_params(dot_pair.name, threshold=float(fit_result["I_threshold"]))

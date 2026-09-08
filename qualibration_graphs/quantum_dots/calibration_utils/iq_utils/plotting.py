@@ -14,6 +14,11 @@ import xarray as xr
 from matplotlib.figure import Figure
 from scipy.stats import gaussian_kde
 
+from calibration_utils.common_utils.plot_style import (
+    apply_qubit_pair_outcome_style,
+    qubit_pair_success,
+)
+
 
 def _grid(n: int) -> tuple[int, int]:
     n_cols = int(np.ceil(np.sqrt(n)))
@@ -105,7 +110,7 @@ def plot_rotated_iq_density(
             _plot_iq_scatter(ax_raw, I_raw, Q_raw, alpha=alpha, s=s)
         ax_raw.set_xlabel("I")
         ax_raw.set_ylabel("Q")
-        ax_raw.set_title(f"{name}  (raw)")
+        apply_qubit_pair_outcome_style(ax_raw, name, qubit_pair_success(fit_results, name), subtitle="raw")
 
         cos_a, sin_a = np.cos(iw_angle), np.sin(iw_angle)
         I_rot = I_raw * cos_a + Q_raw * sin_a
@@ -124,7 +129,12 @@ def plot_rotated_iq_density(
         )
         ax_rot.set_xlabel("I (rotated)")
         ax_rot.set_ylabel("Q (rotated)")
-        ax_rot.set_title(f"{name}  (rotated by iw_angle)")
+        apply_qubit_pair_outcome_style(
+            ax_rot,
+            name,
+            qubit_pair_success(fit_results, name),
+            subtitle="rotated by iw_angle",
+        )
         ax_rot.legend(loc="upper right", fontsize=8)
 
     fig.suptitle("Readout: IQ density (raw + rotated) + threshold")
@@ -197,7 +207,12 @@ def plot_rotated_iq_density_at_optimum(
         )
         ax.set_xlabel("I (rotated)")
         ax.set_ylabel("Q (rotated)")
-        ax.set_title(f"{name}  [{sweep_dim}={result.get('optimal_sweep_value', opt_idx):.4g}]")
+        apply_qubit_pair_outcome_style(
+            ax,
+            name,
+            qubit_pair_success(fit_results, name),
+            subtitle=f"{sweep_dim}={result.get('optimal_sweep_value', opt_idx):.4g}",
+        )
         ax.legend(loc="upper right", fontsize=8)
 
     for j in range(n, len(axes_flat)):
