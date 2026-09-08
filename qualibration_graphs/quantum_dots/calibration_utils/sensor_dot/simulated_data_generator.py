@@ -17,17 +17,7 @@ def _lorentzian(x, x0, gamma, amplitude, offset):
 
 
 def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
-    """Generate simulated Coulomb peak data for the sensor gate sweep.
-
-    For each sensor, a Lorentzian peak is placed at a seeded position
-    (not necessarily the centre) within the bias-offset sweep range.
-
-    Parameters
-    ----------
-    node : QualibrationNode
-        Calibration node whose ``parameters`` and ``machine`` are already set.
-        Writes ``sensors`` and ``sweep_axes`` into ``node.namespace``.
-    """
+    """Generate simulated Coulomb peak data for the sensor gate sweep."""
     node.namespace["sensors"] = sensors = get_sensors(node)
 
     bias_offsets = np.arange(
@@ -37,7 +27,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     )
 
     node.namespace["sweep_axes"] = {
-        "sensors": xr.DataArray(sensors.get_names()),
+        "sensor": xr.DataArray(sensors.get_names()),
         "bias_offsets": xr.DataArray(
             bias_offsets,
             attrs={"long_name": "Sensor bias offset", "units": "V"},
@@ -57,15 +47,14 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         baseline = rng.uniform(1e-4, 5e-4)
 
         signal = _lorentzian(bias_offsets, peak_center, peak_gamma, peak_amp, baseline)
-
         phase = np.pi / 6 + 0.3 * i
         noise = 2e-5
         I_data.append(signal * np.cos(phase) + rng.normal(0, noise, size=len(bias_offsets)))
         Q_data.append(signal * np.sin(phase) + rng.normal(0, noise, size=len(bias_offsets)))
 
     sensor_names = sensors.get_names()
-    coords = {"sensors": sensor_names, "bias_offsets": bias_offsets}
-    dims = ["sensors", "bias_offsets"]
+    coords = {"sensor": sensor_names, "bias_offsets": bias_offsets}
+    dims = ["sensor", "bias_offsets"]
 
     return xr.Dataset(
         {

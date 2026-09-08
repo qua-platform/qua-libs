@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-"""Lorentzian fitting for sensor dot Coulomb peak tuning.
-
-The standard Lorentzian used here is
-
-    L(x) = (γ / 2π) / ((x − x0)² + (γ / 2)²) + offset
-
-The inflection points — where the slope |dL/dx| is maximised, giving the
-highest charge sensitivity — sit at  x0 ± γ / (2√3).
-"""
-
+"""Lorentzian fitting for sensor-dot Coulomb peak tuning."""
 
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict, NamedTuple, Optional
+from typing import Dict, NamedTuple, Optional, Tuple
+
 import numpy as np
 import xarray as xr
 from scipy.optimize import curve_fit
@@ -40,28 +32,17 @@ class LorentzianFitResult(NamedTuple):
 
 
 def lorentzian(x: np.ndarray, x0: float, gamma: float, amplitude: float, offset: float) -> np.ndarray:
-    """Lorentzian peak with free amplitude and offset.
-
-    L(x) = amplitude * (γ/2)² / ((x − x0)² + (γ/2)²) + offset
-
-    This parameterisation keeps the peak height = amplitude + offset at x = x0,
-    which maps naturally to the sensor Coulomb peak signal.
-    """
+    """Lorentzian peak with free amplitude and offset."""
     half_gamma_sq = (gamma / 2) ** 2
     return amplitude * half_gamma_sq / ((x - x0) ** 2 + half_gamma_sq) + offset
 
 
 def optimal_operating_point(x0: float, gamma: float, side: str = "right") -> float:
-    """Return the voltage at the Lorentzian inflection point.
-
-    The inflection points of the standard Lorentzian sit at
-        x0 ± γ / (2√3)
-    which is where |dL/dx| is maximised.
-    """
+    """Return the Lorentzian inflection point used as the operating bias."""
     delta = gamma / (2 * np.sqrt(3))
     if side == "right":
         return x0 + delta
-    elif side == "left":
+    if side == "left":
         return x0 - delta
     raise ValueError(f"side must be 'left' or 'right', got '{side}'")
 
@@ -76,22 +57,7 @@ def fit_lorentzian(
     amp_guess: Optional[float] = None,
     offset_guess: Optional[float] = None,
 ) -> LorentzianFitResult:
-    """Fit a Lorentzian peak to a 1D sensor sweep.
-
-    Parameters
-    ----------
-    v : np.ndarray
-        Voltage values (1D).
-    signal : np.ndarray
-        Measured sensor signal (1D, same length as *v*).
-    side : str
-        Which inflection point to use ('left' or 'right').
-
-    Returns
-    -------
-    LorentzianFitResult
-        Fitted parameters and the derived optimal voltage.
-    """
+    """Fit a Lorentzian peak to a 1D sensor sweep."""
     v = np.asarray(v, dtype=float)
     signal = np.asarray(signal, dtype=float)
 
@@ -109,7 +75,7 @@ def fit_lorentzian(
     if gamma_guess is None:
         gamma_guess = float((v[-1] - v[0]) / 10) if len(v) > 1 else 1.0
 
-    popt, pcov = curve_fit(
+    popt, _ = curve_fit(
         lorentzian,
         v,
         signal,
@@ -130,7 +96,7 @@ def fit_lorentzian(
 
 @dataclass
 class FitParameters:
-    """Stores the relevant sensor gate sweep experiment fit parameters for a single sensor"""
+    """Relevant fit outputs for one sensor-gate sweep."""
 
     peak_position: float
     peak_amplitude: float
@@ -146,46 +112,23 @@ class FitParameters:
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
-    """
-    Logs the node-specific fitted results for all sensors from the fit results
-
-    Parameters:
-    -----------
-    fit_results : dict
-        Dictionary containing the fitted results for all sensors.
-    log_callable : callable, optional
-        Callable for logging the fitted results. If None, a default logger is used.
-    """
+    """Log the relevant fitted sensor-gate sweep results for all sensors."""
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
-    for q in fit_results.keys():
-        s_sensor = f"Results for sensor {q}: "
-        s_peak = f"\tPeak position: {fit_results[q]['peak_position']:.4f} V | "
-        s_gamma = f"Lorentzian FWHM (gamma): {fit_results[q]['lorentzian_gamma']:.4e} V | "
-        s_grad = f"Max gradient bias: {fit_results[q]['max_gradient_bias']:.4f} V | "
-        s_grad_val = f"Max gradient: {fit_results[q]['max_gradient']:.4e}"
-        if fit_results[q]["success"]:
-            s_sensor += " SUCCESS!\n"
-        else:
-            s_sensor += " FAIL!\n"
-        log_callable(s_sensor + s_peak + s_gamma + s_grad + s_grad_val)
+
+    for sensor_name, fit_result in fit_results.items():
+        status = "SUCCESS" if fit_result["success"] else "FAIL"
+        log_callable(
+            f"[{sensor_name}] {status} | "
+            f"peak_position = {fit_result['peak_position']:.4f} V | "
+            f"lorentzian_gamma = {fit_result['lorentzian_gamma']:.4e} V | "
+            f"max_gradient_bias = {fit_result['max_gradient_bias']:.4f} V | "
+            f"max_gradient = {fit_result['max_gradient']:.4e} V/V"
+        )
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    """Process raw dataset to add amplitude and phase information.
-
-    Parameters:
-    -----------
-    ds : xr.Dataset
-        Dataset containing the raw I and Q quadrature data.
-    node : QualibrationNode
-        The calibration node containing parameters and sensors.
-
-    Returns:
-    --------
-    xr.Dataset
-        Processed dataset with amplitude and phase added.
-    """
+    """Process raw I/Q into amplitude and phase for the sensor gate sweep."""
     amplitude = np.sqrt(ds.I**2 + ds.Q**2)
     ds = ds.assign({"amplitude": amplitude})
     ds.amplitude.attrs = {"long_name": "IQ amplitude", "units": "V"}
@@ -197,30 +140,14 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
     return ds
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
-    """
-    Find the sensor response peak/dip via peaks_dips, fit a Lorentzian, and
-    locate the bias point of maximum gradient from the analytical inflection point.
-
-    Parameters:
-    -----------
-    ds : xr.Dataset
-        Dataset containing the raw data with amplitude variable.
-    node : QualibrationNode
-        The QUAlibrate node.
-
-    Returns:
-    --------
-    Tuple[xr.Dataset, dict[str, FitParameters]]
-        - Dataset containing the fit results
-        - Dictionary of FitParameters for each sensor
-    """
+def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+    """Find the Coulomb peak, fit a Lorentzian, and extract the max-gradient operating bias."""
     peak_results = xr.concat(
         [
-            peaks_dips(ds.amplitude.sel(sensors=sensor.name), "bias_offsets").expand_dims(sensors=[sensor.name])
+            peaks_dips(ds.amplitude.sel(sensor=sensor.name), "bias_offsets").expand_dims(sensor=[sensor.name])
             for sensor in node.namespace["sensors"]
         ],
-        dim="sensors",
+        dim="sensor",
     )
 
     side = getattr(node.parameters, "peak_fit_side", "left")
@@ -229,31 +156,18 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
 
 
 def _lorentzian_gradient(x: np.ndarray, x0: float, gamma: float, amplitude: float) -> np.ndarray:
-    """Analytical derivative of the Lorentzian peak.
-
-    dL/dx = -amplitude * (γ/2)² * 2(x - x0) / ((x - x0)² + (γ/2)²)²
-    """
+    """Analytical derivative of the Lorentzian peak."""
     half_gamma_sq = (gamma / 2) ** 2
     return -amplitude * half_gamma_sq * 2 * (x - x0) / ((x - x0) ** 2 + half_gamma_sq) ** 2
 
 
-def _extract_relevant_fit_parameters(peak_ds: xr.Dataset, ds: xr.Dataset, node: QualibrationNode, side: str = "left"):
-    """Use peaks_dips results for validation, fit a Lorentzian per sensor, and
-    derive the max-gradient point analytically.
-
-    Parameters:
-    -----------
-    peak_ds : xr.Dataset
-        Dataset returned by peaks_dips with position, width, amplitude, base_line.
-    ds : xr.Dataset
-        Processed dataset containing the amplitude variable.
-    node : QualibrationNode
-        The calibration node.
-
-    Returns:
-    --------
-    Tuple[xr.Dataset, dict[str, FitParameters]]
-    """
+def _extract_relevant_fit_parameters(
+    peak_ds: xr.Dataset,
+    ds: xr.Dataset,
+    node: QualibrationNode,
+    side: str = "left",
+) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
+    """Validate the detected feature, fit one Lorentzian per sensor, and derive the operating bias."""
     sensors = node.namespace["sensors"]
     bias_offsets = ds.bias_offsets.values
 
@@ -273,14 +187,13 @@ def _extract_relevant_fit_parameters(peak_ds: xr.Dataset, ds: xr.Dataset, node: 
         log_callable = logging.getLogger(__name__).info
 
     for sensor in sensors:
-        peak_pos = peak_ds.position.sel(sensors=sensor.name).values
+        peak_pos = peak_ds.position.sel(sensor=sensor.name).values
         peak_detected = not np.isnan(peak_pos)
-
-        sensor_amp = ds.amplitude.sel(sensors=sensor.name).values
+        sensor_amp = ds.amplitude.sel(sensor=sensor.name).values
 
         if peak_detected:
             try:
-                peak_width = float(peak_ds.width.sel(sensors=sensor.name).values)
+                peak_width = float(peak_ds.width.sel(sensor=sensor.name).values)
                 gamma_guess = peak_width if np.isfinite(peak_width) and peak_width > 0 else None
 
                 lor_result = fit_lorentzian(
@@ -291,20 +204,17 @@ def _extract_relevant_fit_parameters(peak_ds: xr.Dataset, ds: xr.Dataset, node: 
                     gamma_guess=gamma_guess,
                 )
 
-                # Guardrails: ensure the derived optimum is meaningful for this scan.
                 finite_fit = (
                     np.isfinite(lor_result.x0)
                     and np.isfinite(lor_result.gamma)
                     and np.isfinite(lor_result.optimal_voltage)
                 )
-                in_span = (bias_offsets.min() <= lor_result.optimal_voltage) and (
-                    lor_result.optimal_voltage <= bias_offsets.max()
-                )
+                in_span = bias_offsets.min() <= lor_result.optimal_voltage <= bias_offsets.max()
                 if not finite_fit:
                     raise ValueError("Non-finite Lorentzian fit parameters.")
                 if not in_span:
                     raise ValueError(
-                        "Optimal bias outside scanned range " f"[{bias_offsets.min():.4g}, {bias_offsets.max():.4g}] V."
+                        f"Optimal bias outside scanned range [{bias_offsets.min():.4g}, {bias_offsets.max():.4g}] V."
                     )
 
                 fitted = lorentzian(
@@ -345,38 +255,33 @@ def _extract_relevant_fit_parameters(peak_ds: xr.Dataset, ds: xr.Dataset, node: 
         gradient_curve_list.append(np.full_like(bias_offsets, np.nan))
         success_list.append(False)
 
-    sensor_names = [s.name for s in sensors]
     fit = peak_ds.copy().rename({"amplitude": "peak_amplitude"})
-
-    fit = fit.assign_coords(lorentzian_x0=("sensors", lor_x0_list))
+    fit = fit.assign_coords(lorentzian_x0=("sensor", lor_x0_list))
     fit.lorentzian_x0.attrs = {"long_name": "Lorentzian center", "units": "V"}
-    fit = fit.assign_coords(lorentzian_gamma=("sensors", lor_gamma_list))
+    fit = fit.assign_coords(lorentzian_gamma=("sensor", lor_gamma_list))
     fit.lorentzian_gamma.attrs = {"long_name": "Lorentzian FWHM", "units": "V"}
-    fit = fit.assign_coords(lorentzian_amplitude=("sensors", lor_amp_list))
+    fit = fit.assign_coords(lorentzian_amplitude=("sensor", lor_amp_list))
     fit.lorentzian_amplitude.attrs = {"long_name": "Lorentzian amplitude", "units": "V"}
-    fit = fit.assign_coords(lorentzian_offset=("sensors", lor_offset_list))
+    fit = fit.assign_coords(lorentzian_offset=("sensor", lor_offset_list))
     fit.lorentzian_offset.attrs = {"long_name": "Lorentzian offset", "units": "V"}
-    fit = fit.assign_coords(optimal_bias=("sensors", optimal_bias_list))
-    fit.optimal_bias.attrs = {
-        "long_name": "Optimal bias (inflection point)",
-        "units": "V",
-    }
-    fit = fit.assign_coords(max_gradient_bias=("sensors", max_grad_bias_list))
+    fit = fit.assign_coords(optimal_bias=("sensor", optimal_bias_list))
+    fit.optimal_bias.attrs = {"long_name": "Optimal bias (inflection point)", "units": "V"}
+    fit = fit.assign_coords(max_gradient_bias=("sensor", max_grad_bias_list))
     fit.max_gradient_bias.attrs = {"long_name": "Bias at max gradient", "units": "V"}
-    fit = fit.assign_coords(max_gradient=("sensors", max_grad_value_list))
+    fit = fit.assign_coords(max_gradient=("sensor", max_grad_value_list))
     fit.max_gradient.attrs = {"long_name": "Maximum gradient value", "units": "V/V"}
-    fit = fit.assign_coords(success=("sensors", success_list))
+    fit = fit.assign_coords(success=("sensor", success_list))
 
     fitted_da = xr.DataArray(
         fitted_curve_list,
-        dims=["sensors", "bias_offsets"],
-        coords={"sensors": ds.sensors, "bias_offsets": ds.bias_offsets},
+        dims=["sensor", "bias_offsets"],
+        coords={"sensor": ds.sensor, "bias_offsets": ds.bias_offsets},
         attrs={"long_name": "Lorentzian fit", "units": "V"},
     )
     gradient_da = xr.DataArray(
         gradient_curve_list,
-        dims=["sensors", "bias_offsets"],
-        coords={"sensors": ds.sensors, "bias_offsets": ds.bias_offsets},
+        dims=["sensor", "bias_offsets"],
+        coords={"sensor": ds.sensor, "bias_offsets": ds.bias_offsets},
         attrs={"long_name": "dL/d(bias)", "units": "V/V"},
     )
     fit = xr.merge([fit, fitted_da.rename("fitted_curve"), gradient_da.rename("gradient")])
@@ -385,9 +290,9 @@ def _extract_relevant_fit_parameters(peak_ds: xr.Dataset, ds: xr.Dataset, node: 
 
     fit_results = {
         sensor.name: FitParameters(
-            peak_position=float(peak_ds.position.sel(sensors=sensor.name).values),
-            peak_amplitude=float(peak_ds.amplitude.sel(sensors=sensor.name).values),
-            peak_width=float(peak_ds.width.sel(sensors=sensor.name).values),
+            peak_position=float(peak_ds.position.sel(sensor=sensor.name).values),
+            peak_amplitude=float(peak_ds.amplitude.sel(sensor=sensor.name).values),
+            peak_width=float(peak_ds.width.sel(sensor=sensor.name).values),
             lorentzian_x0=lor_x0_list[i],
             lorentzian_gamma=lor_gamma_list[i],
             lorentzian_amplitude=lor_amp_list[i],

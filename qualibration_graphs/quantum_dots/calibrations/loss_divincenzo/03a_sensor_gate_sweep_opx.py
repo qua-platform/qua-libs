@@ -62,9 +62,11 @@ State update:
     - Adds/updates the SensorDot ``MEASURE`` voltage point using ``optimal_bias`` for each successful sensor.
 """
 
-
+# Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="03a_sensor_gate_sweep_opx", description=description, parameters=Parameters()
+    name="03a_sensor_gate_sweep_opx",  # Name should be unique
+    description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
+    parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
 
 
@@ -72,6 +74,7 @@ node = QualibrationNode[Parameters, Quam](
 # These parameters are ignored when run through the GUI or as part of a graph
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     pass
 
@@ -87,20 +90,20 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── Experiment parameters (Python side) ──────────────────────────────
 
-    # Get the relevant sensor dots from the node
+    # Sensors used for readout (each has its own resonator line)
     node.namespace["sensors"] = sensors = get_sensors(node)
     num_sensors = len(sensors)
 
-    # Extract the sweep parameters and axes from the node parameters
+    # Sweep parameters on the sensor plunger bias axis
     n_avg = node.parameters.num_shots  # number of repetitions averaged at each sensor plunger voltage
     ramp_duration = node.parameters.ramp_duration  # duration of the ramp to the next plunger voltage
 
-    # Ensure that the sensors list only contains a single VirtualGateSet, and reset the VoltageSequence
+    # Ensure that all sensors belong to one VirtualGateSet, and reset the VoltageSequence
     # to track the integrated voltage for use with the compensation pulse.
     vgs_id = ensure_single_gate_set(node.machine, sensors, reset_with_voltage_tracking=True)
 
-    # The voltage bias offset - set of voltages to apply on the sensor's plunger gate
-    # E.g. offset_min=0 & offset_max=0.1 → sweep from Vg=0V to Vg=+0.1V
+    # Bias-offset axis: voltages applied to the sensor plunger gate
+    # e.g. offset_min=0 & offset_max=0.1 → sweep from Vg=0 V to Vg=+0.1 V
     bias_offsets = np.arange(
         node.parameters.offset_min,
         node.parameters.offset_max,
@@ -109,7 +112,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Metadata for data fetching: labels the saved I/Q arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
-        "sensors": xr.DataArray(sensors.get_names()),
+        "sensor": xr.DataArray(sensors.get_names()),
         "bias_offsets": xr.DataArray(bias_offsets, attrs={"long_name": "Sensor bias offset", "units": "V"}),
     }
 
@@ -123,10 +126,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   n            : shot counter
         #   n_st         : stream reporting shot index to PC (progress bar)
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_sensors)
-        # Real-time variable holding the plunger gate voltage
+        # Real-time variable holding the current sensor bias offset
         offset = declare(fixed)
 
-        # If several sensors share the same OPX resources, they are grouped into batches
+        # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
 
             align()  # sync all channels in this batch before starting
@@ -138,12 +141,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # ── INNER LOOP: sweep sensor plunger gate voltage ──────────
                 with for_(*from_array(offset, bias_offsets)):
                     for i, sensor in multiplexed_sensors.items():
-                        # Extract the readout length so that the plunger voltage is maintained during readout
+                        # Extract the readout length so the plunger voltage is maintained during readout
                         readout_len = sensor.readout_resonator.operations["readout"].length
 
                         align()
 
-                        # Ramp the plunger gate voltage to the correct coordinate and hold the voltage (duration) to include the readout time
+                        # Ramp the plunger gate to the current bias coordinate and hold it
+                        # long enough to include the readout time.
                         seq.ramp_to_voltages(
                             {sensor.name: offset},
                             duration=readout_len + node.parameters.duration_after_step,
@@ -248,7 +252,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Process raw I/Q, fit each sensor, and store ``ds_fit`` / ``fit_results``."""
+    """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
     ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -262,7 +266,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(node.results["ds_fit"], node.namespace["sensors"])
     if not node.modes.external:
         plt.show()

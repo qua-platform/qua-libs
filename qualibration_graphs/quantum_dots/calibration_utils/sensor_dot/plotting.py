@@ -1,25 +1,19 @@
 from typing import List
+
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 
+from calibration_utils.common_utils.plot_style import apply_sensor_outcome_style, sensor_success
 from qualang_tools.units import unit
 
 u = unit(coerce_to_integer=True)
 
 
 def plot_all(ds_fit: xr.Dataset, sensors: List) -> dict[str, Figure]:
-    """Standard node plotting API.
-
-    Parameters
-    ----------
-    ds_fit:
-        Fit dataset produced by ``fit_raw_data`` (also includes derived fields used for plots).
-    sensors:
-        SensorDot batchable list (or list-like) used for naming/ordering.
-    """
+    """Standard node plotting API."""
     figures: dict[str, Figure] = {}
     figures["phase"] = plot_raw_phase(ds_fit, sensors)
     figures["amplitude_gradient"] = plot_amplitude_with_fit(ds_fit, sensors, ds_fit)
@@ -27,34 +21,19 @@ def plot_all(ds_fit: xr.Dataset, sensors: List) -> dict[str, Figure]:
 
 
 def plot_raw_amplitude(ds: xr.Dataset, sensors: List) -> Figure:
-    """
-    Plots the raw amplitude data for the sensor gate sweep.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the I and Q quadrature data.
-    sensors : list
-        A list of sensors to plot.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-
-    Notes
-    -----
-    - The function creates a grid of subplots, one for each sensor.
-    - Each subplot shows IQ amplitude vs sensor bias offset.
-    """
+    """Plot IQ amplitude vs sensor bias offset for each sensor."""
     num_sensors = len(sensors)
-
     fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.name)
-        plot_individual_raw_amplitude(ax, sensor_data, sensor.name)
+        sensor_data = ds.sel(sensor=sensor.name)
+        plot_individual_raw_amplitude(
+            ax,
+            sensor_data,
+            sensor.name,
+            sensor_success(ds, sensor.name),
+        )
 
     fig.suptitle("Sensor Gate Sweep - Amplitude")
     fig.tight_layout()
@@ -62,33 +41,17 @@ def plot_raw_amplitude(ds: xr.Dataset, sensors: List) -> Figure:
 
 
 def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
-    """
-    Plots the raw phase data for the sensor gate sweep.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the I and Q quadrature data.
-    sensors : list
-        A list of sensors to plot.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-    """
+    """Plot phase vs sensor bias offset for each sensor."""
     num_sensors = len(sensors)
-
     fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.name)
-
+        sensor_data = ds.sel(sensor=sensor.name)
         ax.plot(sensor_data.bias_offsets, sensor_data.phase, "o-", markersize=2)
         ax.set_xlabel("Sensor bias offset [V]")
         ax.set_ylabel("Phase [rad]")
-        ax.set_title(f"Sensor: {sensor.name}")
+        apply_sensor_outcome_style(ax, sensor.name, sensor_success(ds, sensor.name))
         ax.grid(True, alpha=0.3)
 
     fig.suptitle("Sensor Gate Sweep - Phase")
@@ -97,51 +60,34 @@ def plot_raw_phase(ds: xr.Dataset, sensors: List) -> Figure:
 
 
 def plot_amplitude_with_fit(ds: xr.Dataset, sensors: List, fits: xr.Dataset = None) -> Figure:
-    """
-    Plots the sensor gate sweep amplitude with Lorentzian fit and max-gradient point.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        The dataset containing the quadrature data.
-    sensors : list
-        A list of sensor objects to plot.
-    fits : xr.Dataset
-        The dataset containing the fit parameters from peaks_dips and Lorentzian fit.
-
-    Returns
-    -------
-    Figure
-        The matplotlib figure object containing the plots.
-    """
+    """Plot the sensor gate sweep amplitude with Lorentzian fit and max-gradient point."""
     num_sensors = len(sensors)
     fig, axes = plt.subplots(1, num_sensors, figsize=(5 * num_sensors, 4), squeeze=False)
     axes = axes.flatten()
 
     for ax, sensor in zip(axes, sensors):
-        sensor_data = ds.sel(sensors=sensor.name)
-        fit_data = fits.sel(sensors=sensor.name) if fits is not None else None
-
-        plot_individual_amplitude_with_fit(ax, sensor_data, sensor.name, fit_data)
+        sensor_data = ds.sel(sensor=sensor.name)
+        fit_data = fits.sel(sensor=sensor.name) if fits is not None else None
+        plot_individual_amplitude_with_fit(
+            ax,
+            sensor_data,
+            sensor.name,
+            fit_data,
+            sensor_success(ds, sensor.name),
+        )
 
     fig.suptitle("Sensor Gate Sweep - Amplitude + Lorentzian Fit")
     fig.tight_layout()
     return fig
 
 
-def plot_individual_raw_amplitude(ax: Axes, sensor_data: xr.Dataset, sensor_id: str):
-    """
-    Plots individual sensor raw amplitude data on a given axis.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axis on which to plot the data.
-    sensor_data : xr.Dataset
-        The dataset containing the sensor's quadrature data.
-    sensor_id : str
-        The sensor ID for the title.
-    """
+def plot_individual_raw_amplitude(
+    ax: Axes,
+    sensor_data: xr.Dataset,
+    sensor_id: str,
+    success: bool | None = None,
+):
+    """Plot one sensor's raw IQ amplitude trace."""
     ax.plot(
         sensor_data.bias_offsets,
         sensor_data.amplitude / u.mV,
@@ -151,25 +97,18 @@ def plot_individual_raw_amplitude(ax: Axes, sensor_data: xr.Dataset, sensor_id: 
     )
     ax.set_xlabel("Sensor bias offset [V]")
     ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
-    ax.set_title(f"Sensor: {sensor_id}")
+    apply_sensor_outcome_style(ax, sensor_id, success)
     ax.grid(True, alpha=0.3)
 
 
-def plot_individual_amplitude_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor_id: str, fit: xr.Dataset = None):
-    """
-    Plots individual sensor amplitude data with peak/dip markers on a given axis.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        The axis on which to plot the data.
-    sensor_data : xr.Dataset
-        The dataset containing the sensor's quadrature data.
-    sensor_id : str
-        The sensor ID for the title.
-    fit : xr.Dataset, optional
-        The dataset containing the fit parameters (default is None).
-    """
+def plot_individual_amplitude_with_fit(
+    ax: Axes,
+    sensor_data: xr.Dataset,
+    sensor_id: str,
+    fit: xr.Dataset = None,
+    success: bool | None = None,
+):
+    """Plot one sensor's IQ amplitude trace with Lorentzian fit overlays."""
     ax.plot(
         sensor_data.bias_offsets,
         sensor_data.amplitude / u.mV,
@@ -179,7 +118,7 @@ def plot_individual_amplitude_with_fit(ax: Axes, sensor_data: xr.Dataset, sensor
     )
     ax.set_xlabel("Sensor bias offset [V]")
     ax.set_ylabel(r"$R=\sqrt{I^2 + Q^2}$ [mV]")
-    ax.set_title(f"Sensor: {sensor_id}")
+    apply_sensor_outcome_style(ax, sensor_id, success)
 
     if fit is not None:
         if "fitted_curve" in fit and np.any(np.isfinite(fit.fitted_curve.values)):
