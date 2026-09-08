@@ -621,8 +621,8 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, dict[str, FitParameters]]:
     """Fit a Lorentzian dip to each qubit's amplitude trace.
 
-    Reads re_fit_resonators / re_fit_centers_ghz / re_fit_span_mhz from
-    node.parameters to apply manual fit-window overrides for selected qubits.
+    Reads re-fit overrides from ``params.refit`` (re_fit_resonators /
+    re_fit_centers_ghz / re_fit_span_mhz).
 
     Returns
     -------
@@ -635,9 +635,9 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
 
     # Build per-qubit override lookup from the three parallel lists
     overrides: dict[str, dict[str, float]] = {}
-    re_fit_names = params.re_fit_resonators or []
-    re_fit_centers = params.re_fit_centers_ghz or []
-    re_fit_spans = params.re_fit_span_mhz or []
+    re_fit_names = params.refit.re_fit_resonators or []
+    re_fit_centers = params.refit.re_fit_centers_ghz or []
+    re_fit_spans = params.refit.re_fit_span_mhz or []
     for name, center_ghz, span_mhz in zip(re_fit_names, re_fit_centers, re_fit_spans):
         overrides[name] = {
             "center_hz": center_ghz * 1e9,
@@ -660,8 +660,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
             amplitude_q,
             override_center_hz=ov.get("center_hz"),
             override_span_hz=ov.get("span_hz"),
-            min_dip_snr=getattr(params, "min_dip_snr", 6.0),
-            dominance=getattr(params, "dip_dominance", 2.0),
+            min_dip_snr=params.analysis.min_dip_snr,
+            dominance=params.analysis.dip_dominance,
         )
 
         f0_vals.append(res.f0)

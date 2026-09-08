@@ -75,9 +75,9 @@ def custom_param(node: QualibrationNode[Parameters, Quam]) -> None:
 
 
 # Stash the re-fit overrides before load_from_id() can overwrite node.parameters
-_stored_re_fit_resonators = node.parameters.re_fit_resonators
-_stored_re_fit_centers_ghz = node.parameters.re_fit_centers_ghz
-_stored_re_fit_span_mhz = node.parameters.re_fit_span_mhz
+_stored_re_fit_resonators = node.parameters.refit.re_fit_resonators
+_stored_re_fit_centers_ghz = node.parameters.refit.re_fit_centers_ghz
+_stored_re_fit_span_mhz = node.parameters.refit.re_fit_span_mhz
 
 
 # %% {Program_helpers}
@@ -92,8 +92,8 @@ def _setup_sweep_and_program(node: QualibrationNode[Parameters, Quam], span_hz: 
     qubits = node.namespace["qubits"]
     num_qubits = len(qubits)
     # Extract the sweep parameters and axes from the node parameters
-    n_avg = node.parameters.num_shots
-    step = node.parameters.frequency_step_in_mhz * u.MHz
+    n_avg = node.parameters.sweep.num_shots
+    step = node.parameters.sweep.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span_hz / 2, +span_hz / 2, step)
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -149,7 +149,7 @@ def _execute_and_fetch(node: QualibrationNode[Parameters, Quam]) -> None:
         for dataset in data_fetcher:
             progress_counter(
                 data_fetcher.get("n", 0),
-                node.parameters.num_shots,
+                node.parameters.sweep.num_shots,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
@@ -187,7 +187,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]) -> None:
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = get_qubits(node)
-    _setup_sweep_and_program(node, node.parameters.frequency_span_in_mhz * u.MHz)
+    _setup_sweep_and_program(node, node.parameters.sweep.frequency_span_in_mhz * u.MHz)
 
 
 # %% {Simulate}
@@ -220,9 +220,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]) -> None:
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
     # Restore the re-fit overrides that were set by the user for this re-analysis run
-    node.parameters.re_fit_resonators = _stored_re_fit_resonators
-    node.parameters.re_fit_centers_ghz = _stored_re_fit_centers_ghz
-    node.parameters.re_fit_span_mhz = _stored_re_fit_span_mhz
+    node.parameters.refit.re_fit_resonators = _stored_re_fit_resonators
+    node.parameters.refit.re_fit_centers_ghz = _stored_re_fit_centers_ghz
+    node.parameters.refit.re_fit_span_mhz = _stored_re_fit_span_mhz
     # Get the active qubits from the loaded node parameters
     node.namespace["qubits"] = get_qubits(node)
 
@@ -238,7 +238,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
 @node.run_action(
     skip_if=node.parameters.simulate
     or node.parameters.load_data_id is not None
-    or not node.parameters.escalate_on_no_dip
+    or not node.parameters.escalation.escalate_on_no_dip
 )
 def escalate_no_dip(node: QualibrationNode[Parameters, Quam]) -> None:
     """Bring-up span-escalation: when no significant dip was found, re-measure with
@@ -251,8 +251,8 @@ def escalate_no_dip(node: QualibrationNode[Parameters, Quam]) -> None:
     re-fit at the wider span. Every rung is recorded in results["escalation"].
     """
     u = unit(coerce_to_integer=True)
-    span = node.parameters.frequency_span_in_mhz * u.MHz
-    max_span = node.parameters.max_escalation_span_in_mhz * u.MHz
+    span = node.parameters.sweep.frequency_span_in_mhz * u.MHz
+    max_span = node.parameters.escalation.max_escalation_span_in_mhz * u.MHz
     audit = []
     tracked = node.namespace.setdefault("tracked_lo_qubits", [])
 
@@ -313,9 +313,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]) -> None:
             node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"]
         ),
     }
-    if node.parameters.show_raw_phase_plot:
+    if node.parameters.plotting.show_raw_phase_plot:
         figures["phase"] = plot_raw_phase(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    if node.parameters.show_iq_circle_plot:
+    if node.parameters.plotting.show_iq_circle_plot:
         figures["iq_circle"] = plot_iq_circle(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
     plt.show()
     # Store the generated figures
