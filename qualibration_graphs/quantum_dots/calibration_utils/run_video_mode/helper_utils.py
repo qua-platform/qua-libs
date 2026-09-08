@@ -13,16 +13,16 @@ def get_quam_state_path(node: QualibrationNode) -> str:
 
 
 def get_axis_names_and_validate(node: QualibrationNode):
-    """In the case that x_axis_name or y_axis_name is None, assign the first and second elements of QDs."""
+    """In the case that x_axis_name or y_axis_name is None or "", assign the first and second elements of QDs."""
 
     quantum_dots = list(node.machine.quantum_dots.keys())
     x_axis_name = node.parameters.x_axis_name
     y_axis_name = node.parameters.y_axis_name
 
-    if node.parameters.x_axis_name is None:
+    if not x_axis_name:
         x_axis_name = quantum_dots[0]
 
-    if node.parameters.y_axis_name is None:
+    if not y_axis_name:
         y_axis_name = quantum_dots[1]
 
     x_obj = node.machine.get_component(x_axis_name)
