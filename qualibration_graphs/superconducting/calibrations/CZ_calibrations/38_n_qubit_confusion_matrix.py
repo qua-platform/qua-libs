@@ -4,6 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from contextlib import contextmanager
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
@@ -12,14 +13,12 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-from calibration_utils.confusion_matrix_general import (
+from calibration_utils.n_qubit_confusion_matrix import (
     Parameters,
     compute_confusion_matrices,
     compute_kron_confusion_matrices,
     get_qubit_groups,
-    get_state_labels,
     is_confusion_matrix_valid,
-    nested_binary_loops,
     plot_confusion_matrices,
     save_confusion_to_qubit_pair_extras,
 )
@@ -47,7 +46,7 @@ Outcomes:
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="38_confusion_matrix_general",
+    name="38_n_qubit_confusion_matrix",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
@@ -61,6 +60,18 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     pass
 
 
+@contextmanager
+def nested_binary_loops(loop_vars, idx=0):
+    """Recursively create nested QUA loops over binary variables."""
+    if idx == len(loop_vars):
+        yield
+        return
+
+    with for_(loop_vars[idx], 0, loop_vars[idx] < 2, loop_vars[idx] + 1):
+        with nested_binary_loops(loop_vars, idx + 1):
+            yield
+
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -71,7 +82,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_shots = node.parameters.num_shots
 
     sweep_axes = {
-        "qubit": xr.DataArray([qg.name for qg in qubit_groups]),
+        "qubit_group": xr.DataArray([qg.name for qg in qubit_groups]),
         "n": xr.DataArray(
             np.arange(n_shots),
             attrs={"long_name": "shot index"},
@@ -172,17 +183,18 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process raw data and compute confusion matrices."""
     qubit_groups = node.namespace["qubit_groups"]
+    num_qubits = qubit_groups[0].num_qubits
     confusions = compute_confusion_matrices(
         node.results["ds_raw"],
-        qubit_groups,
+        [qg.name for qg in qubit_groups],
         node.parameters.num_shots,
+        [f"init_{idx}" for idx in range(num_qubits)],
         log_callable=node.log,
     )
-    kron_confs = compute_kron_confusion_matrices(qubit_groups)
+    kron_confs = compute_kron_confusion_matrices({qg.name: qg.qubits for qg in qubit_groups})
 
     node.results["confusions"] = confusions
     node.results["kron_confs"] = kron_confs
-    node.results["state_labels"] = get_state_labels(qubit_groups[0].num_qubits)
 
     for qg in qubit_groups:
         conf = confusions[qg.name]
@@ -202,7 +214,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["confusions"],
         node.results["kron_confs"],
         node.namespace["qubit_groups"],
-        node.results["state_labels"],
         node=node,
     )
     for name, fig in figures.items():
