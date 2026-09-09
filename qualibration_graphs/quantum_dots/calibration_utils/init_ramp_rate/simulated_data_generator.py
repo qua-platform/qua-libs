@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import xarray as xr
 
+from calibration_utils.init_ramp_rate.helper_utils import validate_and_build_ramp_sweep
+
 if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
@@ -28,35 +30,6 @@ def _resolve_qubit_pairs(node: QualibrationNode):
     return qubit_pairs
 
 
-def _build_ramp_duration_array(node: QualibrationNode) -> np.ndarray:
-    """Build the ramp-duration sweep array exactly as node 07 does."""
-    ramp_min = int(node.parameters.ramp_duration_min)
-    ramp_max = int(node.parameters.ramp_duration_max)
-    ramp_step = int(node.parameters.ramp_duration_step)
-
-    if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
-        raise ValueError(
-            f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
-        )
-
-    if bool(getattr(node.parameters, "ramp_log_scale", False)):
-        n_ramp_pts = int((ramp_max - ramp_min) // ramp_step)
-        ramp_duration_array = np.logspace(
-            ramp_min,
-            ramp_max,
-            n_ramp_pts,
-            dtype=int,
-            endpoint=True,
-        )
-    else:
-        ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
-
-    if ramp_duration_array.size < 1:
-        raise ValueError("Ramp duration sweep is empty. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}")
-
-    return ramp_duration_array
-
-
 def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     """Generate a simulated raw dataset for node 07 (init ramp-rate calibration).
 
@@ -73,7 +46,7 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     qubit_pairs = _resolve_qubit_pairs(node)
     qp_names = [qp.name for qp in qubit_pairs]
 
-    ramp_duration_array = _build_ramp_duration_array(node)
+    ramp_duration_array = validate_and_build_ramp_sweep(node)
     n_ramp = int(ramp_duration_array.size)
 
     node.namespace["sweep_axes"] = {

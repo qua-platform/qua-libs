@@ -19,8 +19,6 @@ class NodeSpecificParameters(RunnableParameters):
     find_minimum: bool = True
     """If True, find the ramp duration yielding the minimum average state
     (purest ground-state preparation). If False, find the maximum. Default is True."""
-    ramp_log_scale: bool = False
-    """Whether to set the ramp rate axis in log scale. Default False."""
 
 
 class Parameters(

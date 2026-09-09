@@ -143,13 +143,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # state[j]      : thresholded post-initialization measurement (0/1) for qubit pair j
         # n_st          : stream reporting shot index to PC (progress bar)
         # i_st[j], q_st[j] : buffers collecting I/Q before transfer to PC
-
         n = declare(int)
         n_st = declare_output_stream()
-
         state = [declare(int) for _ in qubit_pairs]
         state_st = [declare_output_stream() for _ in qubit_pairs]
-
         i_st = [declare_output_stream() for _ in qubit_pairs]
         q_st = [declare_output_stream() for _ in qubit_pairs]
 

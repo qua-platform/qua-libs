@@ -1,6 +1,5 @@
 # %% {Imports}
 import matplotlib.pyplot as plt
-import numpy as np
 import xarray as xr
 from dataclasses import asdict
 
@@ -21,6 +20,7 @@ from calibration_utils.init_ramp_rate import (
     process_raw_dataset,
     generate_simulated_dataset,
 )
+from calibration_utils.init_ramp_rate.helper_utils import validate_and_build_ramp_sweep
 
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -102,28 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_avg = node.parameters.num_shots
 
     # Build the ramp-duration sweep (in ns)
-    ramp_min = int(node.parameters.ramp_duration_min)
-    ramp_max = int(node.parameters.ramp_duration_max)
-    ramp_step = int(node.parameters.ramp_duration_step)
-
-    # An OPX clock cycle is 4ns. Therefore, all ramp durations must be divisible by 4
-    if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
-        raise ValueError(
-            f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
-        )
-
-    # If log is preferred, extract the desired resolution and generate a log scale. Else use a normal arange
-    if node.parameters.ramp_log_scale:
-        n_ramp_pts = int((ramp_max - ramp_min) // ramp_step)
-        ramp_duration_array = np.logspace(
-            np.log10(ramp_min),
-            np.log10(ramp_max),
-            n_ramp_pts,
-            dtype=int,
-            endpoint=True,
-        )
-    else:
-        ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
+    ramp_duration_array = validate_and_build_ramp_sweep(node)
 
     # Metadata for data fetching: labels the saved arrays when results come back from the OPX
     node.namespace["sweep_axes"] = {
@@ -143,13 +122,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # state[j]      : thresholded post-initialization measurement (0/1) for qubit pair j
         # n_st          : stream reporting shot index to PC (progress bar)
         # i_st[j], q_st[j] : buffers collecting I/Q before transfer to PC
-
         n = declare(int)
         n_st = declare_output_stream()
-
         state = [declare(int) for _ in qubit_pairs]
         state_st = [declare_output_stream() for _ in qubit_pairs]
-
         i_st = [declare_output_stream() for _ in qubit_pairs]
         q_st = [declare_output_stream() for _ in qubit_pairs]
 

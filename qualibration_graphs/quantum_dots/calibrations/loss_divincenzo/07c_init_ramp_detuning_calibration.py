@@ -129,13 +129,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # state[j]      : thresholded post-initialization measurement (0/1) for qubit pair j
         # n_st          : stream reporting shot index to PC (progress bar)
         # i_st[j], q_st[j] : buffers collecting I/Q before transfer to PC
-
         n = declare(int)
         n_st = declare_output_stream()
-
         state = [declare(int) for _ in qubit_pairs]
         state_st = [declare_output_stream() for _ in qubit_pairs]
-
         i_st = [declare_output_stream() for _ in qubit_pairs]
         q_st = [declare_output_stream() for _ in qubit_pairs]
 
@@ -288,7 +285,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update the initialize macro ramp_duration and detuning point on each qubit pair."""
+    """Update the initialize macro ramp_duration and initialize-point detuning on each qubit pair."""
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes.get(qp.name) != "successful":
@@ -298,9 +295,13 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             optimal_ramp = node.results["fit_results"][qp.name]["optimal_ramp_duration"]
             optimal_detuning = node.results["fit_results"][qp.name]["optimal_detuning"]
 
+            point_name = dot_pair._create_point_name("initialize")
+            point = dot_pair.voltage_sequence.gate_set.get_macros()[point_name]
+            point.voltages[dot_pair.name] = float(optimal_detuning)
+
             init_macro = dot_pair.macros.get("initialize")
             if init_macro is not None and hasattr(init_macro, "update"):
-                init_macro.update(ramp_duration=optimal_ramp, point={dot_pair.name: optimal_detuning})
+                init_macro.update(ramp_duration=optimal_ramp)
             else:
                 node.log(f"  {qp.name}: no updatable initialize macro found on " f"{dot_pair.name}")
 
