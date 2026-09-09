@@ -83,8 +83,7 @@ def save_confusion_to_qubit_pair_extras(
         if group.num_qubits < 2:
             if log_callable is not None:
                 log_callable(
-                    f"Warning: Qubit group {group.name} has less than 2 qubits. "
-                    "Cannot save to qubit pair extras."
+                    f"Warning: Qubit group {group.name} has less than 2 qubits. " "Cannot save to qubit pair extras."
                 )
             continue
 

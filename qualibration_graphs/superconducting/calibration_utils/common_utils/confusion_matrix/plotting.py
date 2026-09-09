@@ -38,11 +38,7 @@ def diff_confusion_matrices(
     names: Iterable[str],
 ) -> Dict[str, np.ndarray]:
     """Return direct-minus-Kron matrices for targets present in both inputs."""
-    return {
-        name: confusions[name] - kron_confs[name]
-        for name in names
-        if name in confusions and name in kron_confs
-    }
+    return {name: confusions[name] - kron_confs[name] for name in names if name in confusions and name in kron_confs}
 
 
 def plot_confusion_matrix_on_axes(

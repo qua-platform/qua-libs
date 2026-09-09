@@ -78,9 +78,7 @@ def compute_confusion_matrices(
         confusions[name] = conf
         if log_callable is not None and not is_confusion_matrix_valid(conf):
             marginals = conf.sum(axis=0)
-            log_callable(
-                f"{name}: confusion matrix failed validation (prepared marginals = {marginals})."
-            )
+            log_callable(f"{name}: confusion matrix failed validation (prepared marginals = {marginals}).")
 
     return confusions
 

@@ -192,9 +192,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         ["init_state_control", "init_state_target"],
         log_callable=node.log,
     )
-    kron_confs = compute_kron_confusion_matrices(
-        {qp.name: [qp.qubit_control, qp.qubit_target] for qp in qubit_pairs}
-    )
+    kron_confs = compute_kron_confusion_matrices({qp.name: [qp.qubit_control, qp.qubit_target] for qp in qubit_pairs})
     node.results["confusions"] = confusions
     node.results["kron_confs"] = kron_confs
     node.outcomes = {
