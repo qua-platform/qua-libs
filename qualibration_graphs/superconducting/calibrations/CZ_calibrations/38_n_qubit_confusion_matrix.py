@@ -82,7 +82,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     n_shots = node.parameters.num_shots
 
     sweep_axes = {
-        "qubit_group": xr.DataArray([qg.name for qg in qubit_groups]),
+        # XarrayDataFetcher only accepts qubit/qubit_pair as the first axis in
+        # qualibration-libs releases; values are still qubit group names.
+        "qubit_pair": xr.DataArray([qg.name for qg in qubit_groups]),
         "n": xr.DataArray(
             np.arange(n_shots),
             attrs={"long_name": "shot index"},
@@ -225,13 +227,19 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Save measured confusion matrices to qubit pair extras."""
+    qubit_groups = node.namespace["qubit_groups"]
+    confusions = node.results["confusions"]
     with node.record_state_updates():
-        save_confusion_to_qubit_pair_extras(
-            node.machine,
-            node.namespace["qubit_groups"],
-            node.results["confusions"],
-            log_callable=node.log,
-        )
+        for group in qubit_groups:
+            if node.outcomes.get(group.name) != "successful":
+                node.log(f"Skipping save for {group.name}: confusion matrix failed validation.")
+                continue
+            save_confusion_to_qubit_pair_extras(
+                node.machine,
+                [group],
+                confusions,
+                log_callable=node.log,
+            )
 
 
 # %% {Save_results}

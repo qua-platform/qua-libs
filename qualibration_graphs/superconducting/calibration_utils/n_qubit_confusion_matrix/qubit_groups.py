@@ -55,16 +55,21 @@ def get_qubit_groups(node: QualibrationNode) -> List[QubitGroup]:
 
 
 def find_qubit_pair_for_group(machine, group: QubitGroup):
-    """Find a qubit pair entry associated with the first two qubits in a group."""
+    """Find a qubit pair entry associated with any two qubits in a group."""
     if group.num_qubits < 2:
         return None
 
-    q1_name = group.qubits[0].name
-    q2_name = group.qubits[1].name
-    for pair_name in (f"{q1_name}-{q2_name}", f"{q2_name}-{q1_name}"):
-        if pair_name in machine.qubit_pairs:
-            return machine.qubit_pairs[pair_name]
-    return None
+    qubit_names = [q.name for q in group.qubits]
+    for i in range(group.num_qubits):
+        for j in range(group.num_qubits):
+            if i == j:
+                continue
+            q1_name = qubit_names[i]
+            q2_name = qubit_names[j]
+            for pair_name in (f"{q1_name}-{q2_name}", f"{q2_name}-{q1_name}"):
+                if pair_name in machine.qubit_pairs:
+                    return pair_name, machine.qubit_pairs[pair_name]
+    return None, None
 
 
 def save_confusion_to_qubit_pair_extras(
@@ -83,16 +88,17 @@ def save_confusion_to_qubit_pair_extras(
                 )
             continue
 
-        qp = find_qubit_pair_for_group(machine, group)
+        pair_name, qp = find_qubit_pair_for_group(machine, group)
         if qp is None:
-            q1_name = group.qubits[0].name
-            q2_name = group.qubits[1].name
+            qubit_names = [q.name for q in group.qubits]
             if log_callable is not None:
                 log_callable(
-                    f"Warning: Qubit pair {q1_name}-{q2_name} or {q2_name}-{q1_name} "
-                    "not found in machine.qubit_pairs. Skipping confusion matrix save."
+                    f"Warning: No qubit pair found for group {group.name} "
+                    f"(qubits: {', '.join(qubit_names)}). Skipping confusion matrix save."
                 )
             continue
+
+        qp = machine.qubit_pairs[getattr(qp, "id", pair_name)]
 
         if not hasattr(qp, "extras") or qp.extras is None:
             qp.extras = {}
