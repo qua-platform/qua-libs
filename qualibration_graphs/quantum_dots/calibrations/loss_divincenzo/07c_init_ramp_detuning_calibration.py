@@ -122,6 +122,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
+
         # Allocate real-time variables on the OPX:
         # ramp_dur      : current ramp duration for the initialize macro
         # det           : current detuning value to ramp to during the initialize macro
