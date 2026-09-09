@@ -13,6 +13,17 @@ def get_state_labels(num_qubits: int) -> list[str]:
     return [format(state, f"0{num_qubits}b") for state in range(2**num_qubits)]
 
 
+def axis_label_style(num_qubits: int) -> tuple[int, int, int, bool]:
+    """Return tick rotation (deg), fontsize, step, and whether to use integer ticks."""
+    if num_qubits <= 2:
+        return 0, 10, 1, False
+    if num_qubits == 3:
+        return 45, 8, 1, False
+    if num_qubits == 4:
+        return 90, 7, 2, False
+    return 0, 8, 4, True
+
+
 def annotation_style(num_qubits: int) -> tuple[bool, int]:
     """Return whether to annotate cells and the font size to use."""
     if num_qubits <= 2:
@@ -61,18 +72,36 @@ def plot_confusion_matrix_on_axes(
 
     matrix = np.asarray(conf)
     num_states = len(state_labels)
+    ticks = np.arange(num_states)
+    label_rotation, label_fontsize, label_step, use_integer_ticks = axis_label_style(int(np.log2(num_states)))
+    tick_positions = ticks[::label_step]
+    if use_integer_ticks:
+        tick_labels = [str(i) for i in tick_positions]
+    else:
+        tick_labels = [state_labels[i] for i in tick_positions]
+
     if is_difference:
         max_abs = np.max(np.abs(matrix))
         mesh = ax.pcolormesh(
-            state_labels,
-            state_labels,
+            ticks,
+            ticks,
             matrix,
             cmap=cmap or "RdBu",
             vmin=-max_abs,
             vmax=max_abs,
         )
     else:
-        mesh = ax.pcolormesh(state_labels, state_labels, matrix, cmap=cmap)
+        mesh = ax.pcolormesh(ticks, ticks, matrix, cmap=cmap)
+
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(
+        tick_labels,
+        rotation=label_rotation,
+        fontsize=label_fontsize,
+        ha="right" if label_rotation else "center",
+    )
+    ax.set_yticks(tick_positions)
+    ax.set_yticklabels(tick_labels, fontsize=label_fontsize)
 
     if annotate_cells:
         for meas in range(num_states):
@@ -94,8 +123,8 @@ def plot_confusion_matrix_on_axes(
                     fontsize=text_fontsize,
                 )
 
-    ax.set_ylabel("measured")
-    ax.set_xlabel("prepared")
+    ax.set_ylabel("measured" + (" state index" if use_integer_ticks else ""))
+    ax.set_xlabel("prepared" + (" state index" if use_integer_ticks else ""))
     ax.set_title(title)
     if show_colorbar:
         ax.figure.colorbar(mesh, ax=ax)
