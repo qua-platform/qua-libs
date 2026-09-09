@@ -1,11 +1,10 @@
 """Multi-qubit readout confusion matrix calibration node."""
 
 # %% {Imports}
-from contextlib import contextmanager
-
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from calibration_utils.common_utils.qua_nested_sweeps import nested_sweep
 from calibration_utils.n_qubit_confusion_matrix import (
     Parameters,
     compute_confusion_matrices,
@@ -63,18 +62,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     pass
 
 
-@contextmanager
-def nested_binary_loops(loop_vars, idx=0):
-    """Recursively create nested QUA loops over binary variables."""
-    if idx == len(loop_vars):
-        yield
-        return
-
-    with for_(loop_vars[idx], 0, loop_vars[idx] < 2, loop_vars[idx] + 1):
-        with nested_binary_loops(loop_vars, idx + 1):
-            yield
-
-
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
@@ -115,7 +102,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             with for_(n, 0, n < n_shots, n + 1):
                 save(n, n_st)
-                with nested_binary_loops(init_vars):
+                with nested_sweep(init_vars):
                     for q in qg.qubits:
                         q.reset(node.parameters.reset_type, node.parameters.simulate)
                     align()
