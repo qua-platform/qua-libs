@@ -88,6 +88,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
     # node.parameters.qubit_pairs = ["q1-q2"]
+    node.parameters.qubit_pairs = ["qD2-qD1"]
     pass
 
 
@@ -252,16 +253,22 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse raw data, reconstruct density matrices, log results, set outcomes and store structured results."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    (
-        node.results["ds_fit"],
-        node.results["paulis_data"],
-        node.results["rhos"],
-        fit_results,
-    ) = fit_raw_data(node.results["ds_raw"], node)
+    rhos_by_method, paulis_by_method, fit_results = fit_raw_data(node.results["ds_raw"], node)
+    node.results["rhos"] = rhos_by_method
+    node.results["paulis_data"] = paulis_by_method
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     for qp in node.namespace["qubit_pairs"]:
-        node.results[f"{qp.name}_fidelity"] = fit_results[qp.name].fidelity
-        node.results[f"{qp.name}_purity"] = fit_results[qp.name].purity
+        fr = fit_results[qp.name]
+        node.results[f"{qp.name}_fidelity_kron"] = fr.fidelity_kron
+        node.results[f"{qp.name}_purity_kron"] = fr.purity_kron
+        if fr.fidelity_joint is not None and fr.purity_joint is not None:
+            node.results[f"{qp.name}_fidelity_joint"] = fr.fidelity_joint
+            node.results[f"{qp.name}_purity_joint"] = fr.purity_joint
+            node.results[f"{qp.name}_fidelity"] = fr.fidelity_joint
+            node.results[f"{qp.name}_purity"] = fr.purity_joint
+        else:
+            node.results[f"{qp.name}_fidelity"] = fr.fidelity_kron
+            node.results[f"{qp.name}_purity"] = fr.purity_kron
     log_fitted_results(fit_results, log_callable=node.log)
     node.outcomes = {
         qubit_pair_name: ("successful" if fit_result.success else "failed")
@@ -278,7 +285,8 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["rhos"],
         node.results["paulis_data"],
         qubit_pairs,
-        node,
+        node.results["fit_results"],
+        plot_level=node.parameters.plot_level,
     )
     for name, fig in figures.items():
         node.results[name] = fig
