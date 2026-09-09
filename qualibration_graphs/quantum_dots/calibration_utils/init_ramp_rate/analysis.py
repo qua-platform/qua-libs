@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
+
+from qualibrate.core import QualibrationNode
 
 
 @dataclass
@@ -14,6 +16,11 @@ class FitParameters:
     find_minimum: bool
     success: bool
     failure_reason: Optional[str] = None
+
+
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no stream post-processing)."""
+    return ds
 
 
 def analyse_ramp_rate(
@@ -52,23 +59,26 @@ def analyse_ramp_rate(
     opt_state_list: list[float] = []
     success_list: list[bool] = []
 
+    if "state" not in ds_raw.data_vars:
+        raise KeyError("Expected variable 'state' not found in dataset.")
+
     for qp_name in qubit_pair_names:
-        key = f"state_{qp_name}"
-        if key not in ds_raw:
+        if qp_name not in ds_raw.qubit_pair.values:
             fit_results[qp_name] = FitParameters(
                 optimal_ramp_duration=int(ramp_durations[0]),
                 optimal_avg_state=float("nan"),
                 find_minimum=find_minimum,
                 success=False,
-                failure_reason=f"Missing dataset variable `{key}`.",
+                failure_reason=f"Missing qubit_pair coordinate `{qp_name}` in dataset.",
             )
             opt_ramp_list.append(int(ramp_durations[0]))
             opt_state_list.append(float("nan"))
             success_list.append(False)
             continue
 
-        state_1d = ds_raw[key]
-        avg_state = np.asarray(state_1d.values, dtype=float)
+        avg_state = (
+            ds_raw.state.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration").values.astype(float)
+        )
 
         finite = np.isfinite(avg_state)
         if not np.any(finite):
@@ -84,7 +94,7 @@ def analyse_ramp_rate(
             success_list.append(False)
             continue
 
-        # Finding either the minimum or the maximum value. TODO: Change to a Literal string arg instead of a bool?
+        # Find either the minimum or the maximum value.
         opt_idx = int(np.nanargmin(avg_state) if find_minimum else np.nanargmax(avg_state))
 
         opt_ramp = int(ramp_durations[opt_idx])
@@ -127,11 +137,15 @@ def analyse_ramp_rate(
     return ds_fit, fit_results
 
 
-def log_fitted_results(fit_results: Dict[str, dict], log_callable=print) -> None:
+def log_fitted_results(
+    fit_results: Dict[str, dict],
+    log_callable: Callable[[str], None] | None = None,
+) -> None:
     """Log a human-readable summary of the ramp-rate analysis (expects serialized dicts)."""
+    if log_callable is None:
+        return
     for qp_name, r in fit_results.items():
         if r.get("success", False):
-            # Again, may be easier if it is a string
             extremum = "minimum" if r.get("find_minimum", True) else "maximum"
             log_callable(
                 f"  {qp_name}: optimal ramp duration = {r['optimal_ramp_duration']} ns "

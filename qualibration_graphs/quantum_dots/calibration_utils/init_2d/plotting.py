@@ -6,6 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.plot_style import (
+    apply_qubit_pair_outcome_style,
+    qubit_pair_success,
+)
+
 
 def plot_all(
     ds_fit: xr.Dataset,
@@ -65,6 +70,7 @@ def plot_2d_summary(
     )
 
     for p_idx, qp_name in enumerate(qubit_pair_names):
+        success = qubit_pair_success(fit_results, qp_name)
         col_base = 3 * p_idx
         ax_state = axes[0, col_base]
         ax_i = axes[0, col_base + 1]
@@ -78,9 +84,8 @@ def plot_2d_summary(
         wait = ds_raw["wait_duration"].values
 
         # ── Avg state heatmap ──────────────────────────────────────────
-        state_key = f"state_{qp_name}"
-        if state_key in ds_raw:
-            state_2d = ds_raw[state_key].values
+        if "state" in ds_raw:
+            state_2d = ds_raw.state.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration", "wait_duration").values
             im = ax_state.pcolormesh(
                 wait,
                 ramp,
@@ -118,19 +123,15 @@ def plot_2d_summary(
             fig.colorbar(im_fft, ax=ax_state_fft, label="|FFT|")
             ax_state_fft.set_xlabel("Frequency (MHz)")
             ax_state_fft.set_ylabel("Ramp duration (ns)")
-            ax_state_fft.set_title(f"{qp_name} — FFT(state)")
-        else:
-            ax_state.set_title(f"{qp_name} (no state data)")
-            ax_state_fft.set_title(f"{qp_name} (no state data)")
+        apply_qubit_pair_outcome_style(ax_state_fft, qp_name, success, subtitle="FFT(state)")
 
         ax_state.set_xlabel("Wait duration (ns)")
         ax_state.set_ylabel("Ramp duration (ns)")
-        ax_state.set_title(f"{qp_name} — Avg state")
+        apply_qubit_pair_outcome_style(ax_state, qp_name, success, subtitle="Average state")
 
         # ── Avg I heatmap + FFT(I) ─────────────────────────────────────
-        i_key = f"I_{qp_name}"
-        if i_key in ds_raw:
-            i_2d = ds_raw[i_key].values
+        if "I" in ds_raw:
+            i_2d = ds_raw.I.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration", "wait_duration").values
             im_i = ax_i.pcolormesh(
                 wait,
                 ramp,
@@ -151,19 +152,15 @@ def plot_2d_summary(
             fig.colorbar(im_fft_i, ax=ax_i_fft, label="|FFT|")
             ax_i_fft.set_xlabel("Frequency (MHz)")
             ax_i_fft.set_ylabel("Ramp duration (ns)")
-            ax_i_fft.set_title(f"{qp_name} — FFT(I)")
-        else:
-            ax_i.set_title(f"{qp_name} (no I data)")
-            ax_i_fft.set_title(f"{qp_name} (no I data)")
+        apply_qubit_pair_outcome_style(ax_i_fft, qp_name, success, subtitle="FFT(I)")
 
         ax_i.set_xlabel("Wait duration (ns)")
         ax_i.set_ylabel("Ramp duration (ns)")
-        ax_i.set_title(f"{qp_name} — Avg I")
+        apply_qubit_pair_outcome_style(ax_i, qp_name, success, subtitle="Average I")
 
         # ── Avg Q heatmap + FFT(Q) ─────────────────────────────────────
-        q_key = f"Q_{qp_name}"
-        if q_key in ds_raw:
-            q_2d = ds_raw[q_key].values
+        if "Q" in ds_raw:
+            q_2d = ds_raw.Q.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration", "wait_duration").values
             im_q = ax_q.pcolormesh(
                 wait,
                 ramp,
@@ -184,15 +181,12 @@ def plot_2d_summary(
             fig.colorbar(im_fft_q, ax=ax_q_fft, label="|FFT|")
             ax_q_fft.set_xlabel("Frequency (MHz)")
             ax_q_fft.set_ylabel("Ramp duration (ns)")
-            ax_q_fft.set_title(f"{qp_name} — FFT(Q)")
-        else:
-            ax_q.set_title(f"{qp_name} (no Q data)")
-            ax_q_fft.set_title(f"{qp_name} (no Q data)")
+        apply_qubit_pair_outcome_style(ax_q_fft, qp_name, success, subtitle="FFT(Q)")
 
         ax_q.set_xlabel("Wait duration (ns)")
         ax_q.set_ylabel("Ramp duration (ns)")
-        ax_q.set_title(f"{qp_name} — Avg Q")
+        apply_qubit_pair_outcome_style(ax_q, qp_name, success, subtitle="Average Q")
 
-    fig.suptitle("Init 2D calibration summary", fontsize=14)
+    fig.suptitle("Initialization 2D calibration summary", fontsize=14)
     fig.tight_layout()
     return fig

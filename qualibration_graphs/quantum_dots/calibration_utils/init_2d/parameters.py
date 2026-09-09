@@ -16,6 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum ramp duration in ns (must be multiple of 4)."""
     ramp_duration_step: int = 40
     """Ramp duration step in ns (must be multiple of 4)."""
+    ramp_log_scale: bool = False
+    """Whether to space the ramp-duration axis logarithmically."""
     wait_duration_min: int = 16
     """Minimum wait duration between init and measure in ns (must be multiple of 4)."""
     wait_duration_max: int = 2000

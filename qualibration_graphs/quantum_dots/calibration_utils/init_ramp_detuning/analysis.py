@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
+
+from qualibrate.core import QualibrationNode
 
 
 @dataclass
@@ -15,6 +17,11 @@ class FitParameters:
     find_minimum: bool
     success: bool
     failure_reason: Optional[str] = None
+
+
+def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Return ``ds_raw`` unchanged (thresholded ``state`` needs no stream post-processing)."""
+    return ds
 
 
 def analyse_init_ramp_detuning(
@@ -47,16 +54,18 @@ def analyse_init_ramp_detuning(
     opt_state_list: list[float] = []
     success_list: list[bool] = []
 
+    if "state" not in ds_raw.data_vars:
+        raise KeyError("Expected variable 'state' not found in dataset.")
+
     for qp in qubit_pair_names:
-        key = f"state_{qp}"
-        if key not in ds_raw:
+        if qp not in ds_raw.qubit_pair.values:
             fit_results[qp] = FitParameters(
                 optimal_ramp_duration=int(ramp[0]),
                 optimal_detuning=float(det[0]),
                 optimal_avg_state=float("nan"),
                 find_minimum=find_minimum,
                 success=False,
-                failure_reason=f"Missing dataset variable `{key}`.",
+                failure_reason=f"Missing qubit_pair coordinate `{qp}` in dataset.",
             )
             opt_ramp_list.append(int(ramp[0]))
             opt_det_list.append(float(det[0]))
@@ -64,7 +73,9 @@ def analyse_init_ramp_detuning(
             success_list.append(False)
             continue
 
-        state_2d = np.asarray(ds_raw[key].values, dtype=float)
+        state_2d = (
+            ds_raw.state.sel(qubit_pair=qp, drop=True).transpose("ramp_duration", "detuning").values.astype(float)
+        )
         if state_2d.size == 0:
             fit_results[qp] = FitParameters(
                 optimal_ramp_duration=int(ramp[0]),
@@ -149,8 +160,13 @@ def analyse_init_ramp_detuning(
     return ds_fit, fit_results
 
 
-def log_fitted_results(fit_results: Dict[str, dict], log_callable=print) -> None:
+def log_fitted_results(
+    fit_results: Dict[str, dict],
+    log_callable: Callable[[str], None] | None = None,
+) -> None:
     """Log node-specific fitted results for all qubit pairs (expects serialized dicts)."""
+    if log_callable is None:
+        return
     for qp_name, r in fit_results.items():
         if r.get("success", False):
             extremum = "minimum" if r.get("find_minimum", True) else "maximum"

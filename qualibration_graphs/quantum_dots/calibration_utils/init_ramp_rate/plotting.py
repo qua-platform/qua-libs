@@ -6,6 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
+from calibration_utils.common_utils.plot_style import (
+    apply_qubit_pair_outcome_style,
+    qubit_pair_success,
+)
+
 
 def plot_all(
     ds_fit: xr.Dataset,
@@ -18,7 +23,7 @@ def plot_all(
     figures["avg_state_vs_ramp_duration"] = plot_avg_state_vs_ramp_duration(
         ds_fit, qubit_pair_names, fit_results=fit_results
     )
-    figures["iq_vs_ramp_duration"] = plot_iq_vs_ramp_duration(ds_fit, qubit_pair_names)
+    figures["iq_vs_ramp_duration"] = plot_iq_vs_ramp_duration(ds_fit, qubit_pair_names, fit_results=fit_results)
     return figures
 
 
@@ -39,8 +44,7 @@ def plot_avg_state_vs_ramp_duration(
     for idx, qp_name in enumerate(qubit_pair_names):
         ax = axes[idx]
         ramp_durations = ds_raw["ramp_duration"].values
-        state = ds_raw[f"state_{qp_name}"]
-        avg_state = state.values
+        avg_state = ds_raw.state.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration").values
 
         ax.plot(ramp_durations, avg_state, "o-", label="avg state assignment")
 
@@ -63,11 +67,16 @@ def plot_avg_state_vs_ramp_duration(
 
         ax.set_xlabel("Ramp duration (ns)")
         ax.set_ylabel("Average state assignment")
-        ax.set_title(qp_name)
+        apply_qubit_pair_outcome_style(
+            ax,
+            qp_name,
+            qubit_pair_success(fit_results, qp_name),
+            subtitle="Average state vs ramp duration",
+        )
         ax.set_ylim(-0.05, 1.05)
         ax.legend()
 
-    fig.suptitle("Initialisation ramp rate calibration")
+    fig.suptitle("Initialization ramp-duration calibration")
     fig.tight_layout()
     return fig
 
@@ -75,8 +84,10 @@ def plot_avg_state_vs_ramp_duration(
 def plot_iq_vs_ramp_duration(
     ds_raw: xr.Dataset,
     qubit_pair_names: list[str],
+    *,
+    fit_results: Optional[Dict] = None,
 ) -> plt.Figure:
-    """Plot average I and Q signal as a function of initialisation ramp duration.
+    """Plot average I and Q signal as a function of initialization ramp duration.
 
     One subplot per qubit pair; I on the left y-axis, Q on the right y-axis.
     """
@@ -88,17 +99,12 @@ def plot_iq_vs_ramp_duration(
         ax = axes[idx]
         ramp_durations = ds_raw["ramp_duration"].values
 
-        i_key = f"I_{qp_name}"
-        q_key = f"Q_{qp_name}"
-
-        if i_key in ds_raw:
-            i_data = ds_raw[i_key]
-            i_vals = i_data.values
+        if "I" in ds_raw:
+            i_vals = ds_raw.I.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration").values
             ax.plot(ramp_durations, i_vals, "o-", color="C0", label="I")
 
-        if q_key in ds_raw:
-            q_data = ds_raw[q_key]
-            q_vals = q_data.values
+        if "Q" in ds_raw:
+            q_vals = ds_raw.Q.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration").values
             ax2 = ax.twinx()
             ax2.plot(ramp_durations, q_vals, "s--", color="C1", label="Q (mean)")
             ax2.set_ylabel("Average Q")
@@ -111,8 +117,13 @@ def plot_iq_vs_ramp_duration(
 
         ax.set_xlabel("Ramp duration (ns)")
         ax.set_ylabel("Average I")
-        ax.set_title(qp_name)
+        apply_qubit_pair_outcome_style(
+            ax,
+            qp_name,
+            qubit_pair_success(fit_results, qp_name),
+            subtitle="Average IQ vs ramp duration",
+        )
 
-    fig.suptitle("IQ signal vs initialisation ramp duration")
+    fig.suptitle("IQ signal vs initialization ramp duration")
     fig.tight_layout(w_pad=3.0)
     return fig

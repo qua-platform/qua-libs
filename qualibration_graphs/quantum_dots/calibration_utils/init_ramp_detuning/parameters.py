@@ -16,6 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum ramp duration in ns (must be multiple of 4)."""
     ramp_duration_step: int = 40
     """Ramp duration step in ns (must be multiple of 4)."""
+    ramp_log_scale: bool = False
+    """Whether to space the ramp-duration axis logarithmically."""
     detuning_min: float = -0.4
     """Minimum detuning voltage in V."""
     detuning_max: float = 0.4

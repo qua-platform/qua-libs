@@ -61,8 +61,8 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     """Generate a simulated raw dataset for node 07 (init ramp-rate calibration).
 
     The output is shaped to match the *real* acquisition pipeline for this node:
-    per-qubit-pair variables named ``state_{qp}``, ``I_{qp}``, and ``Q_{qp}`` with
-    dimension ``ramp_duration`` (averaged on the OPX) and a ``ramp_duration`` coordinate.
+    averaged ``state``, ``I``, and ``Q`` traces with dimensions
+    ``(qubit_pair, ramp_duration)`` and a ``ramp_duration`` coordinate.
 
     Parameters
     ----------
@@ -90,7 +90,9 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     ramp_vals = ramp_duration_array.astype(float)
     ramp_span = float(ramp_vals.max() - ramp_vals.min()) if n_ramp > 1 else 1.0
 
-    data_vars: dict[str, xr.DataArray] = {}
+    state_rows = []
+    i_rows = []
+    q_rows = []
 
     for idx, qp_name in enumerate(qp_names):
         # Pick a seeded optimum inside the sweep range.
@@ -146,37 +148,37 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         I = I_shots.mean(axis=0)
         Q = Q_shots.mean(axis=0)
 
-        data_vars[f"state_{qp_name}"] = xr.DataArray(
-            state,
-            dims=("ramp_duration",),
-            coords={"ramp_duration": ramp_duration_array},
-            attrs={"long_name": "State assignment", "units": "arb."},
-        )
-        data_vars[f"I_{qp_name}"] = xr.DataArray(
-            I,
-            dims=("ramp_duration",),
-            coords={"ramp_duration": ramp_duration_array},
-            attrs={"long_name": "I quadrature", "units": "arb."},
-        )
-        data_vars[f"Q_{qp_name}"] = xr.DataArray(
-            Q,
-            dims=("ramp_duration",),
-            coords={"ramp_duration": ramp_duration_array},
-            attrs={"long_name": "Q quadrature", "units": "arb."},
-        )
+        state_rows.append(state)
+        i_rows.append(I)
+        q_rows.append(Q)
 
+    coords = {
+        "qubit_pair": xr.DataArray(qp_names, dims=("qubit_pair",), attrs={"long_name": "qubit pair"}),
+        "ramp_duration": xr.DataArray(
+            ramp_duration_array,
+            dims=("ramp_duration",),
+            attrs={"long_name": "ramp duration", "units": "ns"},
+        ),
+    }
     return xr.Dataset(
-        data_vars=data_vars,
-        coords={
-            "ramp_duration": xr.DataArray(
-                ramp_duration_array,
-                dims=("ramp_duration",),
-                attrs={"long_name": "ramp duration", "units": "ns"},
+        {
+            "state": xr.DataArray(
+                np.asarray(state_rows, dtype=float),
+                dims=("qubit_pair", "ramp_duration"),
+                coords=coords,
+                attrs={"long_name": "State assignment", "units": "arb."},
             ),
-            "qubit_pair": xr.DataArray(
-                qp_names,
-                dims=("qubit_pair",),
-                attrs={"long_name": "qubit pair"},
+            "I": xr.DataArray(
+                np.asarray(i_rows, dtype=float),
+                dims=("qubit_pair", "ramp_duration"),
+                coords=coords,
+                attrs={"long_name": "I quadrature", "units": "arb."},
+            ),
+            "Q": xr.DataArray(
+                np.asarray(q_rows, dtype=float),
+                dims=("qubit_pair", "ramp_duration"),
+                coords=coords,
+                attrs={"long_name": "Q quadrature", "units": "arb."},
             ),
         },
         attrs={"source": "simulated", "node": "07a_init_ramp_rate_calibration"},

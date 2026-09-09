@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import xarray as xr
 
+from calibration_utils.init_ramp_rate.helper_utils import validate_and_build_ramp_sweep
+
 if TYPE_CHECKING:
     from qualibrate.core import QualibrationNode
 
@@ -32,7 +34,8 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     """Generate a simulated raw dataset for the init 2D (ramp × detuning) calibration.
 
     The real QUA program averages over shots on the OPX, so the returned variables
-    match that shape: 2D arrays indexed by ``(ramp_duration, detuning)``.
+    match that shape: ``state``, ``I``, and ``Q`` arrays indexed by
+    ``(qubit_pair, ramp_duration, detuning)``.
 
     Parameters
     ----------
@@ -43,19 +46,11 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     qubit_pairs = _resolve_qubit_pairs(node)
     qp_names = [qp.name for qp in qubit_pairs]
 
-    ramp_min = int(node.parameters.ramp_duration_min)
-    ramp_max = int(node.parameters.ramp_duration_max)
-    ramp_step = int(node.parameters.ramp_duration_step)
-    if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
-        raise ValueError(
-            f"Ramp settings must be divisible by 4. " f"Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
-        )
-
     detuning_min = float(node.parameters.detuning_min)
     detuning_max = float(node.parameters.detuning_max)
     detuning_step = float(node.parameters.detuning_step)
 
-    ramp_duration_array = np.arange(ramp_min, ramp_max, ramp_step, dtype=int)
+    ramp_duration_array = validate_and_build_ramp_sweep(node)
     detuning_array = np.arange(detuning_min, detuning_max, detuning_step, dtype=float)
 
     if ramp_duration_array.size < 1 or detuning_array.size < 1:
@@ -80,7 +75,9 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
     rng = np.random.default_rng(seed=42)
     find_minimum = bool(getattr(node.parameters, "find_minimum", True))
 
-    data_vars: dict[str, xr.DataArray] = {}
+    state_rows = []
+    i_rows = []
+    q_rows = []
 
     for idx, qp_name in enumerate(qp_names):
         r0 = float(rng.choice(ramp))
@@ -110,39 +107,39 @@ def generate_simulated_dataset(node: QualibrationNode) -> xr.Dataset:
         i_noise = rng.normal(0.0, 0.01, size=state.shape)
         q_noise = rng.normal(0.0, 0.01, size=state.shape)
 
-        data_vars[f"state_{qp_name}"] = xr.DataArray(
-            state,
-            dims=("ramp_duration", "detuning"),
-            coords={"ramp_duration": ramp_duration_array, "detuning": detuning_array},
-        )
-        data_vars[f"I_{qp_name}"] = xr.DataArray(
-            i_base + i_noise,
-            dims=("ramp_duration", "detuning"),
-            coords={"ramp_duration": ramp_duration_array, "detuning": detuning_array},
-        )
-        data_vars[f"Q_{qp_name}"] = xr.DataArray(
-            q_base + q_noise,
-            dims=("ramp_duration", "detuning"),
-            coords={"ramp_duration": ramp_duration_array, "detuning": detuning_array},
-        )
+        state_rows.append(state)
+        i_rows.append(i_base + i_noise)
+        q_rows.append(q_base + q_noise)
 
+    coords = {
+        "qubit_pair": xr.DataArray(qp_names, dims=("qubit_pair",), attrs={"long_name": "qubit pair"}),
+        "ramp_duration": xr.DataArray(
+            ramp_duration_array,
+            dims=("ramp_duration",),
+            attrs={"long_name": "ramp duration", "units": "ns"},
+        ),
+        "detuning": xr.DataArray(
+            detuning_array,
+            dims=("detuning",),
+            attrs={"long_name": "detuning", "units": "V"},
+        ),
+    }
     return xr.Dataset(
-        data_vars=data_vars,
-        coords={
-            "ramp_duration": xr.DataArray(
-                ramp_duration_array,
-                dims=("ramp_duration",),
-                attrs={"long_name": "ramp duration", "units": "ns"},
+        {
+            "state": xr.DataArray(
+                np.asarray(state_rows, dtype=float),
+                dims=("qubit_pair", "ramp_duration", "detuning"),
+                coords=coords,
             ),
-            "detuning": xr.DataArray(
-                detuning_array,
-                dims=("detuning",),
-                attrs={"long_name": "detuning", "units": "V"},
+            "I": xr.DataArray(
+                np.asarray(i_rows, dtype=float),
+                dims=("qubit_pair", "ramp_duration", "detuning"),
+                coords=coords,
             ),
-            "qubit_pair": xr.DataArray(
-                qp_names,
-                dims=("qubit_pair",),
-                attrs={"long_name": "qubit pair"},
+            "Q": xr.DataArray(
+                np.asarray(q_rows, dtype=float),
+                dims=("qubit_pair", "ramp_duration", "detuning"),
+                coords=coords,
             ),
         },
         attrs={"source": "simulated", "node": "init_ramp_detuning"},
