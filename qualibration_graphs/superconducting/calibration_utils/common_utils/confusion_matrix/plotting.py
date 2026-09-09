@@ -44,6 +44,42 @@ def reset_type_subtitle(node) -> str:
     return f"\nreset type = {reset_type}"
 
 
+def target_context_line(group_name: str, node) -> str:
+    """Return a subtitle line with target name and optional reset type."""
+    reset_type = getattr(getattr(node, "parameters", None), "reset_type", None)
+    if reset_type is None:
+        return f"\n{group_name}"
+    return f"\n{group_name}, reset type = {reset_type}"
+
+
+def confusion_matrix_figure_suptitle(num_qubits: int) -> str:
+    """Return the figure-level title for confusion-matrix plots."""
+    if num_qubits == 2:
+        return "Two-qubit confusion matrix"
+    return f"{num_qubits}-qubit confusion matrix"
+
+
+def tensor_product_panel_title(group_name: str, node) -> str:
+    """Return the subplot title for tensor-product (1Q inferred) confusion matrices."""
+    return (
+        r"Uncorrelated (inferred: tensor product $\bigotimes_i C_i$)"
+        + target_context_line(group_name, node)
+    )
+
+
+def joint_measured_panel_title(group_name: str, num_qubits: int, node) -> str:
+    """Return the subplot title for joint (measured) confusion matrices."""
+    return (
+        rf"Correlated (measured: direct $2^{{{num_qubits}}}$-state calibration)"
+        + target_context_line(group_name, node)
+    )
+
+
+def confusion_difference_panel_title(group_name: str, node) -> str:
+    """Return the subplot title for correlated-minus-uncorrelated difference plots."""
+    return "Correlated − uncorrelated" + target_context_line(group_name, node)
+
+
 def diff_confusion_matrices(
     confusions: Dict[str, np.ndarray],
     kron_confs: Dict[str, np.ndarray],
@@ -263,10 +299,11 @@ def plot_confusion_matrices_grid(
     is_difference: bool = False,
     cmap: Optional[str] = None,
     show_colorbar: bool = True,
+    figure_suptitle: Optional[str] = None,
 ) -> Figure:
     """Plot one confusion-matrix figure on a regular subplot grid."""
     num_targets = len(target_names)
-    num_cols = max(1, min(num_cols, num_targets))
+    num_cols = min(num_cols, max(1, num_targets))
     num_rows = int(np.ceil(num_targets / num_cols))
     fig = plt.figure(figsize=(panel_size * num_cols, panel_size * num_rows))
     outer_grid = fig.add_gridspec(num_rows, num_cols)
@@ -305,7 +342,11 @@ def plot_confusion_matrices_grid(
             colorbar_axes=colorbar_axes,
         )
 
-    fig.tight_layout()
+    if figure_suptitle:
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
+        fig.suptitle(figure_suptitle)
+    else:
+        fig.tight_layout()
 
     # tight_layout shrinks each heatmap axes to leave room for its own title/tick labels, but
     # (being a separate axes sharing only the gridspec row) leaves the colour bars at the full,
