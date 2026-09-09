@@ -58,14 +58,4 @@ Sweep operations exist only in the execution config and are removed from QUAM
 after construction, including on errors. Simulation and `load_data_id` replay
 never apply calibration state updates.
 
-## Offline tests
-
-From the superconducting project directory, using its dependency environment:
-
-```sh
-PYTHONPATH=. MPLBACKEND=Agg python -m pytest tests/test_readout_duration_optimization.py -q
-```
-
-These cover GE/GEF multi-qubit selection, invalid data, ties, conversion,
-state updates, plots, duration validation and matching integration weights.
 QOP simulation and device validation still require an available controller.
