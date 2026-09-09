@@ -46,6 +46,24 @@ tickle_amp = 0.1
 tickle_if = 2_000_000
 tickle_len = 10_000
 
+# Paul-trap RF. Set this to the ACTUAL trap-drive frequency in Hz (e.g. 30_970_560).
+# Photon-RF correlation folds OPX timestamps against this period, so the RF
+# generator must share a 10 MHz reference with the OPX.
+trap_rf_freq = 20_000_000.0
+# Analog time-tag unit (ns). 0.5 on OPX1000 / QOP >= 3.5.0, else 1.0.
+tag_to_ns = 0.5
+
+# PMT time tagging
+pmt_max_tags = 1000  # max photons stored per tagging window
+pmt_readout_len = 1_000_000  # ns; "readout" window used by detection/counting scripts
+# RF-correlation tagging window (ns). This is the measure duration, so two PMT
+# elements at 50% duty staggered by one window tile the timeline exactly.
+rf_window_len = 10_000
+
+# Radial compensation electrodes (DC). Amplified LF outputs: ±2.5 V.
+comp_x_offset = 0.0
+comp_y_offset = 0.0
+
 
 config = {
     "controllers": {
@@ -62,6 +80,7 @@ config = {
                     },
                     "analog_inputs": {
                         1: {"offset": 0, "gain_db": 0},
+                        2: {"offset": 0, "gain_db": 0},
                     },
                 },
                 2: {
@@ -70,6 +89,8 @@ config = {
                         1: {"offset": 0.0, "output_mode": "direct", "upsampling_mode": "mw"},
                         2: {"offset": 0.0, "output_mode": "direct", "upsampling_mode": "mw"},
                         3: {"offset": 0.0, "output_mode": "direct", "upsampling_mode": "mw"},
+                        4: {"offset": comp_x_offset, "output_mode": "amplified", "upsampling_mode": "pulse"},
+                        5: {"offset": comp_y_offset, "output_mode": "amplified", "upsampling_mode": "pulse"},
                     },
                 },
                 8: {
@@ -138,6 +159,14 @@ config = {
             "intermediate_frequency": tickle_if,
             "operations": {"constant": "tickle_pulse"},
         },
+        "comp_x": {
+            "singleInput": {"port": ("con1", 2, 4)},
+            "operations": {"const": "dc_pulse"},
+        },
+        "comp_y": {
+            "singleInput": {"port": ("con1", 2, 5)},
+            "operations": {"const": "dc_pulse"},
+        },
         "pmt": {
             "outputs": {"out1": ("con1", 1, 1)},
             "intermediate_frequency": 0,
@@ -149,7 +178,21 @@ config = {
             },
             "time_of_flight": 28,
             "smearing": 0,
-            "operations": {"readout": "readout_pulse"},
+            "operations": {"readout": "readout_pulse", "tag": "rf_tag_pulse"},
+        },
+        # Same physical PMT on a second ADC, used to tile tagging windows with no gaps.
+        "pmt_2": {
+            "outputs": {"out1": ("con1", 1, 2)},
+            "intermediate_frequency": 0,
+            "timeTaggingParameters": {
+                "signalThreshold": -2000,
+                "signalPolarity": "Below",
+                "derivativeThreshold": -2000,
+                "derivativePolarity": "Above",
+            },
+            "time_of_flight": 28,
+            "smearing": 0,
+            "operations": {"readout": "readout_pulse", "tag": "rf_tag_pulse"},
         },
     },
     "pulses": {
@@ -180,7 +223,12 @@ config = {
         },
         "readout_pulse": {
             "operation": "measurement",
-            "length": 1_000_000,
+            "length": pmt_readout_len,
+            "waveforms": {"single": "zero_wf"},
+        },
+        "rf_tag_pulse": {
+            "operation": "measurement",
+            "length": rf_window_len,
             "waveforms": {"single": "zero_wf"},
         },
         "x180_pulse": {
@@ -247,6 +295,11 @@ config = {
             "operation": "control",
             "length": 1000,
             "waveforms": {"single": "tickle_wf"},
+        },
+        "dc_pulse": {
+            "operation": "control",
+            "length": 16,
+            "waveforms": {"single": "zero_wf"},
         },
     },
     "waveforms": {
