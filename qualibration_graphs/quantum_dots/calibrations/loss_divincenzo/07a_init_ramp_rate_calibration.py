@@ -33,7 +33,7 @@ This sequence calibrates the ramp duration of the initialize macro by sweeping t
 and measuring the consistency of initializing into either state.
 
 For each ramp duration the sequence initializes with the given ramp duration, then performs a state
-measurement using the balanced measurement macro. The boolean state
+measurement using the measurement macro. The boolean state
 assignment (0 or 1) is averaged over many shots to produce the mean state occupation for each
 ramp duration.
 
@@ -43,7 +43,7 @@ The analysis identifies the ramp duration that yields the minimum (or maximum, c
 Prerequisites:
     - Having initialized the Quam.
     - Having calibrated the PSB measurement point (06a-06c).
-    - Having the balanced measurement macro configured with a valid threshold.
+    - Having the measurement macro configured with a valid threshold.
 
 Datasets:
     - ``ds_raw``: untouched data fetched from the OPX (or generated synthetically when
@@ -267,6 +267,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results.get("ds_fit", node.results["ds_raw"]),
         qp_names,
         fit_results=node.results.get("fit_results"),
+        plot_fft=node.parameters.plot_fft,
     )
     if not node.modes.external:
         plt.show()

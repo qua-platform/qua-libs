@@ -17,11 +17,10 @@ def plot_all(
     qubit_pair_names: list[str],
     *,
     fit_results: Optional[Dict] = None,
+    plot_fft: bool = False,
 ) -> dict[str, plt.Figure]:
     """Standard node plotting API returning a figure dict."""
-    return {
-        "summary_2d": plot_2d_summary(ds_fit, qubit_pair_names, fit_results=fit_results),
-    }
+    return {"summary_2d": plot_2d_summary(ds_fit, qubit_pair_names, fit_results=fit_results, plot_fft=plot_fft)}
 
 
 def _compute_fft_2d(
@@ -52,20 +51,26 @@ def plot_2d_summary(
     ds_raw: xr.Dataset,
     qubit_pair_names: list[str],
     fit_results: Optional[Dict] = None,
+    *,
+    plot_fft: bool = False,
 ) -> plt.Figure:
-    """6-panel summary per qubit pair.
+    """Summary per qubit pair.
 
-    Layout (2 rows × 3 columns per qubit pair):
+    Layout without FFT: 1 row × 3 columns per qubit pair:
+        Avg state | Avg I | Avg Q
+
+    Layout with FFT: 2 rows × 3 columns per qubit pair:
         Row 1 (heatmaps): Avg state | Avg I | Avg Q
         Row 2 (FFTs):     FFT(state) | FFT(I) | FFT(Q)
 
     Multiple qubit pairs are tiled as extra column groups.
     """
     n_pairs = max(len(qubit_pair_names), 1)
+    n_rows = 2 if plot_fft else 1
     fig, axes = plt.subplots(
-        2,
+        n_rows,
         3 * n_pairs,
-        figsize=(6 * 3 * n_pairs, 5 * 2),
+        figsize=(6 * 3 * n_pairs, 5 * n_rows),
         squeeze=False,
     )
 
@@ -75,10 +80,10 @@ def plot_2d_summary(
         ax_state = axes[0, col_base]
         ax_i = axes[0, col_base + 1]
         ax_q = axes[0, col_base + 2]
-
-        ax_state_fft = axes[1, col_base]
-        ax_i_fft = axes[1, col_base + 1]
-        ax_q_fft = axes[1, col_base + 2]
+        if plot_fft:
+            ax_state_fft = axes[1, col_base]
+            ax_i_fft = axes[1, col_base + 1]
+            ax_q_fft = axes[1, col_base + 2]
 
         ramp = ds_raw["ramp_duration"].values
         wait = ds_raw["wait_duration"].values
@@ -111,19 +116,20 @@ def plot_2d_summary(
                     )
                     ax_state.legend(fontsize=7)
 
-            # ── FFT of state ───────────────────────────────────────────
-            freqs, fft_mag = _compute_fft_2d(state_2d, wait)
-            im_fft = ax_state_fft.pcolormesh(
-                freqs,
-                ramp,
-                fft_mag,
-                shading="nearest",
-                cmap="inferno",
-            )
-            fig.colorbar(im_fft, ax=ax_state_fft, label="|FFT|")
-            ax_state_fft.set_xlabel("Frequency (MHz)")
-            ax_state_fft.set_ylabel("Ramp duration (ns)")
-        apply_qubit_pair_outcome_style(ax_state_fft, qp_name, success, subtitle="FFT(state)")
+            if plot_fft:
+                freqs, fft_mag = _compute_fft_2d(state_2d, wait)
+                im_fft = ax_state_fft.pcolormesh(
+                    freqs,
+                    ramp,
+                    fft_mag,
+                    shading="nearest",
+                    cmap="inferno",
+                )
+                fig.colorbar(im_fft, ax=ax_state_fft, label="|FFT|")
+                ax_state_fft.set_xlabel("Frequency (MHz)")
+                ax_state_fft.set_ylabel("Ramp duration (ns)")
+        if plot_fft:
+            apply_qubit_pair_outcome_style(ax_state_fft, qp_name, success, subtitle="FFT(state)")
 
         ax_state.set_xlabel("Wait duration (ns)")
         ax_state.set_ylabel("Ramp duration (ns)")
@@ -141,18 +147,20 @@ def plot_2d_summary(
             )
             fig.colorbar(im_i, ax=ax_i, label="Avg I")
 
-            freqs_i, fft_mag_i = _compute_fft_2d(i_2d, wait)
-            im_fft_i = ax_i_fft.pcolormesh(
-                freqs_i,
-                ramp,
-                fft_mag_i,
-                shading="nearest",
-                cmap="inferno",
-            )
-            fig.colorbar(im_fft_i, ax=ax_i_fft, label="|FFT|")
-            ax_i_fft.set_xlabel("Frequency (MHz)")
-            ax_i_fft.set_ylabel("Ramp duration (ns)")
-        apply_qubit_pair_outcome_style(ax_i_fft, qp_name, success, subtitle="FFT(I)")
+            if plot_fft:
+                freqs_i, fft_mag_i = _compute_fft_2d(i_2d, wait)
+                im_fft_i = ax_i_fft.pcolormesh(
+                    freqs_i,
+                    ramp,
+                    fft_mag_i,
+                    shading="nearest",
+                    cmap="inferno",
+                )
+                fig.colorbar(im_fft_i, ax=ax_i_fft, label="|FFT|")
+                ax_i_fft.set_xlabel("Frequency (MHz)")
+                ax_i_fft.set_ylabel("Ramp duration (ns)")
+        if plot_fft:
+            apply_qubit_pair_outcome_style(ax_i_fft, qp_name, success, subtitle="FFT(I)")
 
         ax_i.set_xlabel("Wait duration (ns)")
         ax_i.set_ylabel("Ramp duration (ns)")
@@ -170,18 +178,20 @@ def plot_2d_summary(
             )
             fig.colorbar(im_q, ax=ax_q, label="Avg Q")
 
-            freqs_q, fft_mag_q = _compute_fft_2d(q_2d, wait)
-            im_fft_q = ax_q_fft.pcolormesh(
-                freqs_q,
-                ramp,
-                fft_mag_q,
-                shading="nearest",
-                cmap="inferno",
-            )
-            fig.colorbar(im_fft_q, ax=ax_q_fft, label="|FFT|")
-            ax_q_fft.set_xlabel("Frequency (MHz)")
-            ax_q_fft.set_ylabel("Ramp duration (ns)")
-        apply_qubit_pair_outcome_style(ax_q_fft, qp_name, success, subtitle="FFT(Q)")
+            if plot_fft:
+                freqs_q, fft_mag_q = _compute_fft_2d(q_2d, wait)
+                im_fft_q = ax_q_fft.pcolormesh(
+                    freqs_q,
+                    ramp,
+                    fft_mag_q,
+                    shading="nearest",
+                    cmap="inferno",
+                )
+                fig.colorbar(im_fft_q, ax=ax_q_fft, label="|FFT|")
+                ax_q_fft.set_xlabel("Frequency (MHz)")
+                ax_q_fft.set_ylabel("Ramp duration (ns)")
+        if plot_fft:
+            apply_qubit_pair_outcome_style(ax_q_fft, qp_name, success, subtitle="FFT(Q)")
 
         ax_q.set_xlabel("Wait duration (ns)")
         ax_q.set_ylabel("Ramp duration (ns)")

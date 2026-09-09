@@ -17,6 +17,7 @@ def plot_all(
     qubit_pair_names: list[str],
     *,
     fit_results: Optional[Dict] = None,
+    plot_fft: bool = False,
 ) -> dict[str, plt.Figure]:
     """Standard node plotting API returning a figure dict."""
     figures: dict[str, plt.Figure] = {}
@@ -24,7 +25,20 @@ def plot_all(
         ds_fit, qubit_pair_names, fit_results=fit_results
     )
     figures["iq_vs_ramp_duration"] = plot_iq_vs_ramp_duration(ds_fit, qubit_pair_names, fit_results=fit_results)
+    if plot_fft:
+        figures["fft_vs_ramp_duration"] = plot_fft_vs_ramp_duration(
+            ds_fit, qubit_pair_names, fit_results=fit_results
+        )
     return figures
+
+
+def _compute_fft_1d(x_values: np.ndarray, y_values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return positive FFT frequencies and magnitudes for a uniformly sampled 1D trace."""
+    dx_ns = float(x_values[1] - x_values[0]) if len(x_values) > 1 else 1.0
+    dx_us = dx_ns * 1e-3
+    freqs = np.fft.rfftfreq(len(x_values), d=dx_us)[1:]
+    spectrum = np.abs(np.fft.rfft(y_values - np.mean(y_values)))[1:]
+    return freqs, spectrum
 
 
 def plot_avg_state_vs_ramp_duration(
@@ -126,4 +140,40 @@ def plot_iq_vs_ramp_duration(
 
     fig.suptitle("IQ signal vs initialization ramp duration")
     fig.tight_layout(w_pad=3.0)
+    return fig
+
+
+def plot_fft_vs_ramp_duration(
+    ds_raw: xr.Dataset,
+    qubit_pair_names: list[str],
+    *,
+    fit_results: Optional[Dict] = None,
+) -> plt.Figure:
+    """Plot FFT spectra of average state assignment vs initialization ramp duration."""
+    n_pairs = max(len(qubit_pair_names), 1)
+    fig, axes = plt.subplots(1, n_pairs, figsize=(6 * n_pairs, 4), squeeze=False)
+    axes = axes[0]
+
+    for idx, qp_name in enumerate(qubit_pair_names):
+        ax = axes[idx]
+        ramp_durations = ds_raw["ramp_duration"].values
+        avg_state = ds_raw.state.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration").values
+        freqs, fft_mag = _compute_fft_1d(ramp_durations, avg_state)
+
+        if len(freqs) > 0:
+            ax.plot(freqs, fft_mag, "o-", label="FFT(state)")
+
+        ax.set_xlabel("Frequency (MHz)")
+        ax.set_ylabel("|FFT|")
+        apply_qubit_pair_outcome_style(
+            ax,
+            qp_name,
+            qubit_pair_success(fit_results, qp_name),
+            subtitle="FFT(state)",
+        )
+        if len(freqs) > 0:
+            ax.legend()
+
+    fig.suptitle("FFT of average state vs initialization ramp duration")
+    fig.tight_layout()
     return fig

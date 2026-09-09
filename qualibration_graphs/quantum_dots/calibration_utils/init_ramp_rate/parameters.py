@@ -19,6 +19,8 @@ class NodeSpecificParameters(RunnableParameters):
     find_minimum: bool = True
     """If True, find the ramp duration yielding the minimum average state
     (purest ground-state preparation). If False, find the maximum. Default is True."""
+    plot_fft: bool = False
+    """If True, include FFT plots. Default is False."""
 
 
 class Parameters(

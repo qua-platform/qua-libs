@@ -25,6 +25,8 @@ class NodeSpecificParameters(RunnableParameters):
     find_minimum: bool = True
     """If True, find the (ramp, detuning) pair yielding the minimum average state
     (purest ground-state preparation). If False, find the maximum."""
+    plot_fft: bool = False
+    """If True, include FFT plots. Default is False."""
 
 
 class Parameters(
