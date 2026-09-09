@@ -83,6 +83,46 @@ def compute_confusion_matrices(
     return confusions
 
 
+def compute_marginal_confusion_matrices(conf: np.ndarray, qubit_names: Sequence[str]) -> Dict[str, np.ndarray]:
+    """Compute single-qubit marginal confusion matrices from a joint ``conf[measured, prepared]`` matrix.
+
+    ``qubit_names`` must be ordered to match the joint matrix's bit order (qubit 0 is the most
+    significant bit, matching ``compute_confusion_matrices`` and the node's state expression).
+
+    Each marginal conditions on qubit i's prepared bit and averages (unweighted, since every joint
+    prepared state is measured with the same number of shots) over the other qubits' prepared
+    states, then sums over the other qubits' measured outcomes. Returned as
+    ``conf[measured_bit, prepared_bit]`` per qubit name, matching the joint-matrix convention.
+
+    Note that these marginals include readout crosstalk from the other qubits being driven and
+    measured at the same time, unlike a single-qubit confusion matrix measured in isolation.
+    """
+    conf = np.asarray(conf, dtype=float)
+    num_qubits = len(qubit_names)
+    num_states = conf.shape[0]
+    bit_labels = [format(state, f"0{num_qubits}b") for state in range(num_states)]
+    bits = np.array([[int(bit) for bit in label] for label in bit_labels])  # (num_states, num_qubits)
+
+    marginals = {}
+    for q_idx, name in enumerate(qubit_names):
+        qubit_bits = bits[:, q_idx]
+        marginal = np.zeros((2, 2))
+        for prepared_bit in (0, 1):
+            columns = np.flatnonzero(qubit_bits == prepared_bit)
+            averaged_column = conf[:, columns].mean(axis=1)
+            for measured_bit in (0, 1):
+                rows = np.flatnonzero(qubit_bits == measured_bit)
+                marginal[measured_bit, prepared_bit] = averaged_column[rows].sum()
+        marginals[name] = marginal
+    return marginals
+
+
+def marginal_assignment_fidelity(marginal: np.ndarray) -> float:
+    """Mean of the diagonal of a 2x2 marginal confusion matrix."""
+    marginal = np.asarray(marginal, dtype=float)
+    return float(0.5 * (marginal[0, 0] + marginal[1, 1]))
+
+
 def compute_kron_confusion_matrices(qubits_by_name: Mapping[str, Iterable]) -> Dict[str, np.ndarray]:
     """Compute Kronecker reference matrices from single-qubit readout matrices.
 

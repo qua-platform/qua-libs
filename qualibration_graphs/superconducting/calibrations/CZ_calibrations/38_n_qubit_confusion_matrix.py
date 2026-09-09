@@ -1,10 +1,15 @@
 """Multi-qubit readout confusion matrix calibration node."""
 
 # %% {Imports}
+from contextlib import contextmanager
+
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from contextlib import contextmanager
+from calibration_utils.n_qubit_confusion_matrix import (
+    Parameters, compute_confusion_matrices, compute_kron_confusion_matrices,
+    get_qubit_groups, is_confusion_matrix_valid, plot_confusion_matrices,
+    save_confusion_to_qubit_pair_extras)
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
@@ -12,16 +17,6 @@ from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-
-from calibration_utils.n_qubit_confusion_matrix import (
-    Parameters,
-    compute_confusion_matrices,
-    compute_kron_confusion_matrices,
-    get_qubit_groups,
-    is_confusion_matrix_valid,
-    plot_confusion_matrices,
-    save_confusion_to_qubit_pair_extras,
-)
 
 # %% {Initialisation}
 description = """
@@ -42,6 +37,7 @@ Prerequisites:
 Outcomes:
 - N×N confusion matrix (where N = 2^num_qubits) for each configured qubit group
 - Kronecker-product reference matrices and direct-minus-Kron difference plots
+- Single-qubit marginal confusion matrices (readout crosstalk from simultaneous measurement included)
 - For groups with 3+ qubits, measured matrices are saved to qubit pair extras
 """
 
@@ -56,7 +52,9 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
-    # node.parameters.qubit_groups = [["qC2", "qC1", "qC4"]]
+    node.parameters.qubit_groups = [["qC4", "qC3", "qC2", "qC5"]]
+    node.parameters.reset_type = "active"
+    # node.parameters.num_shots = 2000
     pass
 
 
