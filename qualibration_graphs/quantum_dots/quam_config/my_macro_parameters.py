@@ -1,7 +1,22 @@
 """
-This script is made in order to create Node Parameters based on any custom macros that you have built.
+Define node-parameter mixins for custom state macros.
 
-This example populates the InitializeMacroParameters to be HeraldedBalancedInitializeMacro parameters.
+This module is the companion to ``my_macros.py``. The parameter
+classes defined here should mirror the configurable fields of your custom
+initialize and measure macros so that Qualibration nodes can expose those
+values in their ``parameters.py`` files.
+
+The main export is ``MacroParameters``, which bundles the macro-related
+parameter mixins into a single class for convenient reuse across nodes.
+
+When customizing this file, keep it aligned with the macros exported from
+``my_macros.py`` and wired by ``populate_macros.py``. If you add, remove, or
+rename configurable macro fields, you should update the corresponding
+parameter classes here to match.
+
+This example exposes parameters for a heralded / active-reset initialize
+macro, while leaving the measure-macro parameter mixin empty until custom
+measure fields are needed.
 """
 
 from typing import Optional, Literal
