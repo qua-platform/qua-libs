@@ -10,8 +10,8 @@ import xarray as xr
 from scipy.stats import norm as _scipy_norm
 
 from qualibrate.core import QualibrationNode
-from calibration_utils.iq_utils.iq_blobs import fit_raw_data, log_fitted_results
-from calibration_utils.iq_utils.iq_blobs.analysis import FitParameters
+from calibration_utils.common_utils.iq_utils.iq_blobs import fit_raw_data, log_fitted_results
+from calibration_utils.common_utils.iq_utils.iq_blobs.analysis import FitParameters
 
 __all__ = [
     "build_labeled_dataset",
@@ -107,7 +107,7 @@ def fit_fixed_detuning_raw_data(
 def _barthel_clip_compat():
     """Adapt the shared Barthel stack to JAX versions that expect ``min``/``max`` instead of ``a_min``/``a_max``."""
 
-    from calibration_utils.iq_utils.iq_blobs.readout_barthel import analytic
+    from calibration_utils.common_utils.iq_utils.iq_blobs.readout_barthel import analytic
 
     original_clip = analytic.jnp.clip
 
@@ -144,7 +144,7 @@ def fit_gmm_labeled(
     """
     import jax.numpy as jnp
     from sklearn.mixture import GaussianMixture
-    from calibration_utils.iq_utils.iq_blobs.readout_barthel.pca import pca_project_1d
+    from calibration_utils.common_utils.iq_utils.iq_blobs.readout_barthel.pca import pca_project_1d
 
     fit_results = {}
     qnames = [q.name for q in qubits]

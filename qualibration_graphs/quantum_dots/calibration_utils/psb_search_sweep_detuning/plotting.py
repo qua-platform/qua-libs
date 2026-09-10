@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional, Sequence, Union
 import xarray as xr
 from matplotlib.figure import Figure
 
-from calibration_utils.iq_utils.iq_sweep.plotting import (
+from calibration_utils.common_utils.iq_utils.iq_sweep.plotting import (
     plot_fidelity_vs_sweep,
     plot_histograms_vs_sweep,
     plot_sweep_summary,
