@@ -98,7 +98,7 @@ class InitializeMacroBase(CustomMacro):
 
     @property
     def inferred_duration(self) -> float | None:
-        return (2 * self.ramp_duration + 2 * self.hold_duration + 16) * 1e-9
+        return (4 * self.ramp_duration + 2 * self.hold_duration + self.zero_duration) * 1e-9
 
     def apply(
         self,
@@ -120,7 +120,7 @@ class InitializeMacroBase(CustomMacro):
         # Create dicts of positive and negative voltage points
         positive_voltages = self.point_voltages(point_name)
         negative_voltages = {k: -v for k, v in positive_voltages.items()}
-        zero = {k: 0.0 for k, _ in positive_voltages.items()}
+        zero_voltages = {k: 0.0 for k, _ in positive_voltages.items()}
 
         # This macro operates using the VoltageSequence
         vs = owner.voltage_sequence
@@ -143,7 +143,7 @@ class InitializeMacroBase(CustomMacro):
                 ensure_align=False,
             )
             vs.ramp_to_voltages(
-                zero,
+                zero_voltages,
                 duration=zero,
                 ramp_duration=ramp,
                 ensure_align=False,
@@ -169,11 +169,28 @@ class InitializeMacro(InitializeMacroBase):
     target_state: Literal[0, 1] = 0
     qubit_role: Literal["target", "control"] = "control"
 
+    @property
+    def inferred_duration(self) -> float | None:
+        single_initialize_trip = (4 * self.ramp_duration + 2 * self.hold_duration + 16) * 1e-9
+        measure_macro_duration = self.owner.macros["measure"].inferred_duration
+        if measure_macro_duration is None:
+            return None
+
+        max_loops = self.max_loops
+
+        # Change this to match your qubit's drive length in seconds if you want a tighter bound.
+        estimated_qubit_drive_duration = None
+        length = single_initialize_trip + measure_macro_duration
+        if estimated_qubit_drive_duration is not None:
+            length += estimated_qubit_drive_duration
+
+        return length * max_loops
+
     def apply(
         self,
-        max_loops: int = 2,
+        max_loops: Optional[int] = None,
         target_state: Optional[Literal[0, 1]] = None,
-        return_n_loops: bool | None = False,
+        return_n_loops: bool | None = None,
         operation: str = "x180",
         qubit_role: Optional[Literal["target", "control"]] = None,
         qubit_name: Optional[str] = None,
@@ -191,8 +208,9 @@ class InitializeMacro(InitializeMacroBase):
             if qubit_name is None:
                 raise ValueError("Failed to resolve qubit")
 
-        if target_state is None:
-            target_state = 0
+        target_state = self.target_state if target_state is None else target_state
+        max_loops = self.max_loops if max_loops is None else max_loops
+        return_n_loops = self.return_n_loops if return_n_loops is None else return_n_loops
 
         vs = owner.voltage_sequence
         gates = [ch_name for ch_name in vs.gate_set.channels.keys()]
