@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.common_utils.flux_distortions import plan_lo_shift_for_frequency_window
+from calibration_utils.three_tone_coupler_spectroscopy_flux_pulse.parameters import (
+    resolve_coupler_rf_centers_by_pair,
+)
 from calibration_utils.three_tone_coupler_spectroscopy_vs_coupler_flux import (
     Parameters,
     fit_raw_data,
@@ -72,11 +75,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.coupler_flux_max_in_v,
         node.parameters.num_coupler_flux_points,
     )
-    rf_start = node.parameters.rf_frequency_startpoint_in_hz
+    coupler_rf_centers = resolve_coupler_rf_centers_by_pair(
+        qubit_pairs,
+        node.parameters.rf_frequency_startpoint_in_hz,
+        log_callable=node.log,
+    )
+    node.namespace["coupler_rf_centers"] = coupler_rf_centers
     coupler_ifs = {
         qp.name: int(
-            (rf_start if rf_start is not None else qp.coupler.RF_frequency)
-            - qp.qubit_control.xy.opx_output.upconverter_frequency
+            coupler_rf_centers[qp.name] - qp.qubit_control.xy.opx_output.upconverter_frequency
         )
         for qp in qubit_pairs
     }

@@ -36,8 +36,12 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of coupler flux points."""
     coupler_flux_settle_in_ns: int = 4000
     """Wait after updating coupler DC offset before the pulse sequence, in ns."""
-    rf_frequency_startpoint_in_hz: Optional[float] = 7.2e9
-    """Optional coupler RF center in Hz; default uses ``coupler.RF_frequency`` from state."""
+    rf_frequency_startpoint_in_hz: Optional[float] = None
+    """Optional coupler RF sweep centre in Hz for all pairs.
+
+    When ``None`` (default), each pair uses ``coupler.RF_frequency`` from state if set,
+    otherwise an estimate from the control and target qubit ``xy.RF_frequency`` values.
+    """
 
 
 class Parameters(
