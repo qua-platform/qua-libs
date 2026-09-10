@@ -3,7 +3,7 @@ from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visu
 from quam_builder.builder.qop_connectivity import build_quam_wiring
 from quam_builder.builder.quantum_dots import build_quam
 from quam_builder.architecture.quantum_dots.operations.macro_catalog import VoltageBalancedMacroCatalog
-from quam_config import Quam
+from quam_config import Quam, QubitQuam
 
 ########################################################################################################################
 # %%                                              Define static parameters
@@ -60,5 +60,10 @@ user_input = input("Do you want to save the updated QUAM? (y/n)")
 if user_input.lower() == "y":
     machine = Quam()
     build_quam_wiring(connectivity, host_ip, cluster_name, machine)
-    build_quam(machine, qubit_pair_sensor_map=qubit_pair_sensor_map, catalogs=[VoltageBalancedMacroCatalog()])
+    build_quam(
+        machine,
+        qubit_pair_sensor_map=qubit_pair_sensor_map,
+        target_quam_class=QubitQuam,
+        catalogs=[VoltageBalancedMacroCatalog()],
+    )
     machine.save()
