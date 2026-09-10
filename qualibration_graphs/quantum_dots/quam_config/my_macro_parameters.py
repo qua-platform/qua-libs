@@ -28,5 +28,4 @@ class MeasureMacroParameters(RunnableParameters):
 
 class MacroParameters(InitializeMacroParameters, MeasureMacroParameters):
     """Batch all the macro related parameters to export in a single class"""
-
     pass

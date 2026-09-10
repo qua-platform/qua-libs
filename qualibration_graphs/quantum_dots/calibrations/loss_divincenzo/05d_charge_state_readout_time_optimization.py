@@ -23,6 +23,7 @@ from calibration_utils.charge_state_readout_time_optimization import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 
 # %% {Node initialization}
 description = """
@@ -91,6 +92,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Extract the dot pairs and sensors
     node.namespace["quantum_dot_pairs"], _ = quantum_dot_pairs, vgs_id = get_dot_pairs(node)
     node.namespace["all_sensors"] = all_sensors = get_dot_pair_sensors(node)
+
+    change_macro_tracked(node, quantum_dot_pairs) # Applies any node parameter updates to custom macros
 
     # Ensure that the machine is set up to track the integrated voltage
     node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage=True)
@@ -174,10 +177,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 align()  # Initial global align
 
                 # ── STEP 1: Initialize ───────────────────────
-                dot_pair.initialize(
-                    target_state=node.parameters.target_state,
-                    max_loops=node.parameters.max_loops,
-                )
+                dot_pair.initialize()
 
                 align()
 
@@ -330,6 +330,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the data analysis was successful."""
+    revert_tracked_macros(node)
 
     # Revert the readout length change done at the beginning of the node
     for tracked_resonator in node.namespace.get("tracked_resonators", []):

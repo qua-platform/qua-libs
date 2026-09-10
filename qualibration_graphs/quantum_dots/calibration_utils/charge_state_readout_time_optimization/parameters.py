@@ -3,7 +3,7 @@ from qualibrate.core.parameters import RunnableParameters
 
 from qualibration_libs.parameters import CommonNodeParameters
 from qualibration_libs.parameters.experiment import BaseExperimentNodeParameters
-from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
+from quam_config import MacroParameters
 from typing import List, Optional
 
 
@@ -35,6 +35,6 @@ class Parameters(
     BaseExperimentNodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    HeraldedInitializeParameters,
+    MacroParameters,
 ):
     pass

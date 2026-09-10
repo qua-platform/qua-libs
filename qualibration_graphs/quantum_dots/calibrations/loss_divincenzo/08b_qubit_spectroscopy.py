@@ -24,6 +24,7 @@ from calibration_utils.qubit_spectroscopy import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 from qualibration_libs.core import tracked_updates
 
 # %% {Node initialization}
@@ -95,6 +96,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+
+    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
 
     n_avg = node.parameters.num_shots  # repetitions averaged at each detuning point
 
@@ -303,6 +306,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     When two peaks are found, the closest to centre updates the qubit under
     study and the second peak updates the preferred-readout qubit.
     """
+    revert_tracked_macros(node)
     # Revert the qubit's pulse changes first
     for q in node.namespace.get("tracked_qubits", []):
         q.revert_changes()

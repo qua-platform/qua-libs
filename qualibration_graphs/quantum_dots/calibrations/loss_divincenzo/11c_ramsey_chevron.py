@@ -23,6 +23,7 @@ from calibration_utils.ramsey_chevron import (
     process_raw_dataset,
 )
 from qualibration_libs.parameters.experiment import get_qubits
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.sweep import get_idle_times_in_clock_cycles
@@ -92,6 +93,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Select which qubits participate in this calibration
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+
+    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
 
     n_avg = node.parameters.num_shots  # repetitions averaged at each (detuning, tau) point
 
@@ -274,6 +277,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
+    revert_tracked_macros(node)
     with node.record_state_updates():
         for qubit in node.namespace["qubits"]:
             if not node.results["fit_results"][qubit.name]["success"]:

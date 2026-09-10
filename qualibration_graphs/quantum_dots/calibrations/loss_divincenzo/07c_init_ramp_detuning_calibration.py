@@ -12,6 +12,7 @@ from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from qualibration_libs.parameters.experiment import get_qubit_pairs
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 from quam_config import QubitQuam as Quam
 
 from calibration_utils.init_ramp_detuning import (
@@ -96,6 +97,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── Experiment parameters (Python side) ──────────────────────────────
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
     num_qubit_pairs = len(qubit_pairs)
+
+    change_macro_tracked(node, qubit_pairs) # Applies any node parameter updates to custom macros
 
     # Sweep axis 1: ramp duration (ns)
     ramp_duration_array = validate_and_build_ramp_sweep(node)
@@ -284,6 +287,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the initialize macro ramp_duration and initialize-point detuning on each qubit pair."""
+    revert_tracked_macros(node)
     with node.record_state_updates():
         for qp in node.namespace["qubit_pairs"]:
             if node.outcomes.get(qp.name) != "successful":
