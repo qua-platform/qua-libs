@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import numpy as np
 import xarray as xr
 
-from calibration_utils.iq_utils.analysis import process_raw_dataset as process_iq_raw_dataset
+from calibration_utils.common_utils.iq_utils.analysis import process_raw_dataset as process_iq_raw_dataset
 
 __all__ = [
     "FitParameters",
