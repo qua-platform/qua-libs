@@ -67,7 +67,11 @@ def plot_detuning_vs_buffer_pca_map(
 
 
 def plot_all(
-    ds_fit: xr.Dataset, *, metric_name: str = "pc1_std", fit_results: dict | None = None
+    ds_fit: xr.Dataset,
+    _qubit_pairs=None,
+    fit_results: dict | None = None,
+    *,
+    metric_name: str = "pc1_std",
 ) -> dict[str, plt.Figure]:
     """Generate all node figures via the local plotting API."""
     # 06e currently exposes a single summary heatmap. Keeping this wrapper means

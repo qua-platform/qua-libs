@@ -285,12 +285,11 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Build the node figures from the processed dataset and the fitted results."""
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
         node.results["ds_fit"],
         node.namespace["qubits"],
-        node.results["ds_fit"],
-        fit_results=node.results["fit_results"],
+        node.results["fit_results"],
     )
     if not node.modes.external:
         plt.show()

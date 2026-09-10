@@ -16,7 +16,7 @@ from quam_config import QubitQuam as Quam
 from calibration_utils.psb_search_sweep_ramp_rate import (
     Parameters,
     assemble_ds_raw,
-    fit_sweep_rate_raw_data,
+    fit_sweep_rate_raw_data as fit_raw_data,
     generate_simulated_dataset,
     process_raw_dataset,
     log_fitted_results,
@@ -81,8 +81,9 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    """Allow local debug-only parameter overrides when running from the Python IDE."""
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -229,39 +230,40 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
 
+# %% {Execute}
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
+)
+def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    # Connect to the QOP
+    qmm = node.machine.connect()
+    # Get the config from the machine
+    config = node.machine.generate_config()
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Wait for the program and OPX-side stream processing to finish before reshaping the fetched streams.
+        job.wait_until("Done")
+        # Display the progress bar
+        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        for dataset in data_fetcher:
+            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
+        # Display the execution report to expose possible runtime errors
+        node.log(job.execution_report())
+    # Register the raw dataset
+    pair_names = [pair.name for pair in node.namespace["qubit_pairs"]]
+    node.results["ds_raw"] = assemble_ds_raw(dataset, pair_names)
+
+
+
 # %% {Generate_simulated_data}
 @node.run_action(skip_if=not node.parameters.use_simulated_data)
 def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     """Generate a synthetic shot-level ``ds_raw`` for offline analysis."""
     node.results["ds_raw"] = generate_simulated_dataset(node)
     node.log("[sim] Simulated PSB ramp-duration dataset generated successfully.")
-
-
-# %% {Execute}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
-)
-def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program, and store the fetched raw dataset in ``ds_raw``."""
-    # Connect to the QOP
-    qmm = node.machine.connect()
-    # Get the config from the machine
-    config = node.machine.generate_config()
-    # Execute the QUA program only if the quantum machine is available (this avoids interrupting running jobs).
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace so the fetcher can stream data and progress from it.
-        node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Wait for the program and OPX-side stream processing to finish before reshaping the fetched streams.
-        job.wait_until("Done")
-        # Stream intermediate datasets back while updating the progress bar.
-        data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
-        for dataset in data_fetcher:
-            progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
-        # Display the execution report to expose possible runtime errors
-        node.log(job.execution_report())
-    # Convert the fetched per-pair stream variables into the canonical ds_raw layout used by the PSB analysis helpers.
-    pair_names = [pair.name for pair in node.namespace["qubit_pairs"]]
-    node.results["ds_raw"] = assemble_ds_raw(dataset, pair_names)
 
 
 # %% {Load_historical_data}
@@ -279,8 +281,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
-    node.results["ds_fit"], fit_results = fit_sweep_rate_raw_data(node)
+    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
@@ -294,16 +296,16 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Generate all node figures via the shared plotting API."""
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
     # s and alpha are relevant kwargs for plotting a scatter plot.
     # Hard coded here as 4 and 0.15, since they should not be exposed as node parameters.
     sweep_name = node.parameters.sweep_name
     node.results["figures"] = plot_all(
-        node.results["ds_raw"],
-        node.namespace["qubit_pairs"],
         node.results["ds_fit"],
+        node.namespace["qubit_pairs"],
+        node.results["fit_results"],
+        ds_raw=node.results["ds_raw"],
         sweep_name=sweep_name,
-        fit_results=node.results["fit_results"],
         plot_kde=node.parameters.plot_kde,
         s=4,
         alpha=0.15,
@@ -364,5 +366,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
-    """Persist node results to storage."""
+    """Persist the node results and any recorded state updates."""
     node.save()

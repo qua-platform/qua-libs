@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 from matplotlib.figure import Figure
+import xarray as xr
 
 from qualibrate.core import QualibrationNode
 
@@ -49,17 +50,18 @@ def plot_measure_duration_sweep_figures(
 
 
 def plot_all(
-    ds_raw: Any,
+    ds_fit: xr.Dataset,
     qubit_pairs: Sequence[Union[str, Any]],
-    ds_fit: Any,
-    *,
-    sweep_name: str,
     fit_results: Dict[str, Any],
+    *,
+    ds_raw: xr.Dataset | None = None,
+    sweep_name: str,
     plot_kde: bool = True,
     s: float = 4,
     alpha: float = 0.15,
 ) -> Dict[str, Figure]:
-    """Standard `plot_all` API for 06b-style readout-length sweeps."""
+    """Generate all node figures for the PSB sweep using a 09/10-style node-facing API."""
+    ds_raw = ds_fit if ds_raw is None else ds_raw
     qubit_pairs_list: List[Any] = list(qubit_pairs)
     figs = {
         "fidelity_vs_readout_length": plot_fidelity_vs_sweep(

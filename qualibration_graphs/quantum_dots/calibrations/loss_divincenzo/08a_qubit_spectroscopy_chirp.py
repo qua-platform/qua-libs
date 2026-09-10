@@ -15,7 +15,7 @@ from quam_config import QubitQuam as Quam
 
 from calibration_utils.qubit_spectroscopy_chirp import (
     Parameters,
-    analyse_raw_data,
+    fit_raw_data,
     generate_simulated_dataset,
     resolve_operation_name,
     get_durations_and_chirp_rates,
@@ -258,22 +258,21 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit the spectroscopy response and store both the fitted dataset and fit summary."""
-    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
         node.results["fit_results"],
         node.results["peak_fit_results"],
         node.outcomes,
-    ) = analyse_raw_data(ds_processed, node, log_callable=node.log)
+    ) = fit_raw_data(ds_processed, node, log_callable=node.log)
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Build the node figures from the processed dataset and the fitted results."""
-    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
-        ds_processed,
+        node.results.get("ds_processed", node.results["ds_raw"]),
         node.namespace["qubits"],
         fits=node.results.get("ds_fit"),
         threshold_results=node.results["fit_results"],

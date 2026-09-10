@@ -58,8 +58,7 @@ def _plot_trace_ax(
 
 
 def plot_raw_data_with_fit(
-    ds: xr.Dataset,
-    ds_fit: xr.Dataset | None,
+    ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
 ) -> "plt.Figure":
@@ -69,7 +68,7 @@ def plot_raw_data_with_fit(
     * Column 1 — +δ trace with damped-cosine fit.
     * Column 2 — −δ trace with damped-cosine fit.
     """
-    qubit_names = [str(v) for v in ds.qubit.values]
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     if not qubit_names:
         return empty_figure("No qubit data available for Ramsey.")
 
@@ -77,8 +76,8 @@ def plot_raw_data_with_fit(
     ncol = 2
     fig, axes = plt.subplots(n, ncol, figsize=(6 * ncol, 4 * n), squeeze=False)
 
-    tau_ns = np.asarray(ds.tau.values, dtype=float)
-    detuning_hz = np.asarray(ds.detuning.values, dtype=float)
+    tau_ns = np.asarray(ds_fit.tau.values, dtype=float)
+    detuning_hz = np.asarray(ds_fit.detuning.values, dtype=float)
 
     for i, qname in enumerate(qubit_names):
         fr = fit_results.get(qname, {})
@@ -117,16 +116,13 @@ def plot_raw_data_with_fit(
 
 
 def plot_all(
-    ds_raw: xr.Dataset,
+    ds_fit: xr.Dataset,
     qubits: List[Any],
-    *,
-    ds_fit: xr.Dataset | None = None,
     fit_results: dict | None = None,
 ) -> dict[str, "plt.Figure"]:
     """Build and return all 11a Ramsey figures."""
     figures = {
         "raw_data_with_fit": plot_raw_data_with_fit(
-            ds_raw,
             ds_fit,
             qubits,
             fit_results or {},

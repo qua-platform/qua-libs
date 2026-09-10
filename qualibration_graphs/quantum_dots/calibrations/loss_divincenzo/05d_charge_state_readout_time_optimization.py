@@ -13,7 +13,7 @@ from quam_config import QubitQuam as Quam
 
 from calibration_utils.charge_state_readout_time_optimization import (
     Parameters,
-    analyse_raw_data,
+    analyse_raw_data as fit_raw_data,
     process_raw_dataset,
     plot_all,
     generate_simulated_dataset,
@@ -244,7 +244,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the OPX and simulate the QUA program."""
+    """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
@@ -263,7 +263,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the OPX, execute the QUA program, and fetch raw IQ chunks into ``ds_raw``."""
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
@@ -303,12 +303,12 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
-    node.namespace["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
         node.results["fit_results"],
         node.outcomes,
-    ) = analyse_raw_data(ds_processed, node, log_callable=node.log)
+    ) = fit_raw_data(ds_processed, node, log_callable=node.log)
 
 
 # %% {Plot_data}

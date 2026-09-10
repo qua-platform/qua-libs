@@ -103,8 +103,7 @@ def _plot_resonance_ax(
 
 
 def plot_raw_data_with_fit(
-    ds: xr.Dataset,
-    ds_fit: xr.Dataset | None,
+    ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
 ) -> "plt.Figure":
@@ -115,7 +114,7 @@ def plot_raw_data_with_fit(
     * Column 2 — Mean signal vs detuning with model fit and T2*.
 
     """
-    qubit_names = [str(v) for v in ds.qubit.values]
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     if not qubit_names:
         return empty_figure("No qubit data available for Ramsey chevron.")
 
@@ -133,10 +132,10 @@ def plot_raw_data_with_fit(
     for i, qname in enumerate(qubit_names):
         fr = fit_results.get(qname, {})
 
-        tau_ns = np.asarray(ds.tau.values, dtype=float)
-        detuning_mhz = np.asarray(ds.detuning.values, dtype=float) * 1e-6
+        tau_ns = np.asarray(ds_fit.tau.values, dtype=float)
+        detuning_mhz = np.asarray(ds_fit.detuning.values, dtype=float) * 1e-6
 
-        if "state" not in ds.data_vars:
+        if "state" not in ds_fit.data_vars:
             for j in range(ncol):
                 axes[i, j].text(
                     0.5,
@@ -147,7 +146,7 @@ def plot_raw_data_with_fit(
                 )
             continue
 
-        signal_2d = ds.state.sel(qubit=qname, drop=True).transpose("detuning", "tau").values.astype(float)
+        signal_2d = ds_fit.state.sel(qubit=qname, drop=True).transpose("detuning", "tau").values.astype(float)
 
         _plot_chevron_ax(axes[i, 0], signal_2d, tau_ns, detuning_mhz, qname, fr)
         _plot_resonance_ax(axes[i, 1], detuning_mhz, qname, fr)
@@ -158,16 +157,13 @@ def plot_raw_data_with_fit(
 
 
 def plot_all(
-    ds_raw: xr.Dataset,
+    ds_fit: xr.Dataset,
     qubits: List[Any],
-    *,
-    ds_fit: xr.Dataset | None = None,
     fit_results: dict | None = None,
 ) -> dict[str, "plt.Figure"]:
     """Build and return all 11c Ramsey-chevron figures."""
     figures = {
         "raw_data_with_fit": plot_raw_data_with_fit(
-            ds_raw,
             ds_fit,
             qubits,
             fit_results or {},

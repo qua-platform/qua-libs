@@ -117,7 +117,7 @@ def find_frequency_by_threshold(ds: xr.Dataset, node: QualibrationNode) -> Dict[
     return fit_results
 
 
-def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
+def _fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
     """Fit the qubit Larmor frequency and FWHM for each qubit in the dataset.
 
     Expects ``ds`` to contain thresholded ``state(qubit, detuning)`` traces.
@@ -195,7 +195,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     return fit, fit_results
 
 
-def analyse_raw_data(
+def fit_raw_data(
     ds: xr.Dataset,
     node: QualibrationNode,
     *,
@@ -209,7 +209,7 @@ def analyse_raw_data(
     ds_fit: Optional[xr.Dataset] = None
     peak_fit_results: Optional[dict] = None
     if node.parameters.fit_peak:
-        ds_fit, peak_results = fit_raw_data(ds, node)
+        ds_fit, peak_results = _fit_raw_data(ds, node)
         peak_fit_results = {k: vars(v) for k, v in peak_results.items()}
         log_fitted_results(peak_fit_results, log_callable=log_callable, label="Peak fit")
 
