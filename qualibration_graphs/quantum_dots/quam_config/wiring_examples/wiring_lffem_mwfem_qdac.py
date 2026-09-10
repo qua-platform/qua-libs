@@ -3,7 +3,7 @@ from qualang_tools.wirer import Connectivity, Instruments, allocate_wiring, visu
 from qualang_tools.wirer.wirer.channel_specs import *
 
 from quam_builder.architecture.quantum_dots.operations.macro_catalog import VoltageBalancedMacroCatalog
-from quam_config import Quam
+from quam_config import Quam, QubitQuam
 from quam_builder.builder.qop_connectivity import build_quam_wiring
 from quam_builder.builder.quantum_dots import build_quam
 
@@ -111,6 +111,7 @@ if user_input.lower() == "y":
     build_quam(
         machine,
         qubit_pair_sensor_map=qubit_pair_sensor_map,
+        target_quam_class=QubitQuam,
         catalogs=[VoltageBalancedMacroCatalog()],
         connect_qdac=False,
     )
