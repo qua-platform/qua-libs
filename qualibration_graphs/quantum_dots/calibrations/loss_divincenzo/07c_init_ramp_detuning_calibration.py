@@ -129,10 +129,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # n             : shot counter
         # state[j]      : thresholded post-initialization measurement (0/1) for qubit pair j
         # n_st          : stream reporting shot index to PC (progress bar)
-        # i_st[j], q_st[j] : buffers collecting I/Q before transfer to PC
+        # I_st[j], Q_st[j] : buffers collecting I/Q before transfer to PC
         state = [declare(int) for _ in qubit_pairs]
         state_st = [declare_output_stream() for _ in qubit_pairs]
-        _, i_st, _, q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
+        _, I_st, _, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
 
         ramp_dur = declare(int)
         det = declare(fixed)
@@ -157,8 +157,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         (i, q, s) = dot_pair.measure(return_iq=True)
                         assign(state[j], Cast.to_int(s))
                         save(state[j], state_st[j])
-                        save(i, i_st[j])
-                        save(q, q_st[j])
+                        save(i, I_st[j])
+                        save(q, Q_st[j])
 
                         # Return gate voltages to zero before the next shot to avoid accumulation of fixed point errors
                         align()
@@ -173,8 +173,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # .buffer(len(ramp_duration_array))  : group points along ramp axis (outer loop)
                 # .average()                         : average over all shots on the OPX
                 state_st[j].buffer(len(detuning_array)).buffer(len(ramp_duration_array)).average().save(f"state{j + 1}")
-                i_st[j].buffer(len(detuning_array)).buffer(len(ramp_duration_array)).average().save(f"I{j + 1}")
-                q_st[j].buffer(len(detuning_array)).buffer(len(ramp_duration_array)).average().save(f"Q{j + 1}")
+                I_st[j].buffer(len(detuning_array)).buffer(len(ramp_duration_array)).average().save(f"I{j + 1}")
+                Q_st[j].buffer(len(detuning_array)).buffer(len(ramp_duration_array)).average().save(f"Q{j + 1}")
 
 
 # %% {Simulate}
