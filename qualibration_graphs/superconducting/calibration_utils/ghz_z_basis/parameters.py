@@ -11,9 +11,10 @@ from qualibration_libs.parameters.experiment import BaseExperimentNodeParameters
 class NodeSpecificParameters(RunnableParameters):
     """Node-specific parameters for GHZ Z-basis measurement."""
 
-    qubit_groups: Optional[List[List[str]]] = None
-    """Ordered qubit chains (3–5 qubits). GHZ prep is hardcoded as a linear CZ ladder
-    (pair_01, pair_12, …); order must match physical couplers, state bits, and node 38."""
+    qubit_groups: Optional[List[str]] = None
+    """Ordered qubit chains (3–5 qubits), one dash-separated entry per group, e.g.
+    ``["qD2-qD1-qD3"]``. GHZ prep is a linear CZ ladder (pair_01, pair_12, …); order
+    must match physical couplers, state bits, and node 38."""
 
     num_shots: int = 2000
     """Number of shots per group. Default is 2000."""

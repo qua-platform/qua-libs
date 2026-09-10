@@ -3,7 +3,7 @@
 import itertools
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, Sequence, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
@@ -52,8 +52,12 @@ def log_fitted_results(fit_results: Dict[str, FitResults], log_callable=None) ->
         status = "SUCCESS!\n" if fit_result.success else "FAIL!\n"
         num_qubits = len(group_name.split("-"))
         lines = [f"Results for qubit group {group_name}: {status}"]
-        lines.append(f"\t[kron] Fidelity: {fit_result.fidelity_kron:.3f}")
-        lines.append(f"\t[kron] Purity: {fit_result.purity_kron:.3f}")
+        if fit_result.success:
+            lines.append(f"\t[kron] Fidelity: {fit_result.fidelity_kron:.3f}")
+            lines.append(f"\t[kron] Purity: {fit_result.purity_kron:.3f}")
+        else:
+            lines.append("\t[kron] Fidelity: N/A")
+            lines.append("\t[kron] Purity: N/A")
         if fit_result.fidelity_nq is not None and fit_result.purity_nq is not None:
             lines.append(f"\t[nq] Fidelity: {fit_result.fidelity_nq:.3f}")
             lines.append(f"\t[nq] Purity: {fit_result.purity_nq:.3f}")
@@ -75,12 +79,11 @@ def _mitigate_tomography_probs(
     num_qubits: int,
 ) -> np.ndarray:
     """Apply readout mitigation for one qubit group across all tomography settings."""
-    tomo_axis_names = _tomo_axis_names(num_qubits)
     corrected = []
 
     for tomo_axes in itertools.product([0, 1, 2], repeat=num_qubits):
-        sel_dict = {axis_name: axis for axis_name, axis in zip(tomo_axis_names, tomo_axes)}
-        measured = results_xr.sel(qubit_pair=group_name, **sel_dict).data
+        # ``process_raw_dataset`` stacks ``tomo_axis_0``, ``tomo_axis_1``, ... into ``tomo_axis``.
+        measured = results_xr.sel(qubit_pair=group_name, tomo_axis=tomo_axes).data
         corrected.append(recover_prepared_probs(conf_mat, measured))
 
     return np.array(corrected).reshape(*([3] * num_qubits), 2**num_qubits)
@@ -122,8 +125,6 @@ def process_raw_dataset(ds: xr.Dataset, num_qubits: int, num_shots: int) -> xr.D
 def _analyze_qubit_group(
     results_xr: xr.DataArray,
     qg,
-    group_index: int,
-    qubit_group_names: Sequence[str],
     machine,
     kron_conf: np.ndarray,
     ideal_psi: np.ndarray,
@@ -143,7 +144,7 @@ def _analyze_qubit_group(
     paulis_nq = None
     rho_nq = None
 
-    conf_mat_nq = get_nq_confusion_matrix(qubit_group_names[group_index], machine)
+    conf_mat_nq = get_nq_confusion_matrix([q.name for q in qg.qubits], machine)
     if conf_mat_nq is not None:
         corrected_nq_probs = _mitigate_tomography_probs(results_xr, qg.name, conf_mat_nq, num_qubits)
         corrected_nq_xr = _stack_corrected_tomography_xr(corrected_nq_probs, num_qubits)
@@ -192,13 +193,11 @@ def fit_raw_data(
     paulis_by_method: Dict[str, Dict[str, xr.Dataset]] = {"kron": {}, "nq": {}}
     fit_results: Dict[str, FitResults] = {}
 
-    for group_index, qg in enumerate(qubit_groups):
+    for qg in qubit_groups:
         try:
             paulis_kron, rho_kron, paulis_nq, rho_nq, fit_result = _analyze_qubit_group(
                 results_xr,
                 qg,
-                group_index,
-                node.parameters.qubit_groups,
                 node.machine,
                 kron_confs[qg.name],
                 ideal_psi,
@@ -210,7 +209,12 @@ def fit_raw_data(
                 rhos_by_method["nq"][qg.name] = rho_nq
                 paulis_by_method["nq"][qg.name] = paulis_nq
             fit_results[qg.name] = fit_result
-        except Exception:
+        except Exception as exc:
+            logging.getLogger(__name__).exception(
+                "GHZ tomography analysis failed for qubit group %s", qg.name
+            )
+            if node.log is not None:
+                node.log(f"Analysis failed for {qg.name}: {exc}")
             fit_results[qg.name] = FitResults(
                 fidelity_kron=np.nan,
                 purity_kron=np.nan,

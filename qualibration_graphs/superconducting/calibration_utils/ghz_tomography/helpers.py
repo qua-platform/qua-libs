@@ -58,7 +58,7 @@ def get_pauli_data_nq(results_xr: xr.DataArray, n_qubits: int) -> xr.Dataset:
             paulis_data.value.loc[{"pauli_op": pauli}] += pauli_data[i]
             paulis_data.appearances.loc[{"pauli_op": pauli}] += 1
 
-    paulis_data = xr.where(
+    paulis_data["value"] = xr.where(
         paulis_data.appearances != 0,
         paulis_data.value / paulis_data.appearances,
         paulis_data.value,
@@ -78,7 +78,7 @@ def get_density_matrix(paulis_data: xr.Dataset, n_qubits: int) -> np.ndarray:
             p_mat = np.kron(p_mat, PAULI_MATRICES[k])
 
         key = ",".join(map(str, op))
-        coeff = paulis_data.sel(pauli_op=key).item()
+        coeff = paulis_data["value"].sel(pauli_op=key).item()
         rho += coeff * p_mat
 
     rho /= 2**n_qubits

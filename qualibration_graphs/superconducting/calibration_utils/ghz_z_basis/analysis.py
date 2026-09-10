@@ -105,13 +105,13 @@ def fit_raw_data(
     corrected_nq: Dict[str, np.ndarray] = {}
     fit_results: Dict[str, FitResults] = {}
 
-    for i, qg in enumerate(qubit_groups):
+    for qg in qubit_groups:
         try:
             measured = populations[qg.name]
             corrected_kron[qg.name] = recover_prepared_probs(kron_confs[qg.name], measured)
             fidelity_kron = z_basis_ghz_fidelity(corrected_kron[qg.name])
 
-            conf_mat_nq = get_nq_confusion_matrix(node.parameters.qubit_groups[i], node.machine)
+            conf_mat_nq = get_nq_confusion_matrix([q.name for q in qg.qubits], node.machine)
             fidelity_nq = None
             fidelity_difference = None
             nq_mitigation_valid = None

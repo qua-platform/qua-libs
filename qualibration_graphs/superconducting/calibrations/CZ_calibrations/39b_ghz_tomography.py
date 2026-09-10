@@ -27,29 +27,27 @@ from calibration_utils.ghz_tomography import (
 
 # %% {Initialisation}
 description = """
-**MULTI-QUBIT GHZ STATE TOMOGRAPHY**
+This experiment prepares an N-qubit GHZ state (N >= 2) and performs full tomography by sweeping
+local X/Y/Z pre-rotation axes on each qubit.
 
-This experiment prepares an N-qubit GHZ state (N >= 2) and performs full tomography by
-sweeping local X/Y/Z pre-rotation axes on each qubit.
+Topology: GHZ preparation uses a linear CZ ladder (pair_01, pair_12, … in list order). This is not
+a general graph builder — order qubit_groups so each consecutive pair exists on the machine (e.g.
+star couplers qD2–qD1 and qD3–qD1 require ["qD2-qD1-qD3"], hub in the middle).
 
-**Topology:** GHZ preparation is hardcoded as a linear chain (ladder circuit): CZ on
-consecutive qubits ``pair_01``, ``pair_12``, … in list order. This is not a general
-graph/topology builder. Order ``qubit_groups`` so each consecutive pair exists in the
-machine (e.g. star couplers ``qD2–qD1`` and ``qD3–qD1`` require
-``["qD2", "qD1", "qD3"]``, hub in the middle).
+Parameters:
+- qubit_groups: dash-separated qubit names per chain, e.g. ["qD3-qD1-qD2"] (order matters)
 
-Analysis applies readout mitigation in two ways:
+Readout mitigation:
+- Kron: tensor product of per-qubit resonator confusion matrices
+- NQ: full N-qubit confusion matrix from node 38_n_qubit_confusion_matrix
 
-- **kron**: tensor product of per-qubit resonator confusion matrices
-- **nq**: full N-qubit confusion matrix from node 38_n_qubit_confusion_matrix
-
-For each method the node reconstructs the density matrix and reports fidelity and purity
-relative to the ideal GHZ target state.
+For each method the node reconstructs the density matrix and reports fidelity and purity relative
+to the ideal GHZ target state.
 
 Prerequisites:
 - Calibrated single-qubit control and readout for all qubits in each chain
 - Available nearest-neighbor CZ operations along the chain
-- Valid readout confusion matrices for mitigation (kron and/or nq)
+- Valid readout confusion matrices for mitigation (Kron and/or NQ)
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -63,7 +61,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
-    node.parameters.qubit_groups = [["qD3", "qD1", "qD2"]]
+    node.parameters.qubit_groups = ["qD3-qD1-qD2"]
     pass
 
 

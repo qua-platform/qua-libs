@@ -104,21 +104,46 @@ def get_qubit_groups(
     return qubit_groups
 
 
+def _cz_flux_pulse_name(cz_macro) -> str:
+    """Return the flux-pulse operation name played by a CZ macro on the moving qubit."""
+    flux_pulse = cz_macro.flux_pulse_qubit
+    if isinstance(flux_pulse, str):
+        return flux_pulse
+    pulse_id = getattr(flux_pulse, "id", None)
+    if pulse_id:
+        return pulse_id
+    return cz_macro.flux_pulse_qubit_label
+
+
 def require_adjacent_cz_macros(qubit_groups: Iterable[QubitGroup], operation: str) -> None:
     """Validate that each chain has adjacent pairs and the requested CZ macro."""
     for qg in qubit_groups:
         for pair_idx in range(qg.num_qubits - 1):
             pair_key = f"pair_{pair_idx}{pair_idx + 1}"
             if pair_key not in qg.qubit_pairs:
+                q1_name = qg.qubits[pair_idx].name
+                q2_name = qg.qubits[pair_idx + 1].name
                 raise ValueError(
-                    f"Qubit group {qg.name!r} is missing adjacent pair {pair_key!r}. "
-                    "Ensure all nearest-neighbor pairs exist in the machine."
+                    f"Qubit group {qg.name!r} is missing adjacent pair {pair_key!r} "
+                    f"({q1_name}–{q2_name}): no qubit_pair entry in the machine. "
+                    "Reorder the chain so each consecutive pair is physically coupled "
+                    "(GHZ prep applies CZ only on neighbors in list order)."
                 )
             qp = qg.qubit_pairs[pair_key]
             if operation not in qp.macros:
                 available = sorted(qp.macros.keys())
                 raise ValueError(
                     f"Pair for group {qg.name!r} has no macro {operation!r}. Available macros: {available}"
+                )
+            cz_macro = qp.macros[operation]
+            moving = qp.qubit_control if qp.moving_qubit == "control" else qp.qubit_target
+            pulse_name = _cz_flux_pulse_name(cz_macro)
+            if pulse_name not in moving.z.operations:
+                raise ValueError(
+                    f"Qubit group {qg.name!r}: {pair_key} uses pair {qp.id!r}, whose {operation!r} "
+                    f"macro plays {pulse_name!r} on {moving.name}.z, but that pulse is not on "
+                    f"{moving.name}'s flux line. Re-run CZ calibration for {qp.id!r}, or pick a "
+                    "chain order where every step's moving qubit has the flux pulse registered."
                 )
 
 

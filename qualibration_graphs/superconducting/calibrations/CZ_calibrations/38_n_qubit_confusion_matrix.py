@@ -24,28 +24,25 @@ from quam_config import Quam
 
 # %% {Initialisation}
 description = """
-**MULTI-QUBIT READOUT CONFUSION MATRIX MEASUREMENT**
+This experiment measures readout error when simultaneously measuring N qubits (1 to 5).
 
-This experiment measures the readout error when simultaneously measuring the state of N qubits (1 to 5).
+Process:
+1. Prepare all computational basis states (|00...0⟩ to |11...1⟩)
+2. Perform simultaneous readout on all qubits
+3. Build the confusion matrix from measurement results
 
-The process involves:
+Parameters:
+- qubit_groups: dash-separated qubit names per group, e.g. ["qC4-qC3-qC2"]
 
-1. Preparing the qubits in all possible combinations of computational basis states (|00...0⟩ to |11...1⟩)
-2. Performing simultaneous readout on all qubits
-3. Calculating the confusion matrix based on the measurement results
+Outcomes:
+- N×N confusion matrix (N = 2^num_qubits) for each configured qubit group
+- Kronecker-product reference matrices and direct-minus-Kron difference plots
+- Single-qubit marginal confusion matrices (readout crosstalk from simultaneous measurement included)
+- For groups with 3+ qubits, measured matrices are saved to qubit pair extras
 
 Prerequisites:
 - Calibrated single-qubit gates for all qubits in each group
 - Calibrated readout for all qubits in each group
-
-Parameters:
-- ``qubit_groups``: list of dash-separated qubit names per group, e.g. ``["qC4-qC3-qC2"]``
-
-Outcomes:
-- N×N confusion matrix (where N = 2^num_qubits) for each configured qubit group
-- Kronecker-product reference matrices and direct-minus-Kron difference plots
-- Single-qubit marginal confusion matrices (readout crosstalk from simultaneous measurement included)
-- For groups with 3+ qubits, measured matrices are saved to qubit pair extras
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -59,6 +56,7 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
+    node.parameters.qubit_groups = ["qD3-qD1-qD2"]
     pass
 
 

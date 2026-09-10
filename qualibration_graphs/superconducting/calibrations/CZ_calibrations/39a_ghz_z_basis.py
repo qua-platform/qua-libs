@@ -26,28 +26,25 @@ from calibration_utils.ghz_z_basis import (
 
 # %% {Initialisation}
 description = """
-**MULTI-QUBIT GHZ STATE MEASUREMENT IN Z BASIS**
+This experiment measures the Z-basis population distribution of N-qubit GHZ states (3 to 5 qubits).
 
-This experiment measures the state distribution of N-qubit GHZ states (3 to 5 qubits) in the Z basis.
+Topology: GHZ preparation uses a linear CZ ladder (pair_01, pair_12, … in list order). This is not
+a general graph builder — order qubit_groups so each consecutive pair exists on the machine (e.g.
+star couplers qD2–qD1 and qD3–qD1 require ["qD2-qD1-qD3"], hub in the middle).
 
-**Topology:** GHZ preparation is hardcoded as a linear chain (ladder circuit): CZ on
-consecutive qubits ``pair_01``, ``pair_12``, … in list order. This is not a general
-graph/topology builder. Order ``qubit_groups`` so each consecutive pair exists in the
-machine (e.g. star couplers ``qD2–qD1`` and ``qD3–qD1`` require
-``["qD2", "qD1", "qD3"]``, hub in the middle).
+Parameters:
+- qubit_groups: dash-separated qubit names per chain, e.g. ["qC4-qC3-qC2"] (order matters)
 
-The process involves:
+Process:
+1. Prepare an N-qubit GHZ state using nearest-neighbor CZ gates
+2. Perform simultaneous readout on all qubits
+3. Apply readout error mitigation and compute the population distribution
 
-1. Preparing N qubits in a GHZ state using nearest-neighbor CZ gates
-2. Performing simultaneous readout on all qubits
-3. Calculating the probability distribution with readout error mitigation
+Readout mitigation:
+- Kron: tensor product of per-qubit resonator confusion matrices
+- NQ: full N-qubit confusion matrix from node 38_n_qubit_confusion_matrix
 
-Readout mitigation is applied in two ways:
-
-- **Kron**: tensor product of per-qubit resonator confusion matrices
-- **NQ**: full N-qubit confusion matrix from node 38_n_qubit_confusion_matrix
-
-The primary metric is **Z-basis population fidelity** = P(|0...0⟩) + P(|1...1⟩) after mitigation.
+Primary metric: Z-basis population fidelity = P(|0...0⟩) + P(|1...1⟩) after mitigation.
 
 Prerequisites:
 - Calibrated single-qubit gates and readout for all qubits in each chain
@@ -66,7 +63,8 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
-    node.parameters.qubit_groups = [["qD3", "qD1", "qD2"]]
+    # qC3–qC4 CZ flux is not registered on qC3.z; qC5–qC4 works on qC5.z.
+    node.parameters.qubit_groups = ["qC2-qC4-qC5"]
     node.parameters.num_shots = 1000
     pass
 
