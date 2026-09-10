@@ -27,6 +27,7 @@ from calibration_utils.common_utils.experiment import (
     get_sensors,
 )
 
+# %% {Node initialization}
 description = """
 2D OPX CHARGE STABILITY MAP
 

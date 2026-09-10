@@ -24,7 +24,7 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.core import tracked_updates
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
 CHARGE STATE READOUT TIME OPTIMIZATION
 

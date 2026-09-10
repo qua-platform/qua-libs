@@ -29,7 +29,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubit_pairs
 
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
 PAULI SPIN BLOCKADE SEARCH — Sweep ramp duration to measure (OPX)
 

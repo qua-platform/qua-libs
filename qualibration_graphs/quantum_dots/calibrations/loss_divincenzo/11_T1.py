@@ -22,7 +22,7 @@ from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         T1 RELAXATION TIME MEASUREMENT - using standard QUA (pulse > 16ns and 4ns granularity)
 The goal of this script is to measure the longitudinal (spin-lattice) relaxation time T1 of the qubit.

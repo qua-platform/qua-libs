@@ -27,7 +27,7 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.sweep import get_idle_times_in_clock_cycles
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         RAMSEY CHEVRON
 This sequence performs a Ramsey measurement to characterize the qubit detuning and idle time.

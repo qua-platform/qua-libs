@@ -27,7 +27,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
 
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
 CHIRPED QUBIT SPECTROSCOPY
 

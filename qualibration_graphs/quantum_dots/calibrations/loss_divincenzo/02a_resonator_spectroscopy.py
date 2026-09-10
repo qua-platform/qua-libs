@@ -26,7 +26,7 @@ from calibration_utils.resonator_spectroscopy import (
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         1D RESONATOR SPECTROSCOPY
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the

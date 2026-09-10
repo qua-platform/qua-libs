@@ -26,7 +26,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.core import tracked_updates
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
 QUBIT SPECTROSCOPY
 

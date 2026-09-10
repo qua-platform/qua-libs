@@ -25,6 +25,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from calibration_utils.common_utils.experiment import get_sensors
 
 
+# %% {Node initialization}
 description = """
 2D CHARGE STABILITY MAP (OPX + external DAC)
 
