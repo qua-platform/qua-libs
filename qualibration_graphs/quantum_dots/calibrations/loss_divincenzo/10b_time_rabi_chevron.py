@@ -25,7 +25,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         TIME RABI CHEVRON
 After initialization to the target spin state, this sequence applies an XY drive pulse whose duration and

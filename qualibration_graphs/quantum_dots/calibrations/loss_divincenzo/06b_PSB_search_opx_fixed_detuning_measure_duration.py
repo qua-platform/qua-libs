@@ -30,7 +30,7 @@ from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
 PAULI SPIN BLOCKADE SEARCH — Fixed detuning, sweep readout length (OPX)
 

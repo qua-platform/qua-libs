@@ -27,7 +27,7 @@ from calibration_utils.sensor_dot_dac import Parameters
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         SENSOR DOT GATE SWEEP (DAC / VirtualDCSet)
 
@@ -43,7 +43,7 @@ quadratures. The sweep is averaged to improve SNR and post-processed to extract 
 Prerequisites:
     - Connect the AC line of the bias-tee connected to the sensor dot to one OPX channel.
     - External DAC configured and reachable through the VirtualDCSet in QUAM.
-    - QUAM initialised (e.g. ``quam_config/populate_quam_state_*.py``).
+    - QUAM initialized (e.g. ``quam_config/populate_quam_state_*.py``).
     - SensorDot readout resonators calibrated (time-of-flight/offsets/gains + readout frequency, amplitude, duration).
 
 Datasets:

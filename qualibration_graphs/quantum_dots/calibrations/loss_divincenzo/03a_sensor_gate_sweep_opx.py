@@ -26,7 +26,7 @@ from quam_builder.architecture.quantum_dots.operations.names import VoltagePoint
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         SENSOR DOT GATE SWEEP (OPX)
 This sequence sweeps the sensor-dot gate bias using the OPX (AC line of a bias-tee) and measures the sensor response via
@@ -36,7 +36,7 @@ recommended operating point (maximum-sensitivity bias).
 
 Prerequisites:
     - Connect the AC line of the bias-tee connected to the sensor dot to one OPX channel.
-    - QUAM initialised (e.g. ``quam_config/populate_quam_state_*.py``).
+    - QUAM initialized (e.g. ``quam_config/populate_quam_state_*.py``).
     - SensorDot readout resonators calibrated (time-of-flight/offsets/gains + readout frequency, amplitude, duration).
     - (Recommended) Use an external DAC to hold a DC offset while the OPX performs fast sweeps.
 

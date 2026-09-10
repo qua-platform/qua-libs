@@ -25,7 +25,7 @@ from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         BIAS TEE FILTERS CHARACTERIZATION WITH SINGLE SHOT
 

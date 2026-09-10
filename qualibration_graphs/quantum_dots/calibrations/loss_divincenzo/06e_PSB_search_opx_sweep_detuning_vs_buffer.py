@@ -30,7 +30,7 @@ from calibration_utils.psb_search_sweep_detuning_vs_buffer import (
 )
 
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
 PAULI SPIN BLOCKADE SEARCH — Sweep detuning vs buffer duration (OPX)
 

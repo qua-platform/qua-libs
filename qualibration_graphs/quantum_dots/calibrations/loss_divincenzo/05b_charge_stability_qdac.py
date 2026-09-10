@@ -34,7 +34,7 @@ from calibration_utils.common_utils.experiment import (
     get_sensors,
 )
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
 2D CHARGE STABILITY MAP (OPX + QDAC)
 

@@ -17,7 +17,7 @@ from calibration_utils.mixer_calibration import (
 )
 from qualibration_libs.parameters import get_qubits
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         MIXER CALIBRATION - Octave
  

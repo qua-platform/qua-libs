@@ -29,7 +29,7 @@ from qualibration_libs.core import tracked_updates
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         RESONATOR SPECTROSCOPY VERSUS READOUT POWER
 This sequence involves measuring the resonator by sending a readout pulse and

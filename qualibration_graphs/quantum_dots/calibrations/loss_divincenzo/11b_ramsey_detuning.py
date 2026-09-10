@@ -26,7 +26,7 @@ from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
 RAMSEY DETUNING (TWO-τ)
 

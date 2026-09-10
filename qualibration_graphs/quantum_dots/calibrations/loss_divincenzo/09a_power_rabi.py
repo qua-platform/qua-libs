@@ -24,7 +24,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         POWER RABI
 After initialization to the target spin state, this sequence applies an x180 gate whose amplitude

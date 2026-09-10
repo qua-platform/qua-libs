@@ -25,7 +25,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 
-# %% {Node initialisation}
+# %% {Node initialization}
 description = """
         XY8 DYNAMICAL DECOUPLING T2 MEASUREMENT
 This node measures qubit coherence under XY8 dynamical decoupling. Eight refocusing pi
