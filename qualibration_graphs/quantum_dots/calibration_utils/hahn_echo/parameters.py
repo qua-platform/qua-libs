@@ -1,7 +1,6 @@
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
-from calibration_utils.measurement_utils import ParityDiffAnalysisParameters
 from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
 
 
@@ -28,6 +27,5 @@ class Parameters(
     NodeSpecificParameters,
     HeraldedInitializeParameters,
     QubitsExperimentNodeParameters,
-    ParityDiffAnalysisParameters,
 ):
     """Parameter set for 12_hahn_echo."""
