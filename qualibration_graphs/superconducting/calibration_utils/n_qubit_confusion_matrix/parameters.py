@@ -11,8 +11,12 @@ from qualibration_libs.parameters.experiment import BaseExperimentNodeParameters
 class NodeSpecificParameters(RunnableParameters):
     """Node-specific parameters for N-qubit confusion matrix measurement."""
 
-    qubit_groups: Optional[List[List[str]]] = None
-    """List of qubit groups; each group is a list of qubit names measured together."""
+    qubit_groups: Optional[List[str]] = None
+    """Qubit groups to measure, one entry per group.
+
+    Each entry is a dash-separated list of qubit names measured together, e.g.
+    ``["qC4-qC3-qC2", "qC1-qC2"]``.
+    """
 
     num_shots: int = 2000
     """Number of shots per prepared state. Default is 2000."""

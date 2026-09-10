@@ -39,11 +39,15 @@ def get_qubit_groups(node: QualibrationNode) -> List[QubitGroup]:
 
     qubit_groups = []
     for group in qubit_groups_param:
+        group = group.strip()
+        if not group:
+            raise ValueError("Each qubit group string must contain at least one qubit name")
+        qubit_names = [q.strip() for q in group.split("-") if q.strip()]
         try:
-            qubits = [node.machine.qubits[q] for q in group]
+            qubits = [node.machine.qubits[q] for q in qubit_names]
         except KeyError as exc:
             qubits_list = format_available_items(node.machine.qubits, item_type="qubits")
-            missing = next(q for q in group if q not in node.machine.qubits)
+            missing = next(q for q in qubit_names if q not in node.machine.qubits)
             raise KeyError(f"Qubit '{missing}' not found in machine. {qubits_list}") from exc
         qubit_groups.append(QubitGroup.from_qubits(qubits))
 

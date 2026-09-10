@@ -7,9 +7,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.n_qubit_confusion_matrix import (
-    Parameters, compute_confusion_matrices, compute_kron_confusion_matrices,
-    get_qubit_groups, is_confusion_matrix_valid, plot_confusion_matrices,
-    save_confusion_to_qubit_pair_extras)
+    Parameters,
+    compute_confusion_matrices,
+    compute_kron_confusion_matrices,
+    get_qubit_groups,
+    is_confusion_matrix_valid,
+    plot_confusion_matrices,
+    save_confusion_to_qubit_pair_extras,
+)
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
@@ -34,6 +39,9 @@ Prerequisites:
 - Calibrated single-qubit gates for all qubits in each group
 - Calibrated readout for all qubits in each group
 
+Parameters:
+- ``qubit_groups``: list of dash-separated qubit names per group, e.g. ``["qC4-qC3-qC2"]``
+
 Outcomes:
 - N×N confusion matrix (where N = 2^num_qubits) for each configured qubit group
 - Kronecker-product reference matrices and direct-minus-Kron difference plots
@@ -52,9 +60,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
-    node.parameters.qubit_groups = [["qC4", "qC3", "qC2", "qC5"]]
-    node.parameters.reset_type = "active"
-    # node.parameters.num_shots = 2000
     pass
 
 
