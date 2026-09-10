@@ -1,19 +1,34 @@
 """
-In this script, you can set up your own custom Quam macros. QuamMacros form
-an essential part of the spin qubits Quam infrastructure. Quam-builder contains a CustomMacro
-base class, which you can subclass to write your own QUA snippet in the apply() function.
+Define custom state macros for the quantum-dots QUAM.
 
-When you create a macro, make sure to emit it as one of the following:
-- InitializeMacro
-- MeasureMacro
+This module is the place to implement pair-level custom initialize and
+measure behaviour. The macros defined here are later wired onto selected
+``QuantumDotPair`` objects by ``populate_macros.py`` and can be controlled
+from nodes through the matching parameter mixins in
+``my_macro_parameters.py``.
 
-This script builds 2 macros. First, it builds a BalancedInitializeMacro, which performs
-a voltage integral balanced round trip about a DC point. This is particularly useful for
-performing balanced initialization sequences, where the high-pass filter compensation
-happens before the actual desired initialize pulse, keeping the innermost shot clean.
+When customizing this file, the important contract is the exported names:
+- ``InitializeMacro``
+- ``MeasureMacro``
 
-As a second example, this script writes a BalancedHeraldedInitializeMacro. This builds on
-the BalancedInitializeMacro, but implements an active-reset type initialization sequence.
+These are the classes that downstream wiring code imports and attaches to the
+machine. You can keep the provided examples, adapt them, or replace them with
+your own implementations, but the exported names should remain the same.
+
+You can also define your own custom-named macro classes and export those
+through ``__all__`` instead. If you do that, make sure
+``my_macro_parameters.py`` and ``populate_macros.py`` are updated to match the
+new exported macro names and parameter fields.
+
+The examples in this file show two common patterns:
+- ``InitializeMacroBase`` implements a voltage-balanced round-trip
+  initialization sequence.
+- ``InitializeMacro`` builds on that base to demonstrate an active-reset /
+  heralded initialization flow.
+
+Because these state macros are wired at the ``QuantumDotPair`` level, calls
+such as ``qubit.initialize()``, ``qubit_pair.initialize()``, and
+``dot_pair.initialize()`` all resolve to the same underlying pair macro.
 """
 
 from typing import Optional, Literal
