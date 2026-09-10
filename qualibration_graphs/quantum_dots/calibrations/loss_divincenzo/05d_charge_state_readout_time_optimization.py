@@ -321,7 +321,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.namespace["quantum_dot_pairs"],
         ds_fit=node.results.get("ds_fit"),
         fit_results=node.results.get("fit_results"),
-        show=False,
     )
     if not node.modes.external:
         plt.show()

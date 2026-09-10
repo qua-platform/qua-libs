@@ -39,30 +39,25 @@ to map where the readout contrast is strongest. Each sweep point prepares the ch
 state, ramps to the target detuning together with a barrier-gate offset, waits for
 the swept buffer duration, and then performs sensor readout.
 
-Prerequisites
--------------
+Prerequisites:
 - QUAM configured and loaded (``quam_config/populate_quam_state_*.py``).
 - Sensor-dot readout calibrated (resonator calibration nodes completed).
 - Empty / initialize / measure macros defined on the dot pair.
 
-Datasets
---------
+Datasets:
 - ``ds_raw``: shot-level ``I`` and ``Q`` vs ``detuning`` and ``buffer_duration``
   (dims: ``qubit_pair``, ``n_runs``, ``detuning``, ``buffer_duration``).
 - ``ds_fit``: 2D PCA-derived contrast maps (currently ``pc1_std`` and ``iq_trace``).
 - ``fit_results``: per-pair scalar results (serialized dataclass) for logging.
 
-Results
--------
+Results:
 For each qubit pair, the node selects the detuning / buffer-duration point that maximizes
 the chosen exploratory contrast metric.
 
-Figures
--------
+Figures:
 - 2D heatmap of the selected PCA-derived metric vs detuning and buffer duration
 
-State update
-------------
+State update:
 Updates the measure-point detuning and persists the optimal ``buffer_duration`` on
 the pair ``measure`` macro when supported.
 """
@@ -229,7 +224,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
+    """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
@@ -253,23 +248,23 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """Connect to the QOP, execute the QUA program, and store the fetched raw dataset in ``ds_raw``."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    # Execute the QUA program only if the quantum machine is available (this avoids interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        # The job is stored in the node namespace so the fetcher can stream data and progress from it.
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Display the progress bar
+        # Stream intermediate datasets back while updating the progress bar.
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
 
-    # Reshape the per-pair streams into a qubit_pair-indexed ds with I/Q variables.
+    # Convert the fetched per-pair stream variables into the canonical ds_raw layout used by the PSB analysis helpers.
     pair_names = [pair.name for pair in node.namespace["qubit_pairs"]]
     node.results["ds_raw"] = assemble_ds_raw(dataset, pair_names)
 

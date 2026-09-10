@@ -131,7 +131,6 @@ def plot_all(
     qubits: List,
     fits: xr.Dataset,
     fit_results: dict | None = None,
-    show: bool = True,
 ) -> dict[str, Figure]:
     """Build and return all 08b spectroscopy figures."""
     figures = {
@@ -143,6 +142,4 @@ def plot_all(
         ),
         "iq_scatter": _plot_raw_iq_traces(ds, qubits),
     }
-    if show:
-        plt.show()
     return figures

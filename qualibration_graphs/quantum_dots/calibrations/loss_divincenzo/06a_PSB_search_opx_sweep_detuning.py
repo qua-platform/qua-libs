@@ -15,6 +15,7 @@ from qualibration_libs.parameters.experiment import get_qubit_pairs
 from quam_config import QubitQuam as Quam
 from calibration_utils.psb_search_sweep_detuning import (
     Parameters,
+    assemble_ds_raw,
     generate_simulated_dataset,
     process_raw_dataset,
     fit_raw_data_pca_gaussian,
@@ -35,32 +36,27 @@ inter-dot detuning and measuring the sensor response during a PSB readout window
 Each sweep point plays a voltage sequence (prepare → ramp → measure) using OPX 
 fast-line channels, and acquires per-shot I/Q data.
 
-Prerequisites
--------------
+Prerequisites:
 - QUAM configured and loaded (``quam_config/populate_quam_state_*.py``).
 - Sensor-dot readout calibrated (resonator calibration nodes completed).
 - Detuning axis and voltage points (empty / initialize / measure) defined on the dot pair.
 
-Datasets
---------
+Datasets:
 - ``ds_raw``: shot-level ``I`` and ``Q`` vs ``detuning`` (dims: ``qubit_pair``, ``n_runs``, ``detuning``).
 - ``ds_fit``: readout metrics and optimum detuning per pair (from ``iq_sweep`` analysis).
 - ``fit_results``: per-pair scalar results (serialized dataclass) for logging and state updates.
 
-Results
--------
+Results:
 For each qubit pair, the node identifies an optimal detuning (by fidelity or visibility)
 and extracts the readout axis and threshold used for the PSB readout discrimination.
 
-Figures
--------
+Figures:
 - Fidelity and visibility vs detuning
 - Sweep summary (fidelity + visibility on twin axes)
 - Shot histograms vs detuning (projected readout axis)
 - Rotated IQ density at the optimal detuning with the chosen threshold
 
-State update
-------------
+State update:
 Updates the dot pair ``MEASURE`` voltage point detuning and stores the readout threshold
 for the selected optimal detuning (only for successful pairs).
 """
@@ -216,7 +212,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
+    """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -244,29 +240,26 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """Connect to the QOP, execute the QUA program, and store the fetched raw dataset in ``ds_raw``."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    # Execute the QUA program only if the quantum machine is available (this avoids interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        # The job is stored in the node namespace so the fetcher can stream data and progress from it.
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Wait for the program and OPX-side stream processing to finish before reshaping the fetched streams.
         job.wait_until("Done")
-        # Display the progress bar
+        # Stream intermediate datasets back while updating the progress bar.
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Reshape the per-pair streams into a qubit_pair-indexed ds with I/Q variables.
+    # Convert the fetched per-pair stream variables into the canonical ds_raw layout used by the PSB analysis helpers.
     pair_names = [pair.name for pair in node.namespace["qubit_pairs"]]
-    I_arr = xr.concat([dataset[f"I_{p}"] for p in pair_names], dim="qubit_pair")
-    Q_arr = xr.concat([dataset[f"Q_{p}"] for p in pair_names], dim="qubit_pair")
-    I_arr = I_arr.assign_coords(qubit_pair=pair_names)
-    Q_arr = Q_arr.assign_coords(qubit_pair=pair_names)
-    node.results["ds_raw"] = xr.Dataset({"I": I_arr, "Q": Q_arr})
+    node.results["ds_raw"] = assemble_ds_raw(dataset, pair_names)
 
 
 # %% {Load_historical_data}
@@ -356,4 +349,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()

@@ -258,7 +258,6 @@ def plot_all(
     *,
     ds_fit: xr.Dataset | None = None,
     fit_results: Dict | None = None,
-    show: bool = True,
 ) -> dict[str, Figure]:
     """Build and return all 05d readout-time-optimization figures."""
     figures = {
@@ -281,6 +280,4 @@ def plot_all(
             fit_results=fit_results or {},
         ),
     }
-    if show:
-        plt.show()
     return figures

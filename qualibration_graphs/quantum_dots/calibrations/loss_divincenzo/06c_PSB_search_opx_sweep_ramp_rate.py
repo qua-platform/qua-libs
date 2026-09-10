@@ -15,6 +15,7 @@ from qualibrate.core import QualibrationNode
 from quam_config import QubitQuam as Quam
 from calibration_utils.psb_search_sweep_ramp_rate import (
     Parameters,
+    assemble_ds_raw,
     fit_sweep_rate_raw_data,
     generate_simulated_dataset,
     process_raw_dataset,
@@ -42,34 +43,29 @@ ramp duration: preparation via ``initialization_macro`` (default ``empty``), the
 ramp duration a ``ramp_to_point('measure', ...)`` is executed, followed by resonator readout.
 An optional detuning override (``parameters.detuning``) can be applied temporarily.
 
-Prerequisites
--------------
+Prerequisites:
 - QUAM configured and loaded (``quam_config/populate_quam_state_*.py``).
 - Sensor-dot readout calibrated (resonator calibration nodes completed).
 - Empty / initialize / measure macros defined on the dot pair.
 - Prefer running 06a/06b first to set a reasonable measure detuning; this node can optionally
   override detuning temporarily via ``parameters.detuning``.
 
-Datasets
---------
+Datasets:
 - ``ds_raw``: shot-level ``I`` and ``Q`` vs ramp duration (dims: ``qubit_pair``, ``n_runs``, ``ramp_duration``).
 - ``ds_fit``: readout metrics vs ramp duration (PCA + two-Gaussian EM per sweep point).
 - ``fit_results``: per-pair scalar results (serialized dataclass) for logging and state updates.
 
-Results
--------
+Results:
 For each qubit pair, the node selects an optimal ramp duration (fidelity or visibility)
 and extracts the readout axis and threshold used for PSB discrimination at that optimum.
 
-Figures
--------
+Figures:
 - Fidelity and visibility vs ramp duration
 - Sweep summary (fidelity + visibility on twin axes)
 - Shot histograms vs ramp duration (projected readout axis; normalized by sweep value)
 - Rotated IQ density at the optimal ramp duration with the chosen threshold
 
-State update
-------------
+State update:
 Reverts temporary detuning override, then (if the fit succeeded) persists the optimal ramp
 duration on the pair ``measure`` macro when supported, and updates integration-weights angle
 and discrimination threshold on the sensor dot (readout pulse length is not changed).
@@ -218,7 +214,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
+    """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -246,29 +242,26 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """Connect to the QOP, execute the QUA program, and store the fetched raw dataset in ``ds_raw``."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    # Execute the QUA program only if the quantum machine is available (this avoids interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        # The job is stored in the node namespace so the fetcher can stream data and progress from it.
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
+        # Wait for the program and OPX-side stream processing to finish before reshaping the fetched streams.
         job.wait_until("Done")
-        # Display the progress bar
+        # Stream intermediate datasets back while updating the progress bar.
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
-    # Reshape the per-pair streams into a qubit_pair-indexed ds with I/Q variables.
+    # Convert the fetched per-pair stream variables into the canonical ds_raw layout used by the PSB analysis helpers.
     pair_names = [pair.name for pair in node.namespace["qubit_pairs"]]
-    I_arr = xr.concat([dataset[f"I_{p}"] for p in pair_names], dim="qubit_pair")
-    Q_arr = xr.concat([dataset[f"Q_{p}"] for p in pair_names], dim="qubit_pair")
-    I_arr = I_arr.assign_coords(qubit_pair=pair_names)
-    Q_arr = Q_arr.assign_coords(qubit_pair=pair_names)
-    node.results["ds_raw"] = xr.Dataset({"I": I_arr, "Q": Q_arr})
+    node.results["ds_raw"] = assemble_ds_raw(dataset, pair_names)
 
 
 # %% {Load_historical_data}

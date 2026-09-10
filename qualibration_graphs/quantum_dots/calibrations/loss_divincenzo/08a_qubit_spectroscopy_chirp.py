@@ -42,19 +42,19 @@ Prerequisites:
     - Having a reasonable initial RF frequency estimate for the selected qubits.
 
 Datasets:
-    - `ds_raw`: untouched thresholded `state` stream fetched from the OPX (never modified after acquisition).
-    - `ds_fit`: optional processed chirp-spectroscopy traces plus peak-fit outputs when `fit_peak=True`.
-    - `fit_results`: compact per-qubit threshold-analysis dict. Used by logging, `node.outcomes`, and `update_state`.
-    - `peak_fit_results`: optional per-qubit peak-fit diagnostics dict.
+    - ``ds_raw``: untouched thresholded ``state`` stream fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: optional processed chirp-spectroscopy traces plus peak-fit outputs when ``fit_peak=True``.
+    - ``fit_results``: compact per-qubit threshold-analysis dict. Used by logging, ``node.outcomes``, and ``update_state``.
+    - ``peak_fit_results``: optional per-qubit peak-fit diagnostics dict.
 
-Results (`node.results["fit_results"][qubit]`):
-    - `success`: whether the threshold-based frequency estimate passed the node criteria.
-    - `frequency` [Hz]: threshold-estimated qubit Larmor frequency.
-    - `relative_freq` [Hz]: threshold-estimated detuning relative to the current RF frequency.
-    - `fwhm` [Hz]: width of the above-threshold detuning region.
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the threshold-based frequency estimate passed the node criteria.
+    - ``frequency`` [Hz]: threshold-estimated qubit Larmor frequency.
+    - ``relative_freq`` [Hz]: threshold-estimated detuning relative to the current RF frequency.
+    - ``fwhm`` [Hz]: width of the above-threshold detuning region.
 
-Figures (`node.results["figures"]`):
-    - `"qubit_spectroscopy_chirp"`: state-probability trace with optional threshold and peak-fit overlays.
+Figures (``node.results["figures"]``):
+    - ``"qubit_spectroscopy_chirp"``: state-probability trace with optional threshold and peak-fit overlays.
 
 State update:
     - Update the qubit Larmor frequency from the threshold-based chirp analysis.
@@ -278,14 +278,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         fits=node.results.get("ds_fit"),
         threshold_results=node.results["fit_results"],
         signal_threshold=node.parameters.signal_threshold,
-        show=False,
     )
     if not node.modes.external:
         plt.show()
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the qubit frequency from threshold-based analysis."""
     with node.record_state_updates():

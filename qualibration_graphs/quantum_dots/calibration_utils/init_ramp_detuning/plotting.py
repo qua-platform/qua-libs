@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,12 +14,13 @@ from calibration_utils.common_utils.plot_style import (
 
 def plot_all(
     ds_fit: xr.Dataset,
-    qubit_pair_names: list[str],
+    qubit_pairs: Sequence[Union[str, Any]],
     *,
     fit_results: Optional[Dict] = None,
     plot_fft: bool = False,
 ) -> dict[str, plt.Figure]:
     """Standard node plotting API returning a figure dict."""
+    qubit_pair_names = [qp if isinstance(qp, str) else qp.name for qp in qubit_pairs]
     return {"summary_2d": plot_2d_summary(ds_fit, qubit_pair_names, fit_results=fit_results, plot_fft=plot_fft)}
 
 

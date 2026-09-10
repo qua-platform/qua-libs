@@ -130,12 +130,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # state[j]      : thresholded post-initialization measurement (0/1) for qubit pair j
         # n_st          : stream reporting shot index to PC (progress bar)
         # i_st[j], q_st[j] : buffers collecting I/Q before transfer to PC
-        n = declare(int)
-        n_st = declare_output_stream()
         state = [declare(int) for _ in qubit_pairs]
         state_st = [declare_output_stream() for _ in qubit_pairs]
-        i_st = [declare_output_stream() for _ in qubit_pairs]
-        q_st = [declare_output_stream() for _ in qubit_pairs]
+        _, i_st, _, q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
 
         ramp_dur = declare(int)
         det = declare(fixed)
@@ -272,11 +269,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot 2D heatmaps of state and IQ signal vs ramp duration and detuning."""
     qubit_pairs = node.namespace["qubit_pairs"]
-    qp_names = [qp.name for qp in qubit_pairs]
 
     node.results["figures"] = plot_all(
         node.results.get("ds_fit", node.results["ds_raw"]),
-        qp_names,
+        qubit_pairs,
         fit_results=node.results.get("fit_results"),
         plot_fft=node.parameters.plot_fft,
     )
@@ -311,4 +307,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()

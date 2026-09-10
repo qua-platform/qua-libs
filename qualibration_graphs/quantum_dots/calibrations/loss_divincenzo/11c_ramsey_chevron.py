@@ -259,14 +259,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot processed Ramsey-chevron data and fit overlays; store figures in ``node.results["figures"]``."""
     fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
     node.results["figures"] = plot_all(
         node.results["ds_raw"],
         node.namespace["qubits"],
         ds_fit=node.results.get("ds_fit"),
         fit_results=fit_with_diag,
-        show=False,
     )
     if not node.modes.external:
         plt.show()

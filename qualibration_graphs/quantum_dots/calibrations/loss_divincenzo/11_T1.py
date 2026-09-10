@@ -228,7 +228,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Analyse the raw data."""
+    """Process T1 state streams, fit the decay, and store both ``ds_fit`` and fit summaries."""
     ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results_full = fit_raw_data(ds_processed, node)
     fit_results = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
@@ -244,14 +244,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the raw and fitted data."""
+    """Plot processed T1 decay data and fit overlays; store figures in ``node.results["figures"]``."""
     fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
     node.results["figures"] = plot_all(
         node.results["ds_raw"],
         node.namespace["qubits"],
         ds_fit=node.results.get("ds_fit"),
         fit_results=fit_with_diag,
-        show=False,
     )
     if not node.modes.external:
         plt.show()

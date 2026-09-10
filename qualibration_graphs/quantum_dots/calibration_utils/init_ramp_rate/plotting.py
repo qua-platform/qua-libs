@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,13 +14,14 @@ from calibration_utils.common_utils.plot_style import (
 
 def plot_all(
     ds_fit: xr.Dataset,
-    qubit_pair_names: list[str],
+    qubit_pairs: Sequence[Union[str, Any]],
     *,
     fit_results: Optional[Dict] = None,
     plot_fft: bool = False,
 ) -> dict[str, plt.Figure]:
     """Standard node plotting API returning a figure dict."""
     figures: dict[str, plt.Figure] = {}
+    qubit_pair_names = _get_qubit_pair_names(qubit_pairs)
     figures["avg_state_vs_ramp_duration"] = plot_avg_state_vs_ramp_duration(
         ds_fit, qubit_pair_names, fit_results=fit_results
     )
@@ -30,6 +31,11 @@ def plot_all(
             ds_fit, qubit_pair_names, fit_results=fit_results
         )
     return figures
+
+
+def _get_qubit_pair_names(qubit_pairs: Sequence[Union[str, Any]]) -> list[str]:
+    """Normalize qubit-pair objects or names into the dataset coordinate labels."""
+    return [qp if isinstance(qp, str) else qp.name for qp in qubit_pairs]
 
 
 def _compute_fft_1d(x_values: np.ndarray, y_values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
