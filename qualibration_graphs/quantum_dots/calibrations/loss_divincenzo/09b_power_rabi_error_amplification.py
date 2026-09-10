@@ -134,7 +134,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         m = declare(int)
         n_rabi = declare(int)
         state = [declare(int) for _ in range(num_qubits)]
-        state_st = [declare_stream() for _ in range(num_qubits)]
+        state_st = [declare_output_stream() for _ in range(num_qubits)]
         n_st = declare_output_stream()
 
         for i, qubit in enumerate(qubits):

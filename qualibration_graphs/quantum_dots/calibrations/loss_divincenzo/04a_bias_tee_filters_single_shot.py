@@ -142,7 +142,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   I_all/Q_all          : demodulated quadratures per element and sensor
         #   I_st_all/Q_st_all    : stream buffers collecting I/Q chunks before transfer to PC
         n = declare(int)
-        n_st = declare_stream()
+        n_st = declare_output_stream()
         ind = declare(int)
 
         I_all = {el.name: [declare(fixed, size=num_chunks) for _ in sensors] for el in elements}

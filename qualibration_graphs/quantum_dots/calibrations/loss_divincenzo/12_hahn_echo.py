@@ -120,7 +120,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         t = declare(int)  # swept τ in QUA clock cycles (1 cycle = 4 ns)
         n = declare(int)  # shot counter
         state = [declare(int) for _ in range(num_qubits)]
-        state_st = [declare_stream() for _ in range(num_qubits)]
+        state_st = [declare_output_stream() for _ in range(num_qubits)]
         n_st = declare_output_stream()
 
         for i, qubit in enumerate(qubits):

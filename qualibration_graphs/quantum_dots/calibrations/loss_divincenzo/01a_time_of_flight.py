@@ -133,10 +133,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         #   adc_st       : stream collecting raw, real-time inputs of the OPX, per sensor
         #   n            : shot counter
         #   n_st         : stream reporting shot index to PC (progress bar)
-        # Streams keyed by sensor name
+        # Streams keyed by sensor index
         n = declare(int)
-        n_st = declare_stream()
-        adc_st = {sensor.name: declare_stream(adc_trace=True) for sensor in sensors}
+        n_st = declare_output_stream()
+        adc_st = [declare_output_stream(adc_trace = True) for _ in sensors]
 
         # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
@@ -147,11 +147,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             with for_(n, 0, n < n_avg, n + 1):
                 save(n, n_st)  # tell the PC which shot we are on
 
-                for sensor in multiplexed_sensors.values():
+                for i, sensor in multiplexed_sensors.items():
                     # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
                     reset_if_phase(sensor.readout_resonator.name)
                     # Measure the resonator (send a readout pulse and record the raw ADC trace)
-                    sensor.readout_resonator.measure("readout", stream=adc_st[sensor.name])
+                    sensor.readout_resonator.measure("readout", stream=adc_st[i])
                     # Wait 1µs for the resonator to deplete and to let enough time for the stream processing to process the raw ADC traces
                     sensor.readout_resonator.wait(250)
 
@@ -162,7 +162,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n") # expose shot counter as "n" in the fetched dataset
             for i, s in enumerate(sensors):
                 # Specify the ADC input to save based on which input the sensor is actually connected to
-                inp = adc_st[s.name].input1() if sensor_input[i] == 1 else adc_st[s.name].input2()
+                inp = adc_st[i].input1() if sensor_input[i] == 1 else adc_st[i].input2()
 
                 # Save both the averaged and single trace of the ADC input
                 inp.average().save(f"adc{i + 1}")
