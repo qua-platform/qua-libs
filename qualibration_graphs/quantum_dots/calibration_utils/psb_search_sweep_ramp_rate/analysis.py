@@ -13,7 +13,7 @@ import xarray as xr
 
 from qualibrate.core import QualibrationNode
 
-from calibration_utils.iq_utils import (
+from calibration_utils.common_utils.iq_utils import (
     process_raw_dataset,
     fit_raw_data_pca_gaussian,
     log_fitted_results,
@@ -37,7 +37,7 @@ def fit_sweep_rate_raw_data(
     Returns
     -------
     ds_fit, fit_results
-        Same contract as :func:`calibration_utils.iq_utils.iq_sweep.fit_raw_data_pca_gaussian`.
+        Same contract as :func:`calibration_utils.common_utils.iq_utils.iq_sweep.fit_raw_data_pca_gaussian`.
     """
     ds_for_fit = node.results.get("ds_processed", node.results["ds_raw"])
     return fit_raw_data_pca_gaussian(ds_for_fit, node)

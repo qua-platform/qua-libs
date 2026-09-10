@@ -2,7 +2,7 @@ from typing import Literal, Optional
 from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
-from calibration_utils.iq_utils import IQSweepParameters
+from calibration_utils.common_utils.iq_utils import IQSweepParameters
 
 
 class NodeSpecificParameters(RunnableParameters):

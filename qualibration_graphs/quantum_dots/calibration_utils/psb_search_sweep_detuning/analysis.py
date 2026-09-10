@@ -3,7 +3,7 @@ Intentionally re-uses the shared `iq_sweep` analysis implementation
 without modifying it, so that the 06x node family stays consistent.
 """
 
-from calibration_utils.iq_utils import (
+from calibration_utils.common_utils.iq_utils import (
     FitParameters,
     fit_raw_data,
     fit_raw_data_pca_gaussian,
