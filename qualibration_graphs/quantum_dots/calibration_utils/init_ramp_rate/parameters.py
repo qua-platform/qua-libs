@@ -2,7 +2,7 @@ from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from qualibration_libs.parameters import QubitPairExperimentNodeParameters
-from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
+from quam_config import MacroParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -27,7 +27,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    HeraldedInitializeParameters,
+    MacroParameters,
     QubitPairExperimentNodeParameters,
 ):
     """Parameter set for 07_init_ramp_rate_calibration."""
