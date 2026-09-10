@@ -1,6 +1,18 @@
 """
 Use this script to populate QuantumDotPair components with custom macros, as created in my_macros.py
+
+These custom state macros operate at the level of the QuantumDotPair. This means that
+qubit.initialize() and qubit_pair.initialize() are quantum_dot_pair.initialize() under the hood, and 
+the same goes for the measure macro. 
+
+Therefore, for any custom state macro you create in regards to the initialize or the meaasure sequence, 
+you only need to update it at the QuantumDotPair level. Any call (qubit.initialize() or qubit_pair.initialize())
+you see in the nodes will simply use these wired QuantumDotPair macros under the hood! 
 """
+
+#########################
+# %%     Imports ########
+#########################
 
 from typing import List
 from quam_builder.architecture.quantum_dots.macro_engine import wire_machine_macros
@@ -30,23 +42,22 @@ def get_dot_pairs(machine: Quam, dot_pairs: List[str] | None = None) -> List[str
 
 
 ##############################
-######## Load machine ########
+# %%     Load machine ########
 ##############################
 
 machine = Quam.load()
 
 
 #################################################
-######## Specify the dot pairs to update ########
+# %%     Specify the dot pairs to update ########
 #################################################
 
 # Create a list of dot pair names here if you would like to update only a subset of dot pair macros
 dot_pairs = None
-
 dot_pairs = get_dot_pairs(machine, dot_pairs)
 
 #########################################################
-######## Wire the custom macros into the machine ########
+# %%     Wire the custom macros into the machine ########
 #########################################################
 
 wire_machine_macros(
@@ -61,7 +72,7 @@ wire_machine_macros(
 )
 
 ######################################
-######## Save machine changes ########
+# %%     Save machine changes ########
 ######################################
 
 machine.save()
