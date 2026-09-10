@@ -10,7 +10,7 @@ from quam_builder.architecture.quantum_dots.operations.default_macros.single_qub
 
 __all__ = [
     "change_macro_tracked", 
-    "revert_tracked_macro",
+    "revert_tracked_macros",
 ]
 
 DEFAULT_TRACKED_STATE_MACROS = ("initialize", "measure")
