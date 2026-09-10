@@ -65,9 +65,7 @@ def plot_z_basis_populations(
         if num_qubits >= 4:
             ax.tick_params(axis="x", rotation=90)
         ax.set_title(f"GHZ state\n{qg.name}\n({title_suffix})")
-        fidelity_text = (
-            f"Z-basis population fidelity ({all_0_label}+{all_1_label}): {fidelities[qg.name]:.4f}"
-        )
+        fidelity_text = f"Z-basis population fidelity ({all_0_label}+{all_1_label}): {fidelities[qg.name]:.4f}"
         if fidelity_differences is not None and qg.name in fidelity_differences:
             diff = fidelity_differences[qg.name]
             diff_sign = "+" if diff > 0 else ""

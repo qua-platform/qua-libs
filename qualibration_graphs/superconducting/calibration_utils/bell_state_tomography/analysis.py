@@ -456,9 +456,7 @@ def fit_raw_data(
     require_bell_tomography_prerequisites(qubit_pairs, node.parameters.operation)
 
     results_xr, pair_dim = _measured_probabilities(ds, qubit_pairs, node.parameters.num_shots)
-    kron_confs = compute_kron_confusion_matrices(
-        {qp.name: [qp.qubit_control, qp.qubit_target] for qp in qubit_pairs}
-    )
+    kron_confs = compute_kron_confusion_matrices({qp.name: [qp.qubit_control, qp.qubit_target] for qp in qubit_pairs})
 
     rhos_by_method: Dict[str, Dict[str, np.ndarray]] = {"kron": {}, "joint": {}}
     paulis_by_method: Dict[str, Dict[str, xr.Dataset]] = {"kron": {}, "joint": {}}

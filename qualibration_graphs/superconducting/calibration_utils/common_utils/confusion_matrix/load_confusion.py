@@ -15,8 +15,7 @@ def reorder_confusion_matrix(
 
     if len(source_order) != len(target_order):
         raise ValueError(
-            f"source_order and target_order must have the same length: "
-            f"{len(source_order)} != {len(target_order)}"
+            f"source_order and target_order must have the same length: " f"{len(source_order)} != {len(target_order)}"
         )
 
     if set(source_order) != set(target_order):
@@ -100,9 +99,7 @@ def get_nq_confusion_matrix(
                     continue
                 confusion_matrix = np.asarray(entry_data[confusion_key])
                 if entry_qubit_list != target_qubit_order:
-                    confusion_matrix = reorder_confusion_matrix(
-                        confusion_matrix, entry_qubit_list, target_qubit_order
-                    )
+                    confusion_matrix = reorder_confusion_matrix(confusion_matrix, entry_qubit_list, target_qubit_order)
                 return confusion_matrix, f"pair {pair_name}, entry '{entry_name}'"
             except (TypeError, ValueError, KeyError):
                 continue
@@ -150,7 +147,6 @@ def get_nq_confusion_matrix(
 
     if log_callable is not None:
         log_callable(
-            f"{num_qubits}Q confusion matrix not found for {qubit_group_name} "
-            f"(qubits: {sorted(target_qubit_set)})"
+            f"{num_qubits}Q confusion matrix not found for {qubit_group_name} " f"(qubits: {sorted(target_qubit_set)})"
         )
     return None

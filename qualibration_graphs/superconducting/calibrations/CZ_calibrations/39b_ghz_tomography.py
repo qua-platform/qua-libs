@@ -71,9 +71,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program for GHZ tomography."""
-    node.namespace["qubit_groups"] = qubit_groups = get_qubit_groups(
-        node, min_qubits=2, resolve_adjacent_pairs=True
-    )
+    node.namespace["qubit_groups"] = qubit_groups = get_qubit_groups(node, min_qubits=2, resolve_adjacent_pairs=True)
     operation = node.parameters.operation
     require_adjacent_cz_macros(qubit_groups, operation)
 
@@ -214,8 +212,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
     log_fitted_results(fit_results, log_callable=node.log)
     node.outcomes = {
-        qg.name: ("successful" if fit_results[qg.name].success else "failed")
-        for qg in node.namespace["qubit_groups"]
+        qg.name: ("successful" if fit_results[qg.name].success else "failed") for qg in node.namespace["qubit_groups"]
     }
 
 

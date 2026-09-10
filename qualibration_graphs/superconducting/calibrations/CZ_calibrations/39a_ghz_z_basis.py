@@ -176,9 +176,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     load_data_id = node.parameters.load_data_id
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
-    node.namespace["qubit_groups"] = get_qubit_groups(
-        node, min_qubits=3, max_qubits=5, resolve_adjacent_pairs=True
-    )
+    node.namespace["qubit_groups"] = get_qubit_groups(node, min_qubits=3, max_qubits=5, resolve_adjacent_pairs=True)
 
 
 # %% {Analyse_data}
@@ -206,8 +204,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 
     log_fitted_results(fit_results, log_callable=node.log)
     node.outcomes = {
-        qg.name: ("successful" if fit_results[qg.name].success else "failed")
-        for qg in node.namespace["qubit_groups"]
+        qg.name: ("successful" if fit_results[qg.name].success else "failed") for qg in node.namespace["qubit_groups"]
     }
 
 

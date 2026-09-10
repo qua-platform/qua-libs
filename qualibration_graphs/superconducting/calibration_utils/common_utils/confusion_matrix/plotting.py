@@ -61,17 +61,13 @@ def confusion_matrix_figure_suptitle(num_qubits: int) -> str:
 
 def tensor_product_panel_title(group_name: str, node) -> str:
     """Return the subplot title for tensor-product (1Q inferred) confusion matrices."""
-    return (
-        r"Uncorrelated (inferred: tensor product $\bigotimes_i C_i$)"
-        + target_context_line(group_name, node)
-    )
+    return r"Uncorrelated (inferred: tensor product $\bigotimes_i C_i$)" + target_context_line(group_name, node)
 
 
 def joint_measured_panel_title(group_name: str, num_qubits: int, node) -> str:
     """Return the subplot title for joint (measured) confusion matrices."""
-    return (
-        rf"Correlated (measured: direct $2^{{{num_qubits}}}$-state calibration)"
-        + target_context_line(group_name, node)
+    return rf"Correlated (measured: direct $2^{{{num_qubits}}}$-state calibration)" + target_context_line(
+        group_name, node
     )
 
 
