@@ -8,6 +8,9 @@ the same goes for the measure macro.
 Therefore, for any custom state macro you create in regards to the initialize or the meaasure sequence, 
 you only need to update it at the QuantumDotPair level. Any call (qubit.initialize() or qubit_pair.initialize())
 you see in the nodes will simply use these wired QuantumDotPair macros under the hood! 
+
+This script currently only wires in the InitializeMacro. If you write your own MeasureMacro, then make sure to 
+wire it up. 
 """
 
 #########################
@@ -65,7 +68,7 @@ wire_machine_macros(
     instance_overrides={
         f"quantum_dot_pairs.{qdp}": {
             SingleQubitMacroName.INITIALIZE: InitializeMacro,
-            SingleQubitMacroName.MEASURE: MeasureMacro,
+            # SingleQubitMacroName.MEASURE: MeasureMacro,
         }
         for qdp in dot_pairs
     },
