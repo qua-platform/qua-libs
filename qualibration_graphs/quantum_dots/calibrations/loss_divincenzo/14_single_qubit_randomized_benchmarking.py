@@ -33,7 +33,7 @@ SINGLE QUBIT RANDOMIZED BENCHMARKING (PPU-optimized)
 This node estimates the average single-qubit Clifford fidelity by playing random
 Clifford sequences and measuring the survival probability after the recovery
 operation. The 24 single-qubit Cliffords are decomposed into the native gate set
-`{x90, x180, -x90, y90, y180, -y90}` plus virtual Z rotations.
+``{x90, x180, -x90, y90, y180, -y90}`` plus virtual Z rotations.
 
 The PPU generates random Clifford circuits on-chip:
   1. PPU PHASE: For each circuit, random Cliffords are generated incrementally
@@ -56,16 +56,16 @@ Prerequisites:
     - Native gate operations (x90, x180, -x90, y90, y180, -y90) defined on the qubit XY channel.
 
 Datasets:
-    - `ds_raw`: untouched `state` stream fetched from the OPX, indexed by qubit, circuit, and depth.
-    - `ds_fit`: fitted RB decay traces and derived analysis variables used for plotting.
-    - `fit_results`: per-qubit scalar fit summary, including fit success and native gate fidelity.
+    - ``ds_raw``: untouched ``state`` stream fetched from the OPX, indexed by qubit, circuit, and depth.
+    - ``ds_fit``: fitted RB decay traces and derived analysis variables used for plotting.
+    - ``fit_results``: per-qubit scalar fit summary, including fit success and native gate fidelity.
 
 Results:
     - Per-qubit fitted RB decay parameters and the extracted average native gate fidelity.
 
 Figures:
     - Raw RB survival data with fitted decay curves for each selected qubit.
-    - Simulated waveform report and sample plot when `simulate=True`.
+    - Simulated waveform report and sample plot when ``simulate=True``.
 
 State update:
     - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"].
@@ -100,8 +100,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     Phases 1+2 (PPU computation — no real-time constraints):
         Generate random Cliffords incrementally across depth checkpoints.
-        Store them in ``circuit_array[]`` and pre-compute the inverse at
-        each checkpoint in ``inverses[]``.
+        Store them in ````circuit_array[]```` and pre-compute the inverse at
+        each checkpoint in ````inverses[]````.
 
     Phase 3 (Experiment — gate playback only):
         For each (depth, shot) pair, play pre-computed gates from arrays.

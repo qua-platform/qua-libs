@@ -1,4 +1,5 @@
 import numpy as np
+import xarray as xr
 from typing import Dict, List
 
 from qualibration_libs.core import tracked_updates
@@ -17,12 +18,22 @@ __all__ = [
     "validate_dot_pairs",
     "find_max_readout_len",
     "extract_vgs_id",
+    "assemble_ds_raw",
 ]
 
 
 def extract_vgs_id(qubit_pairs):
     vgs_id = next(iter({pair.quantum_dot_pair.voltage_sequence.gate_set.name for pair in qubit_pairs}))
     return vgs_id
+
+
+def assemble_ds_raw(dataset: xr.Dataset, pair_names: List[str]) -> xr.Dataset:
+    """Convert fetched per-pair streams into the canonical 06b ``ds_raw`` layout."""
+    i_arr = xr.concat([dataset[f"I_{pair_name}"] for pair_name in pair_names], dim="qubit_pair")
+    q_arr = xr.concat([dataset[f"Q_{pair_name}"] for pair_name in pair_names], dim="qubit_pair")
+    i_arr = i_arr.assign_coords(qubit_pair=pair_names)
+    q_arr = q_arr.assign_coords(qubit_pair=pair_names)
+    return xr.Dataset({"I": i_arr, "Q": q_arr})
 
 
 def find_max_readout_len(node: QualibrationNode):

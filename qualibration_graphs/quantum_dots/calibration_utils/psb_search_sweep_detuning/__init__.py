@@ -11,6 +11,7 @@ from .plotting import plot_all
 from .simulated_data_generator import (
     generate_simulated_dataset,
 )
+from .helper_utils import assemble_ds_raw
 
 __all__ = [
     "Parameters",
@@ -22,4 +23,5 @@ __all__ = [
     "plot_all",
     "generate_simulated_dataset",
     "extract_vgs_id",
+    "assemble_ds_raw",
 ]

@@ -8,6 +8,7 @@ from .helper_utils import (
     validate_readout,
     find_max_readout_len,
     extract_vgs_id,
+    assemble_ds_raw,
 )
 from .simulated_data_generator import (
     generate_simulated_dataset,
@@ -30,4 +31,5 @@ __all__ = [
     "find_max_readout_len",
     "process_raw_dataset",
     "extract_vgs_id",
+    "assemble_ds_raw",
 ]

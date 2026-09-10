@@ -163,7 +163,6 @@ def plot_all(
     *,
     ds_fit: xr.Dataset | None = None,
     fit_results: dict | None = None,
-    show: bool = True,
 ) -> dict[str, "plt.Figure"]:
     """Build and return all 11c Ramsey-chevron figures."""
     figures = {
@@ -174,6 +173,4 @@ def plot_all(
             fit_results or {},
         )
     }
-    if show:
-        plt.show()
     return figures

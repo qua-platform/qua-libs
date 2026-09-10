@@ -41,32 +41,27 @@ The resulting labeled IQ data can be analyzed with either the physics-based Bart
 readout model or a two-component Gaussian mixture model. Qubit/readout dot pairs are
 resolved automatically from ``qubit.preferred_readout_quantum_dot``.
 
-Prerequisites
--------------
+Prerequisites:
 - QUAM configured and loaded (``quam_config/populate_quam_state_*.py``).
 - Sensor-dot readout calibrated (resonator calibration nodes completed).
 - ``x180`` pulse calibrated on each selected qubit.
 - Fixed readout point defined on the corresponding dot pair; this node can optionally
   override the measure-point detuning temporarily via ``parameters.detuning``.
 
-Datasets
---------
+Datasets:
 - ``ds_raw``: shot-level ``I_no_pi``, ``Q_no_pi``, ``I_pi``, ``Q_pi`` (dims: ``qubit``, ``n_runs``).
 - ``ds_fit``: model-specific fitted dataset returned by the selected Barthel or GMM analysis.
 - ``fit_results``: per-qubit scalar results (serialized dataclass) for logging and state updates.
 
-Results
--------
+Results:
 For each qubit, the node extracts the readout-axis rotation and discrimination threshold
 used for PSB state discrimination at the fixed measurement point.
 
-Figures
--------
+Figures:
 - Raw IQ and rotated IQ with the state-update threshold
 - Labeled S/T histograms with either the Barthel analytic fit or GMM Gaussian components
 
-State update
-------------
+State update:
 Reverts any temporary detuning override, then (if the fit succeeded) updates the
 integration-weights angle and discrimination threshold on the corresponding sensor dot.
 """
@@ -192,7 +187,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     or node.parameters.use_simulated_data
 )
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP and simulate the QUA program"""
+    """Connect to the QOP and simulate the QUA program."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
@@ -216,24 +211,25 @@ def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
+    """Connect to the QOP, execute the QUA program, and store the fetched raw dataset in ``ds_raw``."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
     qubits = node.namespace["qubits"]
 
-    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
+    # Execute the QUA program only if the quantum machine is available (this avoids interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace to be reused in the fetching_data run_action
+        # The job is stored in the node namespace so the fetcher can stream data and progress from it.
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Display the progress bar
+        # Stream intermediate datasets back while updating the progress bar.
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
 
+    # Convert the fetched per-qubit stream variables into the canonical labeled ds_raw layout.
     node.results["ds_raw"] = assemble_labeled_ds_raw(dataset, qubits)
 
 
@@ -314,4 +310,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    """Persist the node results and any recorded state updates."""
     node.save()

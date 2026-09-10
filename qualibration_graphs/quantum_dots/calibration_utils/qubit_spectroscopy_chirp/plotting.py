@@ -163,7 +163,6 @@ def plot_all(
     fits: Optional[xr.Dataset] = None,
     threshold_results: Optional[dict] = None,
     signal_threshold: Optional[float] = None,
-    show: bool = True,
 ) -> dict[str, Figure]:
     """Build and return all 08a chirp spectroscopy figures."""
     figures = {
@@ -175,6 +174,4 @@ def plot_all(
             signal_threshold=signal_threshold,
         )
     }
-    if show:
-        plt.show()
     return figures

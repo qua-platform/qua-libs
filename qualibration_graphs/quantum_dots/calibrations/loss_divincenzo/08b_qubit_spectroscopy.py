@@ -41,21 +41,21 @@ Prerequisites:
     - Having a reasonable initial RF frequency estimate for the selected qubits.
 
 Datasets:
-    - `ds_raw`: untouched thresholded `state` and raw I/Q streams fetched from the OPX (never modified after acquisition).
-    - `ds_fit`: processed spectroscopy traces plus fit outputs and derived coordinates. Used by `plot_data`.
-    - `fit_results`: compact per-qubit calibration dict (`asdict(FitParameters)`). Used by logging, `node.outcomes`, and `update_state`.
+    - ``ds_raw``: untouched thresholded ``state`` and raw I/Q streams fetched from the OPX (never modified after acquisition).
+    - ``ds_fit``: processed spectroscopy traces plus fit outputs and derived coordinates. Used by ``plot_data``.
+    - ``fit_results``: compact per-qubit calibration dict (``asdict(FitParameters)``). Used by logging, ``node.outcomes``, and ``update_state``.
 
-Results (`node.results["fit_results"][qubit]`):
-    - `success`: whether the spectroscopy fit passed the node criteria.
-    - `frequency` [Hz]: fitted qubit Larmor frequency.
-    - `relative_freq` [Hz]: fitted detuning relative to the current RF frequency.
-    - `fwhm` [Hz]: linewidth of the primary fitted peak.
-    - `num_peaks`: number of Lorentzian peaks selected by model comparison.
-    - `readout_qubit_frequency` [Hz]: optional fitted frequency for the preferred-readout qubit.
+Results (``node.results["fit_results"][qubit]``):
+    - ``success``: whether the spectroscopy fit passed the node criteria.
+    - ``frequency`` [Hz]: fitted qubit Larmor frequency.
+    - ``relative_freq`` [Hz]: fitted detuning relative to the current RF frequency.
+    - ``fwhm`` [Hz]: linewidth of the primary fitted peak.
+    - ``num_peaks``: number of Lorentzian peaks selected by model comparison.
+    - ``readout_qubit_frequency`` [Hz]: optional fitted frequency for the preferred-readout qubit.
 
-Figures (`node.results["figures"]`):
-    - `"qubit_spectroscopy"`: state-probability trace with fitted curve overlays.
-    - `"iq_scatter"`: averaged raw I and Q traces versus drive detuning.
+Figures (``node.results["figures"]``):
+    - ``"qubit_spectroscopy"``: state-probability trace with fitted curve overlays.
+    - ``"iq_scatter"``: averaged raw I and Q traces versus drive detuning.
 
 State update:
     - Update the qubit Larmor frequency from the fitted primary peak.
@@ -103,7 +103,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span // 2, +span // 2, step)
 
-    # Temporary drive settings applied before calling `qubit.x180()`.
+    # Temporary drive settings applied before calling ``qubit.x180()``.
     operation_len = node.parameters.operation_len_in_ns
 
     # Pulse amplitude prefactor must stay within [-2, 2) for QUA fixed-point arithmetic.
@@ -291,14 +291,13 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.namespace["qubits"],
         node.results["ds_fit"],
         fit_results=node.results["fit_results"],
-        show=False,
     )
     if not node.modes.external:
         plt.show()
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit spectroscopy analysis was successful.
 
