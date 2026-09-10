@@ -52,7 +52,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
-    # node.parameters.qubit_pairs = ["q1_q2"]
     pass
 
 

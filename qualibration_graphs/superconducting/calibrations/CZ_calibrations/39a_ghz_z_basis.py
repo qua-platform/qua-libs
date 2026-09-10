@@ -63,9 +63,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
-    # qC3–qC4 CZ flux is not registered on qC3.z; qC5–qC4 works on qC5.z.
-    node.parameters.qubit_groups = ["qC2-qC4-qC5"]
-    node.parameters.num_shots = 1000
     pass
 
 

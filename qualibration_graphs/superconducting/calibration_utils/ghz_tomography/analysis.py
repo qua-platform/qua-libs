@@ -210,9 +210,7 @@ def fit_raw_data(
                 paulis_by_method["nq"][qg.name] = paulis_nq
             fit_results[qg.name] = fit_result
         except Exception as exc:
-            logging.getLogger(__name__).exception(
-                "GHZ tomography analysis failed for qubit group %s", qg.name
-            )
+            logging.getLogger(__name__).exception("GHZ tomography analysis failed for qubit group %s", qg.name)
             if node.log is not None:
                 node.log(f"Analysis failed for {qg.name}: {exc}")
             fit_results[qg.name] = FitResults(
