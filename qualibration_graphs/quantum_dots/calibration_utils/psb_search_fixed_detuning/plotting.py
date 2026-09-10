@@ -310,17 +310,18 @@ def plot_labeled_histogram_gmm(
 
 
 def plot_all(
-    ds_labeled: xr.Dataset,
-    qubits: Sequence[Any],
     ds_fit: xr.Dataset,
-    *,
+    qubits: Sequence[Any],
     fit_results: Dict[str, Dict[str, Any]],
+    *,
+    ds_raw: xr.Dataset | None = None,
     analysis_model: str,
 ) -> Dict[str, Figure]:
     """Standard 06d plotting entry point returning all node figures."""
 
     # Keep the node-facing plotting API intentionally thin: the node hands over
-    # processed data + fit results, and this helper returns the full figure dict.
+    # fitted data plus optional raw/processed traces, and this helper returns the full figure dict.
+    ds_labeled = ds_fit if ds_raw is None else ds_raw
     figures = {
         "iq_blobs": plot_labeled_iq_blobs(ds_labeled, qubits, fit_results),
     }

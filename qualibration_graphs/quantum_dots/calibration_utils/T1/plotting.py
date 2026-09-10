@@ -19,8 +19,7 @@ from calibration_utils.common_utils.plot_style import apply_qubit_outcome_style,
 
 
 def plot_raw_data_with_fit(
-    ds: xr.Dataset,
-    ds_fit: xr.Dataset | None,
+    ds_fit: xr.Dataset,
     qubits: List[Any],
     fit_results: dict,
 ) -> "plt.Figure":
@@ -38,11 +37,11 @@ def plot_raw_data_with_fit(
         Qubit name → fit-result dict as returned by
         :func:`~.analysis.fit_raw_data`.
     """
-    qubit_names = [str(v) for v in ds.qubit.values]
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     if not qubit_names:
         return empty_figure("No qubit data available for T1.")
 
-    tau_ns = np.asarray(ds.tau.values, dtype=float)
+    tau_ns = np.asarray(ds_fit.tau.values, dtype=float)
     # Display in µs if span is large enough
     if tau_ns[-1] > 5000:
         tau_display = tau_ns * 1e-3
@@ -69,8 +68,8 @@ def plot_raw_data_with_fit(
         offset = fr.get("offset", np.nan)
         success = fr.get("success", False)
 
-        if "state" in ds.data_vars:
-            y_trace = ds.state.sel(qubit=qname, drop=True).transpose("tau").values.astype(float)
+        if "state" in ds_fit.data_vars:
+            y_trace = ds_fit.state.sel(qubit=qname, drop=True).transpose("tau").values.astype(float)
         else:
             y_trace = np.full_like(tau_ns, np.nan)
 
@@ -128,16 +127,13 @@ def plot_raw_data_with_fit(
 
 
 def plot_all(
-    ds_raw: xr.Dataset,
+    ds_fit: xr.Dataset,
     qubits: List[Any],
-    *,
-    ds_fit: xr.Dataset | None = None,
     fit_results: dict | None = None,
 ) -> dict[str, "plt.Figure"]:
     """Build and return all T1 figures."""
     figures = {
         "raw_data_with_fit": plot_raw_data_with_fit(
-            ds_raw,
             ds_fit,
             qubits,
             fit_results or {},

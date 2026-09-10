@@ -16,7 +16,7 @@ from quam_config import QubitQuam as Quam
 from calibration_utils.psb_search_fixed_detuning import (
     Parameters,
     assemble_labeled_ds_raw,
-    fit_fixed_detuning_raw_data,
+    fit_fixed_detuning_raw_data as fit_raw_data,
     generate_simulated_dataset,
     log_fitted_results,
     modify_and_track_point,
@@ -76,8 +76,9 @@ node = QualibrationNode[Parameters, Quam](
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
-    """Allow local debug-only parameter overrides when running from the Python IDE."""
+    """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -198,39 +199,40 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     }
 
 
-# %% {Generate_simulated_data}
-@node.run_action(skip_if=not node.parameters.use_simulated_data)
-def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
-    """Generate simulated fixed-detuning PSB data so the analysis pipeline can run without hardware."""
-    node.results["ds_raw"] = generate_simulated_dataset(node)
-    node.log("[sim] Simulated fixed-detuning PSB dataset generated successfully.")
-
-
 # %% {Execute}
 @node.run_action(
     skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
 )
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program, and store the fetched raw dataset in ``ds_raw``."""
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
     qubits = node.namespace["qubits"]
 
-    # Execute the QUA program only if the quantum machine is available (this avoids interrupting running jobs).
+    # Execute the QUA program only if the quantum machine is available (this is to avoid interrupting running jobs).
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        # The job is stored in the node namespace so the fetcher can stream data and progress from it.
+        # The job is stored in the node namespace to be reused in the fetching_data run_action
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
-        # Stream intermediate datasets back while updating the progress bar.
+        # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
         for dataset in data_fetcher:
             progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
 
-    # Convert the fetched per-qubit stream variables into the canonical labeled ds_raw layout.
+    # Register the raw dataset
     node.results["ds_raw"] = assemble_labeled_ds_raw(dataset, qubits)
+
+
+
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated fixed-detuning PSB data so the analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated fixed-detuning PSB dataset generated successfully.")
 
 
 # %% {Load_historical_data}
@@ -250,8 +252,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
-    node.results["ds_processed"] = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
-    node.results["ds_fit"], fit_results = fit_fixed_detuning_raw_data(node)
+    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(node)
     node.results["fit_results"] = {str(name): asdict(result) for name, result in fit_results.items()}
 
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
@@ -264,12 +266,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot all node figures via the shared plotting API."""
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
-        node.results["ds_processed"],
-        node.namespace["qubits"],
         node.results["ds_fit"],
-        fit_results=node.results["fit_results"],
+        node.namespace["qubits"],
+        node.results["fit_results"],
+        ds_raw=node.results["ds_processed"],
         analysis_model=node.parameters.analysis_model,
     )
     if not node.modes.external:

@@ -22,17 +22,18 @@ from calibration_utils.iq_utils.iq_sweep.plotting import (
 
 
 def plot_all(
-    ds_raw: xr.Dataset,
-    qubit_pairs: Sequence[Union[str, Any]],
     ds_fit: xr.Dataset,
+    qubit_pairs: Sequence[Union[str, Any]],
+    fit_results: Dict[str, Any],
     *,
+    ds_raw: xr.Dataset | None = None,
     sweep_name: str = "detuning",
-    fit_results: Optional[Dict[str, Any]] = None,
     plot_kde: bool = True,
     s: float = 4,
     alpha: float = 0.15,
 ) -> Dict[str, Figure]:
-    """Generate all standard figures for the PSB detuning sweep node."""
+    """Generate all node figures for the PSB sweep using a 09/10-style node-facing API."""
+    ds_raw = ds_fit if ds_raw is None else ds_raw
     if fit_results is None:
         raise ValueError("fit_results must be provided for rotated IQ density plot.")
 

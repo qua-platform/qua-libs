@@ -217,7 +217,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 # %% {Execute}
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Connect to the QOP, execute the QUA program, and fetch raw state data into ``ds_raw``."""
+    """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
     qmm = node.machine.connect()
     # Get the config from the machine
@@ -253,7 +253,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Process Ramsey-detuning state streams, fit the data, and store both ``ds_fit`` and fit summaries."""
+    """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
     ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     node.results["ds_fit"], fit_results_full = fit_raw_data(ds_processed, node)
     fit_results = {k: {kk: vv for kk, vv in v.items() if kk != "_diag"} for k, v in fit_results_full.items()}
@@ -269,13 +269,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot processed Ramsey-detuning data and fit overlays; store figures in ``node.results["figures"]``."""
+    """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
     fit_with_diag = node.namespace.get("_fit_results_full", node.results.get("fit_results", {}))
     node.results["figures"] = plot_all(
-        node.results["ds_raw"],
+        node.results["ds_fit"],
         node.namespace["qubits"],
-        ds_fit=node.results.get("ds_fit"),
-        fit_results=fit_with_diag,
+        fit_with_diag,
     )
     if not node.modes.external:
         plt.show()

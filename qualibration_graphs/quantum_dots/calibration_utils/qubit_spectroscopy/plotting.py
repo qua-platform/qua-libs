@@ -12,9 +12,8 @@ u = unit(coerce_to_integer=True)
 
 
 def plot_raw_data_with_fit(
-    ds: xr.Dataset,
+    ds_fit: xr.Dataset,
     qubits: List,
-    fits: xr.Dataset,
     fit_results: dict | None = None,
 ):
     """
@@ -34,7 +33,7 @@ def plot_raw_data_with_fit(
     Figure
         The matplotlib figure object containing the plots.
     """
-    qubit_names = [str(v) for v in fits.qubit.values]
+    qubit_names = [str(v) for v in ds_fit.qubit.values]
     n = len(qubit_names)
     if n == 0:
         return empty_figure("No qubit data available for qubit spectroscopy.")
@@ -42,8 +41,8 @@ def plot_raw_data_with_fit(
 
     for i, qname in enumerate(qubit_names):
         ax = axes[0, i]
-        fit = fits.sel(qubit=qname)
-        plot_individual_data_with_fit(ax, ds, qname, fit, fit_results=(fit_results or {}).get(qname))
+        fit = ds_fit.sel(qubit=qname)
+        plot_individual_data_with_fit(ax, ds_fit, qname, fit, fit_results=(fit_results or {}).get(qname))
 
     fig.suptitle("Qubit spectroscopy")
     fig.tight_layout()
@@ -127,19 +126,17 @@ def _plot_raw_iq_traces(ds: xr.Dataset, qubits: List) -> Figure:
 
 
 def plot_all(
-    ds: xr.Dataset,
+    ds_fit: xr.Dataset,
     qubits: List,
-    fits: xr.Dataset,
     fit_results: dict | None = None,
 ) -> dict[str, Figure]:
     """Build and return all 08b spectroscopy figures."""
     figures = {
         "qubit_spectroscopy": plot_raw_data_with_fit(
-            ds,
+            ds_fit,
             qubits,
-            fits,
             fit_results=fit_results,
         ),
-        "iq_scatter": _plot_raw_iq_traces(ds, qubits),
+        "iq_scatter": _plot_raw_iq_traces(ds_fit, qubits),
     }
     return figures
