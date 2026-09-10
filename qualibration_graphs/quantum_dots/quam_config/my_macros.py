@@ -25,6 +25,8 @@ The examples in this file show two common patterns:
   initialization sequence.
 - ``InitializeMacro`` builds on that base to demonstrate an active-reset /
   heralded initialization flow.
+If you would like to implement your own initialize/measure behaviour, make sure to 
+comment these examples out. 
 
 Because these state macros are wired at the ``QuantumDotPair`` level, calls
 such as ``qubit.initialize()``, ``qubit_pair.initialize()``, and
