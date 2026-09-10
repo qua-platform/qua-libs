@@ -67,16 +67,21 @@ def plan_lo_shift_for_frequency_window(
     qubits: Sequence[AnyTransmon],
     dfs: NDArray[np.integer] | NDArray[np.floating],
     *,
+    if_base_hz: Optional[Sequence[float]] = None,
     log_callable: Optional[LogCallable] = None,
 ) -> LoShiftPlan:
-    """Decide LO shifts so ``intermediate_frequency + dfs`` stays in usable IF reach.
+    """Decide LO shifts so ``if_base + dfs`` stays in usable IF reach.
 
     Parameters
     ----------
     qubits
-        Qubit-like objects with ``xy`` (and ``name``).
+        Qubit-like objects with ``xy`` (and ``name``). LO shifts apply to these channels.
     dfs
         Relative frequency sweep axis in Hz (same array used in QUA ``from_array``).
+    if_base_hz
+        Optional per-qubit IF centre for the sweep (same length as ``qubits``).
+        Defaults to each qubit's ``xy.intermediate_frequency``. Use this for three-tone
+        spectroscopy where the drive IF is ``coupler_RF - LO`` rather than the qubit idle IF.
 
     Returns
     -------
@@ -89,8 +94,8 @@ def plan_lo_shift_for_frequency_window(
     dfs_mid = int((dfs.min() + dfs.max()) / 2)
     plan = LoShiftPlan()
 
-    for q in qubits:
-        if_lo = q.xy.intermediate_frequency
+    for i, q in enumerate(qubits):
+        if_lo = int(if_base_hz[i]) if if_base_hz is not None else q.xy.intermediate_frequency
         if_low = if_lo + int(dfs.min())
         if_high = if_lo + int(dfs.max())
 
