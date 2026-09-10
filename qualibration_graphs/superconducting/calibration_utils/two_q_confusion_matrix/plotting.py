@@ -1,84 +1,77 @@
 """Plotting module for two-qubit readout confusion matrix calibration."""
 
-from typing import Dict, Optional
+from typing import Dict
 
-import numpy as np
-from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from qualibration_libs.plotting import grid_iter
 
+from calibration_utils.common_utils.confusion_matrix.plotting import (
+    diff_confusion_matrices,
+    get_state_labels,
+    plot_confusion_matrix_on_axes,
+    reset_type_subtitle,
+)
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
 
-_STATE_LABELS = ["00", "01", "10", "11"]
+_STATE_LABELS = get_state_labels(2)
+
+
+def _plot_pair_grid_figure(
+    matrices: dict,
+    qubit_pairs: list,
+    node,
+    suptitle: str,
+    *,
+    is_difference: bool = False,
+):
+    grid_names, pair_names = grid_pair_names(qubit_pairs)
+    confusion_grid = QubitPairGrid(grid_names, pair_names)
+    subtitle = reset_type_subtitle(node)
+    for ax, qubit in grid_iter(confusion_grid):
+        qp_name = qubit["qubit"]
+        plot_confusion_matrix_on_axes(
+            ax,
+            matrices.get(qp_name),
+            _STATE_LABELS,
+            f"{qp_name}{subtitle}",
+            is_difference=is_difference,
+            show_colorbar=is_difference,
+        )
+    confusion_grid.fig.suptitle(suptitle)
+    confusion_grid.fig.tight_layout()
+    return confusion_grid.fig
 
 
 def plot_confusion_matrices(
-    confusions: Dict[str, np.ndarray],
+    confusions: dict,
     qubit_pairs: list,
     node=None,
+    kron_confs: dict | None = None,
 ) -> Dict[str, Figure]:
-    """Plot 4x4 confusion matrices on a chip-topology grid.
+    """Plot 4x4 confusion matrices on a chip-topology grid."""
+    figures = {
+        "figure_confusion": _plot_pair_grid_figure(
+            confusions,
+            qubit_pairs,
+            node,
+            "Two-qubit readout confusion matrix",
+        )
+    }
+    if kron_confs is None:
+        return figures
 
-    Parameters
-    ----------
-    confusions : dict[str, np.ndarray]
-        Mapping from qubit pair name to 4x4 confusion matrix stored as
-        ``conf[measured, prepared]`` (display uses the transpose).
-    qubit_pairs : list
-        Qubit pair objects used for grid placement.
-    node : optional
-        Node for metadata (reset_type) in subplot titles.
-
-    Returns
-    -------
-    dict[str, Figure]
-        ``"figure_confusion"`` contains all pair confusion matrices.
-    """
-    grid_names, pair_names = grid_pair_names(qubit_pairs)
-    confusion_grid = QubitPairGrid(grid_names, pair_names)
-    for ax, qubit in grid_iter(confusion_grid):
-        qp_name = qubit["qubit"]
-        plot_individual_confusion_matrix(ax, confusions.get(qp_name), qp_name, node=node)
-    confusion_grid.fig.suptitle("Two-qubit readout confusion matrix")
-    confusion_grid.fig.tight_layout()
-    return {"figure_confusion": confusion_grid.fig}
-
-
-def plot_individual_confusion_matrix(
-    ax: Axes,
-    conf: Optional[np.ndarray],
-    qp_name: str,
-    node=None,
-) -> None:
-    """Plot one qubit-pair 4x4 confusion matrix.
-
-    Stored matrices are ``conf[measured, prepared]``; the heatmap shows
-    ``conf.T[prepared, measured]`` with prepared on the y-axis and measured on the x-axis.
-    """
-    if conf is None:
-        ax.text(0.5, 0.5, "No confusion data", ha="center", va="center", transform=ax.transAxes)
-        ax.set_title(qp_name)
-        return
-
-    display = np.asarray(conf).T  # [prepared, measured] for plotting
-    ax.pcolormesh(_STATE_LABELS, _STATE_LABELS, display)
-    for prep in range(4):
-        for meas in range(4):
-            color = "k" if prep == meas else "w"
-            ax.text(
-                meas,
-                prep,
-                f"{100 * display[prep, meas]:.1f}%",
-                ha="center",
-                va="center",
-                color=color,
-            )
-    ax.set_ylabel("prepared")
-    ax.set_xlabel("measured")
-
-    title = qp_name
-    if node is not None:
-        reset_type = getattr(node.parameters, "reset_type", None)
-        if reset_type is not None:
-            title = f"{qp_name}\nreset type = {reset_type}"
-    ax.set_title(title)
+    target_names = [qp.name for qp in qubit_pairs]
+    figures["figure_kron"] = _plot_pair_grid_figure(
+        {name: kron_confs[name] for name in target_names if name in kron_confs},
+        qubit_pairs,
+        node,
+        "Two-qubit Kronecker confusion matrix",
+    )
+    figures["figure_diff"] = _plot_pair_grid_figure(
+        diff_confusion_matrices(confusions, kron_confs, target_names),
+        qubit_pairs,
+        node,
+        "Two-qubit difference (Direct - Kron)",
+        is_difference=True,
+    )
+    return figures

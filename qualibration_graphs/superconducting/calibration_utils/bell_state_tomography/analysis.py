@@ -6,6 +6,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 import xarray as xr
+from calibration_utils.common_utils.confusion_matrix import recover_prepared_probs
 from qualibrate import QualibrationNode
 from scipy.linalg import sqrtm
 
@@ -289,15 +290,12 @@ def fit_raw_data(
                 )
                 probs = np.array(results_sel.values.flatten()[:4], dtype=float)
                 try:
-                    confusion_inv = np.linalg.inv(qp.confusion)
-                except np.linalg.LinAlgError as exc:
+                    probs = recover_prepared_probs(qp.confusion, probs)
+                except (ValueError, np.linalg.LinAlgError) as exc:
                     raise ValueError(
-                        f"Qubit pair {qp.name!r} has a singular confusion matrix. "
+                        f"Qubit pair {qp.name!r} has a singular or invalid confusion matrix. "
                         "Re-run node 35_two_qubit_confusion_matrix."
                     ) from exc
-                probs = confusion_inv @ probs
-                probs = probs * (probs > 0)
-                probs = probs / probs.sum()
                 corrected_results_control.append(probs)
             corrected_results_qp.append(corrected_results_control)
         corrected_results.append(corrected_results_qp)
