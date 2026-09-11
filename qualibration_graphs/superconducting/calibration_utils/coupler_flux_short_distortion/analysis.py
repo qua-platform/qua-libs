@@ -81,9 +81,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode):
         q = qubits[i]
         coupler = qubit_pairs[i].coupler
         abs_freq_q = q.xy.RF_frequency - ds_fit["freq"].sel(qubit=dim_name).values * 1e9
-        selected = resolve_coupler_freq_flux_curve(
-            q, coupler, node, source, log_callable=node.log
-        )
+        selected = resolve_coupler_freq_flux_curve(q, coupler, node, source, log_callable=node.log)
         curve = selected.curve
         if curve is not None:
             flux_bias, abs_peak = curve

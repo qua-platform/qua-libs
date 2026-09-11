@@ -73,7 +73,6 @@ node = QualibrationNode[Parameters, Quam](
 )
 
 
-
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
@@ -141,9 +140,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # for that offset so the XY sweep is centered correctly.
     ref_qubit = measured_qubits[0]
     f_dec_ref = resolved.freq_at_decouple[0]
-    idle_to_decouple_offset_hz = (
-        f_dec_ref - ref_qubit.xy.RF_frequency if f_dec_ref is not None else 0.0
-    )
+    idle_to_decouple_offset_hz = f_dec_ref - ref_qubit.xy.RF_frequency if f_dec_ref is not None else 0.0
     dfs_center_hz = detuning_hz + idle_to_decouple_offset_hz
     dfs = np.arange(
         dfs_center_hz - span_hz / 2,
@@ -229,7 +226,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             protagonist_qubit = (
                                 qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
                             )
-                            protagonist_qubit.xy.update_frequency(df + protagonist_qubit.xy.intermediate_frequency - if_update[ii])
+                            protagonist_qubit.xy.update_frequency(
+                                df + protagonist_qubit.xy.intermediate_frequency - if_update[ii]
+                            )
                             align()
                             qp.coupler.play(
                                 "const",
@@ -365,9 +364,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
     node.outcomes = {
-        pair_name: (
-            "successful" if node.results["fit_results"].get(pair_name, {}).get("success", False) else "failed"
-        )
+        pair_name: ("successful" if node.results["fit_results"].get(pair_name, {}).get("success", False) else "failed")
         for pair_name in qubit_pair_names
     }
 

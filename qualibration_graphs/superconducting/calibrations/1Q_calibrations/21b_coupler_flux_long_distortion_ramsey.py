@@ -68,7 +68,6 @@ node = QualibrationNode[Parameters, Quam](
 )
 
 
-
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
@@ -290,8 +289,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     if debug:
         from pathlib import Path
         from qm import generate_qua_script
+
         file_name = Path(__file__).stem
-        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", 'w') as sourceFile:
+        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", "w") as sourceFile:
             print(generate_qua_script(node.namespace["qua_program"], config), file=sourceFile)
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
@@ -352,6 +352,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         # separate `fetching_tool` subscription here, with `wait_for_all`
         # mode so it blocks until the server has all values.
         from qualang_tools.results import fetching_tool as _fetching_tool
+
         _existing_keys = list(job.result_handles.keys())
         _present_ref_keys = [n for n in ref_handle_names if n in _existing_keys]
         _ref_data_map = {}
@@ -430,9 +431,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
     qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
     node.outcomes = {
-        pair_name: (
-            "successful" if node.results["fit_results"].get(pair_name, {}).get("success", False) else "failed"
-        )
+        pair_name: ("successful" if node.results["fit_results"].get(pair_name, {}).get("success", False) else "failed")
         for pair_name in qubit_pair_names
     }
 
@@ -478,5 +477,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save all node results and persist state."""
     node.save()
+
 
 # %%

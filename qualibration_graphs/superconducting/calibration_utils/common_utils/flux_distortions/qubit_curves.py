@@ -377,14 +377,16 @@ def resolve_freq_flux_curve(
             run_id_for_kind=lambda kind: _source_run_id(qubit, kind),
             label_for_kind=lambda kind, rid: f"{'Ramsey' if kind == 'ramsey' else 'spectroscopy'} #{rid}",
             log_forced_miss=(
-                lambda kind: log_callable(
-                    f"{qubit.name}: freq_to_flux_source='{kind}' was requested but no usable curve "
-                    f"could be loaded (extras['{RAMSEY_EXTRAS_KEY if kind == 'ramsey' else SPECTROSCOPY_EXTRAS_KEY}'] "
-                    f"missing or unreadable). Falling back to freq_vs_flux_01_quad_term — re-run the source "
-                    f"calibration with save_load_id=True."
+                lambda kind: (
+                    log_callable(
+                        f"{qubit.name}: freq_to_flux_source='{kind}' was requested but no usable curve "
+                        f"could be loaded (extras['{RAMSEY_EXTRAS_KEY if kind == 'ramsey' else SPECTROSCOPY_EXTRAS_KEY}'] "
+                        f"missing or unreadable). Falling back to freq_vs_flux_01_quad_term — re-run the source "
+                        f"calibration with save_load_id=True."
+                    )
+                    if log_callable is not None
+                    else None
                 )
-                if log_callable is not None
-                else None
             ),
         )
         if measured is not None:
