@@ -70,7 +70,6 @@ node = QualibrationNode[Parameters, Quam](
 )
 
 
-
 # %% {Custom_param}
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
@@ -290,8 +289,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     if debug:
         from pathlib import Path
         from qm import generate_qua_script
+
         file_name = Path(__file__).stem
-        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", 'w') as sourceFile:
+        with open(Path(__file__).parent.parent / f"{file_name}_debug.py", "w") as sourceFile:
             print(generate_qua_script(node.namespace["qua_program"], config), file=sourceFile)
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
@@ -408,8 +408,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         fir_results = fit_fir_data(node.results["ds_fit"], node)
         node.namespace["fir_results"] = fir_results
         node.results["fir_results"] = {
-            qn: {k: v for k, v in res.items() if not str(k).startswith("fig")}
-            for qn, res in fir_results.items()
+            qn: {k: v for k, v in res.items() if not str(k).startswith("fig")} for qn, res in fir_results.items()
         }
 
 

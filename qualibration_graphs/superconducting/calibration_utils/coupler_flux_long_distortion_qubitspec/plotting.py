@@ -34,8 +34,7 @@ def plot_raw_data_with_fit(
     The dataset ``qubit`` coordinate is the pair name.
     """
     rf_by_name = {
-        qp.name: getattr(getattr(mq, "xy", None), "RF_frequency", None)
-        for qp, mq in zip(qubit_pairs, measured_qubits)
+        qp.name: getattr(getattr(mq, "xy", None), "RF_frequency", None) for qp, mq in zip(qubit_pairs, measured_qubits)
     }
 
     g_names, qp_names = grid_pair_names(qubit_pairs)

@@ -3,6 +3,7 @@
 Same pipeline as 17a (π vs flux spectroscopy), but freq→flux uses coupler
 dispersion curves (03c / 09b) and returns absolute coupler flux.
 """
+
 from __future__ import annotations
 
 from typing import Callable, Dict, Tuple
@@ -80,9 +81,7 @@ def _compute_coupler_flux_response(
 
     for i, (q, qp) in enumerate(zip(qubits, qubit_pairs)):
         coord = coord_names[i]
-        selected = resolve_coupler_freq_flux_curve(
-            q, qp.coupler, node, freq_to_flux_source, log_callable=log_callable
-        )
+        selected = resolve_coupler_freq_flux_curve(q, qp.coupler, node, freq_to_flux_source, log_callable=log_callable)
         sources[coord] = selected.label
 
         if not selected.is_measured or selected.curve is None or len(selected.curve[0]) < 2:
@@ -150,9 +149,7 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
     center_freqs = extract_center_freqs(
         ds,
         dfs,
-        use_state_discrimination=bool(
-            node.parameters.use_state_discrimination and "state" in ds.data_vars
-        ),
+        use_state_discrimination=bool(node.parameters.use_state_discrimination and "state" in ds.data_vars),
         log_callable=node.log,
     )
 

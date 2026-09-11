@@ -103,9 +103,7 @@ def load_coupler_spectroscopy_curve(
         if key is None and "measured_qubit_name" in ds_raw.coords:
             qvals = [str(v) for v in np.atleast_1d(ds_raw.qubit.values)]
             matches = [
-                qv
-                for qv, m in zip(qvals, np.atleast_1d(ds_raw.measured_qubit_name.values))
-                if str(m) == qubit_name
+                qv for qv, m in zip(qvals, np.atleast_1d(ds_raw.measured_qubit_name.values)) if str(m) == qubit_name
             ]
             if len(matches) == 1:
                 key = matches[0]
@@ -135,8 +133,7 @@ def load_coupler_spectroscopy_curve(
         order = np.argsort(flux_m)
         if log_callable is not None:
             log_callable(
-                f"Loaded coupler spectroscopy for {qubit_name} (coord '{key}') from run #{rid}: "
-                f"{mask.sum()} pts"
+                f"Loaded coupler spectroscopy for {qubit_name} (coord '{key}') from run #{rid}: " f"{mask.sum()} pts"
             )
         return flux_m[order], freq_m[order]
     except Exception as e:
@@ -194,9 +191,7 @@ def load_coupler_ramsey_curve(
                 break
         if pair_key is None or frequency_var not in ds_fit.data_vars:
             if log_callable is not None:
-                log_callable(
-                    f"Cannot find '{frequency_var}' for {qubit.name} / {coupler.name} in run #{rid}"
-                )
+                log_callable(f"Cannot find '{frequency_var}' for {qubit.name} / {coupler.name} in run #{rid}")
             return None
         frequency = ds_fit[frequency_var].sel(qubit_pair=pair_key).values
         return flux_bias_rel, frequency
@@ -224,9 +219,7 @@ def resolve_coupler_freq_flux_curve(
         source,
         order=COUPLER_AUTO_SOURCE_ORDER,
         loaders={
-            "spectroscopy": lambda: load_coupler_spectroscopy_curve(
-                qubit, coupler, node, log_callable=log_callable
-            ),
+            "spectroscopy": lambda: load_coupler_spectroscopy_curve(qubit, coupler, node, log_callable=log_callable),
             "ramsey": lambda: load_coupler_ramsey_curve(qubit, coupler, node, log_callable=log_callable),
         },
         run_id_for_kind=lambda kind: extras_run_id(
@@ -238,12 +231,14 @@ def resolve_coupler_freq_flux_curve(
             else ("spectroscopy" if kind == "spectroscopy" else "Ramsey")
         ),
         log_forced_miss=(
-            lambda kind: log_callable(
-                f"{qubit.name}/{coupler.name}: freq_to_flux_source='{kind}' was requested but no usable "
-                f"curve could be loaded (extras['{_coupler_load_id_key(coupler, kind)}'] missing or unreadable)."
+            lambda kind: (
+                log_callable(
+                    f"{qubit.name}/{coupler.name}: freq_to_flux_source='{kind}' was requested but no usable "
+                    f"curve could be loaded (extras['{_coupler_load_id_key(coupler, kind)}'] missing or unreadable)."
+                )
+                if log_callable is not None
+                else None
             )
-            if log_callable is not None
-            else None
         ),
     )
     if measured is not None:
@@ -371,11 +366,7 @@ def resolve_coupler_flux_amplitudes(
     sources: List[str] = []
     freq_at_decouple_list: List[Optional[float]] = []
     curves: Dict[str, FreqFluxCurve] = {}
-    use_user_amp = (
-        freq_to_flux_source == "auto"
-        and fallback_amplitude_v is not None
-        and fallback_amplitude_v != 0
-    )
+    use_user_amp = freq_to_flux_source == "auto" and fallback_amplitude_v is not None and fallback_amplitude_v != 0
 
     for qp in qubit_pairs:
         qubit = qp.qubit_control if measure_qubit == "control" else qp.qubit_target
@@ -409,10 +400,7 @@ def resolve_coupler_flux_amplitudes(
             )
 
         if abs(amp) > 0.5:
-            msg = (
-                f"{qp.name}: derived coupler_flux={amp:.4f} V exceeds 0.5 V. "
-                f"Verify detuning is correct."
-            )
+            msg = f"{qp.name}: derived coupler_flux={amp:.4f} V exceeds 0.5 V. " f"Verify detuning is correct."
             if log_callable is not None:
                 log_callable(msg)
             else:
@@ -428,4 +416,3 @@ def resolve_coupler_flux_amplitudes(
         freq_at_decouple=freq_at_decouple_list,
         curves=curves,
     )
-
