@@ -1,1 +1,1 @@
-"""Shared calibration helpers (confusion_matrix, flux_distortions, ...)."""
+"""Shared calibration helpers (confusion_matrix, fidelity, flux_distortions, ...)."""

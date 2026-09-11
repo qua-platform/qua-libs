@@ -11,7 +11,8 @@ from scipy.optimize import minimize
 from .validation import is_confusion_matrix_valid
 
 
-def _resolve_target_dim(ds: xr.Dataset) -> str:
+def resolve_target_dim(ds: xr.Dataset) -> str:
+    """Return the dataset dimension naming the measured qubit group or pair."""
     for candidate in ("qubit_pair", "qubit_group"):
         if candidate in ds.dims:
             return candidate
@@ -57,7 +58,7 @@ def compute_confusion_matrices(
     if "state" not in ds.data_vars:
         raise ValueError("Dataset must contain 'state'.")
 
-    target_dim = target_dim or _resolve_target_dim(ds)
+    target_dim = target_dim or resolve_target_dim(ds)
     shot_dim = "n" if "n" in ds.dims else "N"
     num_qubits = len(init_coords)
     num_states = 2**num_qubits

@@ -10,11 +10,14 @@ from calibration_utils.common_utils.confusion_matrix import (
 )
 from calibration_utils.common_utils.confusion_matrix.plotting import (
     annotation_style,
+    confusion_difference_panel_title,
+    confusion_matrix_figure_suptitle,
     diff_confusion_matrices,
     get_state_labels,
+    joint_measured_panel_title,
     plot_confusion_matrices_grid,
     plot_marginal_confusion_matrices_grid,
-    reset_type_subtitle,
+    tensor_product_panel_title,
 )
 
 from .qubit_groups import QubitGroup
@@ -54,35 +57,33 @@ def plot_confusion_matrices(
     state_labels = get_state_labels(num_qubits)
     target_names = [qg.name for qg in qubit_groups]
     annotate_cells, text_fontsize = annotation_style(num_qubits)
-    subtitle = reset_type_subtitle(node)
+    figure_suptitle = confusion_matrix_figure_suptitle(num_qubits)
     grid_kwargs = {
         "annotate_cells": annotate_cells,
         "text_fontsize": text_fontsize,
+        "figure_suptitle": figure_suptitle,
     }
-
-    def panel_title(prefix: str, group_name: str) -> str:
-        return f"{prefix} {group_name} ({num_qubits}Q){subtitle}"
 
     figures = {
         "figure_confusion": plot_confusion_matrices_grid(
             target_names,
             state_labels,
             confusions,
-            lambda group_name: panel_title("Confusion matrix", group_name),
+            lambda group_name: joint_measured_panel_title(group_name, num_qubits, node),
             **grid_kwargs,
         ),
         "figure_kron": plot_confusion_matrices_grid(
             target_names,
             state_labels,
             kron_confs,
-            lambda group_name: panel_title("Kronecker confusion matrix", group_name),
+            lambda group_name: tensor_product_panel_title(group_name, node),
             **grid_kwargs,
         ),
         "figure_diff": plot_confusion_matrices_grid(
             target_names,
             state_labels,
             diff_confusion_matrices(confusions, kron_confs, target_names),
-            lambda group_name: panel_title("Difference (Direct - Kron)", group_name),
+            lambda group_name: confusion_difference_panel_title(group_name, node),
             is_difference=True,
             cmap="RdBu",
             **grid_kwargs,

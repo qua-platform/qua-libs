@@ -24,28 +24,21 @@ from calibration_utils.two_q_confusion_matrix import (
 
 # %% {Initialisation}
 description = """
-**TWO-QUBIT READOUT CONFUSION MATRIX MEASUREMENT**
+This experiment measures readout error when simultaneously measuring two qubits.
 
-This experiment measures the readout error when simultaneously measuring the state of two qubits.
+Process:
+1. Prepare all computational basis states (|00⟩, |01⟩, |10⟩, |11⟩)
+2. Perform simultaneous readout on both qubits
+3. Build the confusion matrix from measurement results
 
-The process involves:
-
-1. Preparing the two qubits in all possible combinations of computational basis states (|00⟩, |01⟩, |10⟩, |11⟩)
-2. Performing simultaneous readout on both qubits
-3. Calculating the confusion matrix based on the measurement results
-
-For each prepared state, we measure the readout result of both qubits. The measurement process involves:
-initializing both qubits to the ground state, applying single-qubit gates to prepare the desired input state,
-and performing simultaneous readout on both qubits.
+Outcomes:
+- 4×4 confusion matrix (measured vs prepared two-qubit states)
+- Kronecker-product reference and direct-minus-Kron difference plots
+- Readout fidelity metrics for simultaneous two-qubit measurement
 
 Prerequisites:
 - Calibrated single-qubit gates for both qubits in the pair
 - Calibrated readout for both qubits
-
-Outcomes:
-- 4x4 confusion matrix representing the probabilities of measuring each two-qubit state given a prepared input state
-- Kronecker-product reference and direct-minus-Kron difference plots
-- Readout fidelity metrics for simultaneous two-qubit measurement
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -59,7 +52,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
-    # node.parameters.qubit_pairs = ["q1_q2"]
     pass
 
 
