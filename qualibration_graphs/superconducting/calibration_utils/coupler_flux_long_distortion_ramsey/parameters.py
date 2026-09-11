@@ -55,17 +55,7 @@ class NodeSpecificParameters(RunnableParameters):
     measure_qubit: Literal["control", "target"] = "target"
     """Which qubit to measure: 'control' or 'target'."""
     flux_settle_time_in_ns: int = 100_000
-    """Duration of the long coupler flux pulse in nanoseconds.
-
-    Recommended >= 5 x the longest expected tau (in-house heuristic; no paper
-    specifies a fixed 5-tau pulse-settle rule). For reference, Hellings et al.
-    arXiv:2503.04610 Sec. III samples its drive time up to ~100 us ~ 5 x tau_HP
-    (a measurement-window choice, not a pulse-duration rule). With a shorter pulse,
-    long-tau components are attenuated by a factor (1 - exp(-T_pulse/tau)),
-    which the finite-pulse fit branch in `multi_exp_fit_global` partially
-    deconvolves but at the cost of SNR (the fit caps tau at TAU_PULSE_FACTOR=20
-    x T_pulse for stability). Default 100 us therefore covers tau up to ~2 ms
-    with usable SNR."""
+    """Duration of the long coupler flux pulse in nanoseconds."""
 
 
 class Parameters(

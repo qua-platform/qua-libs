@@ -33,9 +33,9 @@ def annotate_branch_risk(fig, ds: xr.Dataset) -> bool:
     if not lines:
         return False
     msg = (
-        "⚠ BRANCH-ALIASING RISK: per-point phase→flux inversion (np.round) may be unreliable\n"
+        "⚠ BRANCH-ALIASING RISK: Ramsey phase→flux inversion may be unreliable\n"
         + "\n".join(lines)
-        + "\n(true phase approaches/exceeds one 2π window; see _compute_flux_response)"
+        + "\nWiden ramsey_flux_sweep_range_in_v, or lower the long-pulse / Ramsey probe amplitude."
     )
     fig.text(
         0.5,
