@@ -5,7 +5,7 @@ from qualibration_libs.parameters import (
     QubitsExperimentNodeParameters,
 )
 
-from calibration_utils.heralded_initialization_utils.parameters import HeraldedInitializeParameters
+from quam_config import MacroParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -27,7 +27,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    HeraldedInitializeParameters,
+    MacroParameters,
     QubitsExperimentNodeParameters,
 ):
     """Parameter set for 11b_ramsey_detuning."""

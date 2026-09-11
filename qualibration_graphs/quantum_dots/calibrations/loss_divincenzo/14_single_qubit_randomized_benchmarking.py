@@ -24,6 +24,7 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 
 
 # %% {Node initialization}
@@ -110,6 +111,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Select which qubits participate in this calibration
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+
+    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
 
     # Build the Clifford lookup tables once on the host, before any QUA is generated.
     node.log("Building single-qubit Clifford tables...")
@@ -411,6 +414,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
+    revert_tracked_macros(node)
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":

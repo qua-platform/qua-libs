@@ -6,7 +6,7 @@ from qualibration_libs.parameters import (
     IdleTimeNodeParameters,
 )
 
-from calibration_utils.heralded_initialization_utils.parameters import HeraldedInitializeParameters
+from quam_config import MacroParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -23,7 +23,7 @@ class Parameters(
     CommonNodeParameters,
     IdleTimeNodeParameters,
     NodeSpecificParameters,
-    HeraldedInitializeParameters,
+    MacroParameters,
     QubitsExperimentNodeParameters,
 ):
     """Parameter set for 11a_ramsey."""

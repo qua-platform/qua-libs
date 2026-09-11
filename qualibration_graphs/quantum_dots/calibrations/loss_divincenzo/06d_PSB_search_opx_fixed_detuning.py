@@ -26,6 +26,7 @@ from calibration_utils.psb_search_fixed_detuning import (
 )
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.runtime import simulate_and_plot
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 
 
 # %% {Node initialization}
@@ -96,6 +97,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     qubits, qubit_dot_pairs = resolve_qubits_and_dot_pairs(node)
     node.namespace["qubits"] = qubits
     node.namespace["qubit_dot_pairs"] = qubit_dot_pairs
+
+    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
 
     # Number of shots at the fixed measurement point
     n_avg = node.parameters.num_shots
@@ -282,6 +285,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Revert temporary patches, then persist fixed-point readout calibration."""
+    revert_tracked_macros(node)
     for _, dot_pair in node.namespace["qubit_dot_pairs"]:
         if dot_pair.name in node.namespace.get("tracked_original_detunings", {}):
             gate_set = dot_pair.voltage_sequence.gate_set

@@ -23,6 +23,7 @@ from calibration_utils.xy8 import (
 
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialization}
@@ -90,6 +91,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── Experiment parameters (Python side) ──────────────────────────────
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+
+    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
 
     n_avg = node.parameters.num_shots  # repetitions averaged at each half-spacing point
 
@@ -290,6 +293,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 
     Results are available in node.results["fit_results"] for inspection.
     """
+    revert_tracked_macros(node)
     pass
 
 

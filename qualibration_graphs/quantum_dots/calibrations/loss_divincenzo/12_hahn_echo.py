@@ -23,6 +23,7 @@ from calibration_utils.hahn_echo import (
 
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 from qualibration_libs.runtime import simulate_and_plot
 
 # %% {Node initialization}
@@ -88,6 +89,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # ── Experiment parameters (Python side) ──────────────────────────────
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+
+    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
 
     n_avg = node.parameters.num_shots  # repetitions averaged at each idle-delay point
 
@@ -265,6 +268,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Write fitted T2_echo to ``qubit.T2echo`` for successful qubits."""
+    revert_tracked_macros(node)
 
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
