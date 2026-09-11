@@ -31,19 +31,23 @@ from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
 description = """
-THREE-TONE COUPLER SPECTROSCOPY
+Three-tone coupler spectroscopy at a fixed coupler flux point.
 
-Without a dedicated coupler readout, drive the coupler through the control qubit at
-variable frequency while probing the target qubit. A coupler flux pulse sets the
-coupler bias before the drive.
+A tunable coupler has a flux line but no drive or readout line of its own, so it is
+probed through its neighbours. Three tones are involved: a long drive on the control
+qubit's XY line that reaches the coupler, a weak saturation tone on the target qubit
+that transduces the coupler excitation into a target-qubit response, and the target
+readout. Sweeping the drive tone, the target signal dips when the drive is resonant
+with the coupler. Same ancilla-based coupler spectroscopy as Marxer et al.,
+PRX Quantum 4, 010314 (2023), Appendix F.
 
 Prerequisites:
 - Target-qubit readout calibrated (IQ blobs / state discrimination)
 - Control- and target-qubit XY gates calibrated
 
 Outputs and state updates:
-- Extracts coupler ``RF_frequency`` from the three-tone dip.
-- Set ``update_state=True`` to write ``coupler.RF_frequency`` into state.
+- Results: processed dataset, fit results, and figures are saved under ``node.results``.
+- If ``update_state=True`` and the fit succeeds, writes ``coupler.RF_frequency``.
 """
 
 node = QualibrationNode[Parameters, Quam](

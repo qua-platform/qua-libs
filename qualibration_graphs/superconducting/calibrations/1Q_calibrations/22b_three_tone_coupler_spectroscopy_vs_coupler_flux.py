@@ -31,19 +31,28 @@ from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
 description = """
-THREE-TONE COUPLER SPECTROSCOPY VS COUPLER FLUX
+Three-tone coupler spectroscopy vs coupler flux — the coupler flux arc.
 
-Maps coupler frequency vs coupler flux-pulse amplitude using three-tone
-spectroscopy: a coupler ``const`` pulse sets the bias (relative to decouple_offset),
-a strong control-qubit drive sweeps coupler frequency, and a weak target-qubit
-probe maps the coupler response.
+Same probe as **22a** — see ``22a_three_tone_coupler_spectroscopy_flux_pulse.py`` for the
+physics — repeated over a range of coupler flux-pulse amplitudes, so the coupler frequency
+is mapped as a function of its flux bias rather than measured at a single bias point.
+
+Workflow:
+For each coupler flux-pulse amplitude between ``coupler_flux_min_in_v`` and
+``coupler_flux_max_in_v`` (played relative to ``decouple_offset``), sweep the
+control-qubit drive across the coupler RF window and record the target-qubit response.
+The resulting 2D map traces the coupler flux arc, which sets where the coupler idles and
+how far it has to travel for a CZ gate.
 
 Prerequisites:
 - Target-qubit readout calibrated (IQ blobs / state discrimination)
 - Control- and target-qubit XY gates calibrated
+- **22a** run once so ``coupler.RF_frequency`` is in state; otherwise the sweep centre
+  falls back to the ``coupler_band`` estimate
 
 Outputs:
-- 2D dataset and heatmap of target response vs coupler flux pulse and drive frequency.
+- Results: 2D dataset and heatmap of target response vs coupler flux pulse and drive
+  frequency, saved under ``node.results``.
 """
 
 node = QualibrationNode[Parameters, Quam](
