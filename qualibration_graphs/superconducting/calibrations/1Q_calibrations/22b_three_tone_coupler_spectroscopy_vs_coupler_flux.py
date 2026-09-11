@@ -33,16 +33,17 @@ from quam_config import Quam
 description = """
 THREE-TONE COUPLER SPECTROSCOPY VS COUPLER FLUX
 
-Maps coupler frequency vs coupler DC flux using three-tone spectroscopy: strong
-control-qubit drive sweeps coupler frequency while a weak target-qubit probe maps
-the coupler response.
+Maps coupler frequency vs coupler flux-pulse amplitude using three-tone
+spectroscopy: a coupler ``const`` pulse sets the bias (relative to decouple_offset),
+a strong control-qubit drive sweeps coupler frequency, and a weak target-qubit
+probe maps the coupler response.
 
 Prerequisites:
 - Target-qubit readout calibrated (IQ blobs / state discrimination)
 - Control- and target-qubit XY gates calibrated
 
 Outputs:
-- 2D dataset and heatmap of target response vs coupler flux and drive frequency.
+- 2D dataset and heatmap of target response vs coupler flux pulse and drive frequency.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -78,6 +79,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     coupler_rf_centers = resolve_coupler_rf_centers_by_pair(
         qubit_pairs,
         node.parameters.rf_frequency_startpoint_in_hz,
+        coupler_band=node.parameters.coupler_band,
         log_callable=node.log,
     )
     node.namespace["coupler_rf_centers"] = coupler_rf_centers
@@ -109,7 +111,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["sweep_axes"] = {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
-        "flux": xr.DataArray(fluxes, attrs={"long_name": "coupler flux bias", "units": "V"}),
+        "flux": xr.DataArray(fluxes, attrs={"long_name": "coupler flux pulse amplitude", "units": "V"}),
         "freq": xr.DataArray(dfs, attrs={"long_name": "coupler drive detuning", "units": "Hz"}),
     }
 
@@ -148,12 +150,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(*from_array(flux_bias, fluxes)):
                     with for_(*from_array(df, dfs)):
                         for ii, qp in multiplexed_qubit_pairs.items():
-                            qp.coupler.set_dc_offset(flux_bias)
-                        align()
-                        wait(flux_settle)
-                        align()
-
-                        for ii, qp in multiplexed_qubit_pairs.items():
                             control = qp.qubit_control
                             target = qp.qubit_target
                             control.reset(node.parameters.reset_type, node.parameters.simulate)
@@ -164,13 +160,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
 
                         for ii, qp in multiplexed_qubit_pairs.items():
+                            qp.coupler.play(
+                                "const",
+                                amplitude_scale=flux_bias / qp.coupler.operations["const"].amplitude,
+                                duration=flux_settle + control_durations[ii] + target_durations[ii],
+                            )
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            qp.qubit_control.xy.wait(flux_settle)
+                        for ii, qp in multiplexed_qubit_pairs.items():
                             qp.qubit_control.xy.play(
                                 node.parameters.control_drive_operation,
                                 amplitude_scale=node.parameters.control_pulse_amplitude,
                                 duration=control_durations[ii],
                             )
-                        align()
-
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            qp.qubit_target.xy.wait(flux_settle + control_durations[ii])
                         for ii, qp in multiplexed_qubit_pairs.items():
                             qp.qubit_target.xy.play(
                                 node.parameters.target_drive_operation,

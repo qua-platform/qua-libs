@@ -31,6 +31,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     coupler_rf_centers = node.namespace.get("coupler_rf_centers") or resolve_coupler_rf_centers_by_pair(
         qubit_pairs,
         node.parameters.rf_frequency_startpoint_in_hz,
+        coupler_band=node.parameters.coupler_band,
     )
     rf_freq = np.array([dfs + coupler_rf_centers[qp.name] for qp in qubit_pairs])
     ds = ds.assign_coords(freq_full_control=(["qubit", "freq"], rf_freq))

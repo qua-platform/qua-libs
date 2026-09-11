@@ -24,7 +24,7 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubit_pairs) -> plt.Figure:
             ds_g.sel(qubit=pair_name).IQ_abs.plot(ax=ax, y="freq_GHz", x=flux_coord)
         ax.set_title(pair_name)
         ax.set_ylabel("Frequency (GHz)")
-        ax.set_xlabel("Coupler flux (V)")
+        ax.set_xlabel("Coupler flux pulse (V)")
 
     grid.fig.suptitle("Three-tone coupler spectroscopy vs flux")
     grid.fig.tight_layout()

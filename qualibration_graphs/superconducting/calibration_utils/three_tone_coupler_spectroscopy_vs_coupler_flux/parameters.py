@@ -8,39 +8,45 @@ from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperime
 
 
 class NodeSpecificParameters(RunnableParameters):
-    """Three-tone 2D spectroscopy sweeping coupler DC flux and drive frequency."""
+    """Three-tone 2D spectroscopy sweeping coupler flux-pulse amplitude and drive frequency."""
 
-    num_shots: int = 200
+    num_shots: int = 100
     """Number of averages per (flux, frequency) point."""
-    control_drive_operation: Literal["x180_Square", "x180"] = "x180_Square"
+    control_drive_operation: str = "x180"
     """Control-qubit operation used to drive the coupler."""
-    control_pulse_duration_in_ns: int = 800
+    control_pulse_duration_in_ns: int = 500
     """Duration of the control drive pulse in ns."""
-    control_pulse_amplitude: float = 0.2
+    control_pulse_amplitude: float = 0.1
     """Amplitude scale for the control drive pulse."""
     target_drive_operation: str = "saturation"
     """Weak probe operation on the target qubit."""
-    target_pulse_amplitude: float = 0.005
+    target_pulse_amplitude: float = 0.02
     """Amplitude scale for the target probe pulse."""
-    target_pulse_duration_in_ns: Optional[int] = 1000
+    target_pulse_duration_in_ns: Optional[int] = 400
     """Target probe duration in ns; default uses the operation length from state."""
-    frequency_span_in_mhz: float = 900.0
+    frequency_span_in_mhz: float = 800.0
     """Total frequency span of the coupler drive sweep in MHz."""
-    frequency_step_in_mhz: float = 2.0
+    frequency_step_in_mhz: float = 1.0
     """Frequency step in MHz."""
-    coupler_flux_min_in_v: float = 0.0
-    """Minimum coupler DC flux bias in V."""
-    coupler_flux_max_in_v: float = 0.3
-    """Maximum coupler DC flux bias in V."""
-    num_coupler_flux_points: int = 51
-    """Number of coupler flux points."""
-    coupler_flux_settle_in_ns: int = 4000
-    """Wait after updating coupler DC offset before the pulse sequence, in ns."""
+    coupler_flux_min_in_v: float = -0.025
+    """Minimum coupler flux-pulse amplitude in V (played relative to decouple_offset)."""
+    coupler_flux_max_in_v: float = 0.025
+    """Maximum coupler flux-pulse amplitude in V (played relative to decouple_offset)."""
+    num_coupler_flux_points: int = 11
+    """Number of coupler flux-pulse amplitudes."""
+    coupler_flux_settle_in_ns: int = 25
+    """Wait after the coupler flux pulse starts, before the control drive, in ns."""
+    coupler_band: Literal["above", "below"] = "above"
+    """Where the coupler sits relative to the qubit pair (used only for the RF guess).
+
+    ``above``: ``max(f) + min(f) / 2``. ``below``: ``min(f) - max(f) / 2``.
+    Ignored when ``rf_frequency_startpoint_in_hz`` or ``coupler.RF_frequency`` is set.
+    """
     rf_frequency_startpoint_in_hz: Optional[float] = None
     """Optional coupler RF sweep centre in Hz for all pairs.
 
     When ``None`` (default), each pair uses ``coupler.RF_frequency`` from state if set,
-    otherwise an estimate from the control and target qubit ``xy.RF_frequency`` values.
+    otherwise an estimate from the qubit XY frequencies and ``coupler_band``.
     """
 
 
