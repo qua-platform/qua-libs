@@ -64,7 +64,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="31_chevron_1102",  # Name should be unique
+    name="31_chevron_11_20",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/chevron_cz/parameters.py
 )

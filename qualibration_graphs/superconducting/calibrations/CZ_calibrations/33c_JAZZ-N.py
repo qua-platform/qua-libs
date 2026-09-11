@@ -51,7 +51,7 @@ The Z-pulse is supplied by the full CZGate macro selected via the
 macro provides (cz_unipolar, cz_flattop, cz_bipolar, cz_flattop_erf, cz_SNZ)
 can be calibrated.
 
-JAZZ-N is a precision fine-tuning upgrade over 32b. The X_pi refocusing
+JAZZ-N is a precision fine-tuning upgrade over 33b. The X_pi refocusing
 pulses echo out ordinary single-qubit phase (residual detuning, AC-Stark
 shifts) accumulated over the sequence, so the extracted phase is purely
 theta_CZ = theta_11 - theta_10 - theta_01 + theta_00, immune to control's
@@ -64,15 +64,15 @@ faster than the naive conditioned-tomography approach.
 Prerequisites:
     - Calibrated single-qubit gates (x90, x180) for both qubits in the pair.
     - Calibrated, state-discriminating readout for the stationary qubit.
-    - An initial estimate of the CZ amplitude (e.g. from 32a_cz_conditional_phase
-      or 32b_cz_conditional_phase_error_amp).
+    - An initial estimate of the CZ amplitude (e.g. from 33a_cz_conditional_phase
+      or 33b_cz_conditional_phase_error_amp).
 
 State update:
     - qubit_pair.macros[operation].flux_pulse_qubit.amplitude (fitted optimal CZ amplitude).
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="32c_JAZZ_N",
+    name="33c_JAZZ_N",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
