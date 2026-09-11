@@ -31,6 +31,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
         qubit_pairs,
         node.parameters.rf_frequency_startpoint_in_hz,
         coupler_band=node.parameters.coupler_band,
+        idle_detuning_hz=abs(float(node.parameters.coupler_idle_detuning_in_ghz)) * 1e9,
     )
     rf_freq = np.array([dfs + coupler_rf_centers[qp.name] for qp in qubit_pairs])
     ds = ds.assign_coords(freq_full_control=(["qubit", "freq"], rf_freq))

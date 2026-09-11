@@ -79,6 +79,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         qubit_pairs,
         node.parameters.rf_frequency_startpoint_in_hz,
         coupler_band=node.parameters.coupler_band,
+        idle_detuning_hz=abs(float(node.parameters.coupler_idle_detuning_in_ghz)) * 1e9,
         log_callable=node.log,
     )
     node.namespace["coupler_rf_centers"] = coupler_rf_centers

@@ -36,8 +36,15 @@ class NodeSpecificParameters(RunnableParameters):
     coupler_band: Literal["above", "below"] = "above"
     """Where the coupler sits relative to the qubit pair (used only for the RF guess).
 
-    ``above``: ``max(f) + min(f) / 2``. ``below``: ``min(f) - max(f) / 2``.
+    ``above``: idle above the higher qubit (BAQ). ``below``: idle below the lower qubit (BBQ).
     Ignored when ``rf_frequency_startpoint_in_hz`` or ``coupler.RF_frequency`` is set.
+    """
+    coupler_idle_detuning_in_ghz: float = 1.2
+    """Idle detuning from the nearest qubit used for the RF guess, in GHz.
+
+    Typical literature parks are ~1–1.5 GHz away. ``above`` uses ``max(f) + detuning``;
+    ``below`` uses ``min(f) - detuning``. Ignored when
+    ``rf_frequency_startpoint_in_hz`` or ``coupler.RF_frequency`` is set.
     """
     rf_frequency_startpoint_in_hz: Optional[float] = None
     """Optional coupler RF sweep centre in Hz for all pairs.
@@ -62,18 +69,26 @@ class Parameters(
 
 LogCallable = Callable[[str], None]
 CouplerBand = Literal["above", "below"]
+DEFAULT_COUPLER_IDLE_DETUNING_HZ = 1.2e9
 
 
-def estimate_coupler_rf_from_qubits(f_control: float, f_target: float, coupler_band: CouplerBand) -> float:
-    """Guess coupler RF from the two qubit XY frequencies.
+def estimate_coupler_rf_from_qubits(
+    f_control: float,
+    f_target: float,
+    coupler_band: CouplerBand,
+    idle_detuning_hz: float = DEFAULT_COUPLER_IDLE_DETUNING_HZ,
+) -> float:
+    """Guess idle coupler RF from the two qubit XY frequencies.
 
-    ``above``: ``max + min / 2``. ``below``: ``min - max / 2``.
+    ``above``: ``max(f) + detuning`` (BAQ, typically ~1–1.5 GHz above).
+    ``below``: ``min(f) - detuning`` (BBQ).
     """
     f_high = max(f_control, f_target)
     f_low = min(f_control, f_target)
+    detuning = abs(float(idle_detuning_hz))
     if coupler_band == "below":
-        return f_low - f_high / 2.0
-    return f_high + f_low / 2.0
+        return f_low - detuning
+    return f_high + detuning
 
 
 def resolve_coupler_rf_centers_by_pair(
@@ -81,6 +96,7 @@ def resolve_coupler_rf_centers_by_pair(
     rf_override_hz: Optional[float] = None,
     *,
     coupler_band: CouplerBand = "above",
+    idle_detuning_hz: float = DEFAULT_COUPLER_IDLE_DETUNING_HZ,
     log_callable: Optional[LogCallable] = None,
 ) -> dict[str, float]:
     """Resolve per-pair coupler RF sweep centres.
@@ -101,7 +117,9 @@ def resolve_coupler_rf_centers_by_pair(
 
         f_control = float(qp.qubit_control.xy.RF_frequency)
         f_target = float(qp.qubit_target.xy.RF_frequency)
-        estimate_hz = estimate_coupler_rf_from_qubits(f_control, f_target, coupler_band)
+        estimate_hz = estimate_coupler_rf_from_qubits(
+            f_control, f_target, coupler_band, idle_detuning_hz=idle_detuning_hz
+        )
         if log_callable is not None:
             log_callable(
                 f"{qp.name}: no coupler.RF_frequency in state; "

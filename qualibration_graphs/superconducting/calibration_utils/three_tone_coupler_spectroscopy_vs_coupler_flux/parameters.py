@@ -39,8 +39,15 @@ class NodeSpecificParameters(RunnableParameters):
     coupler_band: Literal["above", "below"] = "above"
     """Where the coupler sits relative to the qubit pair (used only for the RF guess).
 
-    ``above``: ``max(f) + min(f) / 2``. ``below``: ``min(f) - max(f) / 2``.
+    ``above``: idle above the higher qubit (BAQ). ``below``: idle below the lower qubit (BBQ).
     Ignored when ``rf_frequency_startpoint_in_hz`` or ``coupler.RF_frequency`` is set.
+    """
+    coupler_idle_detuning_in_ghz: float = 1.2
+    """Idle detuning from the nearest qubit used for the RF guess, in GHz.
+
+    Typical literature parks are ~1–1.5 GHz away. ``above`` uses ``max(f) + detuning``;
+    ``below`` uses ``min(f) - detuning``. Ignored when
+    ``rf_frequency_startpoint_in_hz`` or ``coupler.RF_frequency`` is set.
     """
     rf_frequency_startpoint_in_hz: Optional[float] = None
     """Optional coupler RF sweep centre in Hz for all pairs.
