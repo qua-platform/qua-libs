@@ -37,29 +37,20 @@ from quam_config import Quam
 description = """
 Short coupler flux distortion (cryoscope path).
 
-Same idea as **17c** — see ``17c_qubit_flux_short_distortion.py`` for the physics.
+Same as **17c**, but the short pulse is on the coupler and a neighbour qubit is the
+sensor. See ``17c_qubit_flux_short_distortion.py`` for the physics.
 
-Workflow:
-For each qubit pair, resolve a coupler flux amplitude that places the measured qubit at
-``detuning_in_mhz`` from its decouple-point frequency via ``freq_to_flux_source``, bake
-1 ns flux segments, sweep pulse duration and frame, and reconstruct phase → frequency →
-flux step response. Fit a sum of exponentials (IIR); optionally run FIR feedforward
-analysis (``use_fir``).
+Coupler amplitude is chosen so the measured qubit sits at ``detuning_in_mhz`` from
+its decouple-point frequency. Sweep baked pulse duration and frame; reconstruct
+phase → frequency → flux; fit IIR and optionally FIR (``use_fir``).
 
 Prerequisites:
-- A valid rotation angle and threshold if using state discrimination
-- Calibrated XY–coupler delay on the measured qubit (``measure_qubit``)
-- Calibrated x90 pulse
-- Completed 03c and/or 09b with ``save_load_id=True``
+- x90, XY–coupler delay, and IQ blobs / threshold if using state discrimination
+- **03c** and/or **09b** with ``save_load_id=True``
 
-Outputs and state updates
-- Results: processed dataset, fit results, and figures are saved under ``node.results``.
-- Set ``update_state=True`` to write filters; use ``update_iir`` and/or ``update_fir``
-  to choose which filters are committed.
-- Re-load a prior run with ``load_data_id``, tune fit settings in the GUI, then set
-  ``update_state_from_GUI=True`` to commit without re-acquiring data.
-REMINDER: Adding digital filters will add a global delay --> need to recalibrate IQ
-blobs (rotation_angle & ge_threshold) and XY–coupler delay.
+Outputs:
+- If ``update_state=True``, writes IIR and/or FIR according to ``update_iir`` / ``update_fir``.
+REMINDER: digital filters add a global delay — recalibrate IQ blobs and XY–coupler delay.
 """
 
 node = QualibrationNode[Parameters, Quam](
