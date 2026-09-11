@@ -85,7 +85,6 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, Dict[str, FitParamet
         qubit_pairs,
         ramsey_flux_amp=node.parameters.ramsey_flux_amplitude_in_v,
         qubit_flux_amp=getattr(node.parameters, "coupler_flux_amplitude_in_v", None),
-        log_callable=node.log,
     )
 
     ds = ds.copy()

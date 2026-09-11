@@ -24,8 +24,8 @@ def baked_coupler_waveform(config, waveform_amp: float, coupler, max_length: int
 class NodeSpecificParameters(RunnableParameters):
     """Specific parameters for coupler flux short distortion (cryoscope) characterization."""
 
-    num_shots: int = 5000
-    """Number of averages to perform. Default is 5000."""
+    num_shots: int = 200
+    """Number of averages to perform. Default is 200."""
     cryoscope_len: int = 240
     """Length of the cryoscope operation in nanoseconds. Default is 240."""
     num_frames: int = 17
