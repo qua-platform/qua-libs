@@ -1,7 +1,8 @@
 """Coupler flux short distortion (cryoscope) module.
 
-Local analysis handles coupler IQ scaling and dispersion→flux; plotting and
-cryoscope front-end helpers are re-exported from the qubit short package.
+Local analysis handles coupler IQ scaling and dispersion→flux. Grid figures
+use :class:`~calibration_utils.pair_grid.QubitPairGrid`; FIR/raw helpers are
+re-exported from the qubit short package.
 """
 
 from calibration_utils.qubit_flux_short_distortion import (
@@ -12,11 +13,10 @@ from calibration_utils.qubit_flux_short_distortion import (
 from calibration_utils.qubit_flux_short_distortion.plotting import (
     plot_fir_figures,
     plot_raw_data,
-    plot_raw_data_with_fit,
 )
-
 from .analysis import fit_fir_data, fit_raw_data, log_fitted_results, process_raw_dataset
 from .parameters import Parameters, baked_coupler_waveform
+from .plotting import plot_raw_data_with_fit
 
 __all__ = [
     "Parameters",

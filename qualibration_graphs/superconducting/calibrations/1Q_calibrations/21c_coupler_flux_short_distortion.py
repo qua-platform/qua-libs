@@ -419,10 +419,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot flux response and IIR fit (plus debug/FIR figures when enabled)."""
     if "ds_fit" not in node.results:
         return
-    if "qubits" not in node.namespace:
-        node.namespace["qubits"] = node.namespace["measured_qubits"]
-
-    qubits = node.namespace["qubits"]
+    qubit_pairs = node.namespace.get("qubit_pairs", get_qubit_pairs(node))
     ds_fit = node.results["ds_fit"]
     fit_results = node.results["fit_results"]
     fir_results = node.namespace.get("fir_results")
@@ -430,7 +427,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
     figures = plot_raw_data_with_fit(
         ds_fit,
-        qubits,
+        qubit_pairs,
         fit_results,
         debug=debug_plots,
         fir_results=fir_results,
@@ -438,9 +435,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     )
 
     if debug_plots:
-        figures.update(plot_raw_data(node.results["ds_raw"], qubits))
+        figures.update(plot_raw_data(node.results["ds_raw"], qubit_pairs))
         if fir_results:
-            figures.update(plot_fir_figures(ds_fit, qubits, fir_results, debug=True))
+            figures.update(plot_fir_figures(ds_fit, qubit_pairs, fir_results, debug=True))
 
     node.results["figures"] = figures
     plt.show()
