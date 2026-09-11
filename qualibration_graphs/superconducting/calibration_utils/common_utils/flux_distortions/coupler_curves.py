@@ -16,8 +16,8 @@ measured qubit — never entered by hand:
   run ID in ``extras['{coupler.name}_ramsey_vs_coupler_load_id']``
 
 ``resolve_coupler_freq_flux_curve`` is the single source-selection point (mirrors
-``resolve_freq_flux_curve``). There is no ``quad_term`` fallback; use
-``coupler_flux_amplitude_in_v`` on the node when no curve is available.
+``resolve_freq_flux_curve``). Pulse amplitude with ``source="auto"`` uses
+``coupler_flux_amplitude_in_v``; set ``spectroscopy`` / ``ramsey`` to invert a curve.
 
 Reference flux is the coupler **decouple point** (0 V in the played-relative frame),
 not the qubit idle sweetspot.
@@ -361,11 +361,21 @@ def resolve_coupler_flux_amplitudes(
     node: Optional[QualibrationNode[Any, Any]] = None,
     log_callable: Optional[LogCallable] = None,
 ) -> ResolvedCouplerFluxAmps:
-    """Derive per-pair coupler flux pulse amplitudes for a signed detuning."""
+    """Derive per-pair coupler flux pulse amplitudes for a signed detuning.
+
+    With ``freq_to_flux_source="auto"``, play ``fallback_amplitude_v`` when it is set.
+    ``spectroscopy`` / ``ramsey`` invert the loaded dispersion curve; the voltage is
+    then only a miss fallback.
+    """
     amplitudes: List[float] = []
     sources: List[str] = []
     freq_at_decouple_list: List[Optional[float]] = []
     curves: Dict[str, FreqFluxCurve] = {}
+    use_user_amp = (
+        freq_to_flux_source == "auto"
+        and fallback_amplitude_v is not None
+        and fallback_amplitude_v != 0
+    )
 
     for qp in qubit_pairs:
         qubit = qp.qubit_control if measure_qubit == "control" else qp.qubit_target
@@ -373,7 +383,10 @@ def resolve_coupler_flux_amplitudes(
         f_dec: Optional[float] = None
         label = "unavailable"
 
-        if node is not None:
+        if use_user_amp:
+            amp = float(fallback_amplitude_v)
+            label = f"coupler_flux_amplitude={amp:.4f} V (user input)"
+        elif node is not None:
             selected = resolve_coupler_freq_flux_curve(
                 qubit, qp.coupler, node, freq_to_flux_source, log_callable=log_callable
             )

@@ -45,7 +45,7 @@ class NodeSpecificParameters(RunnableParameters):
     Default figure (always): flux response vs time with the IIR fit overlay.
     """
     coupler_flux_amplitude_in_v: float = 0.1
-    """Fallback coupler flux amplitude in V when no dispersion curve is available in state."""
+    """Coupler flux pulse amplitude in V. Used when ``freq_to_flux_source`` is ``auto``."""
     measure_qubit: Literal["control", "target"] = "target"
     """Which qubit to measure: 'control' or 'target'. Default is 'target'."""
     buffer_during_operation_in_ns: int = 600
@@ -53,9 +53,12 @@ class NodeSpecificParameters(RunnableParameters):
     buffer_after_operation_in_ns: int = 600
     """Buffer time in ns after the operation to keep readout clean from the flux turn-off artifact."""
     freq_to_flux_source: Literal["auto", "spectroscopy", "ramsey"] = "auto"
-    """Which frequency→coupler-flux relation to use for amplitude derivation and analysis.
-    ``auto`` (default) tries 03c spectroscopy, then 09b Ramsey.
-    Run IDs are read from qubit extras — run 03c / 09b with ``save_load_id=True`` first."""
+    """How to pick the coupler flux-pulse amplitude and (for analysis) freq→flux inversion.
+
+    ``auto`` (default) plays ``coupler_flux_amplitude_in_v``; analysis still tries 03c
+    then 09b when inverting frequency to flux.
+    ``spectroscopy`` / ``ramsey`` invert the 03c / 09b curve for the pulse amplitude
+    (run IDs from qubit extras — run those nodes with ``save_load_id=True`` first)."""
 
 
 class Parameters(

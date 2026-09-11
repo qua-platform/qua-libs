@@ -50,12 +50,15 @@ class NodeSpecificParameters(RunnableParameters):
     (positive = above, negative = below); used to pick the cryoscope flux amplitude."""
 
     freq_to_flux_source: Literal["auto", "spectroscopy", "ramsey"] = "auto"
-    """Which frequency→coupler-flux relation to use when deriving the cryoscope amplitude.
-    ``auto`` (default) tries 03c spectroscopy, then 09b Ramsey.
-    Run IDs are read from qubit extras — run 03c / 09b with ``save_load_id=True`` first."""
+    """How to pick the cryoscope coupler flux-pulse amplitude and freq→flux inversion.
+
+    ``auto`` (default) plays ``coupler_flux_amplitude_in_v``; analysis still tries 03c
+    then 09b when inverting frequency to flux.
+    ``spectroscopy`` / ``ramsey`` invert the 03c / 09b curve for the pulse amplitude
+    (run IDs from qubit extras — run those nodes with ``save_load_id=True`` first)."""
 
     coupler_flux_amplitude_in_v: float = 0.1
-    """Fallback coupler flux pulse amplitude in V when no dispersion curve is available."""
+    """Coupler flux pulse amplitude in V. Used when ``freq_to_flux_source`` is ``auto``."""
 
     use_fir: bool = False
     """Run FIR analysis after IIR."""
