@@ -84,9 +84,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
     node.namespace["coupler_rf_centers"] = coupler_rf_centers
     coupler_ifs = {
-        qp.name: int(
-            coupler_rf_centers[qp.name] - qp.qubit_control.xy.opx_output.upconverter_frequency
-        )
+        qp.name: int(coupler_rf_centers[qp.name] - qp.qubit_control.xy.opx_output.upconverter_frequency)
         for qp in qubit_pairs
     }
 
@@ -151,9 +149,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         target = qp.qubit_target
                         control.reset(node.parameters.reset_type, node.parameters.simulate)
                         target.reset(node.parameters.reset_type, node.parameters.simulate)
-                        control.xy.update_frequency(
-                            df + coupler_ifs[qp.name] - if_update_by_pair[qp.name]
-                        )
+                        control.xy.update_frequency(df + coupler_ifs[qp.name] - if_update_by_pair[qp.name])
                     align()
 
                     for ii, qp in multiplexed_qubit_pairs.items():

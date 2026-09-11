@@ -34,15 +34,9 @@ def plot_raw_data_with_fit(
 
         fit = fit_results.get(pair_name)
         if fit is not None and fit.get("success", getattr(fit, "success", False)):
-            freq_ghz = (
-                fit["coupler_frequency_hz"] * 1e-9
-                if isinstance(fit, dict)
-                else fit.coupler_frequency_hz * 1e-9
-            )
+            freq_ghz = fit["coupler_frequency_hz"] * 1e-9 if isinstance(fit, dict) else fit.coupler_frequency_hz * 1e-9
             ax.axvline(freq_ghz, color="red", linestyle="--", alpha=0.5)
-            flux_mv = (
-                fit["coupler_flux_v"] * 1e3 if isinstance(fit, dict) else fit.coupler_flux_v * 1e3
-            )
+            flux_mv = fit["coupler_flux_v"] * 1e3 if isinstance(fit, dict) else fit.coupler_flux_v * 1e3
             ax.set_title(f"{pair_name}\nCoupler flux = {flux_mv:.2f} mV")
         else:
             ax.set_title(pair_name)
