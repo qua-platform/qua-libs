@@ -84,17 +84,17 @@ def plot_signal_phase(
 
 def plot_ramsey_fringe(
     ax: Axes,
-    ds_raw: xr.Dataset,
+    ds_proc: xr.Dataset,
     qubit: dict,
     fig: plt.Figure,
     *,
     log_scale: bool = False,
 ) -> None:
     """Plot Ramsey signal vs (time, frame rotation) on one axis."""
-    if "state" in ds_raw.data_vars:
+    if "state" in ds_proc.data_vars:
         signal_var = "state"
         cbar_label = "State"
-    elif "I" in ds_raw.data_vars:
+    elif "I" in ds_proc.data_vars:
         signal_var = "I"
         cbar_label = "I (V)"
     else:
@@ -102,7 +102,7 @@ def plot_ramsey_fringe(
         return
 
     qname = qubit["qubit"]
-    q_ds = ds_raw.sel(qubit=qname)
+    q_ds = ds_proc.sel(qubit=qname)
     if "frame" not in q_ds[signal_var].dims:
         ax.set_title(f"{qname} — no frame axis")
         return
@@ -144,7 +144,7 @@ def plot_raw_data_with_fit(
     fit_results: Dict,
     *,
     debug: bool = False,
-    ds_raw: Optional[xr.Dataset] = None,
+    ds_proc: Optional[xr.Dataset] = None,
     log_scale: bool = False,
 ) -> Dict[str, plt.Figure]:
     """Default figures: flux response (with IIR fit) only.
@@ -173,12 +173,12 @@ def plot_raw_data_with_fit(
     if not debug:
         return figures
 
-    if ds_raw is not None:
-        signal_key = "state" if "state" in ds_raw.data_vars else "I"
-        if signal_key in ds_raw.data_vars and "frame" in ds_raw[signal_key].dims:
-            grid_fringe = QubitGrid(ds_raw, grid_locations)
+    if ds_proc is not None:
+        signal_key = "state" if "state" in ds_proc.data_vars else "I"
+        if signal_key in ds_proc.data_vars and "frame" in ds_proc[signal_key].dims:
+            grid_fringe = QubitGrid(ds_proc, grid_locations)
             for ax, qubit in grid_iter(grid_fringe):
-                plot_ramsey_fringe(ax, ds_raw, qubit, grid_fringe.fig, log_scale=log_scale)
+                plot_ramsey_fringe(ax, ds_proc, qubit, grid_fringe.fig, log_scale=log_scale)
             grid_fringe.fig.suptitle("Debug: Ramsey signal vs (time, frame rotation)", fontsize=16)
             grid_fringe.fig.set_size_inches(15, 9)
             grid_fringe.fig.tight_layout()

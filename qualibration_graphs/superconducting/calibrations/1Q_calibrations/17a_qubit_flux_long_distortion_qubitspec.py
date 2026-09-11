@@ -285,6 +285,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process raw data and fit exponential components to the flux response data."""
     ds_proc = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_proc"] = ds_proc
     ds_fit, fit_results = fit_raw_data(ds_proc, node)
 
     node.results["ds_fit"] = ds_fit

@@ -54,7 +54,7 @@ from calibration_utils.common_utils.flux_distortions import (
     FitParameters,
     multi_exp_fit_global,
 )
-from calibration_utils.common_utils.flux_distortions.curves import (
+from calibration_utils.common_utils.flux_distortions.qubit_curves import (
     FreqFluxSource,
     frequency_to_flux_deviation,
     resolve_freq_flux_curve,

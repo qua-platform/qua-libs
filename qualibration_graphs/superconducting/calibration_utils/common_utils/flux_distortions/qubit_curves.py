@@ -45,10 +45,6 @@ LogCallable = Callable[[str], None]
 MeasuredCurve = Tuple[NDArray[np.floating], NDArray[np.floating]]
 FreqFluxKind = Literal["ramsey", "spectroscopy", "quad_term", "none"]
 
-#: Side of the parabola, for the low-level curve helpers only. Not a node
-#: parameter: at the sweetspot both sides are equivalent (see module docstring).
-Branch = Literal["left", "right"]
-
 #: Which freq↔flux relation to use. ``"auto"`` walks ``AUTO_SOURCE_ORDER`` and
 #: falls back to ``freq_vs_flux_01_quad_term``; the other values force one source
 #: and warn (instead of silently degrading) when it cannot be loaded.
@@ -303,6 +299,37 @@ def _source_run_id(qubit: AnyTransmon, kind: str) -> Optional[int]:
     return None
 
 
+def _resolve_measured_curve(
+    source: str,
+    *,
+    order: Tuple[str, ...],
+    loaders: Dict[str, Callable[[], Optional[MeasuredCurve]]],
+    run_id_for_kind: Callable[[str], Optional[int]],
+    label_for_kind: Callable[[str, Optional[int]], str],
+    log_forced_miss: Optional[Callable[[str], None]] = None,
+) -> Optional[FreqFluxCurve]:
+    """Try measured sources in order; return the first loadable curve."""
+    candidates = order if source == "auto" else (source,)
+
+    for kind in candidates:
+        loader = loaders.get(kind)
+        if loader is None:
+            continue
+        curve = loader()
+        if curve is not None:
+            rid = run_id_for_kind(kind)
+            return FreqFluxCurve(
+                kind=kind,  # type: ignore[arg-type]
+                label=label_for_kind(kind, rid),
+                curve=curve,
+                run_id=rid,
+            )
+        if source != "auto" and log_forced_miss is not None:
+            log_forced_miss(kind)
+
+    return None
+
+
 def resolve_freq_flux_curve(
     qubit: AnyTransmon,
     source: FreqFluxSource = "auto",
@@ -339,32 +366,29 @@ def resolve_freq_flux_curve(
         ``kind == "none"`` when neither a curve nor a usable quadratic term
         exists; callers decide whether that is fatal.
     """
-    if source == "quad_term":
-        candidates: Tuple[str, ...] = ()
-    elif source == "auto":
-        candidates = AUTO_SOURCE_ORDER
-    else:
-        candidates = (source,)
-
-    for kind in candidates:
-        if kind == "ramsey":
-            curve = load_ramsey_curve(qubit, log_callable=log_callable)
-        elif kind == "spectroscopy":
-            curve = load_spectroscopy_curve(qubit, log_callable=log_callable)
-        else:
-            curve = None
-        if curve is not None:
-            rid = _source_run_id(qubit, kind)
-            pretty = "Ramsey" if kind == "ramsey" else "spectroscopy"
-            return FreqFluxCurve(kind=kind, label=f"{pretty} #{rid}", curve=curve, run_id=rid)
-        if source != "auto":
-            extras_key = RAMSEY_EXTRAS_KEY if kind == "ramsey" else SPECTROSCOPY_EXTRAS_KEY
-            if log_callable is not None:
-                log_callable(
+    if source != "quad_term":
+        measured = _resolve_measured_curve(
+            source,
+            order=AUTO_SOURCE_ORDER,
+            loaders={
+                "ramsey": lambda: load_ramsey_curve(qubit, log_callable=log_callable),
+                "spectroscopy": lambda: load_spectroscopy_curve(qubit, log_callable=log_callable),
+            },
+            run_id_for_kind=lambda kind: _source_run_id(qubit, kind),
+            label_for_kind=lambda kind, rid: f"{'Ramsey' if kind == 'ramsey' else 'spectroscopy'} #{rid}",
+            log_forced_miss=(
+                lambda kind: log_callable(
                     f"{qubit.name}: freq_to_flux_source='{kind}' was requested but no usable curve "
-                    f"could be loaded (extras['{extras_key}'] missing or unreadable). Falling back to "
-                    f"freq_vs_flux_01_quad_term — re-run the source calibration with save_load_id=True."
+                    f"could be loaded (extras['{RAMSEY_EXTRAS_KEY if kind == 'ramsey' else SPECTROSCOPY_EXTRAS_KEY}'] "
+                    f"missing or unreadable). Falling back to freq_vs_flux_01_quad_term — re-run the source "
+                    f"calibration with save_load_id=True."
                 )
+                if log_callable is not None
+                else None
+            ),
+        )
+        if measured is not None:
+            return measured
 
     qt = getattr(qubit, "freq_vs_flux_01_quad_term", None)
     if qt is not None and qt != 0 and np.isfinite(qt):
@@ -392,7 +416,6 @@ def flux_amp_from_curve(
     detuning_hz: float,
     idle_freq_hz: float,
     curve: MeasuredCurve,
-    branch: Optional[Branch] = None,
 ) -> Optional[float]:
     """Invert a freq-vs-flux curve to a Z-pulse amplitude for a target detuning.
 
@@ -401,9 +424,9 @@ def flux_amp_from_curve(
         f_target = idle_freq_hz − |detuning_hz|
 
     Idle flux is the curve sample whose frequency is closest to ``idle_freq_hz``.
-    On the selected branch (or full curve), find zero-crossings of
-    ``curve_freq − f_target`` and linearly interpolate flux between the two
-    flanking points. No spline — discrete crossing + lerp.
+    Find zero-crossings of ``curve_freq − f_target`` on the full curve and
+    linearly interpolate flux between flanking points. Returns the smallest |ΔΦ|
+    from idle (either side of the sweetspot is equivalent for IIR tap ratios).
 
     Parameters
     ----------
@@ -413,50 +436,31 @@ def flux_amp_from_curve(
         Idle / sweetspot frequency (Hz), usually ``qubit.xy.RF_frequency``.
     curve :
         ``(flux_V, freq_Hz)`` from ``load_spectroscopy_curve`` / ``load_ramsey_curve``.
-    branch :
-        ``\"right\"`` / ``\"left\"`` — restrict to flux ≥ / ≤ idle flux and return
-        the **signed** ΔΦ of the first crossing.
-        ``None`` — search the whole curve, pick the crossing with smallest
-        |ΔΦ|, return **|ΔΦ|** (used by short-distortion / 17c).
 
     Returns
     -------
     float or None
-        Flux offset from idle in volts, or ``None`` if the branch has < 2 points
-        or ``f_target`` never crosses the curve.
+        |ΔΦ| from idle in volts, or ``None`` if ``f_target`` never crosses the curve.
     """
     curve_flux, curve_freq = curve
     target_freq = idle_freq_hz - abs(detuning_hz)
     idle_flux = float(curve_flux[int(np.argmin(np.abs(curve_freq - idle_freq_hz)))])
 
-    if branch == "right":
-        mask = curve_flux >= idle_flux
-        b_flux, b_freq = curve_flux[mask], curve_freq[mask]
-    elif branch == "left":
-        mask = curve_flux <= idle_flux
-        b_flux, b_freq = curve_flux[mask], curve_freq[mask]
-    else:
-        b_flux, b_freq = curve_flux, curve_freq
-
-    if len(b_flux) < 2:
+    if len(curve_flux) < 2:
         return None
 
-    diff = b_freq - target_freq
+    diff = curve_freq - target_freq
     crossings = np.where(np.diff(np.sign(diff)))[0]
     if len(crossings) == 0:
         return None
 
     def _lerp_delta(i: int) -> float:
-        f1, f2 = b_freq[i], b_freq[i + 1]
-        x1, x2 = b_flux[i], b_flux[i + 1]
+        f1, f2 = curve_freq[i], curve_freq[i + 1]
+        x1, x2 = curve_flux[i], curve_flux[i + 1]
         frac = (target_freq - f1) / (f2 - f1) if abs(f2 - f1) > 0 else 0.0
         return float(x1 + frac * (x2 - x1) - idle_flux)
 
-    if branch is not None:
-        return _lerp_delta(int(crossings[0]))
-
-    best = min((_lerp_delta(int(i)) for i in crossings), key=abs)
-    return abs(best)
+    return abs(min((_lerp_delta(int(i)) for i in crossings), key=abs))
 
 
 def _strictly_increasing_in_freq(
@@ -625,8 +629,8 @@ def resolve_flux_amplitudes(
 
     Given that relation:
 
-    * **Measured curve** (Ramsey / spectroscopy) → ``flux_amp_from_curve`` over
-      the whole curve, taking the smallest-|ΔΦ| crossing on either side.
+    * **Measured curve** (Ramsey / spectroscopy) → ``flux_amp_from_curve`` on
+      the full curve, taking the smallest-|ΔΦ| crossing on either side of idle.
     * **Quadratic** → ``sqrt(|detuning| / |quad_term|)``.
 
     Amplitudes are magnitudes: the qubit is assumed to be at its sweetspot, so
@@ -664,8 +668,7 @@ def resolve_flux_amplitudes(
         curves[q.name] = selected
 
         if selected.is_measured:
-            # branch=None: smallest |ΔΦ| crossing on either side of idle.
-            amp = flux_amp_from_curve(detuning_hz, idle, selected.curve, None)
+            amp = flux_amp_from_curve(detuning_hz, idle, selected.curve)
             if amp is None:
                 if log_callable is not None:
                     log_callable(
