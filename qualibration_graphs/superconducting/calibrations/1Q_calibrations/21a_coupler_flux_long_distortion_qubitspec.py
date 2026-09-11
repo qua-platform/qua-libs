@@ -34,35 +34,21 @@ from quam_config import Quam
 description = """
 Long coupler flux distortion (π spectroscopy path).
 
-Same idea as **17a** — see ``17a_qubit_flux_long_distortion_qubitspec.py`` for the physics.
+Same as **17a**, but the long pulse is on the coupler and a neighbour qubit is the
+sensor. See ``17a_qubit_flux_long_distortion_qubitspec.py`` for the physics.
 
-Workflow:
-For each qubit pair, load the coupler-flux dispersion curve (played-relative
-frame: 0 V = the coupler's parked decouple point), look up the qubit frequency
-at that decouple point, and compute the coupler flux-pulse AMPLITUDE that achieves
-the **signed** ``detuning_in_mhz`` from that reference frequency. Then sweep
-XY-drive detuning vs coupler flux-pulse duration to characterise the coupler
-flux-line step response.
-Analysis: extract center frequency vs time, map to coupler flux via ``freq_to_flux_source``,
-fit a sum of decaying exponentials, optionally write IIR taps to the coupler.
+Coupler pulse amplitude is chosen so the measured qubit sits at signed
+``detuning_in_mhz`` from its frequency at ``decouple_offset`` (played 0 V = parked
+coupler). Sweep XY detuning vs pulse duration, invert frequency → coupler flux, fit
+IIR exponentials.
 
 Prerequisites:
-- π pulse and XY–coupler delay on the measured qubit (``measure_qubit``)
+- π pulse, XY–coupler delay, and IQ blobs / threshold if using state discrimination
 - **03c** and/or **09b** with ``save_load_id=True``
 
-Prerequisites
-- A valid rotation angle and threshold if using state discrimination
-- Calibrated XY-Coupler delay
-- A calibrated pi-pulse
-- Completed 03c (qubit spectroscopy vs coupler flux) and/or 09b (Ramsey vs coupler
-  flux) with ``save_load_id=True`` so run IDs land in qubit extras.
-
-Outputs and state updates
-- Results: processed dataset, fit results, and figures are saved under ``node.results``.
-- If ``update_state=True`` and fits succeed, updates ``state.json`` for the coupler at
-  ``coupler.opx_output.exponential_filter`` with cascade coefficients ``(A_c, tau_c)``.
-REMINDER: Adding digital filters will add a global delay --> need to recalibrate IQ
-blobs (rotation_angle & ge_threshold) and XY-Coupler delay.
+Outputs:
+- If ``update_state=True`` and the fit succeeds, writes ``coupler.opx_output.exponential_filter``.
+REMINDER: digital filters add a global delay — recalibrate IQ blobs and XY–coupler delay.
 """
 
 node = QualibrationNode[Parameters, Quam](

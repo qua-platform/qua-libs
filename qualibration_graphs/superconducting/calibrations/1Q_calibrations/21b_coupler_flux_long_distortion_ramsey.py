@@ -30,34 +30,19 @@ from quam_config import Quam
 description = """
 Long coupler flux distortion (Ramsey path).
 
-Same idea as **17b** — see ``17b_qubit_flux_long_distortion_ramsey.py`` for the physics.
+Same as **17b**, but the long pulse is on the coupler and a neighbour qubit is the
+sensor. See ``17b_qubit_flux_long_distortion_ramsey.py`` for the physics.
 
-Workflow:
-For each qubit pair, play a long **coupler** flux pulse and probe the accumulated
-Ramsey phase at variable delay times (with frame rotation). A co-measured reference
-Ramsey amplitude sweep on the coupler (no long pulse) provides the phase→flux
-calibration. Then sweep delay vs frame rotation to characterise the coupler
-flux-line step response.
-Analysis: fit frame-rotation oscillations → phase(t); invert the reference
-phase-vs-amp curve to get effective coupler flux; form the step response; fit a sum
-of decaying exponentials, optionally write IIR taps to the coupler.
+A long coupler flux pulse is probed by Ramsey phase vs delay; a co-measured coupler
+amplitude sweep (no long pulse) gives the phase → flux map. Fit IIR exponentials.
 
 Prerequisites:
-- x90 and XY–coupler delay on the measured qubit (``measure_qubit``)
-- ``coupler_flux_amplitude_in_v`` and Ramsey probe/sweep set so the reference covers the phase swing
+- x90, XY–coupler delay, and IQ blobs / threshold if using state discrimination
+- ``coupler_flux_amplitude_in_v`` and Ramsey probe set so the reference covers the phase swing
 
-Prerequisites
-- A valid rotation angle and threshold if using state discrimination
-- Calibrated XY-Coupler delay
-- A calibrated x90 pulse
-- Sensible ``coupler_flux_amplitude_in_v`` / Ramsey probe amp (reference amp sweep covers the phase range)
-
-Outputs and state updates
-- Results: processed dataset, fit results, and figures are saved under ``node.results``.
-- If ``update_state=True`` and fits succeed, updates ``state.json`` for the coupler at
-  ``coupler.opx_output.exponential_filter`` with cascade coefficients ``(A_c, tau_c)``.
-REMINDER: Adding digital filters will add a global delay --> need to recalibrate IQ
-blobs (rotation_angle & ge_threshold) and XY-Coupler delay.
+Outputs:
+- If ``update_state=True`` and the fit succeeds, writes ``coupler.opx_output.exponential_filter``.
+REMINDER: digital filters add a global delay — recalibrate IQ blobs and XY–coupler delay.
 """
 
 node = QualibrationNode[Parameters, Quam](

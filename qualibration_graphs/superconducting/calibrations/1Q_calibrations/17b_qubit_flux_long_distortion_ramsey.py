@@ -59,7 +59,7 @@ Outputs and state updates
 REMINDER: Digital filters add a global delay — recalibrate IQ blobs
 (rotation_angle & ge_threshold) and (16a) XYZ_delay.
 
-Ref: https://arxiv.org/abs/2111.13504
+Ref: Hellings et al., arXiv:2503.04610 — long-timescale in-situ flux-line IIR.
 """
 
 node = QualibrationNode[Parameters, Quam](

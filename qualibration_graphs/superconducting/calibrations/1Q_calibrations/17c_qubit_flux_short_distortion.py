@@ -67,6 +67,9 @@ Outputs and state updates
   `update_state_from_GUI=True` to commit without re-acquiring data.
 REMINDER: digital filters add a global delay — recalibrate IQ blobs
 (rotation_angle & ge_threshold) and (16a) XYZ_delay.
+
+Ref: Rol et al., Appl. Phys. Lett. 116, 054001 (2020) [arXiv:1907.04818] — Cryoscope:
+Ramsey phase vs truncated flux-pulse length, frequency from dφ/dt, then IIR/FIR correction.
 """
 
 node = QualibrationNode[Parameters, Quam](
