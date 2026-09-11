@@ -1,0 +1,31 @@
+from typing import Literal
+
+from qualibrate.core import NodeParameters
+from qualibrate.core.parameters import RunnableParameters
+from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
+from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
+
+
+class NodeSpecificParameters(RunnableParameters):
+    num_shots: int = 100
+    """Number of averages to perform. Default is 100."""
+    min_wait_time_in_ns: int = 16
+    """Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns."""
+    max_wait_time_in_ns: int = 10_000
+    """Maximum pulse duration in nanoseconds. Default is 10000 ns (10 us)."""
+    time_step_in_ns: int = 52
+    """Step size for the pulse duration sweep in nanoseconds. Default is 52 ns."""
+    operation: Literal["x180", "x90"] = "x180"
+    """The operation to perform to drive the qubit."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
+
+
+class Parameters(
+    NodeParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+    HeraldedInitializeParameters,
+    QubitsExperimentNodeParameters,
+):
+    """Parameter set for 10a_time_rabi."""
