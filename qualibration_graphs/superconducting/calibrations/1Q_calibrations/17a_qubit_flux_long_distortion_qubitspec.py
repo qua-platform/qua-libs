@@ -58,6 +58,8 @@ Outputs and state updates
 - Results: processed dataset, fit results, and figures are saved under `node.results`.
 - If `update_state=True` and fits succeed, the script updates `state.json` per qubit at `z.opx_output.exponential_filter` with the cascade coefficients `(A_c, tau_c)` derived from the fit.
 REMINDER: Adding digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold) and (16a) XYZ_delay. It is also worth looking at (09a) Ramsey vs Flux as well
+
+Ref: Hellings et al., arXiv:2503.04610 — long-timescale in-situ flux-line IIR.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -285,6 +287,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process raw data and fit exponential components to the flux response data."""
     ds_proc = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_proc"] = ds_proc
     ds_fit, fit_results = fit_raw_data(ds_proc, node)
 
     node.results["ds_fit"] = ds_fit

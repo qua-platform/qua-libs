@@ -24,7 +24,6 @@ from .plotting import (
     plot_freq_vs_flux_curve,
     plot_iq_abs,
     plot_raw_data_with_fit,
-    plot_spectroscopy_curve,
 )
 
 __all__ = [
@@ -47,5 +46,4 @@ __all__ = [
     "plot_flux_response",
     "plot_iq_abs",
     "plot_freq_vs_flux_curve",
-    "plot_spectroscopy_curve",
 ]

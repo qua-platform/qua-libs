@@ -16,8 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
 
     num_shots: int = 50
     """Number of shots to acquire."""
-    duration_in_ns: int = 5000000
-    """Maximum duration of the qubit flux pulse in nanoseconds."""
+    duration_in_ns: int = 10_000
+    """Maximum duration of the qubit flux pulse in nanoseconds (default 10 µs)."""
     time_axis: Literal["linear", "log"] = "log"
     """Time axis scale for the delay sweep."""
     time_step_in_ns: int = 48

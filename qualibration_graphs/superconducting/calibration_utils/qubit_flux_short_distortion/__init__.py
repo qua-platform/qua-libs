@@ -21,7 +21,6 @@ from .plotting import (
     plot_fir_figures,
     plot_raw_data,
     plot_raw_data_with_fit,
-    plot_spectroscopy_curve,
 )
 
 __all__ = [
@@ -41,5 +40,4 @@ __all__ = [
     "plot_raw_data_with_fit",
     "plot_raw_data",
     "plot_fir_figures",
-    "plot_spectroscopy_curve",
 ]

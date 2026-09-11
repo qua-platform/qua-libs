@@ -1,7 +1,6 @@
-"""Ramsey-based qubit flux long distortion characterization and filter design."""
+"""Ramsey vs coupler flux calibration for long flux distortion — Ramsey path in coupler distortion cascade."""
 
 # %%
-
 from __future__ import annotations
 
 import warnings
@@ -10,7 +9,7 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from calibration_utils.qubit_flux_long_distortion_ramsey import (
+from calibration_utils.coupler_flux_long_distortion_ramsey import (
     Parameters,
     fit_raw_data,
     log_fitted_results,
@@ -22,48 +21,35 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualibrate import QualibrationNode
-from calibration_utils.common_utils.flux_distortions import update_filters
+from calibration_utils.common_utils.flux_distortions import update_coupler_filters
 from qualibration_libs.data import XarrayDataFetcher
-from qualibration_libs.parameters import get_qubits
+from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
-# %%
 description = """
-Long qubit flux distortion characterization using Ramsey interferometry.
+Long coupler flux distortion (Ramsey path).
 
-This protocol measures the effective qubit flux-line step response by playing a long
-qubit flux pulse and probing the accumulated Ramsey phase at variable delay times
-(with frame rotation). A co-measured reference Ramsey amplitude sweep (no long pulse)
-provides the phase→flux calibration.
+Same as **17b**, but the long pulse is on the coupler and a neighbour qubit is the
+sensor. See ``17b_qubit_flux_long_distortion_ramsey.py`` for the physics.
 
-Workflow:
-For each qubit, sweep frame rotation and delay after the onset of the long flux pulse.
-At each delay, play x90 – wait – frame_rotation – x90 while a short flux probe
-(`ramsey_flux_amplitude_in_v`) is applied during the Ramsey window.
-Analysis: fit frame-rotation oscillations → phase(t); invert the reference
-phase-vs-amp curve to get effective flux; form the step response; fit a sum of
-decaying exponentials.
-State update (optional): write cascade coefficients to `z.opx_output.exponential_filter`.
+A long coupler flux pulse is probed by Ramsey phase vs delay; a co-measured coupler
+amplitude sweep (no long pulse) gives the phase → flux map. Fit IIR exponentials.
 
-Prerequisites
-- Rotation angle and threshold if using state discrimination
-- Calibrated XYZ delay (16a)
-- Calibrated x90 pulse
-- Sensible `qubit_flux_amplitude_in_v` / Ramsey probe amp (reference amp sweep covers the phase range)
+Prerequisites:
+- x90, XY–coupler delay, and IQ blobs / threshold if using state discrimination
+- ``coupler_flux_amplitude_in_v`` and Ramsey probe set so the reference covers the phase swing
 
-Outputs and state updates
-- Results: processed dataset, fit results, and figures under `node.results`
-- If `update_state=True` and fits succeed, updates `state.json` per qubit at
-  `z.opx_output.exponential_filter` with cascade `(A_c, tau_c)`
-REMINDER: Digital filters add a global delay — recalibrate IQ blobs
-(rotation_angle & ge_threshold) and (16a) XYZ_delay.
-
-Ref: Hellings et al., arXiv:2503.04610 — long-timescale in-situ flux-line IIR.
+Outputs:
+- If ``update_state=True`` and the fit succeeds, writes ``coupler.opx_output.exponential_filter``.
+REMINDER: digital filters add a global delay — recalibrate IQ blobs and XY–coupler delay.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="17b_qubit_flux_long_distortion_ramsey", description=description, parameters=Parameters(), machine=Quam.load()
+    name="21b_coupler_flux_long_distortion_ramsey",
+    description=description,
+    parameters=Parameters(),
+    machine=Quam.load(),
 )
 
 
@@ -76,7 +62,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 # Instantiate machine
 stored_machine = Quam.load()
 
-# Store fit configuration set from GUI so it survives load_from_id round-trips.
+# store fitting parameter and GUI flag set from GUI
 loaded_n_exponentials = node.parameters.n_exponentials
 stored_gui_update_flag = node.parameters.update_state_from_GUI
 
@@ -84,9 +70,18 @@ stored_gui_update_flag = node.parameters.update_state_from_GUI
 # %% {Create_qua_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Create the sweep axes and generate the QUA program for Ramsey vs qubit flux measurement."""
-    node.namespace["qubits"] = qubits = get_qubits(node)
-    num_qubits = len(qubits)
+    """Create the sweep axes and generate the QUA program for Ramsey vs coupler flux measurement."""
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
+    num_qubit_pairs = len(qubit_pairs)
+
+    measured_qubits = []
+    for qp in qubit_pairs:
+        if node.parameters.measure_qubit == "control":
+            measured_qubits.append(qp.qubit_control)
+        else:
+            measured_qubits.append(qp.qubit_target)
+    node.namespace["measured_qubits"] = measured_qubits
+    node.namespace["qubits"] = measured_qubits
 
     # Time sweep — linear or log scale
     if node.parameters.time_axis == "linear":
@@ -105,9 +100,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         )
         times = np.unique(times)
 
-    # The finite-pulse model attenuates each component by (1 - exp(-T_pulse/tau)),
-    # so a charging pulse shorter than the longest delay probed leaves the slow
-    # components barely excited and the fit poorly conditioned.
     settle_ns = node.parameters.flux_settle_time_in_ns
     max_delay_ns = int(4 * times.max())
     if settle_ns < max_delay_ns:
@@ -119,7 +111,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             f"flux_settle_time_in_ns to >= duration_in_ns or lower duration_in_ns."
         )
 
-    qubit_flux_amp = node.parameters.qubit_flux_amplitude_in_v
+    coupler_flux_amp = node.parameters.coupler_flux_amplitude_in_v
     frames = np.arange(0, 1, 1 / node.parameters.num_frame_rotations)
     ref_amplitudes = node.parameters.ramsey_flux_amplitude_in_v + np.linspace(
         -node.parameters.ramsey_flux_sweep_range_in_v,
@@ -129,98 +121,119 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["ref_amplitudes"] = ref_amplitudes
 
     node.namespace["sweep_axes"] = {
-        "qubit": xr.DataArray(qubits.get_names()),
+        "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
         "frame": xr.DataArray(frames, attrs={"long_name": "frame rotation", "units": "2π"}),
         "time": xr.DataArray(4 * times, attrs={"long_name": "Ramsey sequence time", "units": "ns"}),
     }
 
     with program() as qua_prog:
-        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
-        I_ref, I_st_ref, Q_ref, Q_st_ref, _, _ = node.machine.declare_qua_variables()
+        I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
+        I_ref, I_st_ref, Q_ref, Q_st_ref, _, _ = node.machine.declare_qua_variables(num_IQ_pairs=num_qubit_pairs)
         if node.parameters.use_state_discrimination:
-            state = [declare(int) for _ in range(num_qubits)]
-            state_st = [declare_stream() for _ in range(num_qubits)]
-            state_st_ref = [declare_stream() for _ in range(num_qubits)]
+            state = [declare(int) for _ in range(num_qubit_pairs)]
+            state_st = [declare_stream() for _ in range(num_qubit_pairs)]
+            state_st_ref = [declare_stream() for _ in range(num_qubit_pairs)]
 
         frame = declare(fixed)
         t_delay = declare(int)
         a = declare(fixed)
 
-        for multiplexed_qubits in qubits.batch():
-            for qubit in multiplexed_qubits.values():
-                node.machine.initialize_qpu(target=qubit)
+        for multiplexed_qubit_pairs in qubit_pairs.batch():
+            for qp in multiplexed_qubit_pairs.values():
+                node.machine.initialize_qpu(target=qp.qubit_control)
+                node.machine.initialize_qpu(target=qp.qubit_target)
             align()
 
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
-                # Reference Ramsey (no long qubit flux pulse)
+
+                # Reference Ramsey (no long coupler flux pulse)
                 with for_(*from_array(a, ref_amplitudes)):
                     with for_(*from_array(frame, frames)):
-                        for ii, qubit in multiplexed_qubits.items():
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            protagonist_qubit = (
+                                qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+                            )
+                            protagonist_qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                         align()
 
-                        for ii, qubit in multiplexed_qubits.items():
-                            qubit.xy.play("x90")
-                            qubit.z.wait(8)
-                            qubit.z.align(qubit.xy.name)
-                            qubit.z.play(
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            protagonist_qubit = (
+                                qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+                            )
+                            protagonist_qubit.xy.play("x90")
+                            qp.coupler.align(protagonist_qubit.xy.name)
+                            qp.coupler.wait(8)
+                            qp.coupler.play(
                                 "const",
-                                amplitude_scale=a / qubit.z.operations["const"].amplitude,
+                                amplitude_scale=a / qp.coupler.operations["const"].amplitude,
                                 duration=node.parameters.ramsey_wait_time_in_ns // 4,
                             )
-                            qubit.z.wait(8)
-                            qubit.z.align(qubit.xy.name)
-                            qubit.xy.frame_rotation_2pi(frame)
-                            qubit.xy.play("x90")
+                            qp.coupler.wait(8)
+                            qp.coupler.align(protagonist_qubit.xy.name)
+                            protagonist_qubit.xy.frame_rotation_2pi(frame)
+                            protagonist_qubit.xy.play("x90")
                             align()
 
-                        for ii, qubit in multiplexed_qubits.items():
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            protagonist_qubit = (
+                                qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+                            )
                             if node.parameters.use_state_discrimination:
-                                qubit.readout_state(state[ii])
+                                protagonist_qubit.readout_state(state[ii])
                                 save(state[ii], state_st_ref[ii])
                             else:
-                                qubit.resonator.measure("readout", qua_vars=(I_ref[ii], Q_ref[ii]))
+                                protagonist_qubit.resonator.measure("readout", qua_vars=(I_ref[ii], Q_ref[ii]))
                                 save(I_ref[ii], I_st_ref[ii])
                                 save(Q_ref[ii], Q_st_ref[ii])
                     align()
 
-                # Signal Ramsey (with long qubit flux pulse + variable delay)
+                # Signal Ramsey (with long coupler flux pulse + variable delay)
                 with for_(*from_array(frame, frames)):
                     with for_each_(t_delay, times):
-                        for ii, qubit in multiplexed_qubits.items():
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                            qubit.wait(times.max())
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            protagonist_qubit = (
+                                qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+                            )
+                            protagonist_qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                        # Extra wait to ensure long distortions have fully decayed between repetitions
+                        wait(times.max())
                         align()
 
-                        for ii, qubit in multiplexed_qubits.items():
-                            qubit.z.play(
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            protagonist_qubit = (
+                                qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+                            )
+                            qp.coupler.play(
                                 "const",
-                                amplitude_scale=qubit_flux_amp / qubit.z.operations["const"].amplitude,
+                                amplitude_scale=coupler_flux_amp / qp.coupler.operations["const"].amplitude,
                                 duration=node.parameters.flux_settle_time_in_ns // 4,
                             )
-                            qubit.xy.wait(node.parameters.flux_settle_time_in_ns // 4 + t_delay)
-                            qubit.xy.play("x90")
-                            qubit.z.align(qubit.xy.name)
-                            qubit.z.wait(8)
-                            qubit.z.play(
+                            protagonist_qubit.xy.wait(node.parameters.flux_settle_time_in_ns // 4 + t_delay)
+                            protagonist_qubit.xy.play("x90")
+                            qp.coupler.align(protagonist_qubit.xy.name)
+                            qp.coupler.wait(8)
+                            qp.coupler.play(
                                 "const",
                                 amplitude_scale=node.parameters.ramsey_flux_amplitude_in_v
-                                / qubit.z.operations["const"].amplitude,
+                                / qp.coupler.operations["const"].amplitude,
                                 duration=node.parameters.ramsey_wait_time_in_ns // 4,
                             )
-                            qubit.z.wait(8)
-                            qubit.z.align(qubit.xy.name)
-                            qubit.xy.frame_rotation_2pi(frame)
-                            qubit.xy.play("x90")
+                            qp.coupler.wait(8)
+                            qp.coupler.align(protagonist_qubit.xy.name)
+                            protagonist_qubit.xy.frame_rotation_2pi(frame)
+                            protagonist_qubit.xy.play("x90")
                             align()
 
-                        for ii, qubit in multiplexed_qubits.items():
+                        for ii, qp in multiplexed_qubit_pairs.items():
+                            protagonist_qubit = (
+                                qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
+                            )
                             if node.parameters.use_state_discrimination:
-                                qubit.readout_state(state[ii])
+                                protagonist_qubit.readout_state(state[ii])
                                 save(state[ii], state_st[ii])
                             else:
-                                qubit.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
+                                protagonist_qubit.resonator.measure("readout", qua_vars=(I[ii], Q[ii]))
                                 save(I[ii], I_st[ii])
                                 save(Q[ii], Q_st[ii])
                         align()
@@ -230,7 +243,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
-            for i in range(num_qubits):
+            for i in range(num_qubit_pairs):
                 if node.parameters.use_state_discrimination:
                     state_st[i].buffer(len(times)).buffer(node.parameters.num_frame_rotations).average().save(
                         f"state{i + 1}"
@@ -277,9 +290,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     qmm = node.machine.connect()
     config = node.machine.generate_config()
 
-    num_q = len(node.namespace["sweep_axes"]["qubit"])
-    qubit_names = [q.name for q in node.namespace["qubits"]]
-    ref_handle_names = [f"{prefix}{i + 1}" for i in range(num_q) for prefix in ("state_ref", "I_ref", "Q_ref")]
+    num_qp = len(node.namespace["sweep_axes"]["qubit_pair"])
+    # Key the "qubit" dim by UNIQUE pair names (measured-qubit names repeat when
+    # several pairs share a measured target — as on some chips — and would collapse under
+    # .sel/groupby, yielding a 2-D slice that crashes _map_phase_to_amplitude). The
+    # measured-qubit name is kept as a side coordinate for display only.
+    qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
+    measured_qubit_names = [q.name for q in node.namespace["measured_qubits"]]
+    ref_handle_names = [f"{prefix}{i + 1}" for i in range(num_qp) for prefix in ("state_ref", "I_ref", "Q_ref")]
     frame_coords = node.namespace["sweep_axes"]["frame"].values
     ref_amplitudes = node.namespace["ref_amplitudes"]
 
@@ -308,6 +326,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             progress_counter(data_fetcher.get("n", 0), node.parameters.num_shots, start_time=data_fetcher.t_start)
         node.log(job.execution_report())
 
+        if "qubit_pair" in dataset.dims:
+            dataset = dataset.rename({"qubit_pair": "qubit"})
+            dataset = dataset.assign_coords(qubit=qubit_pair_names)
+            dataset = dataset.assign_coords(measured_qubit_name=("qubit", measured_qubit_names))
+
         # On the cloud backend (CloudResultHandles), `handle.fetch_all()` only
         # returns data for streams that were registered with `fetching_tool`.
         # Because XarrayDataFetcher excluded the ref handles above, we open a
@@ -328,7 +351,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         for prefix in ("state_ref", "I_ref", "Q_ref"):
             arrays = []
-            for i in range(num_q):
+            for i in range(num_qp):
                 _val = _ref_data_map.get(f"{prefix}{i + 1}")
                 if _val is not None:
                     arrays.append(np.asarray(_val))
@@ -336,7 +359,7 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 dataset[prefix] = xr.DataArray(
                     np.stack(arrays, axis=0),
                     dims=["qubit", "a", "frame"],
-                    coords={"qubit": qubit_names, "a": ref_amplitudes, "frame": frame_coords},
+                    coords={"qubit": qubit_pair_names, "a": ref_amplitudes, "frame": frame_coords},
                 )
 
     node.results["ds_raw"] = dataset
@@ -350,8 +373,29 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.load_from_id(node.parameters.load_data_id)
     node.parameters.load_data_id = load_data_id
 
-    node.namespace["qubits"] = get_qubits(node)
+    node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
 
+    measured_qubits = []
+    for qp in qubit_pairs:
+        if node.parameters.measure_qubit == "control":
+            measured_qubits.append(qp.qubit_control)
+        else:
+            measured_qubits.append(qp.qubit_target)
+    node.namespace["measured_qubits"] = measured_qubits
+    node.namespace["qubits"] = measured_qubits
+
+    if "qubit_pair" in node.results["ds_raw"].dims:
+        # Unique pair-name coordinate; measured-qubit name kept as a side coordinate
+        # (see execute_qua_program for why duplicate measured-target names break .sel).
+        qubit_pair_names = [qp.name for qp in qubit_pairs]
+        measured_qubit_names = [q.name for q in measured_qubits]
+        node.results["ds_raw"] = node.results["ds_raw"].rename({"qubit_pair": "qubit"})
+        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(qubit=qubit_pair_names)
+        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(
+            measured_qubit_name=("qubit", measured_qubit_names)
+        )
+
+    # Overwrite the loaded node parameters with the ones defined from the GUI
     node.parameters.n_exponentials = loaded_n_exponentials
     node.parameters.update_state_from_GUI = stored_gui_update_flag
     if node.parameters.update_state_from_GUI:
@@ -370,6 +414,11 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
+    node.outcomes = {
+        pair_name: ("successful" if node.results["fit_results"].get(pair_name, {}).get("success", False) else "failed")
+        for pair_name in qubit_pair_names
+    }
 
 
 # %% {Plot_data}
@@ -378,10 +427,10 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot flux response and exponential fits (plus debug raw/ref if enabled)."""
     if "ds_fit" not in node.results:
         return
-    qubits = node.namespace.get("qubits", get_qubits(node))
+    qubit_pairs = node.namespace.get("qubit_pairs", get_qubit_pairs(node))
     node.results["figures"] = plot_raw_data_with_fit(
         node.results["ds_fit"],
-        qubits,
+        qubit_pairs,
         node.results["fit_results"],
         ds_proc=node.results.get("ds_proc"),
         debug=node.parameters.debug_plots,
@@ -393,18 +442,17 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Update IIR filter tabs on qubit z-line if fitting was successful."""
+    """Update IIR filter tabs on coupler if fitting was successful."""
     if not node.parameters.update_state:
         return
 
-    qubits = node.namespace["qubits"]
+    skip_pairs = {qp.name for qp in node.namespace["qubit_pairs"] if node.outcomes.get(qp.name) == "failed"}
 
     with node.record_state_updates():
-        update_filters(
-            qubits,
-            node.machine,
+        update_coupler_filters(
+            node.namespace["qubit_pairs"],
             node.results["fit_results"],
-            update_iir=True,
+            skip_pairs=skip_pairs,
             log_callable=node.log,
         )
 
@@ -414,3 +462,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Save all node results and persist state."""
     node.save()
+
+
+# %%
