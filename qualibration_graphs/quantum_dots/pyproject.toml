@@ -2,7 +2,7 @@
 name = "quantum-dots-calibrations"
 version = "0.1.0"
 description = "QM Quantum Dots Calibration Graphs"
-readme = "../README.md"
+readme = "README.md"
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.10"
 classifiers = [
