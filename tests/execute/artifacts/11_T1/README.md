@@ -1,0 +1,112 @@
+# 11_T1
+
+## Description
+
+
+        T1 RELAXATION TIME MEASUREMENT - using standard QUA (pulse > 16ns and 4ns granularity)
+The goal of this script is to measure the longitudinal (spin-lattice) relaxation time T1 of the qubit.
+T1 characterizes how quickly an excited qubit state decays back to the ground state (thermal equilibrium of ensemble) due to energy exchange
+with the environment. This sets the fundamental upper limit for qubit coherence and readout fidelity.
+
+The QUA program is divided into three sections:
+    1) step between the initialization point and the operation point using sticky elements (long timescale).
+    2) apply a pi pulse to excite the qubit, then wait for a variable idle time (short timescale).
+    3) measure the state of the qubit using RF reflectometry via parity readout.
+
+The measurement sequence is:
+    - Initialize qubit to ground state (with optional conditional pi pulse for active reset).
+    - Apply a pi pulse to flip the spin to the excited state.
+    - Wait for variable delay time tau.
+    - Measure the qubit state via parity readout.
+
+The excited state population decays exponentially as P(t) = exp(-t/T1), and fitting this decay curve
+yields the T1 relaxation time. Longer T1 times indicate better isolation from environmental noise sources
+such as phonons, charge noise, and Johnson noise from the measurement circuit.
+
+Prerequisites:
+    - Readout calibration (resonance frequency for RF reflectometry and sensor operating point).
+    - Setting the DC offsets of the external DC voltage source.
+    - Connecting the OPX to the fast line of the plunger gates.
+    - Having calibrated the initialization and readout point from the charge stability map.
+    - Having calibrated the pi pulse parameters (amplitude and duration) from Rabi measurements.
+
+Analysis:
+    - Fits P(τ) = offset + A·exp(−τ/T₁) via profiled differential
+      evolution (1-D search over T₁, linear solve for offset and A).
+
+Before proceeding to the next node:
+    - Verify T₁ is sufficiently long for intended gate sequences.
+
+State updates:
+    - qubit.T1
+
+
+## Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `analysis_signal` | `E_p2_given_p1_0` | Which conditional expectation to use for fitting.
+E_p2_given_p1_0: P(second=1 | first=0) — post-select on empty dot.
+E_p2_given_p1_1: P(second=1 | first=1) — post-select on loaded dot. |
+| `multiplexed` | `False` | Whether to play control pulses, readout pulses and active/thermal reset at the same time for all qubits (True)
+or to play the experiment sequentially for each qubit (False). Default is False. |
+| `use_state_discrimination` | `False` | Whether to use on-the-fly state discrimination and return the qubit 'state', or simply return the demodulated
+quadratures 'I' and 'Q'. Default is False. |
+| `reset_wait_time` | `5000` | The wait time for qubit reset. |
+| `qubits` | `['q1', 'q2']` | A list of qubit names which should participate in the execution of the node. Default is None. |
+| `num_shots` | `10` | Number of averages to perform. Default is 100. |
+| `tau_min` | `16` | Minimum pulse duration in nanoseconds. Must be larger than 4 clock cycles. Default is 16 ns. |
+| `tau_max` | `10000` | Maximum pulse duration in nanoseconds. Default is 100000 ns (10 µs). |
+| `tau_step` | `100` | Step size for the pulse duration sweep in nanoseconds. Default is 16 ns. |
+| `operation` | `x180` | Name of the qubit operation to perform. Default is 'x180'. |
+| `simulate` | `False` | Simulate the waveforms on the OPX instead of executing the program. Default is False. |
+| `simulation_duration_ns` | `40000` | Duration over which the simulation will collect samples (in nanoseconds). Default is 50_000 ns. |
+| `use_waveform_report` | `True` | Whether to use the interactive waveform report in simulation. Default is True. |
+| `timeout` | `120` | Waiting time for the OPX resources to become available before giving up (in seconds). Default is 120 s. |
+| `load_data_id` | `None` | Optional QUAlibrate node run index for loading historical data. Default is None. |
+
+## Execution Output
+
+![Figure](figure.png)
+
+
+## Fit Results
+
+### virtual_dot_1
+| Parameter | Value |
+|-----------|-------|
+| `T1` | `1184.1315093072408` |
+| `amplitude` | `0.03747858741642729` |
+| `offset` | `0.5088398684751202` |
+| `decay_rate` | `0.0008445007941601315` |
+| `success` | `True` |
+
+### virtual_dot_2
+| Parameter | Value |
+|-----------|-------|
+| `T1` | `98999.99999867889` |
+| `amplitude` | `0.5979423012837578` |
+| `offset` | `-0.15662064192481925` |
+| `decay_rate` | `1.0101010101144895e-05` |
+| `success` | `True` |
+
+
+## State Updates
+
+| Parameter | Before | After |
+|-----------|--------|-------|
+| `qubits.q1.T1` | `None` | `1184.1315093072408` |
+| `qubits.q2.T1` | `None` | `98999.99999867889` |
+
+
+## Metadata
+
+| Key | Value |
+|-----|-------|
+| Timestamp | 2026-04-29T00:44:38 UTC |
+| Node | 11_T1 |
+| Duration | 9.7s |
+| Status | completed |
+
+---
+*Generated by execute test infrastructure*
