@@ -10,7 +10,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.bias_tee_filters_single_shot import (
     Parameters,

@@ -15,7 +15,7 @@ from qualibrate.core import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 
 from calibration_utils.psb_search_sweep_detuning_vs_buffer import (
     Parameters,

@@ -3,12 +3,8 @@ from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD, LossDiVincenz
 
 
 # Define the QUAM class that will be used in all calibration nodes
-# Should inherit from BaseQuamQD
+# This inherits right now from LossDiVincenzoQuam, which is the Qubit layer
+# If you only need the QD layer, change this line to inherit from BaseQuamQD
 @quam_dataclass
-class Quam(BaseQuamQD):
-    pass
-
-
-@quam_dataclass
-class QubitQuam(LossDiVincenzoQuam):
+class Quam(LossDiVincenzoQuam):
     pass

@@ -9,7 +9,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 from calibration_utils.single_qubit_randomized_benchmarking import (
     Parameters,
     build_single_qubit_clifford_tables,

@@ -12,7 +12,7 @@ from qualang_tools.loops import from_array
 from quam_builder.architecture.quantum_dots.operations.names import VoltagePointName
 from qualibrate.core import QualibrationNode
 from qualibration_libs.parameters.experiment import get_qubit_pairs
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 from calibration_utils.psb_search_sweep_detuning import (
     Parameters,
     assemble_ds_raw,

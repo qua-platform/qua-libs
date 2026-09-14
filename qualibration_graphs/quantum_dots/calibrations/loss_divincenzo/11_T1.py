@@ -10,7 +10,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 from calibration_utils.T1 import (
     Parameters,
     fit_raw_data,

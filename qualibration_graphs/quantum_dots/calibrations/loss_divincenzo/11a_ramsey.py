@@ -11,7 +11,7 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 from calibration_utils.ramsey import (
     Parameters,
     fit_raw_data,
