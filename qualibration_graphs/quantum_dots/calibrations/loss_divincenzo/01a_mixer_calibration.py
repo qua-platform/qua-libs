@@ -15,7 +15,7 @@ from calibration_utils.mixer_calibration import (
     log_fitted_results,
     plot_all,
 )
-from qualibration_libs.parameters import get_qubits
+from qualibration_libs.parameters.experiment import get_qubits
 
 # %% {Node initialization}
 description = """

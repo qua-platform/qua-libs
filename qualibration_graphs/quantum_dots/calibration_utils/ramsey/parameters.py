@@ -16,6 +16,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of averages to perform. Default is 100."""
     frequency_detuning_in_mhz: float = 0.25
     """Frequency detuning in MHz. Default is 1.0 MHz."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 
 class Parameters(

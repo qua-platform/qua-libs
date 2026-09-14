@@ -1,6 +1,6 @@
 # %% {Imports}
 from qualibrate.core import QualibrationNode, NodeParameters
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 
 description = """
         CLOSE ALL QMs.

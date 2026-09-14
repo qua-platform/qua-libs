@@ -21,6 +21,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Short idle time in ns (gives wide fringes for coarse localisation)."""
     idle_time_long_ns: int = 400
     """Long idle time in ns (gives narrow fringes for precision + T2* via amplitude ratio)."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 
 class Parameters(

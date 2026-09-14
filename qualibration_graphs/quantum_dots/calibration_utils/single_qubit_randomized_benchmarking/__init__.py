@@ -8,6 +8,7 @@ from .clifford_tables import (
 from .qua_macros import play_rb_gate
 from .analysis import process_raw_dataset, fit_raw_data, log_fitted_results, analyse_raw_data
 from .plotting import plot_raw_data_with_fit, plot_all
+from .simulated_data_generator import generate_simulated_dataset
 
 __all__ = [
     "Parameters",
@@ -22,4 +23,5 @@ __all__ = [
     "analyse_raw_data",
     "plot_raw_data_with_fit",
     "plot_all",
+    "generate_simulated_dataset",
 ]

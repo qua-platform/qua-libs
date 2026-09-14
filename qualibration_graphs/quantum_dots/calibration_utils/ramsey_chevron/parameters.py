@@ -18,6 +18,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Frequency detuning span. Default 5MHz."""
     detuning_step_in_mhz: float = 0.1
     """Frequency detuning step. Default 0.1MHz"""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 
 class Parameters(

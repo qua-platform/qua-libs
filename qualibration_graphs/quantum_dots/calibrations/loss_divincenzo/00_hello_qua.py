@@ -130,7 +130,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
-    qmm = node.machine.connect(timeout=500)
+    qmm = node.machine.connect()
     # Get the config from the machine
     config = node.machine.generate_config()
     # Simulate the QUA program, generate the waveform report and plot the simulated samples

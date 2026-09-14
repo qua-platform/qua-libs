@@ -15,7 +15,7 @@ from qualibrate.core import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 
 from calibration_utils.psb_search_sweep_detuning_vs_buffer import (
     Parameters,
@@ -74,7 +74,6 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.use_simulated_data = True
     pass
 
 
@@ -286,8 +285,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
-    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
