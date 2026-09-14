@@ -40,7 +40,8 @@ class InitializeMacroParameters(RunnableParameters):
 class MeasureMacroParameters(RunnableParameters):
     pass
 
-
+# A combined class to emit all the macro related parameters. 
+# Be sure to include any additional params as attrs or a subclass of MacroParameters
 class MacroParameters(InitializeMacroParameters, MeasureMacroParameters):
     """Batch all the macro related parameters to export in a single class"""
     pass
