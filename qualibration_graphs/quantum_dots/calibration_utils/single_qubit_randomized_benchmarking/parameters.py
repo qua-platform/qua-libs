@@ -31,6 +31,8 @@ class NodeSpecificParameters(RunnableParameters):
     """If True, use log-scale depths: 2, 4, 8, 16, ... up to max_circuit_depth. Default is True."""
     seed: Optional[int] = None
     """Seed for the QUA pseudo-random number generator. Default is None (random)."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
 
 
 class Parameters(

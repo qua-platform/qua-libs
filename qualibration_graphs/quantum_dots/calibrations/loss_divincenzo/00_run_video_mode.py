@@ -1,5 +1,5 @@
 from qualibrate.core import QualibrationNode
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 from calibration_utils.common_utils.experiment import get_sensors
 from calibration_utils.run_video_mode import (
     Parameters,

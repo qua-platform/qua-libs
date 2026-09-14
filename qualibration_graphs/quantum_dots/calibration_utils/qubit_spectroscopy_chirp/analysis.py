@@ -206,7 +206,7 @@ def fit_raw_data(
     fit_results = {k: vars(v) for k, v in threshold_results.items()}
     log_fitted_results(fit_results, log_callable=log_callable, label="Threshold")
 
-    ds_fit: Optional[xr.Dataset] = None
+    ds_fit: Optional[xr.Dataset] = ds.copy()
     peak_fit_results: Optional[dict] = None
     if node.parameters.fit_peak:
         ds_fit, peak_results = _fit_raw_data(ds, node)

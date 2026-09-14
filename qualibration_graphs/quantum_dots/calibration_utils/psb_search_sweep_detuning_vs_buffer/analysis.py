@@ -89,9 +89,11 @@ def analyse_detuning_vs_buffer(ds_raw: xr.Dataset) -> xr.Dataset:
     )
 
 
-def fit_detuning_vs_buffer_raw_data(node) -> tuple[xr.Dataset, dict[str, FitParameters]]:
+def fit_detuning_vs_buffer_raw_data(
+    ds_processed: xr.Dataset,
+    node,
+) -> tuple[xr.Dataset, dict[str, FitParameters]]:
     """Analyse the processed dataset and extract the best 2D operating point per pair."""
-    ds_processed = node.results["ds_processed"]
     metric_name = node.parameters.pca_metric
     ds_fit = analyse_detuning_vs_buffer(ds_processed)
 
