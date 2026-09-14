@@ -35,7 +35,7 @@ such as ``qubit.initialize()``, ``qubit_pair.initialize()``, and
 
 from typing import Optional, Literal
 
-from quam_builder.architecture.quantum_dots.operations import CustomMacro
+from quam_builder.architecture.quantum_dots import CustomMacro
 from quam.core import quam_dataclass
 
 from qm.qua import align, strict_timing_, assign, declare, if_, while_, Cast
