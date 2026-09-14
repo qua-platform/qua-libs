@@ -1,6 +1,8 @@
 """
 Use this script to populate QuantumDotPair components with custom macros, as created in my_macros.py
 
+This script is especially useful for updating only a sub-set of QuantumDotPair's macros.
+
 These custom state macros operate at the level of the QuantumDotPair. This means that
 qubit.initialize() and qubit_pair.initialize() are quantum_dot_pair.initialize() under the hood, and 
 the same goes for the measure macro. 
