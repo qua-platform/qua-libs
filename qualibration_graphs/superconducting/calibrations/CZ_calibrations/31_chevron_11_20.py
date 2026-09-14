@@ -75,7 +75,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # node.parameters.qubit_pairs = ["q1-q2"]
     pass
 
 
@@ -98,7 +97,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     qubit_roles_map = {}
     for qp in qubit_pairs:
         verify_moving_qubit(
-            qubit_pair=qp,
+            qp=qp,
             operation=node.parameters.operation,
             repair_routing=True,
             log_callable=node.log,
@@ -418,3 +417,5 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
     node.save()
+
+# %%
