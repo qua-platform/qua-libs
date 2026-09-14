@@ -23,7 +23,7 @@ from typing import List
 from quam_builder.architecture.quantum_dots.macro_engine import wire_machine_macros
 from quam_builder.architecture.quantum_dots.operations.names import SingleQubitMacroName
 
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 from quam_config import InitializeMacro, MeasureMacro
 
 # ### Helper function which allows you to choose the dot pairs to update
