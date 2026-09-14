@@ -101,7 +101,7 @@ visualize(connectivity.elements, instruments.available_channels)
 
 user_input = input("Do you want to save the updated QUAM? (y/n)")
 if user_input.lower() == "y":
-    machine = BaseQuamQD()
+    machine = BaseQuamQD() # First create a BaseQuamQD
     build_quam_wiring(
         connectivity,
         host_ip,
