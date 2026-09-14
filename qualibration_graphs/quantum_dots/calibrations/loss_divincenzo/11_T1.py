@@ -276,7 +276,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for qubit in node.namespace["qubits"]:
-            if not node.results["fit_results"][qubit.name]["success"]:
+            if node.outcomes[qubit.name] == "failed":
                 continue
             fit_result = node.results["fit_results"][qubit.name]
             qubit.T1 = fit_result["T1"] * 1e-9

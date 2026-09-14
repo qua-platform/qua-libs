@@ -62,7 +62,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="08a_chirped_qubit_spectroscopy",  # Name should be unique
+    name="08a_qubit_spectroscopy_chirp",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under quam_experiment/experiments/node_name
 )
@@ -258,7 +258,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Fit the spectroscopy response and store both the fitted dataset and fit summary."""
-    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
     (
         node.results["ds_fit"],
         node.results["fit_results"],
@@ -272,7 +272,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot processed data and fit overlays; store figures in ``node.results["figures"]``."""
     node.results["figures"] = plot_all(
-        node.results.get("ds_processed", node.results["ds_raw"]),
+        node.results["ds_fit"],
         node.namespace["qubits"],
         fits=node.results.get("ds_fit"),
         threshold_results=node.results["fit_results"],

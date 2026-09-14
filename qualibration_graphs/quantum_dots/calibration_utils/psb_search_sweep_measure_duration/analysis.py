@@ -27,6 +27,7 @@ __all__ = [
 
 
 def fit_measure_duration_raw_data(
+    ds_processed: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict]:
     """Fit ``node.results['ds_raw']`` per qubit pair and per sweep point.
@@ -39,5 +40,4 @@ def fit_measure_duration_raw_data(
     ds_fit, fit_results
         Same contract as :func:`calibration_utils.common_utils.iq_utils.iq_sweep.fit_raw_data_pca_gaussian`.
     """
-    ds_for_fit = node.results.get("ds_processed", node.results["ds_raw"])
-    return fit_raw_data_pca_gaussian(ds_for_fit, node)
+    return fit_raw_data_pca_gaussian(ds_processed, node)

@@ -1,10 +1,7 @@
 # %% {Imports}
-import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-
-logger = logging.getLogger(__name__)
 
 from qm.qua import *
 
@@ -291,7 +288,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
         for qubit in node.namespace["qubits"]:
-            if not node.results["fit_results"][qubit.name]["success"]:
+            if node.outcomes[qubit.name] == "failed":
                 continue
 
             fit_result = node.results["fit_results"][qubit.name]

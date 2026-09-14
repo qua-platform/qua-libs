@@ -251,8 +251,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process ``ds_raw``, fit the data, and store processed data plus fit outputs in ``ds_fit``."""
-    node.results["ds_processed"] = ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
-    node.results["ds_fit"], fit_results = fit_raw_data(node)
+    ds_processed = process_raw_dataset(node.results["ds_raw"].copy(deep=True), node)
+    node.results["ds_fit"], fit_results = fit_raw_data(ds_processed, node)
     node.results["fit_results"] = {str(name): asdict(result) for name, result in fit_results.items()}
 
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
@@ -270,7 +270,6 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_fit"],
         node.namespace["qubits"],
         node.results["fit_results"],
-        ds_raw=node.results["ds_processed"],
         analysis_model=node.parameters.analysis_model,
     )
     if not node.modes.external:

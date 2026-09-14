@@ -80,16 +80,16 @@ def gmm_analytic_fidelity(means, stds, _weights, t_grid=None):
 
 
 def fit_fixed_detuning_raw_data(
+    ds_processed: xr.Dataset,
     node: QualibrationNode,
 ) -> Tuple[xr.Dataset, Dict[str, FitParameters]]:
     """Fit 06d labeled IQ shots with the selected Barthel or GMM model."""
 
-    ds_for_fit = node.results.get("ds_processed", node.results["ds_raw"])
     qubits = node.namespace["qubits"]
 
     if node.parameters.analysis_model == "barthel":
         with _barthel_clip_compat():
-            ds_fit, fit_results = fit_raw_data(ds_for_fit, node)
+            ds_fit, fit_results = fit_raw_data(ds_processed, node)
         # fit_raw_data reports confusion-matrix fidelity; replace with the analytic
         # model optimum stored in ds_fit.fidelity_opt (same as fit_barthel_mixed_iq).
         for qubit in qubits:
@@ -97,8 +97,8 @@ def fit_fixed_detuning_raw_data(
         return ds_fit, fit_results
 
     if node.parameters.analysis_model == "gmm":
-        fit_results, ds_fit = fit_gmm_labeled(ds_for_fit, qubits)
-        return ds_fit, fit_results
+        fit_results, ds_fit = fit_gmm_labeled(ds_processed, qubits)
+        return xr.merge([ds_processed, ds_fit]), fit_results
 
     raise ValueError(f"Unsupported analysis_model={node.parameters.analysis_model!r}.")
 

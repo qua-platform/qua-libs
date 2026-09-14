@@ -1,10 +1,7 @@
 # %% {Imports}
-import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-
-logger = logging.getLogger(__name__)
 
 from qm.qua import *
 
@@ -310,7 +307,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 qubit.larmor_frequency = qubit.larmor_frequency + fit_result["freq_offset"]
 
             except ValueError as exc:
-                logger.warning("%s: skipping state update — %s", qubit.name, exc)
+                node.log(f"{qubit.name}: skipping state update - {exc}")
                 node.outcomes[qubit.name] = "failed"
 
 
