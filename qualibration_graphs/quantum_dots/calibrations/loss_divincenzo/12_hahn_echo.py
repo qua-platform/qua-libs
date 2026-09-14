@@ -71,6 +71,7 @@ node = QualibrationNode[Parameters, Quam](name="12_hahn_echo", description=descr
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow local parameter overrides for debugging (ignored in the GUI / graph)."""
+    # You can get type hinting in your IDE by typing node.parameters.
     pass
 
 

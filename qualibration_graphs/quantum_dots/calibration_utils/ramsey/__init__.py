@@ -6,6 +6,7 @@ from .analysis import (
     analyse_raw_data,
 )
 from .plotting import plot_raw_data_with_fit, plot_all
+from .simulated_data_generator import generate_simulated_dataset
 
 __all__ = [
     "Parameters",
@@ -15,4 +16,5 @@ __all__ = [
     "analyse_raw_data",
     "plot_raw_data_with_fit",
     "plot_all",
+    "generate_simulated_dataset",
 ]

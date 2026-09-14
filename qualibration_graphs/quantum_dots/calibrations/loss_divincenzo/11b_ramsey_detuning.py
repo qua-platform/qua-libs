@@ -14,10 +14,11 @@ from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate.core import QualibrationNode
-from quam_config import Quam
+from quam_config import QubitQuam as Quam
 from calibration_utils.ramsey_detuning import (
     Parameters,
     fit_raw_data,
+    generate_simulated_dataset,
     log_fitted_results,
     plot_all,
     process_raw_dataset,
@@ -85,7 +86,7 @@ node.machine = Quam.load()
 
 
 # %% {Create_QUA_program}
-@node.run_action(skip_if=node.parameters.load_data_id is not None)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.use_simulated_data)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Build the 2D detuning × two-τ Ramsey sweep and the QUA pulse sequence."""
 
@@ -197,7 +198,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None
+    or not node.parameters.simulate
+    or node.parameters.use_simulated_data
+)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program."""
     # Connect to the QOP
@@ -215,7 +220,9 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Execute}
-@node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
+@node.run_action(
+    skip_if=node.parameters.load_data_id is not None or node.parameters.simulate or node.parameters.use_simulated_data
+)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data and store it in a xarray dataset called "ds_raw"."""
     # Connect to the QOP
@@ -238,6 +245,14 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.log(job.execution_report())
     # Register the raw dataset
     node.results["ds_raw"] = dataset
+
+
+# %% {Generate_simulated_data}
+@node.run_action(skip_if=not node.parameters.use_simulated_data)
+def generate_simulated_data(node: QualibrationNode[Parameters, Quam]):
+    """Generate simulated Ramsey detuning data so the full analysis pipeline can run without hardware."""
+    node.results["ds_raw"] = generate_simulated_dataset(node)
+    node.log("[sim] Simulated dataset generated successfully.")
 
 
 # %% {Load_historical_data}
@@ -281,7 +296,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
 
