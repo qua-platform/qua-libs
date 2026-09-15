@@ -233,7 +233,9 @@ def _sinc_refined_prefactor(signal_1d: xr.DataArray, coarse: float, n_pulse_valu
     step = float(np.median(np.abs(np.diff(x))))
     half_window = max(SINC_FIT_LOBES * lobe, 0.5 * SINC_FIT_MIN_POINTS * step)
     lo, hi = max(coarse - half_window, float(x.min())), min(coarse + half_window, float(x.max()))
-    win = (x >= lo) & (x <= hi) #A boolean mask, one entry per amplitude point: True if that point lies inside the window [lo, hi]
+    win = (x >= lo) & (
+        x <= hi
+    )  # A boolean mask, one entry per amplitude point: True if that point lies inside the window [lo, hi]
     if not lo < coarse < hi or win.sum() < 5:
         return float("nan")
     x_w, y_w = x[win], y[win]
