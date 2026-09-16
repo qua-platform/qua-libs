@@ -104,7 +104,9 @@ If the duration cannot be known ahead of time, returning `None` is fine.
 
 ## Who `owner` Usually Is
 
-For these state macros, the `owner` is designed to be a `QuantumDotPair`.
+For these state macros, the `owner` is designed to be a `QuantumDotPair`. The reason for this 
+is that in many spin qubit/quantum dot experiments, initialization and measurement is done 
+pair-wise; our Quam structure mirrors this real, physical experimental structure. 
 
 That is why many macros access things like:
 
