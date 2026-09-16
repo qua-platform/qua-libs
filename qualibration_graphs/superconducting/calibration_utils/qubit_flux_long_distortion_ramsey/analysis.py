@@ -278,8 +278,9 @@ def _compute_flux_response(
                 f"signal phase swing = {sig_frac:.2f} x 2pi, "
                 f"reference span = {ref_frac:.2f} x 2pi, "
                 f"points dropped = {oor_frac:.0%}. "
-                "Per-point np.round branch selection is exact only while phase stays within "
-                "one 2pi window — fitted distortion shape may be aliased "
+                "Per-point branch selection is exact only while phase stays within "
+                "one 2pi window — fitted distortion shape may be aliased. "
+                "Widen ramsey_flux_sweep_range_in_v or lower the long-pulse / Ramsey probe amplitude "
                 "(see warning on flux-response figures)."
             )
 
