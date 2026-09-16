@@ -4,7 +4,6 @@ from quam_config import Quam
 from quam_builder.architecture.quantum_dots.operations.names import (
     DrivePulseName, 
     VoltagePointName, # For adding state points
-    SingleQubitMacroName, # For wiring the macros
 )
 
 ########################################################################################################################
@@ -222,33 +221,6 @@ machine.update_cross_compensation_submatrix(
 #         duration=1000,
 #     )
 
-
-####################################
-# %%   Wire the machine macros #####
-####################################
-
-from quam_builder.architecture.quantum_dots.macro_engine import wire_machine_macros
-
-# Import the Initialize & Measure macros from my_macros.py
-# You can add your own custom macros, make sure they are imported and wired in here
-from quam_config import (
-    InitializeMacro, 
-    MeasureMacro,
-)
-
-# This script wires the macros into all QuantumDotPairs 
-dot_pairs = machine.quantum_dot_pairs.keys()
-
-wire_machine_macros(
-    machine=machine,
-    instance_overrides={
-        f"quantum_dot_pairs.{qdp}": {
-            SingleQubitMacroName.INITIALIZE: InitializeMacro,
-            # SingleQubitMacroName.MEASURE: MeasureMacro,
-        }
-        for qdp in dot_pairs
-    },
-)
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM
