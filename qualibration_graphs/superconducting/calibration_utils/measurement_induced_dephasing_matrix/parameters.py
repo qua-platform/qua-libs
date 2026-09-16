@@ -40,8 +40,10 @@ class NodeSpecificParameters(RunnableParameters):
     """Contrast points whose fitted amplitude is below min_contrast_snr times its own uncertainty are
     considered fully dephased (noise floor) and excluded from the Gamma fit. Default is 2.0."""
     max_crosstalk_dephasing_in_hz: float = 1e3
-    """A qubit is marked as successful if all of its off-diagonal dephasing rates stay below this
-    value. Default is 1e3 Hz."""
+    """A qubit is marked as successful if the magnitude of every one of its off-diagonal dephasing
+    rates stays below this value. The magnitude is used rather than the signed rate because a fit on
+    an unresolvably small crosstalk can return a large negative rate, which is just as unphysical as
+    a large positive one. Default is 1e3 Hz."""
     plot_phase_oscillations: bool = False
     """Whether to produce the (large) diagnostic figure showing every phase oscillation together with
     its sinusoidal fit. Default is False."""

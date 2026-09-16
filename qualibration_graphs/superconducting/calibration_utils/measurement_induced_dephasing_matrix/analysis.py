@@ -35,7 +35,12 @@ from .parameters import build_xi_values
 
 @dataclass
 class FitParameters:
-    """Per measured-qubit summary of the measurement-induced dephasing matrix."""
+    """Per measured-qubit summary of the measurement-induced dephasing matrix.
+
+    ``max_crosstalk_dephasing_hz`` is the signed rate of the off-diagonal element with the largest
+    magnitude, and ``worst_crosstalk_resonator`` names that element's driven resonator. The sign is
+    kept because a large negative rate is an unphysical fit rather than low crosstalk.
+    """
 
     self_dephasing_hz: float
     self_dephasing_error_hz: float
@@ -247,9 +252,14 @@ def _extract_relevant_fit_parameters(
     ds_fit = ds_fit.assign(is_diagonal=is_diagonal)
 
     crosstalk = ds_fit.Gamma.where(~is_diagonal)
+    # The pass criterion is applied to the magnitude of the rate. A fit on a pair whose crosstalk is
+    # too small to resolve returns a slope consistent with zero, which can come out negative; a large
+    # negative rate is just as unphysical as a large positive one and must not pass as "low
+    # crosstalk" simply because it is small in the signed sense.
+    crosstalk_magnitude = np.abs(crosstalk)
     threshold = node.parameters.max_crosstalk_dephasing_in_hz
     # A NaN crosstalk element means its fit did not converge, which we do not want to pass silently.
-    success = (crosstalk.max(dim="driven_resonator") < threshold) & (
+    success = (crosstalk_magnitude.max(dim="driven_resonator") < threshold) & (
         crosstalk.notnull().sum(dim="driven_resonator") == len(ds_fit.driven_resonator) - 1
     )
     ds_fit = ds_fit.assign(success=success)
@@ -258,8 +268,10 @@ def _extract_relevant_fit_parameters(
     for q in ds_fit.qubit.values:
         crosstalk_q = crosstalk.sel(qubit=q)
         if bool(crosstalk_q.notnull().any()):
-            worst = str(crosstalk_q.idxmax(dim="driven_resonator").values)
-            worst_value = float(crosstalk_q.max())
+            # The worst element is the one with the largest magnitude, but the rate reported for it
+            # keeps its sign so that an unphysical negative fit stays visible in the logged result.
+            worst = str(crosstalk_magnitude.sel(qubit=q).idxmax(dim="driven_resonator").values)
+            worst_value = float(crosstalk_q.sel(driven_resonator=worst))
         else:
             worst, worst_value = "", np.nan
         fit_results[str(q)] = FitParameters(
