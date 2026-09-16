@@ -49,8 +49,9 @@ class MyInitializeMacro(CustomMacro, MyInitializeAttributes):
 
 ## What `Parameters` Means
 
-The `Parameters` class attribute is the bridge between a macro and the IDE
-parameters shown in Qualibrate nodes.
+The `Parameters` class attribute is the bridge between a macro's necessary attributes, 
+and Qualibrate's Parameter usage. This allows you to store the macro attributes and the node 
+parameters in the same class. 
 
 `my_macros.py` uses it like this:
 
