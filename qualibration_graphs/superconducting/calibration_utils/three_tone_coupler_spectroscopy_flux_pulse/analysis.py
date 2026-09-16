@@ -9,8 +9,6 @@ import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
 
-from .parameters import resolve_coupler_rf_centers_by_pair
-
 LogCallable = Callable[[str], None]
 
 
@@ -26,18 +24,6 @@ class FitResults:
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """Add derived coordinates and IQ amplitude when needed."""
     qubit_pairs = node.namespace["qubit_pairs"]
-    dfs = node.namespace["dfs"]
-    coupler_rf_centers = node.namespace.get("coupler_rf_centers") or resolve_coupler_rf_centers_by_pair(
-        qubit_pairs,
-        node.parameters.rf_frequency_startpoint_in_hz,
-        coupler_band=node.parameters.coupler_band,
-        idle_detuning_hz=abs(float(node.parameters.coupler_idle_detuning_in_ghz)) * 1e9,
-    )
-    rf_freq = np.array([dfs + coupler_rf_centers[qp.name] for qp in qubit_pairs])
-    ds = ds.assign_coords(freq_full_control=(["qubit", "freq"], rf_freq))
-    ds.freq_full_control.attrs["long_name"] = "Coupler drive frequency"
-    ds.freq_full_control.attrs["units"] = "Hz"
-
     flux_values = np.array(
         [node.parameters.coupler_flux_in_v + qp.coupler.decouple_offset for qp in qubit_pairs],
         dtype=float,

@@ -160,6 +160,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         for ii, qp in multiplexed_qubit_pairs.items():
                             control = qp.qubit_control
                             target = qp.qubit_target
+                            # Idle IF first so active-reset x180 addresses the qubit, not the previous coupler drive.
+                            control.xy.update_frequency(control.xy.intermediate_frequency)
                             control.reset(node.parameters.reset_type, node.parameters.simulate)
                             target.reset(node.parameters.reset_type, node.parameters.simulate)
                             control.xy.update_frequency(df + coupler_ifs[qp.name] - if_update_by_pair[qp.name])
@@ -243,10 +245,20 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             )
         node.log(job.execution_report())
 
+    qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
     if "qubit_pair" in dataset.dims:
-        qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
         dataset = dataset.rename({"qubit_pair": "qubit"})
         dataset = dataset.assign_coords(qubit=qubit_pair_names)
+    dfs = node.namespace["dfs"]
+    coupler_rf_centers = node.namespace["coupler_rf_centers"]
+    dataset = dataset.assign_coords(
+        freq_full_control=(
+            ["qubit", "freq"],
+            np.array([dfs + coupler_rf_centers[name] for name in qubit_pair_names]),
+        )
+    )
+    dataset.freq_full_control.attrs["long_name"] = "Coupler drive frequency"
+    dataset.freq_full_control.attrs["units"] = "Hz"
     node.results["ds_raw"] = dataset
 
 
@@ -259,14 +271,6 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
 
     node.namespace["qubit_pairs"] = get_qubit_pairs(node)
-    if "freq" in node.results["ds_raw"].dims:
-        node.namespace["dfs"] = node.results["ds_raw"].freq.values
-    if "flux" in node.results["ds_raw"].dims:
-        node.namespace["fluxes"] = node.results["ds_raw"].flux.values
-    if "qubit_pair" in node.results["ds_raw"].dims:
-        qubit_pair_names = [qp.name for qp in node.namespace["qubit_pairs"]]
-        node.results["ds_raw"] = node.results["ds_raw"].rename({"qubit_pair": "qubit"})
-        node.results["ds_raw"] = node.results["ds_raw"].assign_coords(qubit=qubit_pair_names)
 
 
 # %% {Analyse_data}

@@ -7,9 +7,6 @@ from typing import Callable, Dict, Optional
 
 import numpy as np
 import xarray as xr
-from calibration_utils.three_tone_coupler_spectroscopy_flux_pulse.parameters import (
-    resolve_coupler_rf_centers_by_pair,
-)
 from qualibrate import QualibrationNode
 
 LogCallable = Callable[[str], None]
@@ -25,20 +22,7 @@ class FitResults:
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
-    """Add absolute frequency coordinates and IQ amplitude when needed."""
-    qubit_pairs = node.namespace["qubit_pairs"]
-    dfs = node.namespace["dfs"]
-    coupler_rf_centers = node.namespace.get("coupler_rf_centers") or resolve_coupler_rf_centers_by_pair(
-        qubit_pairs,
-        node.parameters.rf_frequency_startpoint_in_hz,
-        coupler_band=node.parameters.coupler_band,
-        idle_detuning_hz=abs(float(node.parameters.coupler_idle_detuning_in_ghz)) * 1e9,
-    )
-    rf_freq = np.array([dfs + coupler_rf_centers[qp.name] for qp in qubit_pairs])
-    ds = ds.assign_coords(freq_full_control=(["qubit", "freq"], rf_freq))
-    ds.freq_full_control.attrs["long_name"] = "Coupler drive frequency"
-    ds.freq_full_control.attrs["units"] = "Hz"
-
+    """Add IQ amplitude when needed. Coupler drive frequency comes from ``ds_raw``."""
     if not node.parameters.use_state_discrimination and "IQ_abs" not in ds:
         ds = ds.assign(IQ_abs=np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2))
     return ds
