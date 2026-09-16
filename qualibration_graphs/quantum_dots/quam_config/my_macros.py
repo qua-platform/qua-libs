@@ -28,19 +28,15 @@ from qualibrate.core.parameters import RunnableParameters
 from quam_config import Quam
 from quam_config.state_macros import (
     HeraldedInitializeMacro, 
-    HeraldedInitializeAttributes,
     MeasureMacro,
-    MeasureMacroAttributes,
 )
 
 initialize_macro = HeraldedInitializeMacro
-initialize_attrs = HeraldedInitializeAttributes
 measure_macro = MeasureMacro
-measure_attrs = MeasureMacroAttributes
 
 __all__ = ["MacroParameters"]
 
-class MacroParameters(RunnableParameters, initialize_attrs, measure_attrs): 
+class MacroParameters(RunnableParameters, initialize_macro.Parameters, measure_macro.Parameters): 
     """Batch all the macro related parameters to export in a single class"""
     pass
 
