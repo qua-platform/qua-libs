@@ -1,7 +1,25 @@
-"""
-A library of initialize macros. 
+"""Example initialize macros for quantum-dot QUAM state preparation. 
 
-For each macro, create an Attributes class and mix it with the CustomMacro class from quam-builder.
+Reference implementation details for the underlying macro infrastructure can
+be found in the
+[`quam-builder` operations package](https://github.com/qua-platform/quam-builder/tree/main/quam_builder/architecture/quantum_dots/operations).
+
+This file shows the recommended pattern for defining custom state macros:
+
+1. Define a small attributes class containing the configurable fields.
+2. Inherit from both ``CustomMacro`` and that attributes class.
+3. Set ``Parameters = <YourAttributesClass>`` on the macro so
+   ``quam_config/my_macros.py`` can expose those fields directly in
+   Qualibrate nodes.
+4. Implement ``inferred_duration`` when you can estimate how long the macro
+   takes to run. This value should be returned in seconds. It is useful when
+   larger macros are composed from smaller ones, or when other code wants to
+   reason about the expected timing of a macro. If the duration is not known
+   ahead of time, returning ``None`` is acceptable.
+
+The examples progress from a minimal placeholder macro, to a balanced
+round-trip initialize sequence, to a heralded initialize routine built on
+top of that round-trip primitive.
 """
 
 from typing import Optional, Literal
@@ -29,6 +47,12 @@ class InitializeMacroAttributes:
 
 @quam_dataclass
 class InitializeMacro(CustomMacro, InitializeMacroAttributes):
+    """Minimal example initialize macro.
+
+    This class is intentionally simple. Use it as a starting point if you
+    want to replace the provided balanced or heralded examples with your
+    own initialize behaviour.
+    """
     Parameters = InitializeMacroAttributes
 
     @property
@@ -153,7 +177,7 @@ class HeraldedInitializeAttributes:
 @quam_dataclass
 class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro, HeraldedInitializeAttributes):
     """
-    An active reset initialize scheme, built on the BalancedInitializeMacro.
+    Heralded / active-reset initialize built on the balanced round trip.
 
     The flow:
     - Initialize using the BalancedInitializeMacro

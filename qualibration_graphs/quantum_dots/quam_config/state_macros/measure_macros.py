@@ -1,7 +1,23 @@
-"""
-A library of measure macros. 
+"""Example measure macros for quantum-dot QUAM state readout.
 
-For each macro, create an Attributes class and mix it with the CustomMacro class from quam-builder.
+Reference implementation details for the underlying macro infrastructure can
+be found in the
+[`quam-builder` operations package](https://github.com/qua-platform/quam-builder/tree/main/quam_builder/architecture/quantum_dots/operations).
+
+Use the same pattern as in ``initialize_macros.py``:
+
+1. Put configurable fields on a small attributes class.
+2. Inherit from both ``CustomMacro`` and that attributes class.
+3. Set ``Parameters = <YourAttributesClass>`` so the macro can expose its
+   node-facing parameters through ``quam_config/my_macros.py``.
+4. Implement ``inferred_duration`` when you can estimate how long the macro
+   takes to run. Return the duration in seconds. This is especially useful
+   when another macro builds on the measure macro and needs a timing estimate.
+   If the duration cannot be known ahead of time, returning ``None`` is fine.
+
+This file currently contains a minimal placeholder measure macro. Replace
+or extend it when your lab needs custom readout behaviour beyond the
+default measure macro provided by ``quam-builder``.
 """
 
 from quam_builder.architecture.quantum_dots import CustomMacro
@@ -18,10 +34,13 @@ __all__ = [
 @quam_dataclass
 class MeasureMacroAttributes: 
     point_duration: int = 1000
-    """Hold duration of the Initialize voltage point."""
+    """Example hold duration for a custom measure point."""
 
 @quam_dataclass
 class MeasureMacro(CustomMacro, MeasureMacroAttributes):
+    """Minimal example measure macro."""
+    Parameters = MeasureMacroAttributes
+
     @property
     def inferred_duration(self) -> float | None:
         return 0
