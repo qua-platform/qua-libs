@@ -23,7 +23,6 @@ Hardware falls into two workflows:
 1. [Physics of the CZ gate](#1-physics-of-the-cz-gate)
 2. [Before you start](#2-before-you-start)
 3. [Calibration procedure](#3-calibration-procedure)
-   - [Stage 0 — Flux-line distortions](#stage-0--flux-line-distortions)
    - [Stage 1 — Operating point](#stage-1--operating-point)
    - [Stage 2 — Leakage suppression](#stage-2--leakage-suppression)
    - [Stage 3 — Conditional phase = π](#stage-3--conditional-phase--π)
@@ -166,7 +165,6 @@ Each stage below fixes one term in this picture, which is why the order matters:
 
 | Physical quantity                          | Controlled by                       | Stage                        |
 | ------------------------------------------ | ----------------------------------- | ---------------------------- | ---------------------- | --- |
-| Flux actually delivered to the chip        | FIR/IIR predistortion filters       | 0                            |
 | Detuning $\Delta$ at the interaction point | Flux-pulse amplitude & coupler bias | 1                            |
 | Population left in $                       | 20\rangle$ (leakage)                | Coupler flux-pulse amplitude | 2                      |
 | $\int\zeta\,dt$ (the conditional phase)    | Qubit flux-pulse amplitude          | 3                            |
@@ -186,11 +184,12 @@ A CZ chain will happily converge onto a bad operating point if the single-qubit 
 
 | Requirement                | Nodes                                                                                                                                                                                                                                             | Why the CZ needs it                                                                                                                                                                                                     |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Flux bias points           | [`02c`](../1Q_calibrations/02c_resonator_spectroscopy_vs_flux.py), [`03b`](../1Q_calibrations/03b_qubit_spectroscopy_vs_flux.py), [`09a`](../1Q_calibrations/09a_ramsey_vs_flux_calibration.py)                                                   | Sets the idle point and the frequency-vs-flux conversion used by **17c**                                                                                                                                                |
+| Flux bias points           | [`02c`](../1Q_calibrations/02c_resonator_spectroscopy_vs_flux.py), [`03b`](../1Q_calibrations/03b_qubit_spectroscopy_vs_flux.py), [`09a`](../1Q_calibrations/09a_ramsey_vs_flux_calibration.py)                                                   | Sets the idle point and the frequency-vs-flux conversion                                                                                                                                                                |
 | Single-qubit gates         | [`04b`](../1Q_calibrations/04b_power_rabi.py), [`10b`](../1Q_calibrations/10b_drag_calibration_180_minus_180.py), verified by [`11a`](../1Q_calibrations/11a_single_qubit_randomized_benchmarking.py) and [`20`](../1Q_calibrations/20_all_xy.py) | Every CZ node brackets the gate with x90/x180 pulses; their errors alias into the extracted phase                                                                                                                       |
 | Readout + discrimination   | [`07`](../1Q_calibrations/07_iq_blobs.py), [`08a`](../1Q_calibrations/08a_readout_frequency_optimization.py), [`08b`](../1Q_calibrations/08b_readout_power_optimization.py)                                                                       | Most CZ nodes default to `use_state_discrimination=True`; leakage nodes (**32a/32b**) hard-require GEF (see next row)                                                                                                   |
 | GEF (three-state) readout  | [`12`](../1Q_calibrations/12_Qubit_Spectroscopy_E_to_F.py), [`13`](../1Q_calibrations/13_power_rabi_ef.py), [`14`](../1Q_calibrations/14_gef_readout_frequency_optimization.py), [`15`](../1Q_calibrations/15_iq_blobs_gef.py)                    | Leakage nodes **32a/32b** measure ǀf⟩ population and refuse to run without it; **30** (CZ mode), **31**, **33a** and **33b** also read out in GEF when state discrimination is on. 32b further needs an `EF_x180` pulse |
 | XY–Z timing alignment      | [`16a`](../1Q_calibrations/16a_xyz_delay.py), [`16b`](../1Q_calibrations/16b_xy_coupler_z_delay.py)                                                                                                                                               | A misaligned flux pulse truncates the interaction window                                                                                                                                                                |
+| Flux-line distortions      | [1Q README](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c) (`17a` / `17b` / `17c`)                                                                                                                                             | Predistortion so CZ amplitudes are calibrated against a stable waveform                                                                                                                                                 |
 | Static ZZ characterisation | [`19`](../1Q_calibrations/19_zz_off_jazz.py)                                                                                                                                                                                                      | Always-on ZZ biases the conditional phase you are about to calibrate                                                                                                                                                    |
 
 Tunable-coupler pairs additionally need a `coupler` element with a sensible `decouple_offset` and a `macros[operation]` that defines a `coupler_flux_pulse`; the leakage and bootstrap nodes raise if it is missing.
@@ -204,9 +203,7 @@ Tunable-coupler pairs additionally need a `coupler` element with a sensible `dec
 The whole pipeline, both architectures and both halves:
 
 ```text
-  prerequisites (1Q gates, readout, GEF, flux bias points, XY-Z delay)
-          |
-  Stage 0 |  17a / 17b  -->  17c                      flux-line distortions
+  prerequisites (1Q gates, readout, GEF, flux bias, XY-Z delay, flux-line distortions)
           |
   Stage 1 +-- fixed coupler ------>  31
           +-- tunable coupler ---->  30
@@ -227,55 +224,12 @@ The whole pipeline, both architectures and both halves:
 
 Condensed per architecture:
 
-| Architecture        | Calibration order                            |
-| ------------------- | -------------------------------------------- | ---------------------------- |
-| **Fixed coupler**   | `17a/17b → 17c → 31 → 33a → 33b → 34a → 34b` |
-| **Tunable coupler** | `17a/17b → 17c → 30 → 32a                    | 32b → 33a → 33b → 34a → 34b` |
+| Architecture        | Calibration order            |
+| ------------------- | ---------------------------- | ---------------------------- |
+| **Fixed coupler**   | `31 → 33a → 33b → 34a → 34b` |
+| **Tunable coupler** | `30 → 32a                    | 32b → 33a → 33b → 34a → 34b` |
 
 Graph [**99**](./99_CZ_calibration_graph.py) automates the fixed-coupler core (`31 → 33a → 33b → 34a`). The tunable-coupler path has no packaged graph; run it node by node or build your own.
-
-## Stage 0 — Flux-line distortions
-
-Room-temperature electronics and the cryostat wiring distort the flux pulse, so the waveform the qubit sees is not the one you programmed. Predistortion filters must be fitted **before** any two-qubit tuning, otherwise every amplitude you calibrate downstream is calibrated against a moving target. This applies to **both** architectures, on the **moving-qubit** flux line.
-
-| Timescale                | Node                                                                                                                                           | Method                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Long (ns → tens of µs)   | [`17a`](../1Q_calibrations/17a_qubit_flux_long_distortion_qubitspec.py) / [`17b`](../1Q_calibrations/17b_qubit_flux_long_distortion_ramsey.py) | Qubit spectroscopy / Ramsey vs flux delay |
-| Short (~1 ns resolution) | [`17c`](../1Q_calibrations/17c_qubit_flux_short_distortion.py)                                                                                 | Cryoscope, optional FIR                   |
-
-### Long-timescale distortions (17a / 17b)
-
-Detune the qubit with a flux pulse and probe its frequency with a delayed microwave pulse. Reconstruct pulse amplitude vs. time and fit exponential filters.
-
-**Ref:** Hellings et al., _arXiv_ (2025), _Calibrating Magnetic Flux Control in Superconducting Circuits by Compensating Distortions on Time Scales from Nanoseconds up to Tens of Microseconds_
-
-<p align="center">
-   <img src="../.img/long_distortions_method.png" width="420" alt="Method diagram">
-</p>
-
-<p align="center">
-   <img src="../.img/long_distortions_fit.png" width="800" alt="Fit result">
-</p>
-
-### Cryoscope (17c)
-
-Sweep square-pulse duration inside a Ramsey sequence to reconstruct the pulse shape at ~1 ns resolution and fit short-timescale corrections. Note that 17c consumes the frequency-to-flux conversion from **09a**, referenced by run ID rather than retyped.
-
-**Ref:** Rol et al., _Appl. Phys. Lett._ (2019), _Time-domain Characterization and Correction of On-chip Distortion of Control Pulses in a Quantum Processor_
-
-<p align="center">
-   <img src="../.img/cryoscope_fit.png" width="800" alt="Cryoscope fit">
-</p>
-
-### GUI fitting (17a / 17b / 17c)
-
-Acquire with `update_state=False`, reload by `load_data_id`, tune fit parameters in the GUI, then set `update_state_from_GUI=True` and re-run to commit filters to QUAM.
-
-<p align="center">
-   <img src="../.img/cs_fit_operation.png" width="420" alt="GUI operation">
-</p>
-
-**Done when:** the reconstructed step response is flat to within your target over the gate duration, and the fitted filters are committed to QUAM.
 
 ## Stage 1 — Operating point
 
@@ -400,7 +354,7 @@ Nodes **33a**, **33b** and **34a** currently restrict `operation` to the first t
 
 # 4. Verification & benchmarking
 
-Nothing in Stages 0–4 measures gate fidelity — each node optimises its own local objective and declares success on its own fit. This chapter is where you find out whether the gate is actually good, and it is the only part that writes fidelity numbers into QUAM.
+Nothing in Stages 1–4 measures gate fidelity — each node optimises its own local objective and declares success on its own fit. This chapter is where you find out whether the gate is actually good, and it is the only part that writes fidelity numbers into QUAM.
 
 The three tracks are independent of one another; run whichever answer you need.
 
@@ -495,18 +449,18 @@ Two practical consequences:
 
 The diagrams above are drawn as straight lines, but calibration is a loop: you benchmark, get a number you do not like, and return to a specific stage. Use the symptom to pick the stage rather than restarting from the top.
 
-| Symptom                                                       | Most likely cause                                    | Go back to                             |
-| ------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------- | ----------------- |
-| No chevron fringe, or it drifts during the scan               | Flux distortion, or wrong idle bias                  | Stage 0 (17a/17b/17c), then 02c/03b    |
-| Chevron fringe present but conditional phase never reaches π  | Gate duration too short, or wrong fringe chosen      | Stage 1 (31 / 30)                      |
-| Conditional phase fits, but 33b's optimum keeps moving        | Residual long-timescale distortion                   | Stage 0 (17a/17b)                      |
-| High $                                                        | f\rangle$ population after the gate                  | Coupler amplitude off the leakage-null | Stage 2 (32a/32b) |
-| Bell fidelity low but purity high                             | Coherent error — phases, not decoherence             | Stage 3 and 4 (33b, 34a/34b)           |
-| Bell fidelity and purity both low                             | Decoherence or leakage                               | Stage 2, and check T1/T2 (05, 06a)     |
-| Bell fidelity much better with `Joint` than `Kron` mitigation | Readout crosstalk, not gate error                    | Re-run 35; revisit 08a/08b             |
-| RB decay non-exponential or with a long tail                  | Leakage out of the computational subspace            | Stage 2 (32a/32b)                      |
-| Interleaved RB much worse than Bell tomography suggests       | Error that only shows under repetition — drift or ZZ | Stage 4 (34b), and check 19            |
-| Pair benchmarks well, GHZ does not                            | Crosstalk or spectator error                         | Re-run 38; check neighbour idle biases |
+| Symptom                                                       | Most likely cause                                    | Go back to                                                                                                 |
+| ------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------- |
+| No chevron fringe, or it drifts during the scan               | Flux distortion, or wrong idle bias                  | [1Q flux-line distortions](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c), then 02c/03b |
+| Chevron fringe present but conditional phase never reaches π  | Gate duration too short, or wrong fringe chosen      | Stage 1 (31 / 30)                                                                                          |
+| Conditional phase fits, but 33b's optimum keeps moving        | Residual long-timescale distortion                   | [1Q flux-line distortions](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c) (`17a`/`17b`) |
+| High $                                                        | f\rangle$ population after the gate                  | Coupler amplitude off the leakage-null                                                                     | Stage 2 (32a/32b) |
+| Bell fidelity low but purity high                             | Coherent error — phases, not decoherence             | Stage 3 and 4 (33b, 34a/34b)                                                                               |
+| Bell fidelity and purity both low                             | Decoherence or leakage                               | Stage 2, and check T1/T2 (05, 06a)                                                                         |
+| Bell fidelity much better with `Joint` than `Kron` mitigation | Readout crosstalk, not gate error                    | Re-run 35; revisit 08a/08b                                                                                 |
+| RB decay non-exponential or with a long tail                  | Leakage out of the computational subspace            | Stage 2 (32a/32b)                                                                                          |
+| Interleaved RB much worse than Bell tomography suggests       | Error that only shows under repetition — drift or ZZ | Stage 4 (34b), and check 19                                                                                |
+| Pair benchmarks well, GHZ does not                            | Crosstalk or spectator error                         | Re-run 38; check neighbour idle biases                                                                     |
 
 Two habits that save time: re-run the **cheap** verification (35 → 36) after any retune before committing to a full RB campaign, and change **one** stage at a time so the resulting fidelity change is attributable.
 
