@@ -183,14 +183,14 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             align()
                             for i, qubit in multiplexed_qubits.items():
                                 # Detune the measurement pulse; the resonator is idle here.
-                                update_frequency(
-                                    qubit.resonator.name, df + qubit.resonator.intermediate_frequency
-                                )
+                                update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
                                 qubit.xy.play("x90")
                                 qubit.align()
                                 # The weak measurement itself: played, not demodulated - the
-                                # information it carries is measured in the second half.
-                                qubit.resonator.update_frequency(qubit.resonator.f_01 - qubit.resonator.LO_frequency + qubit.chi)
+                                # information it carries is measured in the second half. It stays
+                                # at the detuning set above, which is the whole point of the
+                                # frequency axis: beta and the SNR must be measured at the SAME
+                                # measurement-pulse frequency for their ratio to mean anything.
                                 qubit.resonator.play("readout", amplitude_scale=a)
                                 qubit.resonator.wait(qubit.resonator.depletion_time // 4)
                                 qubit.align()
@@ -213,9 +213,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                         align()
                         for i, qubit in multiplexed_qubits.items():
-                            update_frequency(
-                                qubit.resonator.name, df + qubit.resonator.intermediate_frequency
-                            )
+                            update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
                             qubit.resonator.measure("readout", qua_vars=(Ig[i], Qg[i]), amplitude_scale=a)
                             save(Ig[i], Ig_st[i])
                             save(Qg[i], Qg_st[i])
@@ -230,9 +228,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         for i, qubit in multiplexed_qubits.items():
                             qubit.xy.play("x180")
                             qubit.align()
-                            update_frequency(
-                                qubit.resonator.name, df + qubit.resonator.intermediate_frequency
-                            )
+                            update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
                             qubit.resonator.measure("readout", qua_vars=(Ie[i], Qe[i]), amplitude_scale=a)
                             save(Ie[i], Ie_st[i])
                             save(Qe[i], Qe_st[i])
@@ -355,10 +351,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     # load_from_id rebuilds node.parameters from the SAVED run, which would revert any
     # re-fit knob the user changed to re-analyse loaded data. Snapshot the user's current
     # values for those knobs (+ load_data_id) and restore them after load.
-    _refit_keep = {
-        k: getattr(node.parameters, k)
-        for k in ("load_data_id", "max_amp_for_fit", "linearity_rtol")
-    }
+    _refit_keep = {k: getattr(node.parameters, k) for k in ("load_data_id", "max_amp_for_fit", "linearity_rtol")}
     # Load the specified dataset
     node.load_from_id(node.parameters.load_data_id)
     for _k, _v in _refit_keep.items():
@@ -422,5 +415,6 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Persist node results."""
     node.save()
+
 
 # %%
