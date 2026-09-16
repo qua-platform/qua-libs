@@ -12,9 +12,9 @@ from quam.core import quam_dataclass
 from qm.qua import align, strict_timing_, assign, declare, if_, while_, Cast
 
 __all__ = [
-    "InitializeMacro", "InitializeMacroAttributes",
-    "BalancedRoundTripInitializeMacro", "BalancedRoundTripInitializeMacroAttributes",
-    "HeraldedInitializeMacro", "HeraldedInitializeAttributes",
+    "InitializeMacro",
+    "BalancedRoundTripInitializeMacro",
+    "HeraldedInitializeMacro",
 ]
 
 
@@ -29,6 +29,8 @@ class InitializeMacroAttributes:
 
 @quam_dataclass
 class InitializeMacro(CustomMacro, InitializeMacroAttributes):
+    Parameters = InitializeMacroAttributes
+
     @property
     def inferred_duration(self) -> float | None:
         return 0
@@ -73,6 +75,7 @@ class BalancedRoundTripInitializeMacro(CustomMacro, BalancedRoundTripInitializeM
     Ramp 2 covers twice the voltage of ramps 1 and 3, so its duration is
     ``2 * ramp_duration`` to preserve the same slope (consistent dV/dt).
     """
+    Parameters = BalancedRoundTripInitializeMacroAttributes
 
     @property
     def inferred_duration(self) -> float | None:
@@ -160,6 +163,7 @@ class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro, HeraldedInitiali
 
     This class also optionally allows one to extract the number of loops performed as a stream
     """
+    Parameters = HeraldedInitializeAttributes
 
     @property
     def inferred_duration(self) -> float | None:

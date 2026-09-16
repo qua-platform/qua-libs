@@ -8,7 +8,7 @@ from quam_builder.architecture.quantum_dots import CustomMacro
 from quam.core import quam_dataclass
 
 __all__ = [
-    "MeasureMacro", "MeasureMacroAttributes",
+    "MeasureMacro",
 ]
 
 ###########################
