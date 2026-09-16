@@ -1,26 +1,30 @@
-"""
-Use this script to populate QuantumDotPair components with custom macros, as created in state_macros. 
+"""Select, expose, and wire the state macros used by this QUAM.
 
-This script also exports the MacroParameters class, a Qualibrate parameters class which mixes in the attributes
-defined in state_macros. 
+This file is the main user-facing entry point for custom state macros.
 
-These custom state macros operate at the level of the QuantumDotPair. This means that
-qubit.initialize() and qubit_pair.initialize() are quantum_dot_pair.initialize() under the hood, and 
-the same goes for the measure macro. 
+It has three roles:
 
-Therefore, for any custom state macro you create in regards to the initialize or the measure sequence, 
-you only need to update it at the QuantumDotPair level. Any call (qubit.initialize() or qubit_pair.initialize())
-you see in the nodes will simply use these wired QuantumDotPair macros under the hood! 
+1. Choose which initialize and measure macro classes are considered
+   "active" for this project.
+2. Export ``MacroParameters``, the Qualibrate parameter mixin that exposes
+   the active macro fields in node ``parameters.py`` files.
+3. Provide a small ``main()`` helper that wires the selected macros onto the
+   machine and saves the updated QUAM state.
 
-This script currently only wires in the InitializeMacro. If you write your own MeasureMacro, then make sure to 
-wire it up. 
+The actual macro implementations live in ``state_macros/``. Each macro class
+there exposes a ``Parameters`` class attribute.
+
+State macros are wired at the ``QuantumDotPair`` level. In practice this
+means calls such as ``qubit.initialize()``, ``qubit_pair.initialize()``, and
+``dot_pair.initialize()`` all resolve to the same underlying pair-level
+macro. If you customize the pair macro here, those higher-level calls will
+use it automatically.
 """
 
 #########################
 # %%     Imports ########
 #########################
 
-from typing import List
 from quam_builder.architecture.quantum_dots.macro_engine import wire_machine_macros
 from quam_builder.architecture.quantum_dots.operations.names import SingleQubitMacroName
 
@@ -31,71 +35,68 @@ from quam_config.state_macros import (
     MeasureMacro,
 )
 
+# Select the active state macros for this project here.
 initialize_macro = HeraldedInitializeMacro
 measure_macro = MeasureMacro
 
 __all__ = ["MacroParameters"]
 
-class MacroParameters(RunnableParameters, initialize_macro.Parameters, measure_macro.Parameters): 
-    """Batch all the macro related parameters to export in a single class"""
+class MacroParameters(RunnableParameters, initialize_macro.Parameters, measure_macro.Parameters):
+    """Expose the active macro fields to Qualibrate nodes."""
     pass
 
 
-# ### Helper function which allows you to choose the dot pairs to update
-
-def get_dot_pairs(machine: Quam, dot_pairs: List[str] | None = None) -> List[str]:
-    """
-    Given a spin qubit Quam machine, extracts a list of QuantumDotPair names as a list.
-
-    Args:
-        - machine: Quam - The Spin Quam Machine to extract the dot pairs from
-        - dot_pairs: List[str] - The list of quantum dot pair string names. If None, then
-            this function will return all the dot pairs associated with the machine.
-    """
-    if dot_pairs is None:
-        # No list supplied, default to all existing dot pairs.
-        return list(machine.quantum_dot_pairs.keys())
-    else:
-        # List supplied. Means that the user wants to update only a subset of the dot pairs.
-        return dot_pairs
-
-
-def main(): 
+# Wiring the macros into the machine
+def main():
     ##############################
-    # %%     Load machine ########
+    ######## Load machine ########
     ##############################
 
     machine = Quam.load()
 
-
     #################################################
-    # %%     Specify the dot pairs to update ########
+    ######## Specify the dot pairs to update ########
     #################################################
 
     # Create a list of dot pair names here if you would like to update only a subset of dot pair macros
-    dot_pairs = None
-    dot_pairs = get_dot_pairs(machine, dot_pairs)
+    dot_pairs = machine.quantum_dot_pairs.keys()
 
     #########################################################
-    # %%     Wire the custom macros into the machine ########
+    ######## Wire the custom macros into the machine ########
     #########################################################
+
+    # Extract the name from the list of default macro names
+    initialize_macro_name = SingleQubitMacroName.INITIALIZE
+    measure_macro_name = SingleQubitMacroName.MEASURE
 
     wire_machine_macros(
         machine=machine,
         instance_overrides={
             f"quantum_dot_pairs.{qdp}": {
-                SingleQubitMacroName.INITIALIZE: initialize_macro,
-                # SingleQubitMacroName.MEASURE: measure_macro,
+                initialize_macro_name : initialize_macro,
+                # measure_macro_name: measure_macro,
             }
             for qdp in dot_pairs
         },
     )
 
     ######################################
-    # %%     Save machine changes ########
+    ######## Save machine changes ########
     ######################################
 
     machine.save()
+
+    ###############################################################
+    ######## Test the state to see if the macros are there ########
+    ###############################################################
+
+    machine = Quam.load()
+
+    for dot_pair_name in dot_pairs: 
+        qdp = machine.quantum_dot_pairs[dot_pair_name]
+        macro_object = qdp.macros[initialize_macro_name]
+        print(f"Dot pair {dot_pair_name}'s {initialize_macro_name} is mapped to {type(macro_object)}.")
+        assert isinstance(macro_object, initialize_macro), f"Dot pair {dot_pair_name}'s {initialize_macro_name} is mapped to {type(macro_object)} and not {initialize_macro}"
 
 if __name__ == "__main__":
     main()
