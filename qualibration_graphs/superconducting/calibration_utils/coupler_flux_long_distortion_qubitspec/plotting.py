@@ -33,9 +33,17 @@ def plot_raw_data_with_fit(
     Subplots are laid out with :class:`~calibration_utils.pair_grid.QubitPairGrid`.
     The dataset ``qubit`` coordinate is the pair name.
     """
-    rf_by_name = {
-        qp.name: getattr(getattr(mq, "xy", None), "RF_frequency", None) for qp, mq in zip(qubit_pairs, measured_qubits)
-    }
+    offsets = None
+    if "xy_idle_to_decouple_hz" in ds.coords:
+        offsets = {
+            str(name): float(ds.xy_idle_to_decouple_hz.sel(qubit=name).values)
+            for name in np.atleast_1d(ds.qubit.values)
+        }
+    rf_by_name = {}
+    for qp, mq in zip(qubit_pairs, measured_qubits):
+        rf = getattr(getattr(mq, "xy", None), "RF_frequency", None)
+        extra = 0.0 if offsets is None else offsets.get(qp.name, 0.0)
+        rf_by_name[qp.name] = None if rf is None else rf + extra
 
     g_names, qp_names = grid_pair_names(qubit_pairs)
     figures: Dict[str, plt.Figure] = {}

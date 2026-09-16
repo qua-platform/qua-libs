@@ -10,7 +10,7 @@ Two jobs share the same loaded curves:
 Curves come from prior calibrations; run IDs are read from ``qubit.extras`` on the
 measured qubit — never entered by hand:
 
-* **03c** qubit spectroscopy vs coupler flux → ``ds_fit.peak_freq`` (relative to RF),
+* **03c** qubit spectroscopy vs coupler flux → ``ds_fit.abs_peak_frequency``,
   run ID in ``extras['{coupler.name}_spectroscopy_vs_coupler_load_id']``
 * **09b** Ramsey vs coupler flux → absolute qubit frequency vs coupler flux,
   run ID in ``extras['{coupler.name}_ramsey_vs_coupler_load_id']``
@@ -61,21 +61,6 @@ def _coupler_load_id_key(coupler: TunableCoupler | str, kind: CouplerCurveKind) 
 # ---------------------------------------------------------------------------
 
 
-def _resolve_pair_coord_key(
-    qubit: AnyTransmon,
-    coupler: TunableCoupler,
-    node: QualibrationNode[Any, Any],
-    ds_qubit_values,
-) -> Optional[str]:
-    qvals = [str(v) for v in np.atleast_1d(ds_qubit_values)]
-    if qubit.name in qvals:
-        return qubit.name
-    for pair_name, pair in node.machine.qubit_pairs.items():
-        if pair.coupler.name == coupler.name and str(pair_name) in qvals:
-            return str(pair_name)
-    return None
-
-
 def load_coupler_spectroscopy_curve(
     qubit: AnyTransmon,
     coupler: TunableCoupler,
@@ -94,19 +79,16 @@ def load_coupler_spectroscopy_curve(
         return None
 
     qubit_name = qubit.name
-    qubit_rf = float(qubit.xy.RF_frequency)
     if log_callable is not None:
         log_callable(f"Loading coupler spectroscopy #{rid} for {qubit_name} / {coupler.name}")
     try:
         ds_raw = read_node_data_dict(rid)["ds_raw"]
-        key = _resolve_pair_coord_key(qubit, coupler, node, ds_raw.qubit.values)
-        if key is None and "measured_qubit_name" in ds_raw.coords:
-            qvals = [str(v) for v in np.atleast_1d(ds_raw.qubit.values)]
-            matches = [
-                qv for qv, m in zip(qvals, np.atleast_1d(ds_raw.measured_qubit_name.values)) if str(m) == qubit_name
-            ]
-            if len(matches) == 1:
-                key = matches[0]
+        qvals = [str(v) for v in np.atleast_1d(ds_raw.qubit.values)]
+        key = None
+        for name, pair in node.machine.qubit_pairs.items():
+            if pair.coupler.name == coupler.name and str(name) in qvals:
+                key = str(name)
+                break
         if key is None:
             if log_callable is not None:
                 log_callable(
@@ -116,14 +98,13 @@ def load_coupler_spectroscopy_curve(
             return None
 
         ds_fit = read_node_data_dict(rid).get("ds_fit")
-        if ds_fit is None or "peak_freq" not in getattr(ds_fit, "data_vars", {}):
+        if ds_fit is None or "abs_peak_frequency" not in getattr(ds_fit, "data_vars", {}):
             if log_callable is not None:
-                log_callable(f"run #{rid} has no ds_fit.peak_freq for {qubit_name}/{coupler.name}")
+                log_callable(f"run #{rid} has no ds_fit.abs_peak_frequency for {qubit_name}/{coupler.name}")
             return None
 
         flux = np.asarray(ds_fit.flux_bias.values, dtype=float)
-        peak = np.asarray(ds_fit.peak_freq.sel(qubit=key).values, dtype=float)
-        freq = qubit_rf + peak
+        freq = np.asarray(ds_fit.abs_peak_frequency.sel(qubit=key).values, dtype=float)
         mask = np.isfinite(flux) & np.isfinite(freq)
         if mask.sum() < 2:
             if log_callable is not None:
@@ -148,10 +129,13 @@ def load_coupler_ramsey_curve(
     node: QualibrationNode[Any, Any],
     run_id: Optional[int] = None,
     *,
-    frequency_var: str = "abs_peak_frequency",
     log_callable: Optional[LogCallable] = None,
 ) -> Optional[MeasuredCurve]:
-    """Load qubit-freq vs coupler-flux from a 09b run for one pair."""
+    """Load qubit-freq vs coupler-flux from a 09b run for one pair.
+
+    09b renames ``qubit_pair`` → ``qubit`` before analysis, so ``ds_fit.qubit_frequency``
+    has dims ``(qubit, coupler_flux)`` with pair names on the ``qubit`` coord.
+    """
     rid = (
         int(run_id)
         if run_id is not None
@@ -165,35 +149,24 @@ def load_coupler_ramsey_curve(
     try:
         ds_fit = read_node_data_dict(rid)["ds_fit"]
 
-        if "qubit_frequency" in ds_fit.data_vars and "coupler_flux" in ds_fit.dims:
-            flux_bias_rel = ds_fit.coupler_flux.values
-            if "qubit_pair" in ds_fit.dims:
-                qp_names = [str(qp) for qp in ds_fit.qubit_pair.values]
-                pair_key = None
-                for pair_name, pair in node.machine.qubit_pairs.items():
-                    if pair.coupler.name == coupler.name and str(pair_name) in qp_names:
-                        pair_key = str(pair_name)
-                        break
-                if pair_key is None:
-                    if log_callable is not None:
-                        log_callable(f"No qubit_pair match for {qubit.name} / {coupler.name} in run #{rid}")
-                    return None
-                frequency = ds_fit["qubit_frequency"].sel(qubit_pair=pair_key).values
-            else:
-                frequency = ds_fit["qubit_frequency"].values
-            return flux_bias_rel, frequency
-
-        flux_bias_rel = ds_fit["coupler_flux"].values
-        pair_key = None
-        for pair_name, pair in node.machine.qubit_pairs.items():
-            if pair.coupler.name == coupler.name:
-                pair_key = str(pair_name)
-                break
-        if pair_key is None or frequency_var not in ds_fit.data_vars:
+        if "qubit_frequency" not in ds_fit.data_vars or "coupler_flux" not in ds_fit.dims:
             if log_callable is not None:
-                log_callable(f"Cannot find '{frequency_var}' for {qubit.name} / {coupler.name} in run #{rid}")
+                log_callable(f"run #{rid} has no qubit_frequency vs coupler_flux for {qubit.name}/{coupler.name}")
             return None
-        frequency = ds_fit[frequency_var].sel(qubit_pair=pair_key).values
+
+        qvals = [str(v) for v in np.atleast_1d(ds_fit.qubit.values)]
+        key = None
+        for name, pair in node.machine.qubit_pairs.items():
+            if pair.coupler.name == coupler.name and str(name) in qvals:
+                key = str(name)
+                break
+        if key is None:
+            if log_callable is not None:
+                log_callable(f"No qubit coord match for {qubit.name} / {coupler.name} in run #{rid}")
+            return None
+
+        flux_bias_rel = np.asarray(ds_fit.coupler_flux.values, dtype=float)
+        frequency = np.asarray(ds_fit["qubit_frequency"].sel(qubit=key).values, dtype=float)
         return flux_bias_rel, frequency
     except Exception as e:
         if log_callable is not None:

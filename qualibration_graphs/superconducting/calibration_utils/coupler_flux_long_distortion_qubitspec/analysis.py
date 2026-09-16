@@ -48,16 +48,18 @@ def process_raw_dataset(ds: xr.Dataset, node) -> xr.Dataset:
         if "sweep_axes" in node.namespace and node.namespace["sweep_axes"].get("detuning") is not None
         else np.asarray(ds["detuning"].values, dtype=float)
     )
+    offsets = node.namespace["xy_idle_to_decouple_hz"]
     ds = ds.assign_coords(
         {
             "freq_full": (
                 ["qubit", "detuning"],
-                np.array([dfs + q.xy.RF_frequency for q in measured_qubits]),
+                np.array([dfs + q.xy.RF_frequency + offsets[i] for i, q in enumerate(measured_qubits)]),
             ),
             "flux": (
                 ["qubit", "detuning"],
                 np.full((len(measured_qubits), len(dfs)), np.nan, dtype=float),
             ),
+            "xy_idle_to_decouple_hz": ("qubit", offsets),
         }
     )
     ds.freq_full.attrs = {"long_name": "RF frequency", "units": "Hz"}
@@ -78,6 +80,7 @@ def _compute_coupler_flux_response(
     flux_response = xr.full_like(center_freqs, np.nan, dtype=float)
     measured_curves: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
     sources: Dict[str, str] = {}
+    offsets = node.namespace["xy_idle_to_decouple_hz"]
 
     for i, (q, qp) in enumerate(zip(qubits, qubit_pairs)):
         coord = coord_names[i]
@@ -89,7 +92,8 @@ def _compute_coupler_flux_response(
 
         flux_bias, abs_peak = selected.curve
         measured_curves[coord] = (flux_bias, abs_peak)
-        abs_freq_q = center_freqs.sel(qubit=coord).values + q.xy.RF_frequency
+        offset = offsets[i]
+        abs_freq_q = center_freqs.sel(qubit=coord).values + q.xy.RF_frequency + offset
         flux_response.values[i, :] = frequency_to_coupler_flux(abs_freq_q, (flux_bias, abs_peak))
 
     return flux_response, measured_curves, sources

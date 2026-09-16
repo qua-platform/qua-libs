@@ -116,18 +116,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
     coupler_flux_amps = resolved.amplitudes
 
-    node.namespace["coupler_flux_center"] = coupler_flux_amps[0]
     node.namespace["coupler_flux_amps"] = coupler_flux_amps
-    node.results["coupler_flux_center"] = coupler_flux_amps[0]
+    node.results["coupler_flux_amps"] = coupler_flux_amps
     node.results["decouple_offsets"] = [qp.coupler.decouple_offset for qp in qubit_pairs]
 
-    # Build dfs array: signed, centered at detuning relative to idle.
-    # If freq_at_decouple differs from RF_frequency (idle), dfs must account
-    # for that offset so the XY sweep is centered correctly.
-    ref_qubit = measured_qubits[0]
-    f_dec_ref = resolved.freq_at_decouple[0]
-    idle_to_decouple_offset_hz = f_dec_ref - ref_qubit.xy.RF_frequency if f_dec_ref is not None else 0.0
-    dfs_center_hz = detuning_hz + idle_to_decouple_offset_hz
+    # Shared dfs is centred on signed detuning from idle. Each pair adds its own
+    # idle→decouple offset in update_frequency so a multi-pair run is not locked
+    # to pair 0's frequency at decouple_offset.
+    xy_offsets = [
+        0 if f_dec is None else int(f_dec - qubit.xy.RF_frequency)
+        for qubit, f_dec in zip(measured_qubits, resolved.freq_at_decouple)
+    ]
+    node.namespace["xy_idle_to_decouple_hz"] = xy_offsets
+    node.results["xy_idle_to_decouple_hz"] = xy_offsets
+
+    dfs_center_hz = detuning_hz
     dfs = np.arange(
         dfs_center_hz - span_hz / 2,
         dfs_center_hz + span_hz / 2 + step_hz / 2,
@@ -152,12 +155,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         )
         times = np.unique(times)
 
-    # LO / IF reach: shift upconverter if dfs pushes outside usable MW-FEM window.
-    lo_plan = plan_lo_shift_for_frequency_window(measured_qubits, dfs, log_callable=node.log)
-    if lo_plan.force_thermal_reset:
+    # LO / IF reach: shift upconverter if dfs + per-pair offset is outside the MW-FEM window.
+    if_update = []
+    tracked_qubits = []
+    force_thermal = False
+    for qubit, offset in zip(measured_qubits, xy_offsets):
+        lo_plan = plan_lo_shift_for_frequency_window([qubit], dfs + offset, log_callable=node.log)
+        if_update.append(lo_plan.if_update[0])
+        tracked_qubits.extend(lo_plan.tracked_qubits)
+        force_thermal = force_thermal or lo_plan.force_thermal_reset
+    if force_thermal:
         node.parameters.reset_type = "thermal"
-    if_update = lo_plan.if_update
-    tracked_qubits = lo_plan.tracked_qubits
 
     for i, (qp, qubit) in enumerate(zip(qubit_pairs, measured_qubits)):
         lo_hz = if_update[i]
@@ -213,7 +221,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qp.qubit_control if node.parameters.measure_qubit == "control" else qp.qubit_target
                             )
                             protagonist_qubit.xy.update_frequency(
-                                df + protagonist_qubit.xy.intermediate_frequency - if_update[ii]
+                                df + xy_offsets[ii] + protagonist_qubit.xy.intermediate_frequency - if_update[ii]
                             )
                             align()
                             qp.coupler.play(
@@ -323,10 +331,10 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
             measured_qubit_name=("qubit", measured_qubit_names)
         )
 
-    # Restore coupler_flux_center to namespace for traceability
-    cfc = node.results.get("coupler_flux_center")
-    if cfc is not None:
-        node.namespace["coupler_flux_center"] = cfc
+    for key in ("coupler_flux_amps", "xy_idle_to_decouple_hz"):
+        val = node.results.get(key)
+        if val is not None:
+            node.namespace[key] = val
 
     # Overwrite the loaded node parameters with the ones defined from the GUI
     node.parameters.n_exponentials = loaded_n_exponentials
