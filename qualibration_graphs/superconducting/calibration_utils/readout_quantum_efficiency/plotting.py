@@ -133,7 +133,7 @@ def plot_snr_and_dephasing(ds_fit: xr.Dataset, qubits: List[AnyTransmon]) -> Fig
             continue
         best = int(np.nanargmax(np.where(np.isfinite(eta), eta, -np.inf)))
         at_best = fit.isel(detuning=best)
-        eps_squared = at_best.amp_prefactor.values ** 2
+        eps_squared = at_best.amp_prefactor.values**2
         mask = at_best.fit_mask.values
 
         # The fitted lines must come from the same estimators the analysis uses, or the figure
@@ -151,9 +151,7 @@ def plot_snr_and_dephasing(ds_fit: xr.Dataset, qubits: List[AnyTransmon]) -> Fig
 
         ax.set_xlabel(r"$\epsilon^2$ (amplitude prefactor squared)")
         ax.set_ylabel("Signal / dephasing")
-        ax.set_title(
-            f"{qubit['qubit']}: $\\eta$={eta[best]:.3f} at {at_best.detuning.values / u.MHz:+.2f} MHz"
-        )
+        ax.set_title(f"{qubit['qubit']}: $\\eta$={eta[best]:.3f} at {at_best.detuning.values / u.MHz:+.2f} MHz")
     handles, labels = ax.get_legend_handles_labels()
     grid.fig.legend(handles, labels, loc="lower center", ncol=2)
     grid.fig.suptitle(r"$\mathrm{SNR}^2$ and $2\beta$ vs $\epsilon^2$ (hollow = outside the fitted linear range)")

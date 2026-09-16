@@ -211,9 +211,13 @@ def _snr_from_shots(Ig, Qg, Ie, Qe) -> float:
     """
     Single-shot SNR of one measurement pulse, along the axis that separates the two blobs.
 
-    Follows Eq. S5 of the paper: the numerator is the separation of the mean integrated
-    voltages and the denominator is a *single* standard deviation along the same axis, common
-    to both prepared states (here the pooled standard deviation of the two).
+    Follows Eq. S5 of the paper, which defines the signal as "the absolute separation between
+    the average Vint for |1> and |0>" and the noise as "the standard deviation of Vint,|i>,
+    which is independent of |i>". The two histograms are taken to have one common width; where
+    they differ slightly the paper divides by "their average standard deviations", so the
+    denominator here is the arithmetic mean of the two, not their root-mean-square. The
+    difference is second order in (sigma_e - sigma_g)/sigma, but the mean is what the paper
+    says and eta scales as SNR^2, so the convention is worth matching exactly.
 
     Parameters
     ----------
@@ -232,7 +236,7 @@ def _snr_from_shots(Ig, Qg, Ie, Qe) -> float:
     axis = separation / distance
     projected_g = Ig * axis[0] + Qg * axis[1]
     projected_e = Ie * axis[0] + Qe * axis[1]
-    sigma = np.sqrt((np.var(projected_g) + np.var(projected_e)) / 2)
+    sigma = 0.5 * (np.std(projected_g) + np.std(projected_e))
     if sigma == 0:
         return np.inf
     return distance / sigma
