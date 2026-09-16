@@ -31,9 +31,19 @@ class NodeSpecificParameters(RunnableParameters):
     conditioned when the exponent Gamma_ii * tau_p * xi_max**2 reaches order unity; for a typical
     Gamma_ii of tens of MHz and a microsecond readout pulse that means xi_max of a few tenths, not a
     few hundredths. Default is 0.3."""
+    readout_len_in_ns: Optional[int] = None
+    """Duration tau_p of the probe pulse played on the driven resonator, in ns. If None, each driven
+    resonator probes with the native length of its own calibrated 'readout' operation. Otherwise the
+    same pulse is stretched to this duration through the QUA 'duration' argument, leaving its
+    amplitude untouched, so the resonator holds the same photon number for longer. The uncertainty on
+    the fitted dephasing rate falls as 1/tau_p, which makes a longer probe the cheapest way to
+    resolve small crosstalk: it costs no extra shots. The gain is not unbounded, because the probe
+    has to fit inside the half-echo and the echo contrast decays as exp(-2*idle_time/T2echo); the
+    optimum sits near tau_p = T2echo/2, and the idle time check below caps it. Must be a multiple of
+    4 ns and at least 16 ns. Default is None."""
     idle_time_in_ns: Optional[int] = None
     """Fixed half-echo idle time tau, identical for every qubit and every driven resonator. If None
-    it is derived as max_j(readout_length_j + depletion_time_j), rounded up to a multiple of 4 ns,
+    it is derived as max_j(probe_length_j + depletion_time_j), rounded up to a multiple of 4 ns,
     so that the probe pulse and the subsequent resonator ring-down fit exactly inside the first half
     of the echo. Default is None."""
     min_contrast_snr: float = 2.0
@@ -59,6 +69,41 @@ class Parameters(
 
     use_state_discrimination: bool = True
     """Discriminated state readout is the default here: the contrast is read off a P(e) oscillation."""
+
+
+def probe_length_in_ns(readout_length_in_ns: int, parameters: NodeSpecificParameters) -> int:
+    """Return tau_p, the duration of the probe pulse played on one driven resonator, in ns.
+
+    The QUA program and the analysis must agree on this value: the program uses it to place the
+    pulse inside the half-echo, and the fit divides the decay slope by it to get the dephasing rate.
+    Deriving both from this one function keeps them from drifting apart.
+
+    Parameters
+    ----------
+    readout_length_in_ns : int
+        Native length of the driven resonator's calibrated 'readout' operation.
+    parameters : NodeSpecificParameters
+        Node parameters, whose ``readout_len_in_ns`` overrides the native length when set.
+    """
+    if parameters.readout_len_in_ns is None:
+        return readout_length_in_ns
+    return parameters.readout_len_in_ns
+
+
+def validate_readout_len(parameters: NodeSpecificParameters) -> None:
+    """Raise if the requested probe duration cannot be played.
+
+    QUA takes the duration in clock cycles and needs at least four of them, so the value has to be a
+    multiple of 4 ns and no shorter than 16 ns.
+    """
+    requested = parameters.readout_len_in_ns
+    if requested is None:
+        return
+    if requested < 16 or requested % 4 != 0:
+        raise ValueError(
+            f"readout_len_in_ns ({requested} ns) must be a multiple of 4 ns and at least 16 ns, "
+            f"because the QUA 'duration' argument counts 4 ns clock cycles."
+        )
 
 
 def build_phases(parameters: NodeSpecificParameters) -> np.ndarray:

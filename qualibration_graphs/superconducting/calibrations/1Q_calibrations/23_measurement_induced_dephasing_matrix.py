@@ -19,6 +19,8 @@ from calibration_utils.measurement_induced_dephasing_matrix import (
     Parameters,
     build_phases,
     build_xi_values,
+    probe_length_in_ns,
+    validate_readout_len,
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
@@ -53,6 +55,13 @@ and is stored as a two-dimensional 'xi' coordinate rather than as a dimension.
 
 The first half of the echo is filled exactly by the probe pulse followed by the resonator depletion
 time, so that no readout photon survives into the second half. Qubits are measured sequentially.
+
+By default the probe is the calibrated readout pulse at its native length. Setting readout_len_in_ns
+stretches it to that duration at unchanged amplitude, which is the cheapest way to resolve small
+crosstalk: the uncertainty on Gamma falls as 1/tau_p and no extra shots are needed. The final
+measurement is never stretched, so the discrimination threshold stays valid. The stretch is limited
+by the echo, since the idle time has to grow with the probe and the contrast decays as
+exp(-2*idle_time/T2echo); the T2 echo check below refuses idle times beyond half of T2echo.
 
 Prerequisites:
     - Having calibrated the qubit x90 and x180 pulses (nodes 04b and 10b).
@@ -102,19 +111,30 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Phases of the final pi/2 pulse, in turns (frame_rotation_2pi takes units of 2*pi)
     phases = build_phases(node.parameters)
 
+    # Duration of the probe pulse on each driven resonator. Either the native readout length or, when
+    # readout_len_in_ns is set, the stretched duration requested by the user.
+    validate_readout_len(node.parameters)
+    probe_lengths_ns = {
+        q.name: probe_length_in_ns(q.resonator.operations["readout"].length, node.parameters) for q in qubit_list
+    }
+    node.namespace["probe_lengths_in_ns"] = probe_lengths_ns
+    # Left as None when no stretching is requested, so that the played pulse keeps the length it has
+    # in the configuration instead of being re-specified at its own value.
+    probe_duration_cycles = (
+        None if node.parameters.readout_len_in_ns is None else node.parameters.readout_len_in_ns // 4
+    )
+
     # The first half of the echo must hold the probe pulse and the subsequent resonator ring-down.
     # A single idle time is used for every qubit and every driven resonator so that the matrix
     # elements are directly comparable.
     idle_time_ns = node.parameters.idle_time_in_ns
     if idle_time_ns is None:
-        idle_time_ns = max(
-            q.resonator.operations["readout"].length + q.resonator.depletion_time for q in qubit_list
-        )
+        idle_time_ns = max(probe_lengths_ns[q.name] + q.resonator.depletion_time for q in qubit_list)
         idle_time_ns = int(np.ceil(idle_time_ns / 4) * 4)
     node.namespace["idle_time_in_ns"] = idle_time_ns
 
     for q in qubit_list:
-        probe_and_depletion = q.resonator.operations["readout"].length + q.resonator.depletion_time
+        probe_and_depletion = probe_lengths_ns[q.name] + q.resonator.depletion_time
         if idle_time_ns < probe_and_depletion:
             raise ValueError(
                 f"The idle time ({idle_time_ns} ns) is shorter than the probe pulse plus depletion "
@@ -184,7 +204,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Probe pulse inserted in the first half of the echo, followed by the
                             # resonator ring-down.
                             driven_qubit.resonator.wait(x90_cycles)
-                            driven_qubit.resonator.play("readout", amplitude_scale=xi)
+                            driven_qubit.resonator.play("readout", amplitude_scale=xi, duration=probe_duration_cycles)
                             driven_qubit.resonator.wait(depletion_cycles)
 
                             qubit.xy.play("x180")

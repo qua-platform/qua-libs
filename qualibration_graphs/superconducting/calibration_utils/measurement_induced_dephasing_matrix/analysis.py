@@ -30,7 +30,7 @@ import xarray as xr
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 
-from .parameters import build_xi_values
+from .parameters import build_xi_values, probe_length_in_ns
 
 
 @dataclass
@@ -73,9 +73,15 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
 
 def _probe_durations_in_s(ds: xr.Dataset, node: QualibrationNode) -> xr.DataArray:
-    """Return tau_p, the probe pulse duration of each driven resonator, in seconds."""
+    """Return tau_p, the probe pulse duration of each driven resonator, in seconds.
+
+    This has to match the duration the QUA program actually played, including any stretching asked
+    for through ``readout_len_in_ns``, because the fitted slope is divided by it to get Gamma. Both
+    sides go through ``probe_length_in_ns`` so they cannot disagree.
+    """
     durations = [
-        node.machine.qubits[str(name)].resonator.operations["readout"].length * 1e-9
+        probe_length_in_ns(node.machine.qubits[str(name)].resonator.operations["readout"].length, node.parameters)
+        * 1e-9
         for name in ds.driven_resonator.values
     ]
     return xr.DataArray(durations, coords={"driven_resonator": ds.driven_resonator}, dims="driven_resonator")
