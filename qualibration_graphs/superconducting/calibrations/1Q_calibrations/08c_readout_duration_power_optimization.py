@@ -76,6 +76,10 @@ Operating point selection (per qubit):
        making the fidelity number meaningless.
     3. The operating point is the global fidelity maximum over the eligible points. A qubit
        with no eligible point fails and nothing is written for it; the log names the gate.
+    4. With `update_readout_length` off the readout keeps its current length, so the search is
+       pinned to that duration and reduces to an amplitude sweep there. Everything written to
+       the state then describes the integration duration the readout will actually run at. A
+       qubit whose current readout length is not on the swept duration axis fails.
 
 Prerequisites:
     - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
@@ -94,7 +98,8 @@ Notes:
     - Only thermal reset is supported: active reset judges the qubit through the very readout
       pulse this node rescales and lengthens, against a threshold calibrated for the old one.
     - `max_duration_in_ns / num_durations` must be a multiple of 4 ns, the chunk granularity
-      of accumulated demodulation.
+      of accumulated demodulation. With `update_readout_length` off, a qubit's current readout
+      length must land on that same grid, since the search is pinned to it.
     - Accumulated demodulation costs 4 PPU processing blocks per measured qubit against 16 per
       MW-FEM (20 per OPX+), so a multiplexed run is split into batches; set `multiplexed=False`
       to measure one qubit at a time and remove the limit.
@@ -354,7 +359,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             operation = q.resonator.operations[operation_name]
 
             # The length goes first: every quantity below is derived AT that length, so
-            # writing it afterwards would leave the thresholds describing the old pulse.
+            # writing it afterwards would leave the thresholds describing the old pulse. When
+            # the length is not updated the analysis has already pinned the search to the
+            # current length, so `optimal_duration` equals `operation.length` either way and
+            # the demod-unit conversions below are consistent with the pulse that will run.
             if node.parameters.update_readout_length:
                 operation.length = int(fit_results["optimal_duration"])
             # Custom weights span the previous length and no longer tile the pulse.

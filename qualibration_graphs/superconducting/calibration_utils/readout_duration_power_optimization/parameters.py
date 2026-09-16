@@ -35,7 +35,13 @@ class NodeSpecificParameters(RunnableParameters):
     max_readout_amplitude: float = 0.125
     """Readout amplitude above which the node warns (it never clamps). Default is 0.125 V."""
     update_readout_length: bool = True
-    """Whether to write the chosen integration duration to the readout pulse length. Default is True."""
+    """Whether to write the chosen integration duration to the readout pulse length. Default is True.
+
+    When False the readout keeps the length it already has, and the operating-point search is
+    pinned to that length so that the thresholds and the confusion matrix written to the state
+    describe the integration duration the readout will actually run at. The node then behaves
+    as an amplitude sweep, and a qubit whose current readout length is not on the swept
+    duration axis fails with a note saying so."""
     operation: str = "readout"
     """Name of the resonator operation to optimize. Default is 'readout'."""
 

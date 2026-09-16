@@ -14,7 +14,7 @@ making the fidelity number meaningless.
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import xarray as xr
@@ -125,6 +125,7 @@ def select_operating_point(
     variance_ratio: xr.DataArray,
     outliers_threshold: float,
     max_variance_ratio: float,
+    fixed_duration: Optional[float] = None,
 ) -> OperatingPoint:
     """Pick the highest-fidelity grid point whose blobs pass both quality gates.
 
@@ -134,6 +135,12 @@ def select_operating_point(
         variance_ratio: Blob variance ratio over the same grid.
         outliers_threshold: Minimum non-outlier fraction for a point to be eligible.
         max_variance_ratio: Maximum blob variance ratio for a point to be eligible.
+        fixed_duration: If given, only grid points at this integration duration are
+            considered, and the search reduces to an amplitude sweep at that duration. This
+            is what keeps the selection honest when the readout length is not going to be
+            updated: every quantity derived from the chosen point -- the thresholds, the
+            rotation angle, the confusion matrix -- then describes the integration duration
+            the readout will actually run at.
 
     Returns:
         The selected point, or an unsuccessful :class:`OperatingPoint` whose note names the
@@ -145,6 +152,25 @@ def select_operating_point(
     ascending, so a tie resolves to the lowest amplitude and then the shortest duration --
     the cheapest point that still buys the available fidelity.
     """
+    if fixed_duration is not None:
+        matches = np.isclose(np.asarray(fidelity.duration.values, dtype=float), float(fixed_duration))
+        if not matches.any():
+            return OperatingPoint(
+                amp_prefactor=float("nan"),
+                duration=float("nan"),
+                fidelity=float("nan"),
+                success=False,
+                note=(
+                    f"the readout length is held at {float(fixed_duration):.0f} ns because "
+                    f"update_readout_length is off, and that duration is not on the swept axis "
+                    f"{[float(d) for d in fidelity.duration.values]} ns"
+                ),
+            )
+        on_grid = fidelity.duration.values[matches][:1]
+        fidelity = fidelity.sel(duration=on_grid)
+        non_outlier = non_outlier.sel(duration=on_grid)
+        variance_ratio = variance_ratio.sel(duration=on_grid)
+
     passes_outliers = non_outlier >= outliers_threshold
     passes_variance = variance_ratio <= max_variance_ratio
     eligible = passes_outliers & passes_variance
@@ -157,6 +183,10 @@ def select_operating_point(
             reasons.append(f"the blob variance ratio never fell to {max_variance_ratio}")
         if not reasons:
             reasons.append("no point passed the non-outlier fraction and the blob variance ratio at the same time")
+        if fixed_duration is not None:
+            reasons.append(
+                f"the search was restricted to {float(fixed_duration):.0f} ns because update_readout_length is off"
+            )
         return OperatingPoint(
             amp_prefactor=float("nan"),
             duration=float("nan"),
@@ -251,24 +281,35 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, xr
 
 def _extract_relevant_fit_parameters(ds_fit: xr.Dataset, node: QualibrationNode):
     """Select each qubit's operating point and fit its IQ blobs there."""
+    qubit_names = [str(q) for q in ds_fit.qubit.values]
+    operation_name = node.parameters.operation
+
+    # With `update_readout_length` off the readout keeps the length it already has, so the
+    # duration axis is not free to move: a point picked at some other duration would hand the
+    # state a threshold, a rotation angle and a confusion matrix describing an integration
+    # time the readout will never run at. Pinning the search to the current length turns the
+    # node into an amplitude sweep at that length, which is what the parameter asks for.
+    fixed_durations: Dict[str, Optional[float]] = {q: None for q in qubit_names}
+    if not node.parameters.update_readout_length:
+        for q in qubit_names:
+            fixed_durations[q] = float(node.machine.qubits[q].resonator.operations[operation_name].length)
+
     operating_points: Dict[str, OperatingPoint] = {}
-    for q in ds_fit.qubit.values:
+    for q in qubit_names:
         per_qubit = ds_fit.fit_data.sel(qubit=q)
-        operating_points[str(q)] = select_operating_point(
+        operating_points[q] = select_operating_point(
             per_qubit.sel(fit_vals="meas_fidelity"),
             per_qubit.sel(fit_vals="outliers"),
             per_qubit.sel(fit_vals="variance_ratio"),
             outliers_threshold=node.parameters.outliers_threshold,
             max_variance_ratio=node.parameters.max_variance_ratio,
+            fixed_duration=fixed_durations[q],
         )
-
-    qubit_names = [str(q) for q in ds_fit.qubit.values]
     # The absolute amplitude the chosen prefactor corresponds to. It is carried on the fit
     # dataset as well as in the fit results because the plots annotate with it.
     optimal_amplitudes = {
         q: (
-            operating_points[q].amp_prefactor
-            * node.machine.qubits[q].resonator.operations[node.parameters.operation].amplitude
+            operating_points[q].amp_prefactor * node.machine.qubits[q].resonator.operations[operation_name].amplitude
             if operating_points[q].success
             else float("nan")
         )

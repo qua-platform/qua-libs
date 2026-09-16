@@ -331,3 +331,76 @@ def test_select_operating_point_breaks_ties_towards_the_cheapest_point():
     assert point.success
     assert point.amp_prefactor == pytest.approx(AMPS[2])
     assert point.duration == pytest.approx(DURATIONS[1])
+
+
+# ------------------------------------------------- pinned duration (update_readout_length off)
+
+
+def test_select_operating_point_pinned_to_a_duration_ignores_a_better_point_elsewhere():
+    """With `update_readout_length` off the readout keeps its length, so a higher-fidelity
+    point at another duration is not reachable and must not be selected: everything derived
+    from the chosen point has to describe the duration that will actually run."""
+    fidelity = np.full((AMPS.size, DURATIONS.size), 0.9)
+    fidelity[5, 3] = 0.99  # the global maximum, at 800 ns
+    fidelity[1, 1] = 0.95  # the best that 400 ns can do
+    point = select_operating_point(
+        _grid(fidelity),
+        _grid(np.full_like(fidelity, 0.99)),
+        _grid(np.ones_like(fidelity)),
+        outliers_threshold=0.98,
+        max_variance_ratio=3.0,
+        fixed_duration=400.0,
+    )
+    assert point.success
+    assert point.duration == pytest.approx(400.0)
+    assert point.amp_prefactor == pytest.approx(AMPS[1])
+    assert point.fidelity == pytest.approx(0.95)
+
+
+def test_select_operating_point_fails_when_the_pinned_duration_is_off_the_swept_axis():
+    fidelity = np.full((AMPS.size, DURATIONS.size), 0.9)
+    point = select_operating_point(
+        _grid(fidelity),
+        _grid(np.full_like(fidelity, 0.99)),
+        _grid(np.ones_like(fidelity)),
+        outliers_threshold=0.98,
+        max_variance_ratio=3.0,
+        fixed_duration=500.0,
+    )
+    assert not point.success
+    assert "not on the swept axis" in point.note
+    assert np.isnan(point.duration)
+
+
+def test_select_operating_point_names_the_pinned_duration_when_the_gates_reject_it():
+    """A duration that is fine elsewhere on the grid but gated out at the pinned length must
+    say that the restriction is what left nothing to choose from."""
+    non_outlier = np.full((AMPS.size, DURATIONS.size), 0.99)
+    non_outlier[:, 1] = 0.5  # every amplitude at 400 ns is outlier-ridden
+    point = select_operating_point(
+        _grid(np.full((AMPS.size, DURATIONS.size), 0.9)),
+        _grid(non_outlier),
+        _grid(np.ones((AMPS.size, DURATIONS.size))),
+        outliers_threshold=0.98,
+        max_variance_ratio=3.0,
+        fixed_duration=400.0,
+    )
+    assert not point.success
+    assert "non-outlier fraction" in point.note
+    assert "update_readout_length is off" in point.note
+
+
+def test_select_operating_point_without_a_pinned_duration_is_unchanged():
+    """The default path must still range over the whole duration axis."""
+    fidelity = np.full((AMPS.size, DURATIONS.size), 0.9)
+    fidelity[5, 3] = 0.99
+    point = select_operating_point(
+        _grid(fidelity),
+        _grid(np.full_like(fidelity, 0.99)),
+        _grid(np.ones_like(fidelity)),
+        outliers_threshold=0.98,
+        max_variance_ratio=3.0,
+    )
+    assert point.success
+    assert point.duration == pytest.approx(DURATIONS[3])
+    assert point.fidelity == pytest.approx(0.99)
