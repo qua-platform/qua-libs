@@ -46,14 +46,52 @@ class NodeSpecificParameters(RunnableParameters):
     it is derived as max_j(probe_length_j + depletion_time_j), rounded up to a multiple of 4 ns,
     so that the probe pulse and the subsequent resonator ring-down fit exactly inside the first half
     of the echo. Default is None."""
-    min_contrast_snr: float = 2.0
+    probe_in_both_halves: bool = False
+    """Whether to play the probe pulse in both halves of the echo instead of only the first.
+
+    With the probe in one half only, the mean photon number in the driven resonator pulls the qubit
+    frequency and the resulting AC-Stark phase is not refocused, so the oscillation both loses
+    contrast (photon shot noise) and shifts in phase (mean photon number). With the probe in both
+    halves the x180 pulse inverts the sign of the accumulated Stark phase, so the coherent shift
+    cancels while the shot-noise dephasing of the two halves adds up: the oscillation then only
+    loses contrast. That makes the contrast decay well conditioned and doubles the probe time the
+    decay is sensitive to, at the cost of losing the Stark-shift channel. The Stark-shift matrix is
+    therefore only computed and reported when this is False.
+
+    The cancellation and the doubling both assume the photon-noise correlation time 1/kappa is short
+    compared with the probe duration, which holds for any probe longer than a few resonator ring-down
+    times. Default is False."""
+    min_contrast_snr: float = 3.0
     """Contrast points whose fitted amplitude is below min_contrast_snr times its own uncertainty are
-    considered fully dephased (noise floor) and excluded from the Gamma fit. Default is 2.0."""
+    considered fully dephased (noise floor) and excluded from the Gamma and Stark fits.
+
+    Debiasing the contrast removes the upward bias of the noise floor but not its other effect: the
+    fits work on ln(c), whose error is only symmetric while c is several times its own uncertainty.
+    Points below that turn a clean exponential decay into a tail that bends away from the fitted
+    line, which inflates the reduced chi-squared and can get a perfectly good element rejected. Three
+    sigma is where ln(c) is Gaussian enough for the chi-squared to mean what it says. Default is
+    3.0."""
+    max_reduced_chi2: float = 5.0
+    """Largest reduced chi-squared a matrix element's straight-line fit may have before the element is
+    rejected. A large value means ln(c) is not straight against xi**2 (so the photon number is no
+    longer proportional to xi**2, e.g. the resonator has been driven out of its linear range) or that
+    single points are outliers. A rejected element keeps its fitted value for inspection but is
+    excluded from the pass criterion. Default is 5.0."""
+    max_phase_residual_in_rad: float = float(np.pi / 2)
+    """Largest distance, in radians, that an AC-Stark phase point may sit from the trend used to
+    unwrap it before the Stark fit of that element is rejected.
+
+    The phase advances as xi**2 while xi is swept linearly, so consecutive points can legitimately be
+    several radians apart at the top of the sweep and a test on the step size alone would reject the
+    strongly shifted pairs the measurement is after. The unwrapping instead extrapolates the trend
+    established at low amplitude and places each point on the nearest branch of 2*pi, which is
+    unambiguous as long as that prediction is good to well under half a turn. Default is pi/2.
+    Ignored when probe_in_both_halves is True."""
     max_crosstalk_dephasing_in_hz: float = 1e3
-    """A qubit is marked as successful if the magnitude of every one of its off-diagonal dephasing
-    rates stays below this value. The magnitude is used rather than the signed rate because a fit on
-    an unresolvably small crosstalk can return a large negative rate, which is just as unphysical as
-    a large positive one. Default is 1e3 Hz."""
+    """A qubit is marked as successful if every one of its off-diagonal dephasing rates is either too
+    small to resolve or resolved below this value. An element is considered resolved when its
+    magnitude exceeds twice its own standard error; an unresolved element is an upper bound, not a
+    measured crosstalk, and is not judged against this threshold. Default is 1e3 Hz."""
     plot_phase_oscillations: bool = False
     """Whether to produce the (large) diagnostic figure showing every phase oscillation together with
     its sinusoidal fit. Default is False."""
@@ -88,6 +126,21 @@ def probe_length_in_ns(readout_length_in_ns: int, parameters: NodeSpecificParame
     if parameters.readout_len_in_ns is None:
         return readout_length_in_ns
     return parameters.readout_len_in_ns
+
+
+def num_probe_pulses(parameters: NodeSpecificParameters) -> int:
+    """Return how many probe pulses are played per echo, one per half that carries a probe."""
+    return 2 if parameters.probe_in_both_halves else 1
+
+
+def total_probe_length_in_ns(readout_length_in_ns: int, parameters: NodeSpecificParameters) -> int:
+    """Return the total time the driven resonator is probed during one echo, in ns.
+
+    This is the duration the fitted decay slope is divided by, because the dephasing accumulated by
+    the measured qubit is proportional to the total time photons are present, not to the length of a
+    single pulse. With the probe in both halves of the echo it is twice the single-pulse duration.
+    """
+    return num_probe_pulses(parameters) * probe_length_in_ns(readout_length_in_ns, parameters)
 
 
 def validate_readout_len(parameters: NodeSpecificParameters) -> None:

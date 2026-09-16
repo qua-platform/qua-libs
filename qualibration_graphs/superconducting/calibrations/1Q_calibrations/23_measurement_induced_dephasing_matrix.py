@@ -6,32 +6,20 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-
+from calibration_utils.measurement_induced_dephasing_matrix import (
+    Parameters, build_phases, build_xi_values, fit_raw_data,
+    log_fitted_results, plot_contrast_with_fit, plot_dephasing_matrix,
+    plot_phase_oscillations, plot_stark_phase, plot_stark_shift_matrix,
+    probe_length_in_ns, process_raw_dataset, validate_readout_len)
 from qm.qua import *
-
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
-
 from qualibrate import QualibrationNode
-from quam_config import Quam
-from calibration_utils.measurement_induced_dephasing_matrix import (
-    Parameters,
-    build_phases,
-    build_xi_values,
-    probe_length_in_ns,
-    validate_readout_len,
-    process_raw_dataset,
-    fit_raw_data,
-    log_fitted_results,
-    plot_contrast_with_fit,
-    plot_dephasing_matrix,
-    plot_phase_oscillations,
-)
+from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
-from qualibration_libs.data import XarrayDataFetcher
-
+from quam_config import Quam
 
 # %% {Description}
 description = """
@@ -39,22 +27,34 @@ description = """
 Implements the protocol of Fig. 6 of Phys. Rev. Applied 23, 054089 (arXiv:2412.14853).
 
 A Hahn echo (x90 - tau - x180 - tau - phase - -x90 - measurement) is played on qubit Qi while a
-readout pulse of relative amplitude xi is inserted into the FIRST half of the echo on resonator Rj.
-The interval tau is fixed; the phase of the final pi/2 pulse is swept over one full turn to reveal a
-coherent oscillation. The decay of that oscillation's contrast with the readout amplitude,
+readout pulse of relative amplitude xi is inserted into the echo on resonator Rj. The interval tau is
+fixed; the phase of the final pi/2 pulse is swept over one full turn to reveal a coherent
+oscillation. The photons in Rj act on Qi in two ways, which the swept phase separates:
 
-    c(xi) = c0 * exp(-Gamma * tau_p * xi**2),
+    c(xi)   = c0 * exp(-Gamma * tau_probe * xi**2)          (contrast, from photon shot noise)
+    phi(xi) = phi0 + 2*pi * delta_f * tau_probe * xi**2     (phase, from the mean photon number)
 
-yields the measurement-induced dephasing rate Gamma of the (Qi, Rj) pair, with tau_p the probe pulse
-duration. Repeating over every pair builds the dephasing matrix: the diagonal holds the
-self-dephasing rates (MHz scale) and the off-diagonal the readout crosstalk (Hz scale).
+Gamma is the measurement-induced dephasing rate of the (Qi, Rj) pair and delta_f the AC-Stark shift
+it would feel at the calibrated readout amplitude; tau_probe is the total probe time per echo.
+Repeating over every pair builds two matrices, each with the self terms on the diagonal (MHz scale)
+and the readout crosstalk off it (Hz scale).
+
+The Stark shift is linear in the cross-Kerr coupling between Qi and Rj while the dephasing rate is
+quadratic in it, so the Stark matrix resolves crosstalk on pairs whose dephasing sits below the
+noise floor. It is the more sensitive of the two and is reported whenever it exists.
+
+Setting probe_in_both_halves plays the probe in both halves of the echo instead of the first one
+only. The x180 pulse then refocuses the Stark phase, so the oscillation only loses contrast: the
+decay becomes well conditioned and is sensitive to twice the probe time, at the price of losing the
+Stark channel. Only the dephasing matrix is computed and plotted in that mode.
 
 Because the two scales differ by orders of magnitude, the diagonal is swept logarithmically over a
 much smaller amplitude range than the off-diagonal. The amplitude axis therefore differs per pair
 and is stored as a two-dimensional 'xi' coordinate rather than as a dimension.
 
-The first half of the echo is filled exactly by the probe pulse followed by the resonator depletion
-time, so that no readout photon survives into the second half. Qubits are measured sequentially.
+Each half of the echo is filled exactly by the probe pulse followed by the resonator depletion time,
+so that no readout photon survives past the half it was created in. Qubits are measured
+sequentially.
 
 By default the probe is the calibrated readout pulse at its native length. Setting readout_len_in_ns
 stretches it to that duration at unchanged amplitude, which is the cheapest way to resolve small
@@ -69,9 +69,12 @@ Prerequisites:
     - Having measured T2 echo, used to check that the fixed idle time is not lossy (node 06b).
 
 Next steps before going to the next node:
-    - This node does not update the QUAM state; it reports the dephasing matrix. If the off-diagonal
-      rates are comparable to the qubit decoherence rates, revisit the readout frequencies and
-      amplitudes to reduce the spectral overlap between readout tones.
+    - This node does not update the QUAM state; it reports the matrices. If the off-diagonal
+      dephasing rates are comparable to the qubit decoherence rates, revisit the readout frequencies
+      and amplitudes to reduce the spectral overlap between readout tones. An off-diagonal element
+      reported as an upper bound was not resolved by this run: lengthen the probe with
+      readout_len_in_ns, which shrinks the error as 1/tau_probe at no extra shots, before concluding
+      that its crosstalk is small.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -88,7 +91,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
     # You can get type hinting in your IDE by typing node.parameters.
-    # node.parameters.qubits = ["q1", "q2"]
+    # node.parameters.qubits = ["q1", "q2", "q3", "q4"]
     pass
 
 
@@ -151,6 +154,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     idle_time_cycles = idle_time_ns // 4
 
+    # The second probe starts once the first half's ring-down and the x180 pulse are over. The QUA
+    # wait that gets it there counts clock cycles and needs at least four of them, which is only in
+    # doubt when the idle time is exactly the probe plus depletion time of the longest resonator and
+    # the x180 pulse is very short.
+    if node.parameters.probe_in_both_halves:
+        for q in qubit_list:
+            x180_cycles = q.xy.operations["x180"].length // 4
+            for driven in qubit_list:
+                delay_cycles = (
+                    idle_time_cycles - probe_lengths_ns[driven.name] // 4 - driven.resonator.depletion_time // 4
+                ) + x180_cycles
+                if delay_cycles < 4:
+                    raise ValueError(
+                        f"The second probe on {driven.name} cannot be placed in the second half of "
+                        f"the echo of {q.name}: it would have to start {delay_cycles * 4} ns after "
+                        f"the first half's ring-down, and a QUA wait needs at least 16 ns. Increase "
+                        f"idle_time_in_ns."
+                    )
+
     # Register the sweep axes to be added to the dataset when fetching data. 'xi' itself is not a
     # dimension because its values differ between the diagonal and the off-diagonal pairs; it is
     # attached as a two-dimensional coordinate during the analysis.
@@ -178,6 +200,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             align()
 
             x90_cycles = qubit.xy.operations["x90"].length // 4
+            x180_cycles = qubit.xy.operations["x180"].length // 4
 
             with for_(shot, 0, shot < n_avg, shot + 1):
                 save(shot, n_st)
@@ -186,6 +209,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # arrives in the order expected by the buffering below.
                 for j, driven_qubit in enumerate(qubit_list):
                     depletion_cycles = driven_qubit.resonator.depletion_time // 4
+
+                    probe_cycles = probe_lengths_ns[driven_qubit.name] // 4
+                    # Delay between the end of the first half's ring-down and the start of the second
+                    # probe: the rest of the first half, then the x180 played by the measured qubit.
+                    second_probe_delay_cycles = idle_time_cycles - probe_cycles - depletion_cycles + x180_cycles
 
                     with for_each_(xi, xi_values[i, j].tolist()):
                         with for_each_(phi, phases.tolist()):
@@ -209,6 +237,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                             qubit.xy.play("x180")
                             qubit.xy.wait(idle_time_cycles)
+
+                            # Optional second probe, mirrored into the second half of the echo. The
+                            # x180 above inverts the sign of the Stark phase accumulated in the first
+                            # half, so an identical probe here cancels the coherent frequency pull
+                            # while the shot-noise dephasing of the two halves still adds up.
+                            if node.parameters.probe_in_both_halves:
+                                driven_qubit.resonator.wait(second_probe_delay_cycles)
+                                driven_qubit.resonator.play(
+                                    "readout", amplitude_scale=xi, duration=probe_duration_cycles
+                                )
+                                driven_qubit.resonator.wait(depletion_cycles)
+
                             # Sweeping the phase of the final pi/2 pulse turns the echo into a
                             # coherent oscillation whose contrast measures the residual coherence.
                             qubit.xy.frame_rotation_2pi(phi)
@@ -320,13 +360,19 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the contrast decays, the dephasing matrix and, optionally, the raw phase oscillations."""
+    """Plot the contrast decays, the two matrices and, optionally, the raw phase oscillations."""
+    ds_fit = node.results["ds_fit"]
     figures = {
-        "contrast_vs_amplitude": plot_contrast_with_fit(node.results["ds_fit"], node.namespace["qubits"]),
-        "dephasing_matrix": plot_dephasing_matrix(node.results["ds_fit"]),
+        "contrast_vs_amplitude": plot_contrast_with_fit(ds_fit, node.namespace["qubits"]),
+        "dephasing_matrix": plot_dephasing_matrix(ds_fit, node),
     }
+    # With the probe in both halves of the echo the x180 refocuses the AC-Stark phase, so there is no
+    # Stark shift to report and those two figures are left out.
+    if not node.parameters.probe_in_both_halves:
+        figures["stark_shift_matrix"] = plot_stark_shift_matrix(ds_fit, node)
+        figures["stark_phase"] = plot_stark_phase(ds_fit)
     if node.parameters.plot_phase_oscillations:
-        figures["phase_oscillations"] = plot_phase_oscillations(node.results["ds_fit"], node)
+        figures["phase_oscillations"] = plot_phase_oscillations(ds_fit, node)
     plt.show()
     # Store the generated figures
     node.results["figures"] = figures
