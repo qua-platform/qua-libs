@@ -281,11 +281,14 @@ def fetch_single_shots(job, qubits, sweep_axes, n_shots_snr: int) -> xr.Dataset:
     n_detunings = sweep_axes["detuning"].size
     n_amps = sweep_axes["amp_prefactor"].size
     data_vars = {}
+    # Wait on the whole result set at once: `wait_for_all_values` exists per handle only on the
+    # local QOP, while `result_handles.wait_for_all_values` is also provided by the IQCC cloud
+    # adapter (where the results are already complete and the call is a no-op).
+    job.result_handles.wait_for_all_values()
     for label in ("Ig", "Qg", "Ie", "Qe"):
         values = np.empty((len(qubits), n_shots_snr, n_detunings, n_amps))
         for i, _qubit in enumerate(qubits):
             handle = job.result_handles.get(f"{label}{i + 1}")
-            handle.wait_for_all_values()
             fetched = handle.fetch_all()
             if getattr(fetched, "dtype", None) is not None and fetched.dtype.names:
                 fetched = fetched["value"]
