@@ -69,25 +69,111 @@ class by hand.
 
 ## What `resolve_params(...)` Does
 
-`resolve_params(**kwargs)` merges two sources of values:
+`resolve_params(**kwargs)` is a convenience helper provided by `CustomMacro`.
+It builds a dictionary by iterating over the macro's dataclass fields and, for
+each field name, choosing between:
 
-- the values stored on the macro instance itself
-- any explicit keyword overrides passed in the current call
+- the value currently stored on the macro instance, `self.<field_name>`
+- the override passed in `kwargs[field_name]`, if that override is not `None`
 
-This lets a macro have persistent defaults while still allowing one-off
-per-call overrides from a node or helper script.
+More precisely, for every dataclass field on the macro, it does the equivalent
+of:
 
-In practice, a pattern like:
+```python
+override = kwargs.get(field_name)
+value = self.<field_name> if override is None else override
+```
+
+Two details are important:
+
+- it only considers dataclass field names already defined on the macro
+- passing `None` is treated the same as not passing an override at all
+
+So `resolve_params(...)` is convenient to be able to pass override arguements
+into the macro's `apply(...)` without manually listing them all in the function
+declaration. 
+
+**Importantly, this is optional**. You **do not need** to use `resolve_params(...)` 
+in a custom macro. You can just as easily declare explicit arguments on `apply(...)`
+and perform the fallback logic yourself. Both approaches work; `resolve_params(...)`
+is just a convenience for macros that have several overridable fields, allowing you to 
+centralize the attributes logic. 
+
+### Pattern 1: using `resolve_params(...)`
 
 ```python
 params = self.resolve_params(**kwargs)
 ramp = params["ramp_duration"]
+hold = params["hold_duration"]
 ```
 
-means:
+Example:
 
-- use `kwargs["ramp_duration"]` if it was passed in this call
-- otherwise fall back to `self.ramp_duration`
+```python
+@quam_dataclass
+class MyInitializeAttributes:
+    ramp_duration: int = 200
+    hold_duration: int = 400
+
+
+@quam_dataclass
+class MyInitializeMacro(CustomMacro, MyInitializeAttributes):
+    Parameters = MyInitializeAttributes
+
+    @property
+    def inferred_duration(self) -> float | None:
+        return (self.ramp_duration + self.hold_duration) * 1e-9
+
+    def apply(self, **kwargs):
+        params = self.resolve_params(**kwargs)
+        ramp = params["ramp_duration"]
+        hold = params["hold_duration"]
+        ...
+```
+
+Calling:
+
+```python
+my_macro.apply(ramp_duration=800)
+```
+
+will use:
+
+- `ramp_duration = 800`
+- `hold_duration = self.hold_duration`
+
+### Pattern 2: explicit arguments without `resolve_params(...)`
+
+The same behavior can be written out directly:
+
+```python
+@quam_dataclass
+class MyInitializeAttributes:
+    ramp_duration: int = 200
+    hold_duration: int = 400
+
+
+@quam_dataclass
+class MyInitializeMacro(CustomMacro, MyInitializeAttributes):
+    Parameters = MyInitializeAttributes
+
+    @property
+    def inferred_duration(self) -> float | None:
+        return (self.ramp_duration + self.hold_duration) * 1e-9
+
+    def apply(
+        self,
+        ramp_duration: int | None = None,
+        hold_duration: int | None = None,
+        **kwargs,
+    ):
+        ramp = self.ramp_duration if ramp_duration is None else ramp_duration
+        hold = self.hold_duration if hold_duration is None else hold_duration
+        ...
+```
+
+This can be easier to read when a macro has only a few arguments, or when you
+want the `apply(...)` signature itself to document the expected keyword names.
 
 ## What `inferred_duration` Is For
 
