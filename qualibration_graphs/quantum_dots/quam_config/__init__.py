@@ -1,5 +1,9 @@
 from .my_quam import Quam
-from .my_macros import InitializeMacro, MeasureMacro
-from .my_macro_parameters import MacroParameters
+from .my_macros import *
+from .state_macros import *
 
-__all__ = ["Quam", "InitializeMacro", "MeasureMacro", "MacroParameters"]
+__all__ = [
+    "Quam", 
+    *my_macros.__all__, 
+    *state_macros.__all__
+]

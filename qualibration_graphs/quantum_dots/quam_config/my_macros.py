@@ -1,247 +1,105 @@
 """
-Define custom state macros for the quantum-dots QUAM.
+Use this script to populate QuantumDotPair components with custom macros, as created in state_macros. 
 
-This module is the place to implement pair-level custom initialize and
-measure behaviour. The macros defined here are later wired onto selected
-``QuantumDotPair`` objects by ``populate_macros.py`` and can be controlled
-from nodes through the matching parameter mixins in
-``my_macro_parameters.py``.
+This script also exports the MacroParameters class, a Qualibrate parameters class which mixes in the attributes
+defined in state_macros. 
 
-When customizing this file, the important contract is the exported names:
-- ``InitializeMacro``
-- ``MeasureMacro``
+These custom state macros operate at the level of the QuantumDotPair. This means that
+qubit.initialize() and qubit_pair.initialize() are quantum_dot_pair.initialize() under the hood, and 
+the same goes for the measure macro. 
 
-These are the classes that downstream wiring code imports and attaches to the
-machine. You can keep the provided examples, adapt them, or replace them with
-your own implementations, but the exported names should remain the same.
+Therefore, for any custom state macro you create in regards to the initialize or the measure sequence, 
+you only need to update it at the QuantumDotPair level. Any call (qubit.initialize() or qubit_pair.initialize())
+you see in the nodes will simply use these wired QuantumDotPair macros under the hood! 
 
-You can also define your own custom-named macro classes and export those
-through ``__all__`` instead. If you do that, make sure
-``my_macro_parameters.py`` and ``populate_macros.py`` are updated to match the
-new exported macro names and parameter fields.
-
-The examples in this file show two common patterns:
-- ``InitializeMacroBase`` implements a voltage-balanced round-trip
-  initialization sequence.
-- ``InitializeMacro`` builds on that base to demonstrate an active-reset /
-  heralded initialization flow.
-If you would like to implement your own initialize/measure behaviour, make sure to 
-comment these examples out. 
-
-Because these state macros are wired at the ``QuantumDotPair`` level, calls
-such as ``qubit.initialize()``, ``qubit_pair.initialize()``, and
-``dot_pair.initialize()`` all resolve to the same underlying pair macro.
+This script currently only wires in the InitializeMacro. If you write your own MeasureMacro, then make sure to 
+wire it up. 
 """
 
-from typing import Optional, Literal
+#########################
+# %%     Imports ########
+#########################
 
-from quam_builder.architecture.quantum_dots import CustomMacro
-from quam.core import quam_dataclass
+from typing import List
+from quam_builder.architecture.quantum_dots.macro_engine import wire_machine_macros
+from quam_builder.architecture.quantum_dots.operations.names import SingleQubitMacroName
 
-from qm.qua import align, strict_timing_, assign, declare, if_, while_, Cast
+from qualibrate.core.parameters import RunnableParameters
+from quam_config import Quam
+from quam_config.state_macros import (
+    HeraldedInitializeMacro, 
+    HeraldedInitializeAttributes,
+    MeasureMacro,
+    MeasureMacroAttributes,
+)
 
-__all__ = ["InitializeMacro", "MeasureMacro"]
+initialize_macro = HeraldedInitializeMacro
+initialize_attrs = HeraldedInitializeAttributes
+measure_macro = MeasureMacro
+measure_attrs = MeasureMacroAttributes
 
-# Defaults that you can write yourself.
+__all__ = ["MacroParameters"]
 
-# NOTE: This script, by default, emits the heralded/active initialisation as an example.
-# If this is not your desired behaviour, make sure to edit the examples section below.
-
-
-@quam_dataclass
-class InitializeMacro(CustomMacro):
-    @property
-    def inferred_duration(self) -> float | None:
-        return 0
-
-    def apply(self):
-        pass
-
-
-@quam_dataclass
-class MeasureMacro(CustomMacro):
-    @property
-    def inferred_duration(self) -> float | None:
-        return 0
-
-    def apply(self):
-        pass
+class MacroParameters(RunnableParameters, initialize_attrs, measure_attrs): 
+    """Batch all the macro related parameters to export in a single class"""
+    pass
 
 
-# -------- EXAMPLES ---------
+# ### Helper function which allows you to choose the dot pairs to update
 
-# First we create a BalancedInitializeMacro, which describes a balanced round trip.
-# The real macro that we export from here should be names InitializeMacro, which is listed below.
-
-
-@quam_dataclass
-class InitializeMacroBase(CustomMacro):
-    """Balanced round-trip: ramp 0 → -V → +V → 0 through a named voltage point.
-
-    Shape (per channel):
-
-        0  ──ramp──▶  -V  ──hold──  -V  ──ramp──▶  +V  ──hold──  +V  ──ramp──▶  0
-
-    Ramp 1 and ramp 3 are mirror triangles of each other; ramp 2 is
-    antisymmetric about 0 V and integrates to zero. The two holds are
-    equal, so their +V and -V contributions cancel. Net integrated
-    voltage: zero on every channel.
-
-    Ramp 2 covers twice the voltage of ramps 1 and 3, so its duration is
-    ``2 * ramp_duration`` to preserve the same slope (consistent dV/dt).
+def get_dot_pairs(machine: Quam, dot_pairs: List[str] | None = None) -> List[str]:
     """
+    Given a spin qubit Quam machine, extracts a list of QuantumDotPair names as a list.
 
-    zero_duration: int = 100
-    ramp_duration: int = 500
-    hold_duration: int = 500
-    point_name: str = "initialize"
-
-    @property
-    def inferred_duration(self) -> float | None:
-        return (4 * self.ramp_duration + 2 * self.hold_duration + self.zero_duration) * 1e-9
-
-    def apply(
-        self,
-        ramp_duration: int | None = None,
-        hold_duration: int | None = None,
-        zero_duration: int | None = None,
-        point_name: str | None = None,
-        **kwargs,
-    ):
-        owner = self.owner  # The QuantumDotPair object that is the ultimate owner of this macro
-
-        # Check if any arguments have been passed to the macro, and make sure to fall back to the
-        # class attribute as a default.
-        ramp = self.ramp_duration if ramp_duration is None else ramp_duration
-        hold = self.hold_duration if hold_duration is None else hold_duration
-        zero = self.zero_duration if zero_duration is None else zero_duration
-        point_name = self.point_name if point_name is None else point_name
-
-        # Create dicts of positive and negative voltage points
-        positive_voltages = self.point_voltages(point_name)
-        negative_voltages = {k: -v for k, v in positive_voltages.items()}
-        zero_voltages = {k: 0.0 for k, _ in positive_voltages.items()}
-
-        # This macro operates using the VoltageSequence
-        vs = owner.voltage_sequence
-        gates = [ch_name for ch_name in vs.gate_set.channels.keys()]
-
-        # Align all the gates before the start of the sequence
-        align(*gates)
-
-        with strict_timing_():
-            vs.ramp_to_voltages(
-                negative_voltages,
-                duration=hold,
-                ramp_duration=ramp,
-                ensure_align=False,
-            )
-            vs.ramp_to_voltages(
-                positive_voltages,
-                duration=hold,
-                ramp_duration=2 * ramp,
-                ensure_align=False,
-            )
-            vs.ramp_to_voltages(
-                zero_voltages,
-                duration=zero,
-                ramp_duration=ramp,
-                ensure_align=False,
-            )
-
-
-@quam_dataclass
-class InitializeMacro(InitializeMacroBase):
+    Args:
+        - machine: Quam - The Spin Quam Machine to extract the dot pairs from
+        - dot_pairs: List[str] - The list of quantum dot pair string names. If None, then
+            this function will return all the dot pairs associated with the machine.
     """
-    An active reset initialize scheme, built on the BalancedInitializeMacro.
+    if dot_pairs is None:
+        # No list supplied, default to all existing dot pairs.
+        return list(machine.quantum_dot_pairs.keys())
+    else:
+        # List supplied. Means that the user wants to update only a subset of the dot pairs.
+        return dot_pairs
 
-    The flow:
-    - Initialize using the BalancedInitializeMacro
-    - Measure the state
-    - If the state is NOT the desired state, drive the specified qubit, and repeat the above
-    - If the state is the desired state, exit the loop
 
-    This class also optionally allows one to extract the number of loops performed as a stream
-    """
+def main(): 
+    ##############################
+    # %%     Load machine ########
+    ##############################
 
-    max_loops: int = 2
-    return_n_loops: bool = False
-    target_state: Literal[0, 1] = 0
-    qubit_role: Literal["target", "control"] = "control"
+    machine = Quam.load()
 
-    @property
-    def inferred_duration(self) -> float | None:
-        single_initialize_trip = (4 * self.ramp_duration + 2 * self.hold_duration + 16) * 1e-9
-        measure_macro_duration = self.owner.macros["measure"].inferred_duration
-        if measure_macro_duration is None:
-            return None
 
-        max_loops = self.max_loops
+    #################################################
+    # %%     Specify the dot pairs to update ########
+    #################################################
 
-        # Change this to match your qubit's drive length in seconds if you want a tighter bound.
-        estimated_qubit_drive_duration = None
-        length = single_initialize_trip + measure_macro_duration
-        if estimated_qubit_drive_duration is not None:
-            length += estimated_qubit_drive_duration
+    # Create a list of dot pair names here if you would like to update only a subset of dot pair macros
+    dot_pairs = None
+    dot_pairs = get_dot_pairs(machine, dot_pairs)
 
-        return length * max_loops
+    #########################################################
+    # %%     Wire the custom macros into the machine ########
+    #########################################################
 
-    def apply(
-        self,
-        max_loops: Optional[int] = None,
-        target_state: Optional[Literal[0, 1]] = None,
-        return_n_loops: bool | None = None,
-        operation: str = "x180",
-        qubit_role: Optional[Literal["target", "control"]] = None,
-        qubit_name: Optional[str] = None,
-        meas_ramp_duration: Optional[int] = None,
-        meas_buffer_duration: Optional[int] = None,
-        **kwargs,
-    ):
-        owner = self.owner
+    wire_machine_macros(
+        machine=machine,
+        instance_overrides={
+            f"quantum_dot_pairs.{qdp}": {
+                SingleQubitMacroName.INITIALIZE: initialize_macro,
+                # SingleQubitMacroName.MEASURE: measure_macro,
+            }
+            for qdp in dot_pairs
+        },
+    )
 
-        if qubit_name is None:
-            qubit_role = self.qubit_role if qubit_role is None else qubit_role
-            # Extract the qubit pair whose quantum_dot_pair is the owner
-            qubit_pair = next(qp for qp in owner.machine.qubit_pairs.values() if qp.quantum_dot_pair is owner)
-            qubit_name = getattr(qubit_pair, f"qubit_{qubit_role}", None)
-            if qubit_name is None:
-                raise ValueError("Failed to resolve qubit")
+    ######################################
+    # %%     Save machine changes ########
+    ######################################
 
-        target_state = self.target_state if target_state is None else target_state
-        max_loops = self.max_loops if max_loops is None else max_loops
-        return_n_loops = self.return_n_loops if return_n_loops is None else return_n_loops
+    machine.save()
 
-        vs = owner.voltage_sequence
-        gates = [ch_name for ch_name in vs.gate_set.channels.keys()]
-        loop_start_n, loop_start_bool = 0, True
-
-        n_count = declare(int)
-        assign(n_count, loop_start_n)
-
-        cond = declare(bool)
-        assign(cond, loop_start_bool)
-
-        with while_((cond) & (n_count < max_loops)):
-
-            # First initialise. super() should be BalancedInitializeMacro
-            super().apply(**kwargs)
-
-            # Now measure the state
-            state = owner.measure(
-                return_iq=False,
-                ramp_duration=meas_ramp_duration,
-                buffer_duration=meas_buffer_duration,
-            )
-
-            # As long as the state is in the initial value, the loop will continue until max_loops
-            assign(cond, Cast.to_bool(state - target_state))
-            assign(n_count, n_count + 1)
-            qubit = owner.machine.qubits[qubit_name]
-            with if_(cond):
-                align(*gates, qubit.xy.name, owner.sensor_dots[0].readout_resonator.id)
-                qubit.apply(operation)
-
-        if return_n_loops:
-            return n_count
-        return None
+if __name__ == "__main__":
+    main()
