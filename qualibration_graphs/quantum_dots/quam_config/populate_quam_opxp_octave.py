@@ -13,7 +13,7 @@ Hardware assumptions
 import numpy as np
 from qualang_tools.units import unit
 
-from quam_config import QubitQuam as Quam
+from quam_config import Quam
 from quam_builder.architecture.quantum_dots.operations.names import DrivePulseName, VoltagePointName
 
 ########################################################################################################################
@@ -105,8 +105,7 @@ readout_length = 5 * u.us
 qubit_readout_dot_mapping = {
     "q1": "q2",
     "q2": "q1",
-    "q3": "q4",
-    "q4": "q3",
+    "q3": "q2",
 }
 
 for i, sensor in enumerate(machine.sensor_dots.values()):
@@ -118,7 +117,9 @@ for i, sensor in enumerate(machine.sensor_dots.values()):
     resonator.operations["readout"].length = readout_length
 
 for q in machine.qubits.values():
-    q.preferred_readout_quantum_dot = qubit_readout_dot_mapping[q.name]
+    readout_qubit = qubit_readout_dot_mapping[q.name]
+    quantum_dot_name = machine.qubits[readout_qubit].quantum_dot.name
+    q.preferred_readout_quantum_dot = quantum_dot_name
 
 ################################
 # %%   Compensation Matrix #####
@@ -165,6 +166,7 @@ for i, qdp in enumerate(machine.quantum_dot_pairs.values()):
         duration=1000,
     )
 
+print(machine.generate_config()["octaves"])
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM

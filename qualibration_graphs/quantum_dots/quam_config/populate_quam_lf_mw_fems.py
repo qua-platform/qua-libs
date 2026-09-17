@@ -162,7 +162,9 @@ for i, s in enumerate(machine.sensor_dots.values()):
     s.readout_resonator.operations["readout"].length = readout_length
 
 for q in machine.qubits.values():
-    q.preferred_readout_quantum_dot = qubit_readout_dot_mapping[q.name]
+    readout_qubit = qubit_readout_dot_mapping[q.name]
+    quantum_dot_name = machine.qubits[readout_qubit].quantum_dot.name
+    q.preferred_readout_quantum_dot = quantum_dot_name
 
 ################################
 # %%   Compensation Matrix #####
