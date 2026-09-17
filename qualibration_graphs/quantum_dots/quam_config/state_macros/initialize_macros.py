@@ -9,7 +9,8 @@ This file shows the recommended pattern for defining custom state macros:
 1. Subclass ``CustomMacro``.
 2. Declare the configurable fields directly on the macro dataclass.
 3. Let ``CustomMacro.Parameters`` automatically derive a Qualibrate-friendly
-   parameter model from those dataclass fields.
+   parameter model from those dataclass fields. Those fields are exposed in
+   nodes when the macro is selected in ``quam_config/my_macros.py``.
 4. Implement ``inferred_duration`` when you can estimate how long the macro
    takes to run. This value should be returned in seconds. It is useful when
    larger macros are composed from smaller ones, or when other code wants to

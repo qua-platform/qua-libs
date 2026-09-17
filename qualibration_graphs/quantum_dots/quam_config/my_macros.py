@@ -7,14 +7,14 @@ It has three roles:
 1. Choose which initialize and measure macro classes are considered
    "active" for this project.
 2. Export ``MacroParameters``, the Qualibrate parameter mixin that exposes
-   the active macro fields in node ``parameters.py`` files.
+   the fields of whichever custom macros are in ``selected_macros``.
 3. Provide a small ``main()`` helper that wires the selected macros onto the
    machine and saves the updated QUAM state.
 
 The actual macro implementations live in ``state_macros/``. Each macro class
 inherits from ``CustomMacro``, which auto-generates a ``Parameters`` model
 from the macro's own dataclass fields. ``MacroParameters`` below simply mixes
-the selected macros' generated parameter models together.
+the generated parameter models of the macros listed in ``selected_macros``.
 
 State macros are wired at the ``QuantumDotPair`` level. In practice this
 means calls such as ``qubit.initialize()``, ``qubit_pair.initialize()``, and
@@ -37,16 +37,21 @@ from quam_config.state_macros import (
     MeasureMacro,
 )
 
-# Select the active state macros for this project here.
-initialize_macro = HeraldedInitializeMacro
-measure_macro = MeasureMacro
+# Extract the name from the list of default macro names
+initialize_macro_name = SingleQubitMacroName.INITIALIZE
+measure_macro_name = SingleQubitMacroName.MEASURE
+
+# If you want to wire the macros in, un-comment the dictionary entries here. 
+selected_macros = {
+    # initialize_macro_name : HeraldedInitializeMacro,
+    # measure_macro_name : MeasureMacro,
+}
 
 __all__ = ["MacroParameters"]
 
 class MacroParameters(
     RunnableParameters, 
-    initialize_macro.Parameters, 
-    measure_macro.Parameters
+    *(macro.Parameters for macro in selected_macros.values()),
 ):
     """Expose the active macro fields to Qualibrate nodes."""
     pass
@@ -71,17 +76,10 @@ def main():
     ######## Wire the custom macros into the machine ########
     #########################################################
 
-    # Extract the name from the list of default macro names
-    initialize_macro_name = SingleQubitMacroName.INITIALIZE
-    measure_macro_name = SingleQubitMacroName.MEASURE
-
     wire_machine_macros(
         machine=machine,
         instance_overrides={
-            f"quantum_dot_pairs.{qdp}": {
-                initialize_macro_name : initialize_macro,
-                # measure_macro_name: measure_macro,
-            }
+            f"quantum_dot_pairs.{qdp}": selected_macros
             for qdp in dot_pairs
         },
     )
@@ -98,11 +96,14 @@ def main():
 
     machine = Quam.load()
 
-    for dot_pair_name in dot_pairs: 
+    for dot_pair_name in dot_pairs:
         qdp = machine.quantum_dot_pairs[dot_pair_name]
-        macro_object = qdp.macros[initialize_macro_name]
-        print(f"Dot pair {dot_pair_name}'s {initialize_macro_name} is mapped to {type(macro_object)}.")
-        assert isinstance(macro_object, initialize_macro), f"Dot pair {dot_pair_name}'s {initialize_macro_name} is mapped to {type(macro_object)} and not {initialize_macro}"
+        for macro_name, macro_cls in selected_macros.items():
+            macro_object = qdp.macros[macro_name]
+            print(f"Dot pair {dot_pair_name}'s {macro_name} is mapped to {type(macro_object)}.")
+            assert isinstance(macro_object, macro_cls), (
+                f"Dot pair {dot_pair_name}'s {macro_name} is mapped to {type(macro_object)} and not {macro_cls}"
+            )
 
 if __name__ == "__main__":
     main()

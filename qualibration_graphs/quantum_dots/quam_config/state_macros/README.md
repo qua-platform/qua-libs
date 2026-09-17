@@ -10,7 +10,7 @@ be found in the
 If you are editing macros for the first time, the goal is simple:
 
 1. define the macro logic here
-2. select the macro in `../my_macros.py`
+2. register the macro in `../my_macros.py`
 3. run `python ../my_macros.py` to wire it into the machine state
 
 ## Recommended Pattern
@@ -51,16 +51,23 @@ and a Qualibrate node's `Parameters` usage. `CustomMacro` auto-generates the
 `my_macros.py` uses it like this:
 
 ```python
+selected_macros = {
+    # initialize_macro_name: HeraldedInitializeMacro,
+    # measure_macro_name: MeasureMacro,
+}
+
 class MacroParameters(
     RunnableParameters,
-    initialize_macro.Parameters,
-    measure_macro.Parameters,
+    *(macro.Parameters for macro in selected_macros.values()),
 ):
     pass
 ```
 
-This means that any fields declared on the macro class can be exposed in a node's 
-`parameters.py` files without manually creating a separate parameters class. 
+This means that any fields declared on a macro class listed in `selected_macros`
+can be exposed
+in a node's `parameters.py` files without manually creating a separate
+parameters class. If a macro is not listed in `selected_macros`, its
+parameter fields are not mixed into `MacroParameters`.
 
 ## What `resolve_params(...)` Does
 

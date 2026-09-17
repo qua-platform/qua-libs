@@ -27,7 +27,7 @@ quam_config/
 
 **`my_quam.py`**: Defines the root-level QUAM class (inheriting from base `QuamRoot`) representing your physical setup (qubits, instruments). This will be used in each QualibrationNode and can either be imported from the `quam-builder` module or customized to match your set-up.
 
-**`my_macros.py`**: Selects the custom initialize and measure macros to use for this project, exposes the corresponding `MacroParameters` mixin for node `parameters.py` files, and provides a helper entry point to wire the selected macros into the machine.
+**`my_macros.py`**: Selects the custom initialize and measure macros to use for this project, exposes the corresponding `MacroParameters` mixin for node `parameters.py` files, and provides a helper entry point to wire the selected macros into the machine. In practice, the user edits the `selected_macros` dictionary to add, remove, or replace the custom macros they want to use.
 
 **`generate_quam.py`**: Script to generate the static QUAM configuration (wiring) and the baseline QUAM state file. The user is expected to copy the contents from a relevant script in `wiring_examples/` into this file and adjust it to match their specific hardware setup. Running this script generates the initial QUAM state.
 
@@ -97,7 +97,7 @@ After defining custom macros, wire them into the QUAM state so that your calibra
 
 - Open `my_macros.py`.
 - Import the desired macro classes from `state_macros/`.
-- Select the macros to use by assigning them to `initialize_macro` and `measure_macro`.
+- Edit `selected_macros` to register the macros you want to enable. The file may use commented example entries as a convenient starting point, but you are free to add your own macro classes there as well.
 - Choose which `QuantumDotPair` objects should receive the custom macros by editing the `dot_pairs` list (or leaving it as `None` to update all pairs).
 - Run the script: Execute `python my_macros.py`. This loads the machine, applies the `wire_machine_macros(...)` overrides to the selected `QuantumDotPair` instances, and saves the updated QUAM state.
 
@@ -106,7 +106,7 @@ After defining custom macros, wire them into the QUAM state so that your calibra
 If your custom macros accept configurable arguments, you should expose matching node parameters through `MacroParameters` in `my_macros.py`.
 
 - Put the configurable fields directly on the macro dataclass.
-- Keep `MacroParameters` in `my_macros.py` mixed from the active macros' auto-generated `Parameters` models.
+- Keep `MacroParameters` in `my_macros.py` mixed from the auto-generated `Parameters` models of whichever macros are listed in `selected_macros`.
 - In the relevant node `parameters.py` files, mix in `MacroParameters` so the node can supply runtime overrides to the wired macros.
 - Keep these node parameters aligned with the fields used by your custom macros so that node-level overrides remain modular and easy to maintain.
 
