@@ -41,7 +41,11 @@ measure_macro = MeasureMacro
 
 __all__ = ["MacroParameters"]
 
-class MacroParameters(RunnableParameters, initialize_macro.Parameters, measure_macro.Parameters):
+class MacroParameters(
+    RunnableParameters, 
+    initialize_macro.Parameters, 
+    measure_macro.Parameters
+):
     """Expose the active macro fields to Qualibrate nodes."""
     pass
 
