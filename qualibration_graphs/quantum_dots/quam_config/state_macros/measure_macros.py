@@ -34,7 +34,7 @@ __all__ = [
 @quam_dataclass
 class MeasureMacro(CustomMacro):
     """Minimal example measure macro."""
-    point_duration: int = 1000
+    measure_macro_point_duration: int = 1000
     """Example hold duration for a custom measure point."""
 
     @property
