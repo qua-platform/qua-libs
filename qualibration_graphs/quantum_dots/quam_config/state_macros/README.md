@@ -17,24 +17,18 @@ If you are editing macros for the first time, the goal is simple:
 
 Each macro in this folder should usually have:
 
-1. an attributes class containing the configurable fields
-2. a macro class inheriting from both `CustomMacro` and that attributes class
-3. a `Parameters` class attribute pointing at the attributes class
-4. an `apply(...)` method containing the QUA logic
-5. an `inferred_duration` property describing the macro duration, when known
+1. a macro class inheriting from `CustomMacro`
+2. configurable fields declared directly on that macro dataclass
+3. an `apply(...)` method containing the QUA logic
+4. an `inferred_duration` property describing the macro duration, when known
 
 Example:
 
 ```python
 @quam_dataclass
-class MyInitializeAttributes:
+class MyInitializeMacro(CustomMacro):
     ramp_duration: int = 200
     hold_duration: int = 400
-
-
-@quam_dataclass
-class MyInitializeMacro(CustomMacro, MyInitializeAttributes):
-    Parameters = MyInitializeAttributes
 
     @property
     def inferred_duration(self) -> float | None:
@@ -49,9 +43,10 @@ class MyInitializeMacro(CustomMacro, MyInitializeAttributes):
 
 ## What `Parameters` Means
 
-The `Parameters` class attribute is the bridge between a macro's necessary attributes, 
-and Qualibrate's Parameter usage. This allows you to store the macro attributes and the node 
-parameters in the same class. 
+Every `CustomMacro` subclass automatically exposes a `Parameters` attribute. 
+The `Parameters` attribute is the bridge between a macro's necessary attributes, 
+and a Qualibrate node's `Parameters` usage. `CustomMacro` auto-generates the 
+`Parameters` class by reading the macro's class attributes. 
 
 `my_macros.py` uses it like this:
 
@@ -64,9 +59,8 @@ class MacroParameters(
     pass
 ```
 
-That means any fields placed on the macro's attributes class can be exposed in
-node `parameters.py` files without separately importing a second "parameter"
-class by hand.
+This means that any fields declared on the macro class can be exposed in a node's 
+`parameters.py` files without manually creating a separate parameters class. 
 
 ## What `resolve_params(...)` Does
 
@@ -112,14 +106,9 @@ Example:
 
 ```python
 @quam_dataclass
-class MyInitializeAttributes:
+class MyInitializeMacro(CustomMacro):
     ramp_duration: int = 200
     hold_duration: int = 400
-
-
-@quam_dataclass
-class MyInitializeMacro(CustomMacro, MyInitializeAttributes):
-    Parameters = MyInitializeAttributes
 
     @property
     def inferred_duration(self) -> float | None:
@@ -149,14 +138,9 @@ The same behavior can be written out directly:
 
 ```python
 @quam_dataclass
-class MyInitializeAttributes:
+class MyInitializeMacro(CustomMacro):
     ramp_duration: int = 200
     hold_duration: int = 400
-
-
-@quam_dataclass
-class MyInitializeMacro(CustomMacro, MyInitializeAttributes):
-    Parameters = MyInitializeAttributes
 
     @property
     def inferred_duration(self) -> float | None:
