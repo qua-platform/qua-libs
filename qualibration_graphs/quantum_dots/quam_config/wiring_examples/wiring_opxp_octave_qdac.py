@@ -5,6 +5,7 @@ from qualang_tools.wirer.wirer.channel_specs import *
 from quam_builder.architecture.quantum_dots.operations.macro_catalog import VoltageBalancedMacroCatalog
 from quam_config import Quam
 from quam_builder.builder.qop_connectivity import build_quam_wiring
+from quam_builder.architecture.quantum_dots.qpu import BaseQuamQD
 from quam_builder.builder.quantum_dots import build_quam
 
 
@@ -17,7 +18,7 @@ def qdac_config(ip: str):
             "address": f"TCPIP::{ip}::5025::SOCKET",
         },
         "channel_method": "channel",
-        "accessor": "limited_dc_constant_V",
+        "accessor": "dc_constant_V",
         "is_qdac": True,
     }
 
@@ -120,7 +121,7 @@ visualize(connectivity.elements, instruments.available_channels)
 ########################################################################################################################
 user_input = input("Do you want to save the updated QUAM? (y/n)")
 if user_input.lower() == "y":
-    machine = Quam()
+    machine = BaseQuamQD()
     build_quam_wiring(
         connectivity,
         host_ip,
@@ -131,6 +132,7 @@ if user_input.lower() == "y":
     build_quam(
         machine,
         qubit_pair_sensor_map=qubit_pair_sensor_map,
+        target_quam_class = Quam,
         catalogs=[VoltageBalancedMacroCatalog()],
         connect_qdac=False,
     )
