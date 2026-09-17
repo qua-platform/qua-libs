@@ -6,10 +6,10 @@ be found in the
 
 Use the same pattern as in ``initialize_macros.py``:
 
-1. Put configurable fields on a small attributes class.
-2. Inherit from both ``CustomMacro`` and that attributes class.
-3. Set ``Parameters = <YourAttributesClass>`` so the macro can expose its
-   node-facing parameters through ``quam_config/my_macros.py``.
+1. Subclass ``CustomMacro``.
+2. Put configurable fields directly on the macro dataclass.
+3. Let ``CustomMacro.Parameters`` automatically expose those fields to
+   ``quam_config/my_macros.py`` as an optional parameter model.
 4. Implement ``inferred_duration`` when you can estimate how long the macro
    takes to run. Return the duration in seconds. This is especially useful
    when another macro builds on the measure macro and needs a timing estimate.
@@ -32,14 +32,10 @@ __all__ = [
 ###########################
 
 @quam_dataclass
-class MeasureMacroAttributes: 
+class MeasureMacro(CustomMacro):
+    """Minimal example measure macro."""
     point_duration: int = 1000
     """Example hold duration for a custom measure point."""
-
-@quam_dataclass
-class MeasureMacro(CustomMacro, MeasureMacroAttributes):
-    """Minimal example measure macro."""
-    Parameters = MeasureMacroAttributes
 
     @property
     def inferred_duration(self) -> float | None:

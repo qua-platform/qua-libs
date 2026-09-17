@@ -12,7 +12,9 @@ It has three roles:
    machine and saves the updated QUAM state.
 
 The actual macro implementations live in ``state_macros/``. Each macro class
-there exposes a ``Parameters`` class attribute.
+inherits from ``CustomMacro``, which auto-generates a ``Parameters`` model
+from the macro's own dataclass fields. ``MacroParameters`` below simply mixes
+the selected macros' generated parameter models together.
 
 State macros are wired at the ``QuantumDotPair`` level. In practice this
 means calls such as ``qubit.initialize()``, ``qubit_pair.initialize()``, and

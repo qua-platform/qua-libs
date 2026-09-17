@@ -6,11 +6,10 @@ be found in the
 
 This file shows the recommended pattern for defining custom state macros:
 
-1. Define a small attributes class containing the configurable fields.
-2. Inherit from both ``CustomMacro`` and that attributes class.
-3. Set ``Parameters = <YourAttributesClass>`` on the macro so
-   ``quam_config/my_macros.py`` can expose those fields directly in
-   Qualibrate nodes.
+1. Subclass ``CustomMacro``.
+2. Declare the configurable fields directly on the macro dataclass.
+3. Let ``CustomMacro.Parameters`` automatically derive a Qualibrate-friendly
+   parameter model from those dataclass fields.
 4. Implement ``inferred_duration`` when you can estimate how long the macro
    takes to run. This value should be returned in seconds. It is useful when
    larger macros are composed from smaller ones, or when other code wants to
@@ -39,21 +38,18 @@ __all__ = [
 ##############################
 ##### Example Initialize #####
 ##############################
-
+    
 @quam_dataclass
-class InitializeMacroAttributes: 
-    point_duration: int = 1000
-    """Hold duration of the Initialize voltage point."""
-
-@quam_dataclass
-class InitializeMacro(CustomMacro, InitializeMacroAttributes):
+class InitializeMacro(CustomMacro):
     """Minimal example initialize macro.
 
     This class is intentionally simple. Use it as a starting point if you
     want to replace the provided balanced or heralded examples with your
     own initialize behaviour.
     """
-    Parameters = InitializeMacroAttributes
+    point_duration: int = 1000
+    """Hold duration of the Initialize voltage point."""
+
 
     @property
     def inferred_duration(self) -> float | None:
@@ -73,18 +69,7 @@ class InitializeMacro(CustomMacro, InitializeMacroAttributes):
 ##########################################
 
 @quam_dataclass
-class BalancedRoundTripInitializeMacroAttributes: 
-    zero_duration: int = 100
-    """The amount of time to idle at zero voltage after the round trip."""
-    ramp_duration: int = 500
-    """The ramp duration to the initalize voltage coordinate."""
-    hold_duration: int = 500
-    """The hold duration at the initialize voltage coordinate."""
-    point_name: str = "initialize"
-    """The voltage point name."""
-
-@quam_dataclass
-class BalancedRoundTripInitializeMacro(CustomMacro, BalancedRoundTripInitializeMacroAttributes):
+class BalancedRoundTripInitializeMacro(CustomMacro):
     """Balanced round-trip: ramp 0 → -V → +V → 0 through a named voltage point.
 
     Shape (per channel):
@@ -99,7 +84,14 @@ class BalancedRoundTripInitializeMacro(CustomMacro, BalancedRoundTripInitializeM
     Ramp 2 covers twice the voltage of ramps 1 and 3, so its duration is
     ``2 * ramp_duration`` to preserve the same slope (consistent dV/dt).
     """
-    Parameters = BalancedRoundTripInitializeMacroAttributes
+    zero_duration: int = 100
+    """The amount of time to idle at zero voltage after the round trip."""
+    ramp_duration: int = 500
+    """The ramp duration to the initalize voltage coordinate."""
+    hold_duration: int = 500
+    """The hold duration at the initialize voltage coordinate."""
+    point_name: str = "initialize"
+    """The voltage point name."""
 
     @property
     def inferred_duration(self) -> float | None:
@@ -156,7 +148,18 @@ class BalancedRoundTripInitializeMacro(CustomMacro, BalancedRoundTripInitializeM
 ###############################
 
 @quam_dataclass
-class HeraldedInitializeAttributes: 
+class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro):
+    """
+    Heralded / active-reset initialize built on the balanced round trip.
+
+    The flow:
+    - Initialize using the BalancedInitializeMacro
+    - Measure the state
+    - If the state is NOT the desired state, drive the specified qubit, and repeat the above
+    - If the state is the desired state, exit the loop
+
+    This class also optionally allows one to extract the number of loops performed as a stream
+    """
     max_loops: int = 2
     """The maximum number of active reset loops to perform before exiting the loop and continuing with the program."""
     return_n_loops: bool = False
@@ -173,21 +176,6 @@ class HeraldedInitializeAttributes:
     """The ramp duration to the measure point."""
     meas_buffer_duration: Optional[int] = None
     """The buffer duration in the measure macro."""
-
-@quam_dataclass
-class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro, HeraldedInitializeAttributes):
-    """
-    Heralded / active-reset initialize built on the balanced round trip.
-
-    The flow:
-    - Initialize using the BalancedInitializeMacro
-    - Measure the state
-    - If the state is NOT the desired state, drive the specified qubit, and repeat the above
-    - If the state is the desired state, exit the loop
-
-    This class also optionally allows one to extract the number of loops performed as a stream
-    """
-    Parameters = HeraldedInitializeAttributes
 
     @property
     def inferred_duration(self) -> float | None:

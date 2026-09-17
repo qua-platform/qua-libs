@@ -5,9 +5,10 @@ classes. A typical workflow is:
 
 1. Implement or customize a macro in ``initialize_macros.py`` or
    ``measure_macros.py``.
-2. Give that macro a ``Parameters`` class attribute pointing at the fields
-   you want to expose to Qualibrate nodes.
-3. Import the macro in ``quam_config/my_macros.py`` and select it as the
+2. Declare the configurable fields directly on the macro quam_dataclass.
+3. Let ``CustomMacro.Parameters`` auto-generate the corresponding Qualibrate
+   parameter model from those fields.
+4. Import the macro in ``quam_config/my_macros.py`` and select it as the
    active macro for the project.
 
 Keeping the implementations here and the project-specific selection in
