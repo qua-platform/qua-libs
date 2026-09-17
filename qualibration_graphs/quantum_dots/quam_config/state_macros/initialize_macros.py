@@ -160,21 +160,21 @@ class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro):
 
     This class also optionally allows one to extract the number of loops performed as a stream
     """
-    max_loops: int = 2
+    heralded_max_loops: int = 2
     """The maximum number of active reset loops to perform before exiting the loop and continuing with the program."""
-    return_n_loops: bool = False
+    heralded_return_n_loops: bool = False
     """A bool option to extract the number of loops the active reset initialize has performed."""
-    target_state: Literal[0, 1] = 0
+    heralded_target_state: Literal[0, 1] = 0
     """The qubit state to try to initialize into."""
-    qubit_role: Literal["target", "control"] = "control"
+    heralded_qubit_role: Literal["target", "control"] = "control"
     """For a qubit pair, whether to pulse on the control or the target qubit. """
-    operation: str = "x180"
+    heralded_qubit_operation: str = "x180"
     """The operation to play on the qubit."""
-    qubit_name_to_drive: Optional[str] = None
+    heralded_qubit_name_to_drive: Optional[str] = None
     """The name of the qubit to drive."""
-    meas_ramp_duration: Optional[int] = None
+    heralded_meas_ramp_duration: Optional[int] = None
     """The ramp duration to the measure point."""
-    meas_buffer_duration: Optional[int] = None
+    heralded_meas_buffer_duration: Optional[int] = None
     """The buffer duration in the measure macro."""
 
     @property
@@ -200,14 +200,14 @@ class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro):
     ):
         owner = self.owner
         params = self.resolve_params(**kwargs)
-        max_loops = params["max_loops"]
-        return_n_loops = params["return_n_loops"]
-        target_state = params["target_state"]
-        qubit_role = params["qubit_role"]
-        operation = params["operation"]
-        qubit_name = params["qubit_name_to_drive"]
-        meas_ramp_duration = params["meas_ramp_duration"]
-        meas_buffer_duration = params["meas_buffer_duration"]
+        max_loops = params["heralded_max_loops"]
+        return_n_loops = params["heralded_return_n_loops"]
+        target_state = params["heralded_target_state"]
+        qubit_role = params["heralded_qubit_role"]
+        operation = params["heralded_operation"]
+        qubit_name = params["heralded_qubit_name_to_drive"]
+        meas_ramp_duration = params["heralded_meas_ramp_duration"]
+        meas_buffer_duration = params["heralded_meas_buffer_duration"]
 
         if qubit_name is None:
             # Extract the qubit pair whose quantum_dot_pair is the owner
