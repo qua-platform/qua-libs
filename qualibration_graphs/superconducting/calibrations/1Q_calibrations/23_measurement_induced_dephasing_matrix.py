@@ -7,10 +7,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 from calibration_utils.measurement_induced_dephasing_matrix import (
-    Parameters, build_phases, build_xi_values, fit_raw_data,
-    log_fitted_results, plot_contrast_with_fit, plot_dephasing_matrix,
-    plot_phase_oscillations, plot_stark_phase, plot_stark_shift_matrix,
-    probe_length_in_ns, process_raw_dataset, validate_readout_len)
+    Parameters,
+    build_phases,
+    build_xi_values,
+    fit_raw_data,
+    log_fitted_results,
+    plot_contrast_with_fit,
+    plot_dephasing_matrix,
+    plot_phase_oscillations,
+    plot_stark_phase,
+    plot_stark_shift_matrix,
+    probe_length_in_ns,
+    process_raw_dataset,
+    validate_readout_len,
+)
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
@@ -268,23 +278,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             n_st.save("n")
             for i in range(num_qubits):
                 if node.parameters.use_state_discrimination:
-                    (
-                        state_st[i]
-                        .buffer(len(phases))
-                        .buffer(num_xi)
-                        .buffer(num_qubits)
-                        .average()
-                        .save(f"state{i + 1}")
-                    )
+                    (state_st[i].buffer(len(phases)).buffer(num_xi).buffer(num_qubits).average().save(f"state{i + 1}"))
                 else:
                     for stream, name in ((I_st[i], "I"), (Q_st[i], "Q")):
-                        (
-                            stream.buffer(len(phases))
-                            .buffer(num_xi)
-                            .buffer(num_qubits)
-                            .average()
-                            .save(f"{name}{i + 1}")
-                        )
+                        (stream.buffer(len(phases)).buffer(num_xi).buffer(num_qubits).average().save(f"{name}{i + 1}"))
 
 
 # %% {Simulate}

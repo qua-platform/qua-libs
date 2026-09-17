@@ -122,9 +122,7 @@ def _probe_durations_in_s(ds: xr.Dataset, node: QualibrationNode) -> xr.DataArra
     so they cannot disagree.
     """
     durations = [
-        total_probe_length_in_ns(
-            node.machine.qubits[str(name)].resonator.operations["readout"].length, node.parameters
-        )
+        total_probe_length_in_ns(node.machine.qubits[str(name)].resonator.operations["readout"].length, node.parameters)
         * 1e-9
         for name in ds.driven_resonator.values
     ]
@@ -572,10 +570,9 @@ def _extract_relevant_fit_parameters(
         bound_row = upper_bound.sel(qubit=q)
         if has_stark:
             stark = ds_fit.stark_shift.where(off_diagonal)
-            stark_resolved = (
-                ds_fit.stark_shift_resolved.where(off_diagonal, False).fillna(False).astype(bool)
-                & ~ds_fit.stark_shift_rejected.where(off_diagonal, False).fillna(False).astype(bool)
-            )
+            stark_resolved = ds_fit.stark_shift_resolved.where(off_diagonal, False).fillna(False).astype(
+                bool
+            ) & ~ds_fit.stark_shift_rejected.where(off_diagonal, False).fillna(False).astype(bool)
             stark_value, _, stark_worst = _row_summary(stark, ds_fit.stark_shift_error, stark_resolved, q)
             self_stark = float(ds_fit.stark_shift.sel(qubit=q, driven_resonator=q))
         else:

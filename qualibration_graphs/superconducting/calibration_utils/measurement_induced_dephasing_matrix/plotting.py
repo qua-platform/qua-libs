@@ -119,9 +119,7 @@ def _readable_text_colour(image, value: float) -> str:
     return "k" if luminance > 0.55 else "w"
 
 
-def _cell_label(
-    value: float, error: float, resolved: bool, reason: str, scale: float, resolved_sigma: float
-) -> str:
+def _cell_label(value: float, error: float, resolved: bool, reason: str, scale: float, resolved_sigma: float) -> str:
     """Build the text of one matrix cell.
 
     A resolved cell is labelled with its value and its error. An unresolved cell is labelled with the
@@ -235,16 +233,12 @@ def _matrix_figure(
                 labels[row, column],
                 ha="center",
                 va="center",
-                color=_readable_text_colour(images["diagonal" if on_diagonal else "off"], value)
-                if coloured
-                else "k",
+                color=_readable_text_colour(images["diagonal" if on_diagonal else "off"], value) if coloured else "k",
                 fontsize=7.5,
             )
             if rejected[row, column]:
                 ax.add_patch(
-                    Rectangle(
-                        (column - 0.5, row - 0.5), 1, 1, fill=False, hatch="///", edgecolor="0.45", linewidth=0
-                    )
+                    Rectangle((column - 0.5, row - 0.5), 1, 1, fill=False, hatch="///", edgecolor="0.45", linewidth=0)
                 )
 
     ax.set_title(title)
@@ -518,9 +512,8 @@ def plot_phase_oscillations(ds_fit: xr.Dataset, node) -> Figure:
             for xi_index in range(ds_fit.sizes["xi_idx"]):
                 point = pair.isel(xi_idx=xi_index)
                 ax.plot(phases, point[signal_name].values, ".", ms=3, color=colours[xi_index])
-                fitted = (
-                    float(point.oscillation_offset)
-                    + float(point.contrast_raw) * np.cos(phases_dense - float(point.oscillation_phase))
+                fitted = float(point.oscillation_offset) + float(point.contrast_raw) * np.cos(
+                    phases_dense - float(point.oscillation_phase)
                 )
                 ax.plot(phases_dense, fitted, "-", lw=0.8, color=colours[xi_index])
             ax.set_title(f"{qubit_name} | {driven}", fontsize=9)

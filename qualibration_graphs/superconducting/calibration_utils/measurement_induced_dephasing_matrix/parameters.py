@@ -194,9 +194,7 @@ def build_xi_values(qubit_names: List[str], parameters: NodeSpecificParameters) 
     off_diagonal = np.concatenate(
         [[0.0], np.linspace(parameters.xi_max_off_diagonal / num, parameters.xi_max_off_diagonal, num)]
     )
-    diagonal = np.concatenate(
-        [[0.0], np.geomspace(parameters.xi_min_diagonal, parameters.xi_max_diagonal, num)]
-    )
+    diagonal = np.concatenate([[0.0], np.geomspace(parameters.xi_min_diagonal, parameters.xi_max_diagonal, num)])
     num_qubits = len(qubit_names)
     xi_values = np.empty((num_qubits, num_qubits, num + 1))
     for i in range(num_qubits):
