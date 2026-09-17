@@ -170,7 +170,7 @@ class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro):
     """For a qubit pair, whether to pulse on the control or the target qubit. """
     operation: str = "x180"
     """The operation to play on the qubit."""
-    qubit_name: Optional[str] = None
+    qubit_name_to_drive: Optional[str] = None
     """The name of the qubit to drive."""
     meas_ramp_duration: Optional[int] = None
     """The ramp duration to the measure point."""
@@ -205,7 +205,7 @@ class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro):
         target_state = params["target_state"]
         qubit_role = params["qubit_role"]
         operation = params["operation"]
-        qubit_name = params["qubit_name"]
+        qubit_name = params["qubit_name_to_drive"]
         meas_ramp_duration = params["meas_ramp_duration"]
         meas_buffer_duration = params["meas_buffer_duration"]
 
