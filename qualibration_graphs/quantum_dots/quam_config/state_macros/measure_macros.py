@@ -9,7 +9,8 @@ Use the same pattern as in ``initialize_macros.py``:
 1. Subclass ``CustomMacro``.
 2. Put configurable fields directly on the macro dataclass.
 3. Let ``CustomMacro.Parameters`` automatically expose those fields to
-   ``quam_config/my_macros.py`` as an optional parameter model.
+   ``quam_config/my_macros.py`` as an optional parameter model. Those fields
+   are exposed in nodes when the macro is selected in ``selected_macros``.
 4. Implement ``inferred_duration`` when you can estimate how long the macro
    takes to run. Return the duration in seconds. This is especially useful
    when another macro builds on the measure macro and needs a timing estimate.
