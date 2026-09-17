@@ -18,7 +18,7 @@ def qdac_config(ip: str):
             "address": f"TCPIP::{ip}::5025::SOCKET",
         },
         "channel_method": "channel",
-        "accessor": "limited_dc_constant_V",
+        "accessor": "dc_constant_V",
         "is_qdac": True,
     }
 
