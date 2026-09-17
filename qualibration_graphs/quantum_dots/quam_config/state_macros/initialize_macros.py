@@ -47,7 +47,7 @@ class InitializeMacro(CustomMacro):
     want to replace the provided balanced or heralded examples with your
     own initialize behaviour.
     """
-    point_duration: int = 1000
+    initialize_macro_point_duration: int = 1000
     """Hold duration of the Initialize voltage point."""
 
 
@@ -61,7 +61,7 @@ class InitializeMacro(CustomMacro):
     ):
         owner = self.owner
         params = self.resolve_params(**kwargs)
-        point_duration = params["point_duration"]
+        initialize_macro_point_duration = params["initialize_macro_point_duration"]
         pass
 
 ##########################################
@@ -84,13 +84,13 @@ class BalancedRoundTripInitializeMacro(CustomMacro):
     Ramp 2 covers twice the voltage of ramps 1 and 3, so its duration is
     ``2 * ramp_duration`` to preserve the same slope (consistent dV/dt).
     """
-    zero_duration: int = 100
+    initialize_macro_zero_duration: int = 100
     """The amount of time to idle at zero voltage after the round trip."""
-    ramp_duration: int = 500
+    initialize_macro_ramp_duration: int = 500
     """The ramp duration to the initalize voltage coordinate."""
-    hold_duration: int = 500
+    initialize_macro_hold_duration: int = 500
     """The hold duration at the initialize voltage coordinate."""
-    point_name: str = "initialize"
+    initialize_macro_point_name: str = "initialize"
     """The voltage point name."""
 
     @property
@@ -105,10 +105,10 @@ class BalancedRoundTripInitializeMacro(CustomMacro):
         params = self.resolve_params(**kwargs)
         # Check if any arguments have been passed to the macro, and make sure to fall back to the
         # class attribute as a default.
-        ramp = params["ramp_duration"]
-        hold = params["hold_duration"]
-        zero = params["zero_duration"]
-        point_name = params["point_name"]
+        ramp = params["initialize_macro_ramp_duration"]
+        hold = params["initialize_macro_hold_duration"]
+        zero = params["initialize_macro_zero_duration"]
+        point_name = params["initialize_macro_point_name"]
 
         # Create dicts of positive and negative voltage points
         positive_voltages = self.point_voltages(point_name)
