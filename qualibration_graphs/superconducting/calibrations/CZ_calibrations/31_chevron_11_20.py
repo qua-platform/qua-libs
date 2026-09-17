@@ -48,6 +48,11 @@ Method
 3. Measure both qubits (state discrimination or raw IQ).
 4. Fit the 2D population map to a Rabi-Chevron model to extract the resonance amplitude and gate time.
 
+The chevron is also a check that flux-line predistortion is working. A corrected pulse
+gives a left–right symmetric fringe; uncorrected distortions make the chevron
+asymmetric (skewed about the resonance amplitude, or shearing with duration).
+See Rol et al., Appl. Phys. Lett. 116, 054001 (2020), arXiv:1907.04818, Figs. 2(b)–2(c).
+
 Prerequisites:
 - Calibrated single-qubit gates for both qubits in the pair.
 - Calibrated readout for both qubits.
