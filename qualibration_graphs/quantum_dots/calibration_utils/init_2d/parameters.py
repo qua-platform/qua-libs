@@ -2,7 +2,6 @@ from qualibrate.core import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters
 from qualibration_libs.parameters import QubitPairExperimentNodeParameters
-from quam_config import MacroParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -33,7 +32,6 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    MacroParameters,
     QubitPairExperimentNodeParameters,
 ):
     """Parameter set for 07a_init_2d_calibration."""
