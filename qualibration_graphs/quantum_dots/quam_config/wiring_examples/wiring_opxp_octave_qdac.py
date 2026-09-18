@@ -59,7 +59,7 @@ qubit_pair_sensor_map = {
 ########################################################################################################################
 # %%                                 Define OPX+ / Octave / QDAC channel constraints
 ########################################################################################################################
-# Convenience spec: QDAC1 coarse bias + OPX+ fine/fast outputs on controller 1.
+# Convenience spec: QDAC #1 coarse bias + OPX+ fine/fast outputs on controller 1.
 qdac_opx_spec = qdac2_spec(1) & opx_spec(con=1)
 
 # Sensor reflectometry: OPX+ input/output resonator line (no Octave on readout).
@@ -106,7 +106,7 @@ connectivity.add_quantum_dot_drive_lines(
     constraints=drive_ch,
 )
 
-# Barrier gates (OPX+ fast outputs + QDAC1 bias), analogous to LF-FEM slot 6 in the QDAC example
+# Barrier gates (OPX+ fast outputs + QDAC #1 bias), analogous to LF-FEM slot 6 in the QDAC example
 connectivity.add_quantum_dot_pairs(
     quantum_dot_pairs,
     constraints=opx_spec(con=1) & qdac2_spec(index=1),
