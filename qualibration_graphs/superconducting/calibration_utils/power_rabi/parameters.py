@@ -33,6 +33,15 @@ class NodeSpecificParameters(BasePowerRabiParameters):
     """Maximum number of Rabi pulses per sweep. For any value larger than 1,
     a 2D (num_pulses vs pulse_amplitude) error-amplification experiment will be performed."""
 
+    use_sinc_fit_for_error_amplification: bool = True
+    """Selects how the pi amplitude is extracted from the error-amplification (2D) data; ignored when
+    max_number_pulses_per_sweep == 1, where a full oscillation fit is performed instead. Both options
+    first average the signal over the number of pulses. True (default): the averaged curve is fitted
+    with a sinc model, sin(x)/x, whose main-lobe centre is the pi amplitude - the result is continuous
+    and therefore not limited by the amplitude step. False (legacy): the pi amplitude is simply the
+    swept amplitude of the minimal/maximal point of the averaged curve, so its accuracy can never be
+    better than one amp_factor_step."""
+
     update_x90: bool = True
     """Flag to update the x90 pulse amplitude after calibrating x180. Default is True."""
 
