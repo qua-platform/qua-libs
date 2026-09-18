@@ -91,7 +91,7 @@ def plot_individual_iq_blobs(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fi
     ax.set_title(qubit["qubit"])
 
 
-def plot_historams(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+def plot_histograms(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset, log_scale: bool = False):
     """
     Plots the IQ blobs with the derived thresholds for the given qubits.
 
@@ -103,6 +103,8 @@ def plot_historams(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
         A list of qubits to plot.
     fits : xr.Dataset
         The dataset containing the fit parameters.
+    log_scale : bool, optional
+        If True, the counts axis is plotted on a log scale (default is False).
 
     Returns
     -------
@@ -116,17 +118,19 @@ def plot_historams(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
     """
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        plot_individual_histograms(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        plot_individual_histograms(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]), log_scale=log_scale)
     handles, labels = ax.get_legend_handles_labels()
     grid.fig.legend(handles, labels, loc="lower center", ncol=2)
     leg = grid.fig.legend(handles, labels, loc="lower center", ncol=2)
-    grid.fig.suptitle("g.s. and e.s. histograms (rotated)")
+    grid.fig.suptitle(f"g.s. and e.s. histograms (rotated){' - log scale' if log_scale else ''}")
     grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig
 
 
-def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_histograms(
+    ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None, log_scale: bool = False
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -140,6 +144,8 @@ def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], 
         mapping to the qubit to plot.
     fit : xr.Dataset, optional
         The dataset containing the fit parameters (default is None).
+    log_scale : bool, optional
+        If True, the counts axis is plotted on a log scale (default is False).
 
     Notes
     -----
@@ -158,6 +164,8 @@ def plot_individual_histograms(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], 
     ax.axvline(1e3 * fit.ge_threshold, color="r", linestyle="--", lw=0.5, label="Threshold")
     ax.set_xlabel("I Rotated [mV]")
     ax.set_ylabel("Counts")
+    if log_scale:
+        ax.set_yscale("log")
     ax.set_title(qubit["qubit"])
 
 
@@ -227,3 +235,7 @@ def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     ax.text(0, 1, f"{100 * confusion[1][0]:.1f}%", ha="center", va="center", color="w")
     ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
     ax.set_title(qubit["qubit"])
+
+
+# Backwards-compatible alias for the previous misspelling, still imported by 07_iq_blobs.
+plot_historams = plot_histograms
