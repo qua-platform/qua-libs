@@ -1,0 +1,25 @@
+"""Template for Loss-DiVincenzo simulation tests.
+
+Copy this template and modify for each calibration node you want to test.
+See tests/simulation/qualibration_graphs/quantum_dots/calibrations/loss_divincenzo/README.md
+for detailed instructions.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+
+NODE_NAME = "XX_node_name"
+
+
+@pytest.mark.simulation
+def test_node_simulation(simulation_runner):
+    """Run simulation and generate artifacts for the node."""
+    simulation_runner(
+        node_name=NODE_NAME,
+        # Optional: parameters applied before run/create
+        # param_overrides={"num_shots": 10},
+        # Optional: shorten simulation or timeout
+        # param_overrides={"simulation_duration_ns": 10_000, "timeout": 30},
+    )
