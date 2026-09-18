@@ -90,9 +90,7 @@ def fit_routine(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     detuning = smoothed.idxmax("frequency")
     quality = argmax_with_quality(ds.frequency.values, np.asarray(smoothed.data, dtype=float).reshape(-1))
     if quality.note:
-        logging.getLogger(__name__).warning(
-            "gef freq opt %s: %s", str(np.atleast_1d(ds.qubit.data)[0]), quality.note
-        )
+        logging.getLogger(__name__).warning("gef freq opt %s: %s", str(np.atleast_1d(ds.qubit.data)[0]), quality.note)
     return ds.assign(
         {
             "optimal_detuning": detuning,

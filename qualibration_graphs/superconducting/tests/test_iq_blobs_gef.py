@@ -52,9 +52,7 @@ def test_ensure_gef_readout_pulse_warns_on_builder_default():
 
 
 def test_gef_readout_frequency_treats_missing_shift_as_zero():
-    qubit = SimpleNamespace(
-        resonator=SimpleNamespace(intermediate_frequency=50e6, GEF_frequency_shift=None)
-    )
+    qubit = SimpleNamespace(resonator=SimpleNamespace(intermediate_frequency=50e6, GEF_frequency_shift=None))
     assert gef_readout_frequency(qubit) == 50e6
     qubit.resonator.GEF_frequency_shift = 2e6
     assert gef_readout_frequency(qubit) == 52e6

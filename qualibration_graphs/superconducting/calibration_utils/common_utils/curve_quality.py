@@ -52,8 +52,7 @@ def argmax_with_quality(x, y, *, min_snr: float = 5.0, edge_points: int = 1) -> 
         out.interior = edge_points <= idx <= n - 1 - edge_points
         out.at_edge = not out.interior
         out.note = (
-            "curve is piecewise-constant (quantized/stuck readout) — "
-            "noise sigma undefined, optimum not trustworthy"
+            "curve is piecewise-constant (quantized/stuck readout) — " "noise sigma undefined, optimum not trustworthy"
         )
         return out
     sigma = 1.4826 * med_d2 / np.sqrt(6.0)
