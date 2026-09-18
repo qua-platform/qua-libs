@@ -227,9 +227,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
                     with for_each_(xi, xi_values[i, j].tolist()):
                         with for_each_(phi, phases.tolist()):
-                            # Qubit initialization
+                            # Qubit initialization. Every qubit is reset, not only the measured one:
+                            # the photon number in the driven resonator depends on the state of its
+                            # own qubit, so leaving that qubit in an unknown state would mix its
+                            # dispersive shift into the off-diagonal terms.
                             reset_frame(qubit.xy.name)
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                            for q in qubit_list:
+                                q.reset(node.parameters.reset_type, node.parameters.simulate)
                             align()
 
                             # Echo sequence on the measured qubit. The elements share a common
