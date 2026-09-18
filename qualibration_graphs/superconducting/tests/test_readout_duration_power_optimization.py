@@ -40,6 +40,13 @@ from calibration_utils.readout_duration_power_optimization.parameters import (  
     get_durations_in_ns,
     get_samples_per_chunk,
 )
+from calibration_utils.common_utils import accumulated_demod  # noqa: E402
+from calibration_utils.common_utils.accumulated_demod import (  # noqa: E402
+    MW_FEM_BLOCK_LIMIT,
+    OPX_PLUS_BLOCK_LIMIT,
+    accumulated_demod_batches,
+    max_measured_per_batch,
+)
 
 AMPS = np.linspace(0.5, 1.99, 6)
 DURATIONS = np.array([200.0, 400.0, 600.0, 800.0])
@@ -404,3 +411,71 @@ def test_select_operating_point_without_a_pinned_duration_is_unchanged():
     assert point.success
     assert point.duration == pytest.approx(DURATIONS[3])
     assert point.fidelity == pytest.approx(0.99)
+
+
+# --------------------------------------------------------------------- measurement batching
+
+
+class _FakeResonatorQubit:
+    """Just enough of a qubit for the batcher: a name and a resonator output port."""
+
+    def __init__(self, name, controller_id=1, fem_id=1):
+        port = type("Port", (), {"controller_id": controller_id, "fem_id": fem_id})()
+        self.name = name
+        self.resonator = type("R", (), {"opx_output": port})()
+
+
+@pytest.fixture
+def mw_fem_qubits(monkeypatch):
+    """Build groups of qubits that the batcher treats as living on MW-FEMs."""
+    monkeypatch.setattr(accumulated_demod, "_block_limit", lambda qubit: MW_FEM_BLOCK_LIMIT)
+
+    def build(*sizes):
+        qubits = []
+        for fem_id, size in enumerate(sizes, start=1):
+            qubits += [_FakeResonatorQubit(f"q{fem_id}_{i}", fem_id=fem_id) for i in range(size)]
+        return qubits
+
+    return build
+
+
+def test_batch_size_does_not_shrink_as_more_qubits_are_selected():
+    """Only measured qubits cost blocks, so the batch size is limit // 4 whatever the group size.
+
+    The out-of-batch qubits are never addressed, so they play nothing and cost nothing. An
+    accounting that charged them a block each would shrink the batch down to one qubit at
+    eleven per FEM, and refuse to run at thirteen.
+    """
+    for n in (5, 8, 11, 13, 20):
+        assert max_measured_per_batch(n, MW_FEM_BLOCK_LIMIT) == 4
+        assert max_measured_per_batch(n, OPX_PLUS_BLOCK_LIMIT) == 5
+
+
+def test_batch_size_never_exceeds_the_group():
+    assert max_measured_per_batch(3, MW_FEM_BLOCK_LIMIT) == 3
+    assert max_measured_per_batch(1, OPX_PLUS_BLOCK_LIMIT) == 1
+
+
+def test_eight_qubits_on_one_mw_fem_run_in_two_batches_of_four(mw_fem_qubits):
+    batches = accumulated_demod_batches(mw_fem_qubits(8), multiplexed=True)
+    assert [sorted(batch) for batch in batches] == [[0, 1, 2, 3], [4, 5, 6, 7]]
+
+
+def test_every_selected_qubit_is_measured_exactly_once(mw_fem_qubits):
+    qubits = mw_fem_qubits(11)
+    batches = accumulated_demod_batches(qubits, multiplexed=True)
+    measured = [index for batch in batches for index in batch]
+    assert sorted(measured) == list(range(len(qubits)))
+
+
+def test_qubits_on_separate_fems_share_a_batch(mw_fem_qubits):
+    """The block budget is per FEM, so two FEMs measure eight qubits at once."""
+    batches = accumulated_demod_batches(mw_fem_qubits(6, 6), multiplexed=True)
+    assert len(batches) == 2
+    assert len(batches[0]) == 8
+    assert len(batches[1]) == 4
+
+
+def test_unmultiplexed_runs_measure_one_qubit_at_a_time(mw_fem_qubits):
+    batches = accumulated_demod_batches(mw_fem_qubits(5), multiplexed=False)
+    assert [sorted(batch) for batch in batches] == [[0], [1], [2], [3], [4]]

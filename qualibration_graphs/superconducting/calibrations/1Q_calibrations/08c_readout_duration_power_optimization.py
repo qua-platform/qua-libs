@@ -100,8 +100,12 @@ Notes:
       of accumulated demodulation. With `update_readout_length` off, a qubit's current readout
       length must land on that same grid, since the search is pinned to it.
     - Accumulated demodulation costs 4 PPU processing blocks per measured qubit against 16 per
-      MW-FEM (20 per OPX+), so a multiplexed run is split into batches; set `multiplexed=False`
-      to measure one qubit at a time and remove the limit.
+      MW-FEM (20 per OPX+), so a multiplexed run is split into batches of 4 qubits per MW-FEM
+      (5 per OPX+); set `multiplexed=False` to measure one qubit at a time.
+    - Qubits outside the batch currently being measured are silent, so the feedline carries
+      fewer readout tones than a production multiplexed readout does. If readout crosstalk
+      matters on your chip, the optimum found here can sit slightly off the one a full
+      multiplexed readout would give.
 
 State update:
     - The readout pulse length: qubit.resonator.operations[operation].length (if

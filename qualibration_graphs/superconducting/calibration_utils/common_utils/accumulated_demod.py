@@ -19,10 +19,13 @@ Resource budget
 ---------------
 Accumulated I/Q demodulation costs 4 PPU processing blocks per measured qubit -- one per
 single-output ``demod.accumulated``, see :func:`declare_path_arrays` for why there are four
-rather than two -- against a limit of 16 per MW-FEM (20 per OPX+); a resonator that only
-plays the pulse without demodulating still costs 1. :func:`accumulated_demod_batches` solves
-that budget per FEM, so that a batch measures as many qubits as fit while the remaining
-selected qubits still play their readout and the crosstalk environment is unchanged.
+rather than two -- against a limit of 16 per MW-FEM (20 per OPX+).
+:func:`accumulated_demod_batches` spends that budget per FEM on measured qubits only: a batch
+holds ``limit // 4`` of them, and the selected qubits outside it stay silent rather than
+playing an idle readout, so they cost nothing. Their feedline tones are therefore missing
+while the batch runs, which is a real difference from a production multiplexed readout; a
+node that needs the production crosstalk environment has to play those readouts itself and
+budget 1 block for each.
 """
 
 from __future__ import annotations
@@ -34,7 +37,6 @@ from qm.qua import declare, fixed
 
 # PPU processing-block budget, per FEM.
 BLOCKS_PER_ACCUMULATED_READOUT = 4  # four demod.accumulated, one block each
-BLOCKS_PER_IDLE_READOUT = 1  # resonator plays the pulse but does not demodulate
 MW_FEM_BLOCK_LIMIT = 16
 OPX_PLUS_BLOCK_LIMIT = 20
 
@@ -152,12 +154,12 @@ def _block_limit(qubit) -> int:
 def max_measured_per_batch(n_in_group: int, block_limit: int) -> int:
     """Largest number of simultaneously demodulated qubits within one FEM.
 
-    Every selected qubit in the group either demodulates (4 blocks) or just plays its readout
-    (1 block), so ``4 m + (n - m) <= limit``.
+    Only measured qubits draw on the budget, at 4 blocks each, so ``4 m <= limit``. A selected
+    qubit that is not in the current batch is left silent and costs nothing, which is what
+    makes the batch size independent of how many qubits are selected: 4 on an MW-FEM and 5 on
+    an OPX+, however large the group.
     """
-    return max(
-        0, min(n_in_group, (block_limit - n_in_group) // (BLOCKS_PER_ACCUMULATED_READOUT - BLOCKS_PER_IDLE_READOUT))
-    )
+    return min(n_in_group, block_limit // BLOCKS_PER_ACCUMULATED_READOUT)
 
 
 def accumulated_demod_batches(qubits: Sequence[Any], multiplexed: bool) -> List[Dict[int, Any]]:
@@ -165,15 +167,15 @@ def accumulated_demod_batches(qubits: Sequence[Any], multiplexed: bool) -> List[
 
     Each batch is a ``{index_in_qubits: qubit}`` mapping, matching the shape of
     ``BatchableList.batch()`` so node code reads the same as elsewhere. Qubits on different
-    FEMs are packed into the same batch, since their budgets are independent.
+    FEMs are packed into the same batch, since their budgets are independent. Qubits outside
+    the current batch are not addressed at all, so their resonators are silent while it runs.
 
     Args:
         qubits: The qubits the node operates on.
         multiplexed: If False every qubit is measured on its own and the limit never binds.
 
     Raises:
-        ValueError: If a FEM carries so many selected qubits that not even one of them can be
-            demodulated while the others play their readout.
+        ValueError: If a FEM's block limit has no room for a single accumulated demodulation.
     """
     if not multiplexed:
         return [{i: qubit} for i, qubit in enumerate(qubits)]
@@ -188,10 +190,8 @@ def accumulated_demod_batches(qubits: Sequence[Any], multiplexed: bool) -> List[
         max_measured = max_measured_per_batch(len(items), limit)
         if max_measured == 0:
             raise ValueError(
-                f"{len(items)} selected qubits share FEM {key}, which leaves no room for even "
-                f"one accumulated demodulation within its {limit} processing blocks "
-                f"(4 per measured qubit, 1 per idle readout). Select fewer qubits on that FEM "
-                f"or set multiplexed=False."
+                f"FEM {key} reports a limit of {limit} processing blocks, which is below the "
+                f"{BLOCKS_PER_ACCUMULATED_READOUT} that one accumulated demodulation needs."
             )
         per_group_batches.append([items[j : j + max_measured] for j in range(0, len(items), max_measured)])
 
