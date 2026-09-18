@@ -114,7 +114,7 @@ if user_input.lower() == "y":
         qubit_pair_sensor_map=qubit_pair_sensor_map,
         target_quam_class=Quam,
         catalogs=[VoltageBalancedMacroCatalog()],
-        connect_qdac=False,
+        connect_qdac=True,
     )
     machine.save("/Users/kalidu_laptop/merge_libs/quam_state")
     machine.save()
