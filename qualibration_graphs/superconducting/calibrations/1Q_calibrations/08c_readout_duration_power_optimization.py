@@ -19,7 +19,7 @@ from quam_config import Quam
 from calibration_utils.common_utils import (
     accumulated_demod_batches,
     declare_path_arrays,
-    preflight_path_signature,
+    preflight_accumulated_demod,
 )
 from calibration_utils.readout_duration_power_optimization import (
     DEFAULT_INTEGRATION_WEIGHTS,
@@ -31,7 +31,6 @@ from calibration_utils.readout_duration_power_optimization import (
     get_samples_per_chunk,
     has_custom_integration_weights,
     log_fitted_results,
-    measure_accumulated_scaled,
     plot_amplitude_cut,
     plot_duration_cut,
     plot_fidelity_map,
@@ -93,8 +92,8 @@ Notes:
       override never reaches the state: the originals are restored as soon as the config has
       been generated, and the state update below writes the chosen duration explicitly.
     - Custom integration weights span the previous pulse length, so they no longer tile the
-      readout pulse once its length changes. They are reset to the default constant weights,
-      both for the sweep and in the state.
+      readout pulse once its length changes. They are always reset to the default constant
+      weights for the sweep itself, and reset in the state only when the length is updated.
     - Only thermal reset is supported: active reset judges the qubit through the very readout
       pulse this node rescales and lengthens, against a threshold calibrated for the old one.
     - `max_duration_in_ns / num_durations` must be a multiple of 4 ns, the chunk granularity
@@ -108,7 +107,7 @@ State update:
     - The readout pulse length: qubit.resonator.operations[operation].length (if
       `update_readout_length`)
     - The readout amplitude: qubit.resonator.operations[operation].amplitude
-    - The integration weights: reset to the defaults
+    - The integration weights: reset to the defaults (only if `update_readout_length`)
     - The integration weight angle: qubit.resonator.operations[operation].integration_weights_angle
     - The ge discrimination threshold: qubit.resonator.operations[operation].threshold
     - The Repeat Until Success threshold: qubit.resonator.operations[operation].rus_exit_threshold
@@ -171,7 +170,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # out, including on failure, so this can never reach `node.save()`.
     with readout_config_override(qubits, operation, node.parameters.max_duration_in_ns, node.log):
         # Everything that would make the acquisition quietly wrong fails here rather than later.
-        preflight_path_signature(qubits, operation, samples_per_chunk, node.parameters.reset_type)
+        preflight_accumulated_demod(qubits, operation, samples_per_chunk, node.parameters.reset_type)
         measurement_batches = accumulated_demod_batches(qubits, node.parameters.multiplexed)
         node.log(
             f"Accumulated demodulation at {samples_per_chunk * 4} ns chunks, "
@@ -188,16 +187,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             Q_g_st = [declare_stream() for _ in range(num_qubits)]
             I_e_st = [declare_stream() for _ in range(num_qubits)]
             Q_e_st = [declare_stream() for _ in range(num_qubits)]
+            # Declared once for every qubit, up front, so the batch loop below only plays and
+            # measures -- the same shape as `Ig[i]` in node 08b. qm-qua hoists every `declare`
+            # to program scope wherever it is written, so this is a readability choice rather
+            # than a requirement, but it keeps the declarations independent of the batching.
+            paths_g = [declare_path_arrays(num_durations) for _ in range(num_qubits)]
+            paths_e = [declare_path_arrays(num_durations) for _ in range(num_qubits)]
+            scratch = declare_recombination_variables()
 
             for measurement_batch in measurement_batches:
                 # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
                 for qubit in measurement_batch.values():
                     node.machine.initialize_qpu(target=qubit)
                 align()
-
-                paths_g = {i: declare_path_arrays(num_durations) for i in measurement_batch}
-                paths_e = {i: declare_path_arrays(num_durations) for i in measurement_batch}
-                scratch = declare_recombination_variables()
 
                 with for_(n, 0, n < n_runs, n + 1):
                     save(n, n_st)
@@ -208,7 +210,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         align()
                         # Ground state: qubit readout
                         for i, qubit in measurement_batch.items():
-                            measure_accumulated_scaled(qubit, operation, paths_g[i], samples_per_chunk, a)
+                            qubit.resonator.measure_accumulated(
+                                operation,
+                                amplitude_scale=a,
+                                segment_length=samples_per_chunk,
+                                qua_vars=paths_g[i],
+                            )
                             qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                         for i in measurement_batch:
                             save_accumulated_quadratures(paths_g[i], num_durations, k, scratch, I_g_st[i], Q_g_st[i])
@@ -224,7 +231,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit.xy.play("x180")
                             # Align the elements to measure after playing the qubit pulses.
                             qubit.align()
-                            measure_accumulated_scaled(qubit, operation, paths_e[i], samples_per_chunk, a)
+                            qubit.resonator.measure_accumulated(
+                                operation,
+                                amplitude_scale=a,
+                                segment_length=samples_per_chunk,
+                                qua_vars=paths_e[i],
+                            )
                             qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
                         for i in measurement_batch:
                             save_accumulated_quadratures(paths_e[i], num_durations, k, scratch, I_e_st[i], Q_e_st[i])
@@ -365,14 +377,16 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             # the demod-unit conversions below are consistent with the pulse that will run.
             if node.parameters.update_readout_length:
                 operation.length = int(fit_results["optimal_duration"])
-            # Custom weights span the previous length and no longer tile the pulse.
-            # Reset them to the defaults and say so in the log.
-            if has_custom_integration_weights(operation):
-                node.log(
-                    f"{q.name}: resetting custom integration weights to the defaults, they no longer "
-                    f"span the {operation.length} ns readout pulse."
-                )
-                set_integration_weights(operation, DEFAULT_INTEGRATION_WEIGHTS)
+                # Custom weights span the previous length and no longer tile the pulse.
+                # Reset them to the defaults and say so in the log. This only happens when the
+                # length actually changes: on an amplitude-only run the weights still fit the
+                # pulse, so throwing away a previous weights calibration would be gratuitous.
+                if has_custom_integration_weights(operation):
+                    node.log(
+                        f"{q.name}: resetting custom integration weights to the defaults, they no longer "
+                        f"span the {operation.length} ns readout pulse."
+                    )
+                    set_integration_weights(operation, DEFAULT_INTEGRATION_WEIGHTS)
 
             operation.integration_weights_angle -= float(fit_results["iw_angle"])
             operation.threshold = float(fit_results["ge_threshold"]) * operation.length / 2**12

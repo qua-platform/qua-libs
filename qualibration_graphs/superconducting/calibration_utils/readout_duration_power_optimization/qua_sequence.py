@@ -1,7 +1,5 @@
 """QUA-side helpers for the joint readout duration x power optimization.
 
-Two things live here that the node cannot express with the shared helpers alone.
-
 ``readout_config_override`` lengthens the readout pulse for the duration of config
 generation. The node exists to *choose* an integration duration, so the sweep has to be
 able to reach past the length currently in the state -- otherwise a 500 ns readout can
@@ -9,15 +7,14 @@ never discover that 1500 ns is better. Lengthening the pulse also removes the un
 readout length problem for free, since the qubits in the state currently run anywhere
 between 200 ns and 1200 ns and accumulated demodulation needs one shared maximum.
 
-``measure_accumulated_scaled`` is ``common_utils.path_signature.measure_path`` with an
-amplitude scale applied. It mirrors that function's demodulation pairing exactly; the
-amplitude sweep is the only reason it is not a direct call.
+``save_accumulated_quadratures`` recombines what ``resonator.measure_accumulated`` leaves in
+its four arrays and streams one I/Q pair per integration duration.
 """
 
 from contextlib import contextmanager
 from typing import Sequence
 
-from qm.qua import amp, assign, declare, demod, fixed, for_, measure, save
+from qm.qua import assign, declare, fixed, for_, save
 
 DEFAULT_INTEGRATION_WEIGHTS = "#./default_integration_weights"
 
@@ -79,30 +76,6 @@ def readout_config_override(qubits: Sequence, operation: str, length_in_ns: int,
             pulse.length = old_length
             if raw_integration_weights(pulse) != old_weights:
                 set_integration_weights(pulse, old_weights)
-
-
-def measure_accumulated_scaled(qubit, operation: str, path_arrays, samples_per_chunk: int, amplitude_scale) -> None:
-    """Acquire the running readout integral into ``path_arrays`` at a scaled amplitude.
-
-    Args:
-        qubit: The qubit whose resonator is measured.
-        operation: Name of the resonator operation to acquire with.
-        path_arrays: The four arrays from ``declare_path_arrays``, filled with the
-            accumulated ``(II, IQ, QI, QQ)`` components.
-        samples_per_chunk: Chunk size in units of 4 ns.
-        amplitude_scale: QUA ``fixed`` prefactor applied to the readout pulse amplitude.
-    """
-    II, IQ, QI, QQ = path_arrays
-    pulse = qubit.resonator.operations[operation]
-    labels = list(pulse.integration_weights_mapping)
-    measure(
-        operation * amp(amplitude_scale),
-        qubit.resonator.name,
-        demod.accumulated(labels[0], II, samples_per_chunk, "out1"),
-        demod.accumulated(labels[1], IQ, samples_per_chunk, "out2"),
-        demod.accumulated(labels[2], QI, samples_per_chunk, "out1"),
-        demod.accumulated(labels[0], QQ, samples_per_chunk, "out2"),
-    )
 
 
 def declare_recombination_variables():

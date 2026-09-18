@@ -1,5 +1,7 @@
 """Parameter definitions for the joint readout duration x power optimization."""
 
+from typing import Literal
+
 import numpy as np
 from pydantic import model_validator
 
@@ -42,7 +44,7 @@ class NodeSpecificParameters(RunnableParameters):
     describe the integration duration the readout will actually run at. The node then behaves
     as an amplitude sweep, and a qubit whose current readout length is not on the swept
     duration axis fails with a note saying so."""
-    operation: str = "readout"
+    operation: Literal["readout", "readout_QND"] = "readout"
     """Name of the resonator operation to optimize. Default is 'readout'."""
 
     @model_validator(mode="after")
