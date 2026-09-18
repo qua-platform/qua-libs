@@ -57,7 +57,7 @@ The Z-pulse is supplied by the full CZGate macro selected via the
 macro provides (cz_unipolar, cz_flattop, cz_bipolar, cz_flattop_erf, cz_SNZ)
 can be calibrated.
 
-Compare to 32c, measuring both qubits in superposition together, rather than reading out
+Compare to 33c, measuring both qubits in superposition together, rather than reading out
 stationary qubit alone, makes the extracted phase more robust to single-qubit gate
 errors: an imperfect x90/X_pi on either qubit is folded symmetrically into
 the joint correlator instead of being dumped entirely onto one qubit's
@@ -67,14 +67,14 @@ than biasing theta_CZ directly.
 Prerequisites:
     - Calibrated single-qubit gates (x90, x180) for both qubits in the pair.
     - Calibrated, state-discriminating readout for BOTH qubits.
-    - An initial estimate of the CZ amplitude (e.g. from 32a_cz_conditional_phase or 32b_cz_conditional_phase_error_amp).
+    - An initial estimate of the CZ amplitude (e.g. from 33a_cz_conditional_phase or 33b_cz_conditional_phase_error_amp).
 
 State update:
     - qubit_pair.macros[operation].flux_pulse_qubit.amplitude (fitted optimal CZ amplitude).
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="32d_JAZZ2_N",
+    name="33d_JAZZ2_N",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
