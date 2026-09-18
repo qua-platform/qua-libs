@@ -12,7 +12,6 @@ from qualang_tools.results import progress_counter
 
 from qualibrate.core import QualibrationNode
 from qualibration_libs.parameters.experiment import get_qubit_pairs
-from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 from quam_config import Quam
 
 from calibration_utils.init_2d import (
