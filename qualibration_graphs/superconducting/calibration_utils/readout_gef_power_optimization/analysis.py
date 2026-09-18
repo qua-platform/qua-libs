@@ -96,16 +96,12 @@ def fit_routine(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     ds["Distance"] = ds[["Dge", "Def", "Dgf"]].to_array().min("variable")
     smoothed_distance = ds.Distance.rolling({"amp_prefactor": 3}, center=True, min_periods=1).mean()
     ds["Distance_smooth"] = smoothed_distance
-    quality = argmax_with_quality(
-        ds.amp_prefactor.values, np.asarray(smoothed_distance.data, dtype=float).reshape(-1)
-    )
+    quality = argmax_with_quality(ds.amp_prefactor.values, np.asarray(smoothed_distance.data, dtype=float).reshape(-1))
     optimal_amp_prefactor = smoothed_distance.idxmax("amp_prefactor")
     optimal_amplitude = ds.readout_amplitude.sel(amp_prefactor=optimal_amp_prefactor)
     success = bool(quality.success and np.all(np.isfinite(np.atleast_1d(optimal_amplitude.data))))
     if quality.note:
-        logging.getLogger(__name__).warning(
-            "gef power opt %s: %s", str(np.atleast_1d(ds.qubit.data)[0]), quality.note
-        )
+        logging.getLogger(__name__).warning("gef power opt %s: %s", str(np.atleast_1d(ds.qubit.data)[0]), quality.note)
     return ds.assign(
         {
             "optimal_amp_prefactor": optimal_amp_prefactor,
