@@ -1,13 +1,20 @@
+"""IQ blobs GEF calibration for three-state (g, e, f) discrimination and center extraction."""
+
 # %% {Imports}
-import dataclasses
 from dataclasses import asdict
 
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from calibration_utils.common_utils import (
+    ensure_gef_readout_pulse,
+    reset_for_gef,
+    set_gef_readout_frequency,
+)
 from calibration_utils.iq_blobs_ef import (
     Parameters,
     fit_raw_data,
+    gef_centers_in_raw_adc,
     log_fitted_results,
     plot_confusion_matrices,
     plot_iq_blobs,
@@ -37,6 +44,10 @@ Prerequisites:
     - Having calibrated the readout parameters (nodes 02a, 02b and/or 02c).
     - Having calibrated the qubit x180 pulse parameters.
     - Having calibrated the qubit EF_180 pulse parameters.
+    - reset_type="active_gef" additionally requires qubit.resonator.gef_centers to already be
+      populated (e.g. by a prior thermal run of this same node). It is intended as a
+      post-calibration verification pass for the active GEF reset macro, not for establishing
+      the centers themselves.
 
 State update:
     - The gef centers positions: qubit.resonator.gef_centers
@@ -57,6 +68,7 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
     # You can get type hinting in your IDE by typing node.parameters.
+    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -67,25 +79,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     Create the sweep axes and generate the QUA program from the pulse sequence and the
     node parameters.
     """
-    if node.parameters.reset_type != "thermal":
-        raise ValueError("Only 'thermal' reset is supported")
+    if node.parameters.reset_type == "active":
+        raise ValueError("'active' reset is not GEF-aware; use 'thermal' or 'active_gef'")
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    for qubit_obj in qubits:
-        if "readout_GEF" in qubit_obj.resonator.operations:
-            continue
-        readout_op = qubit_obj.resonator.operations["readout"]
-        new_length = int(round(readout_op.length * 1.5 / 4) * 4)  # multiple of 4 ns
-        qubit_obj.resonator.operations["readout_GEF"] = dataclasses.replace(
-            readout_op,
-            length=new_length,
-            threshold=None,
-            rus_exit_threshold=None,
-        )
+    ensure_gef_readout_pulse(qubits, log_callable=node.log)
 
     n_runs = node.parameters.num_shots  # Number of runs
     operation = node.parameters.operation
@@ -107,32 +109,25 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             align()
 
             for i, qubit in multiplexed_qubits.items():
-                shift = qubit.resonator.GEF_frequency_shift if qubit.resonator.GEF_frequency_shift is not None else 0
-                qubit.resonator.update_frequency(
-                    qubit.resonator.intermediate_frequency + shift
-                )  # resonator frequency shift for GEF
+                set_gef_readout_frequency(qubit)
 
             with for_(n, 0, n < n_runs, n + 1):
                 save(n, n_st)
-
                 # Ground state iq blobs for all qubits
-                # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.wait(2 * qubit.thermalization_time * u.ns)  # longer wait for |f> thermalization
+                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate, u)
                 align()
                 # |g> state readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.resonator.measure(operation, qua_vars=(I_g[i], Q_g[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
-                    # save data
                     save(I_g[i], I_g_st[i])
                     save(Q_g[i], Q_g_st[i])
                 align()
 
                 # Excited state iq blobs for all qubits
-                # Qubit initialization
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.wait(2 * qubit.thermalization_time * u.ns)  # longer wait for |f> thermalization
+                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate, u)
                 align()
                 # |e> state readout
                 for i, qubit in multiplexed_qubits.items():
@@ -140,25 +135,26 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.align()
                     qubit.resonator.measure(operation, qua_vars=(I_e[i], Q_e[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
-                    # save data
                     save(I_e[i], I_e_st[i])
                     save(Q_e[i], Q_e_st[i])
 
                 # Second excited state iq blobs for all qubits
-                # Qubit reset
                 for i, qubit in multiplexed_qubits.items():
-                    qubit.wait(2 * qubit.thermalization_time * u.ns)  # longer wait for |f> thermalization
+                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate, u)
                 align()
                 # |f> state readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.xy.play("x180")
-                    update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity)
+                    update_frequency(
+                        qubit.xy.name,
+                        qubit.xy.intermediate_frequency - abs(qubit.anharmonicity),
+                        keep_phase=True,
+                    )
                     qubit.xy.play("EF_x180")
-                    update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
+                    update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency, keep_phase=True)
                     qubit.align()
                     qubit.resonator.measure(operation, qua_vars=(I_f[i], Q_f[i]))
                     qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
-                    # save data
                     save(I_f[i], I_f_st[i])
                     save(Q_f[i], Q_f_st[i])
 
@@ -270,10 +266,10 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            operation = q.resonator.operations[node.parameters.operation]
-            node.machine.qubits[q.name].resonator.gef_centers = (
-                node.results["ds_fit"].sel(qubit=q.name).center_matrix.data * operation.length / 2**12
-            ).tolist()  # convert to raw adc units
+            q.resonator.gef_centers = gef_centers_in_raw_adc(
+                node.results["ds_fit"].sel(qubit=q.name).center_matrix.data,
+                q.resonator.operations["readout"].length,
+            )
 
 
 # %% {Save_results}
