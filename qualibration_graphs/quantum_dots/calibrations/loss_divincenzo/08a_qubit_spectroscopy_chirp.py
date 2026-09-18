@@ -25,6 +25,7 @@ from calibration_utils.qubit_spectroscopy_chirp import (
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters.experiment import get_qubits
+from calibration_utils.common_utils.macro_updates import change_macro_tracked, revert_tracked_macros
 
 
 # %% {Node initialization}
@@ -92,6 +93,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+
+    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
 
     # Resolve the spectroscopy pulse from the pulse family stored in the Quam state.
     operation_name = resolve_operation_name(node, node.parameters.operation)
@@ -286,6 +289,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate or node.parameters.use_simulated_data)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the qubit frequency from threshold-based analysis."""
+    revert_tracked_macros(node)
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
