@@ -313,16 +313,16 @@ The chevron is also a visual check that flux-line predistortion (`17a`/`17b`/`17
 
 The $\vert 11\rangle\leftrightarrow\vert 20\rangle$ crossing that powers the gate is also the leak. Any population that finishes in $\vert 20\rangle$ instead of returning to $\vert 11\rangle$ is lost outside the computational subspace, where randomized benchmarking will later report it as an error it cannot distinguish from decoherence. Fixing it here, before the phase calibration, means Stage 3 tunes a gate that is already leakage-clean.
 
-Both nodes prepare $\vert 11\rangle$, sweep coupler amplitude, repeat the CZ `n` times, and pick the amplitude that best preserves $P(11)$. Both **require GEF readout**.
+Both nodes prepare $\vert 11\rangle$, sweep coupler amplitude, repeat the CZ $n$ times, and pick the amplitude that best preserves $P(11)$. Both **require GEF readout**.
 
 - [**32a**, standard](./32a_cz_leakage_amplification.py) — straightforward repetition, $n = 1 \dots N$.
-- [**32b**, PALEA](./32b_cz_leakage_amplification_palea.py) — adds a dynamical-decoupling layer after each CZ ($\vert e\rangle \to \vert f\rangle$ $\pi$ on the high-frequency qubit, $\vert g\rangle \to \vert e\rangle$ $\pi$ on the low-frequency qubit) and sweeps even `n`. Reported to reach the same leakage sensitivity in roughly half the repetitions, and is more robust to ZZ over-rotation and single-qubit phase error.
+- [**32b**, PALEA](./32b_cz_leakage_amplification_palea.py) — adds a dynamical-decoupling layer after each CZ ($\vert e\rangle \to \vert f\rangle$ $\pi$ on the high-frequency qubit, $\vert g\rangle \to \vert e\rangle$ $\pi$ on the low-frequency qubit) and sweeps even $n$. Reported to reach the same leakage sensitivity in roughly half the repetitions, and is more robust to ZZ over-rotation and single-qubit phase error.
 
   **Ref:** Marxer et al., [arXiv:2508.16437](https://arxiv.org/abs/2508.16437) — PALEA leakage amplification
 
 Run one of them; 32b is the better choice when you can afford the EF pulses.
 
-**Done when:** there is a coupler amplitude where $P(11)$ vs repetition count `n` is flat and high — that is the leakage null. Off that amplitude, leftover $\vert 11\rangle\leftrightarrow\vert 20\rangle$ exchange makes $P(11)$ oscillate with `n`. The node does not fit those oscillations; it averages $P(11)$ over `n` and takes the amplitude that maximises the mean (oscillating traces average down, a flat high one does not).
+**Done when:** there is a coupler amplitude where $P(11)$ vs repetition count $n$ is flat and high — that is the leakage null. Off that amplitude, leftover $\vert 11\rangle\leftrightarrow\vert 20\rangle$ exchange makes $P(11)$ oscillate with $n$. The node does not fit those oscillations; it averages $P(11)$ over $n$ and takes the amplitude that maximises the mean (oscillating traces average down, a flat high one does not).
 
 Both nodes refuse to run without state discrimination; 32b additionally requires an $\vert e\rangle \to \vert f\rangle$ $\pi$ pulse on each high-frequency qubit for its PALEA layer.
 
