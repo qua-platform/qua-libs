@@ -11,30 +11,38 @@ import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
-# Gate to integer mapping for single qubit gates
-SINGLE_QUBIT_GATE_MAP = {"sx": 0, "x": 1, "rz(pi/2)": 2, "rz(pi)": 3, "rz(3pi/2)": 4, "idle": 5}
+# Gate to integer mapping for single-qubit analog XY (6 slots; do not add aliases).
+# Slot 3 is physical Y: both Qiskit ``y`` and ``ry(π)`` normalize to ``"y"``.
+SINGLE_QUBIT_GATE_MAP = {"sx": 0, "x": 1, "ry(pi/2)": 2, "y": 3, "ry(3pi/2)": 4, "idle": 5}
 
 # Two-qubit gate mapping
 TWO_QUBIT_GATE_MAP = {"cz": 36, "idle_2q": 37}
-
-# Opcode appended by nodes after :func:`circuit_to_layer_ints` (``play_gate`` case 38).
-READOUT_OPCODE = 38
 
 IDLE_QUBIT_GATE = SINGLE_QUBIT_GATE_MAP["idle"]
 EMPTY_LAYER = [[IDLE_QUBIT_GATE, IDLE_QUBIT_GATE]]
 
 
 def get_gate_name(gate) -> str:
-    """Extract the gate name and parameters in a standardized format."""
+    """Extract the gate name and parameters in a standardized format.
+
+    Analog-XY encoding: ``sx``, ``x``, ``y``, and ``ry`` at Clifford angles
+    (π/2, π/−π, 3π/2/−π/2). ``rz`` is rejected; leftover fractional ``ry``
+    (e.g. from ``optimization_level>1``) is also rejected.
+    """
     name = gate.name.lower()
     if name == "rz":
-        angle = gate.params[0]
-        if np.isclose(angle, np.pi / 2):
-            return name + "(pi/2)"
-        if np.isclose(angle, np.pi) or np.isclose(angle, -np.pi):
-            return name + "(pi)"
-        if np.isclose(angle, 3 * np.pi / 2) or np.isclose(angle, -np.pi / 2):
-            return name + "(3pi/2)"
+        raise ValueError("rz is not in the analog-XY RB basis; use {cz, sx, x, ry, y}")
+    if name == "y":
+        return "y"
+    if name == "ry":
+        angle = float(gate.params[0])
+        wrapped = float(np.mod(angle, 2.0 * np.pi))
+        if np.isclose(wrapped, np.pi / 2):
+            return "ry(pi/2)"
+        if np.isclose(wrapped, np.pi):
+            return "y"
+        if np.isclose(wrapped, 3.0 * np.pi / 2):
+            return "ry(3pi/2)"
         raise ValueError(f"Unsupported angle: {angle}")
     return name
 
@@ -114,13 +122,13 @@ def circuit_to_layer_ints(qc: QuantumCircuit) -> List[int]:
     during transpilation).
 
     Args:
-        qc: Transpiled two-qubit circuit in the RB basis gate set
-            (``sx``, ``x``, ``rz``, ``cz``), possibly containing barriers.
+        qc: Transpiled two-qubit circuit in the analog-XY RB basis
+            (``sx``, ``x``, ``ry``, ``y``, ``cz``), possibly containing barriers.
 
     Returns:
-        Ordered list of layer opcodes, one per parallel timestep. Does not
-        append the readout marker (:data:`READOUT_OPCODE`, 38); callers add that
-        when building the full sequence for the OPX.
+        Ordered list of layer opcodes in ``[0, 37]``, one per parallel
+        timestep. Gate-only: does not append a readout marker. The executor
+        reads out once per circuit after the last gate (empty lists included).
 
     Raises:
         ValueError: Propagated from :func:`_instructions_to_layer_int` if any
@@ -139,15 +147,16 @@ def circuit_to_layer_ints(qc: QuantumCircuit) -> List[int]:
     return result
 
 
-_VIRTUAL_1Q_GATE_NAMES = frozenset({"rz"})  # virtual Z via frame_rotation in QUA
+# Analog XY: former virtual-Z 1Q layers are physical Y pulses. Empty so EPG
+# counts every 1Q gate as physical; do not treat ``ry``/``y`` as virtual Z.
+_VIRTUAL_1Q_GATE_NAMES = frozenset()
 
 
 def _count_transpiled_circuit_stats(qc: QuantumCircuit) -> dict:
     """Return Clifford, 1Q, and CZ gate counts for one barriered transpiled circuit.
 
-    Returns both full transpiled gate totals (including virtual ``rz``) and physical
-    gate totals (``sx``, ``x``, ``cz`` only). Virtual Z is implemented as
-    ``frame_rotation`` in QUA and is excluded from physical counts.
+    Returns both full transpiled gate totals and physical gate totals. In the
+    analog-XY basis every 1Q layer (``sx``, ``x``, ``ry``, ``y``) is physical.
     """
     gate_counts = Counter(instr.operation.name for instr in qc)
     n_cliffords = gate_counts.pop("barrier", 0)
