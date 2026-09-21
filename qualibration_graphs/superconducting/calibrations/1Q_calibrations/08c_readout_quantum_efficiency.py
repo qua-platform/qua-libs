@@ -62,9 +62,19 @@ number per frequency comes from the paper's global fits over the amplitude axis,
 SNR = a*eps and beta = eps^2/(2 sigma_m^2), giving eta = a^2 sigma_m^2 / 2. The point-by-point
 ratio is also produced, as a check that the sweep stayed in the linear regime.
 
-Optimal integration weights and active photon depletion, the other two steps of the paper's
-method, are NOT implemented here: this node uses the existing readout weights and a passive
-depletion wait. eta measured this way is therefore a lower bound on what the chain can deliver.
+eta, following Bultink et al., quantifies how much the readout chain's signal-to-noise ratio
+falls short of the limit set by quantum vacuum fluctuations - the fraction of the qubit's
+coherence loss that is actually recoverable from the digitized signal. eta = 1 would mean
+phase-preserving amplification with only quantum-limited noise added anywhere in the chain. It is
+not the same thing as the parametric amplifier's own gain or noise figure in isolation (the chain
+includes everything downstream of the qubit, not just the amp), and it is not readout fidelity:
+fidelity reflects how well two states are discriminated and can be high even at moderate eta.
+
+The paper's method needs three conditions to extract the TRUE chain efficiency: optimal
+integration weights on both quadratures, complete depletion of the measurement-induced photons
+before the second pi/2 pulse, and a single qubit probed at a time. This node uses the existing
+readout weights (not re-optimized weights) and a passive depletion wait rather than active
+depletion.
 
 Prerequisites:
     - Having calibrated the readout parameters (nodes 02a, 08a).
