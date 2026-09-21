@@ -52,6 +52,12 @@ class Parameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
-    """Aggregate node parameters for the readout quantum efficiency node."""
+    """Aggregate node parameters for the readout quantum efficiency node.
+
+    Inherits `multiplexed` from `QubitsExperimentNodeParameters`, but the node forces it to False
+    at runtime: a multiplexed weak pulse would dephase every qubit in the batch while the SNR half
+    only looks at this qubit's own IQ, so eta would come out low for a reason unrelated to the
+    amplifier. Setting `multiplexed = True` here therefore has no effect.
+    """
 
     pass

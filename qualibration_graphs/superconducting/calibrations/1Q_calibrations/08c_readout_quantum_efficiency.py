@@ -104,6 +104,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     # Class containing tools to help handle units and conversions.
     u = unit(coerce_to_integer=True)
+    # This measurement requires the qubits to be probed one at a time: a multiplexed weak pulse
+    # dephases every other qubit in the batch too, but the SNR half only looks at this qubit's own
+    # IQ, so eta would come out low for a reason unrelated to the amplifier. Force sequential
+    # execution regardless of what the parameter is set to upstream (GUI/graph config).
+    node.parameters.multiplexed = False
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
