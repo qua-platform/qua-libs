@@ -8,7 +8,7 @@ Every node here runs standalone; the order below is what matters, since each ste
 
 # Bring-up flow
 
-The goal of bring-up is a qubit you can drive with calibrated π / π/2 pulses, read out with state discrimination, and (if flux-tunable) park at a known idle bias. Coherence and RB at the end are the check that this actually worked.
+The goal of bring-up is a qubit you can drive with calibrated $\pi$ / $\pi/2$ pulses, read out with state discrimination, and (if flux-tunable) park at a known idle bias. Coherence and RB at the end are the check that this actually worked.
 
 Do time-of-flight ([`01a`](./01a_time_of_flight.py) / [`01b`](./01b_time_of_flight_mw_fem.py)) once per setup so the readout window is aligned, then:
 
@@ -25,13 +25,13 @@ Do time-of-flight ([`01a`](./01a_time_of_flight.py) / [`01b`](./01b_time_of_flig
     |
   03b  qubit spectroscopy vs flux                frequency-vs-flux map
     |
-  04a  Rabi chevron  -->  04b  power Rabi        coarse then π-pulse amplitude
+  04a  Rabi chevron  -->  04b  power Rabi        coarse then pi-pulse amplitude
     |
   08b  readout power  -->  08a  readout freq  -->  07  IQ blobs
     |
-  09a  Ramsey vs flux                            finer idle point + df/dΦ
+  09a  Ramsey vs flux                            finer idle point + df/dPhi
     |
-  04b  error-amp x180  -->  04b  error-amp x90   π then π/2, now with discrimination
+  04b  error-amp x180  -->  04b  error-amp x90   pi then pi/2, now with discrimination
     |
   06a  Ramsey  -->  05  T1  -->  06b  echo       coherence
     |
@@ -43,11 +43,11 @@ Do time-of-flight ([`01a`](./01a_time_of_flight.py) / [`01b`](./01b_time_of_flig
 | `02a` → `02c`        | Find the resonator, then park the flux where the qubit (and resonator) should idle.                            |
 | `02b`                | Map the resonator vs readout power to stay below bifurcation. Gives 08b a safe starting range.                 |
 | `03a` → `03b`        | Find the qubit, then map frequency vs flux. Later nodes (including cryoscope **17c**) consume this conversion. |
-| `04a` → `04b`        | Chevron sets a usable drive frequency and a rough amplitude; power Rabi sets the π pulse.                      |
+| `04a` → `04b`        | Chevron sets a usable drive frequency and a rough amplitude; power Rabi sets the $\pi$ pulse.                  |
 | `08b` → `08a` → `07` | Only after you can flip the qubit is readout worth optimizing. IQ blobs turn on state discrimination.          |
-| `09a`                | Ramsey vs flux refines the idle point and the df/dΦ used by flux pulses.                                       |
-| error-amp `04b`      | Tight π and π/2 amplitudes now that discrimination is on.                                                      |
-| `06a` → `05` → `06b` | T2\*, T1, T2-echo. Not used to set pulses; they tell you whether the qubit is worth gating.                    |
+| `09a`                | Ramsey vs flux refines the idle point and the $\mathrm{d}f/\mathrm{d}\Phi$ used by flux pulses.                |
+| error-amp `04b`      | Tight $\pi$ and $\pi/2$ amplitudes now that discrimination is on.                                              |
+| `06a` → `05` → `06b` | $T_2^*$, $T_1$, $T_2$-echo. Not used to set pulses; they tell you whether the qubit is worth gating.           |
 | `10b` → `11a`        | DRAG kills phase error on the drive; RB is the bring-up figure of merit.                                       |
 
 ### Fixed-frequency transmon
@@ -74,12 +74,12 @@ Go back to spectroscopy only if the qubit is genuinely lost.
 
 Needed before a CZ. For the full two-qubit calibration pipeline see the [CZ calibration README](../CZ_calibrations/README.md).
 
-| Stage                     | Nodes                                                                                                                                                         | Why                                                                                                                                                                        |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GEF (three-state) readout | [`12`](./12_Qubit_Spectroscopy_E_to_F.py) → [`13`](./13_power_rabi_ef.py) → [`14`](./14_gef_readout_frequency_optimization.py) → [`15`](./15_iq_blobs_gef.py) | CZ leakage nodes measure ǀf⟩ population. Order matters: 12 finds the EF frequency so 13 can drive it, 14 re-optimizes readout at three states, 15 rebuilds the classifier. |
-| Timing                    | [`16a`](./16a_xyz_delay.py), [`16b`](./16b_xy_coupler_z_delay.py)                                                                                             | Align XY with qubit / coupler flux pulses.                                                                                                                                 |
-| Flux-line distortions     | `17a` / `17b` → `17c`                                                                                                                                         | Predistort the flux line so downstream CZ amplitudes are calibrated against a stable target. See the [visual guide](#flux-line-distortions-17a--17b--17c) below.           |
-| Always-on ZZ              | [`19`](./19_zz_off_jazz.py)                                                                                                                                   | Park at the zero-ZZ bias. This keeps single-qubit RB clean and prevents always-on ZZ from biasing the CZ conditional phase.                                                |
+| Stage                     | Nodes                                                                                                                                                                                                              | Why                                                                                                                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GEF (three-state) readout | [`12`](./12_Qubit_Spectroscopy_E_to_F.py) → [`13`](./13_power_rabi_ef.py) → [`14a`](./14a_gef_readout_frequency_optimization.py) → [`14b`](./14b_gef_readout_power_optimization.py) → [`15`](./15_iq_blobs_gef.py) | CZ leakage nodes measure $\vert f\rangle$ population. Order matters: 12 finds the EF frequency so 13 can drive it, 14a then 14b re-optimize readout frequency and power at three states, 15 rebuilds the classifier. |
+| Timing                    | [`16a`](./16a_xyz_delay.py), [`16b`](./16b_xy_coupler_z_delay.py)                                                                                                                                                  | Align XY with qubit / coupler flux pulses.                                                                                                                                                                           |
+| Flux-line distortions     | `17a` / `17b` → `17c`                                                                                                                                                                                              | Predistort the flux line so downstream CZ amplitudes are calibrated against a stable target. See the [visual guide](#flux-line-distortions-17a--17b--17c) below.                                                     |
+| Always-on ZZ              | [`19`](./19_zz_off_jazz.py)                                                                                                                                                                                        | Park at the zero-ZZ bias. This keeps single-qubit RB clean and prevents always-on ZZ from biasing the CZ conditional phase.                                                                                          |
 
 Optional checks: [`20`](./20_all_xy.py) (AllXY), [`11b`](./11b_single_qubit_randomized_benchmarking_interleaved.py) (interleaved RB).
 
@@ -93,10 +93,10 @@ Fitting flux-line distortions is more involved than the rest of bring-up — mul
 
 Room-temperature electronics and the cryostat wiring distort the flux pulse, so the waveform the qubit sees is not the one you programmed. Predistortion filters must be fitted **before** any two-qubit tuning, otherwise every amplitude you calibrate downstream is calibrated against a moving target. On a CZ pair this is the **moving-qubit** flux line; the same nodes apply to any flux-tunable qubit.
 
-| Timescale                | Node                                                                                                         | Method                                    |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
-| Long (ns → tens of µs)   | [`17a`](./17a_qubit_flux_long_distortion_qubitspec.py) / [`17b`](./17b_qubit_flux_long_distortion_ramsey.py) | Qubit spectroscopy / Ramsey vs flux delay |
-| Short (~1 ns resolution) | [`17c`](./17c_qubit_flux_short_distortion.py)                                                                | Cryoscope, optional FIR                   |
+| Timescale                      | Node                                                                                                         | Method                                    |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| Long (ns $\to$ tens of $\mu$s) | [`17a`](./17a_qubit_flux_long_distortion_qubitspec.py) / [`17b`](./17b_qubit_flux_long_distortion_ramsey.py) | Qubit spectroscopy / Ramsey vs flux delay |
+| Short (~1 ns resolution)       | [`17c`](./17c_qubit_flux_short_distortion.py)                                                                | Cryoscope, optional FIR                   |
 
 ## Long-timescale distortions (17a / 17b)
 
@@ -152,7 +152,7 @@ The retuning graphs use tighter error-amplification sweeps (`amp_factor` 0.98–
 # Bring-up is complete when
 
 - Single-qubit RB (`11a`) returns a fidelity you are happy with
-- T1 and T2 are consistent with what the qubit should give
+- $T_1$ and $T_2$ are consistent with what the qubit should give
 - State discrimination is on and the confusion matrix is clean
 - (Flux-tunable) the idle point is set and the frequency-to-flux conversion is committed
 

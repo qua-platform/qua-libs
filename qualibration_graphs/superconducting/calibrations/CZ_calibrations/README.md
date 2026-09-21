@@ -7,7 +7,7 @@ This folder takes a qubit pair from "the two qubits are individually calibrated"
 
 Calibration without verification is unfinished: nothing in nodes 30–34 measures gate fidelity, so the benchmarking chapter is where "high fidelity" stops being an assumption.
 
-The gate uses the **$|11\rangle \leftrightarrow |20\rangle$** avoided crossing (state convention: $|q_H, q_L\rangle$, higher-frequency qubit first); a baseband flux pulse on the moving qubit brings the pair into the interaction region.
+The gate uses the **$\vert 11\rangle \leftrightarrow \vert 20\rangle$** avoided crossing (state convention: $\vert q_H, q_L\rangle$, higher-frequency qubit first); a baseband flux pulse on the moving qubit brings the pair into the interaction region.
 
 Hardware falls into two workflows:
 
@@ -42,51 +42,51 @@ Hardware falls into two workflows:
 # 1. Physics of the CZ gate
 
 The CZ is a two-qubit entangling gate that applies a $\pi$ phase to
-the $|11\rangle$ state and leaves the other three computational basis states
-($|00\rangle$, $|01\rangle$, $|10\rangle$) untouched:
+the $\vert 11\rangle$ state and leaves the other three computational basis states
+($\vert 00\rangle$, $\vert 01\rangle$, $\vert 10\rangle$) untouched:
 
 $$U_\mathrm{CZ} = \mathrm{diag}(1, 1, 1, -1).$$
 
 Equivalently, it imprints a Z on the target _conditioned_ on the control
-being $|1\rangle$. Combined with single-qubit rotations it is universal, and on
+being $\vert 1\rangle$. Combined with single-qubit rotations it is universal, and on
 flux-tunable transmons it is one of the native, highest-fidelity two-qubit
 gates.
 
 The hard part is that the phase must be _conditional_. Single-qubit Z rotations
 only ever assign a phase to each qubit separately, so whatever they put on
-$|11\rangle$ is already decided by what they put on $|10\rangle$ and
-$|01\rangle$: it is the sum of those two, and it cannot be anything else. A CZ
-needs a phase on $|11\rangle$ over and above that sum, an extra piece that
+$\vert 11\rangle$ is already decided by what they put on $\vert 10\rangle$ and
+$\vert 01\rangle$: it is the sum of those two, and it cannot be anything else. A CZ
+needs a phase on $\vert 11\rangle$ over and above that sum, an extra piece that
 appears only when both qubits are excited, and no amount of single-qubit
 control can produce it. So the gate needs a physical mechanism that touches
-$|11\rangle$ and leaves the rest alone.
+$\vert 11\rangle$ and leaves the rest alone.
 
 The computational subspace does not offer one. An exchange coupling conserves
 the total excitation number, so it only connects states within the same
 excitation subspace. In the single-excitation subspace that means
-$|10\rangle\leftrightarrow|01\rangle$, which is the iSWAP interaction, a
-population swap rather than a phase. For $|11\rangle$ it means nothing at all,
-because $|11\rangle$ is the only two-excitation state the computational
-subspace contains. Left to itself, $|11\rangle$ has no partner to interact
+$\vert 10\rangle\leftrightarrow\vert 01\rangle$, which is the iSWAP interaction, a
+population swap rather than a phase. For $\vert 11\rangle$ it means nothing at all,
+because $\vert 11\rangle$ is the only two-excitation state the computational
+subspace contains. Left to itself, $\vert 11\rangle$ has no partner to interact
 with.
 
 The partner lives one level up. A transmon is not a two-level system but a
-weakly anharmonic oscillator, and its second excited state $|2\rangle$ is there
-to be used: $|20\rangle$ and $|02\rangle$ sit in the same two-excitation
-subspace as $|11\rangle$, and the same exchange coupling connects them. The
-gate is therefore built by deliberately pushing $|11\rangle$ **out of the
+weakly anharmonic oscillator, and its second excited state $\vert 2\rangle$ is there
+to be used: $\vert 20\rangle$ and $\vert 02\rangle$ sit in the same two-excitation
+subspace as $\vert 11\rangle$, and the same exchange coupling connects them. The
+gate is therefore built by deliberately pushing $\vert 11\rangle$ **out of the
 computational subspace**. A flux pulse tunes it into resonance with one of those doubly
 excited states, the two interact, and the pulse brings the population back.
 Nothing may be left behind (population stranded outside the computational
 subspace is leakage, which is why Stage 2 exists), but the round trip banks a
-phase, and it banks it on $|11\rangle$ alone, because $|11\rangle$ is the only
+phase, and it banks it on $\vert 11\rangle$ alone, because $\vert 11\rangle$ is the only
 computational state that went anywhere. That phase is $\zeta$. The
 anharmonicity is what makes the excursion addressable: it places these
 resonances at detunings where the single-excitation exchange is off, so the
 interaction can be switched on and off with flux.
 
 With the qubits coupled by an exchange interaction $J$, the Hamiltonian in
-the ordered basis {$|20\rangle$, $|11\rangle$, $|02\rangle$} is
+the ordered basis {$\vert 20\rangle$, $\vert 11\rangle$, $\vert 02\rangle$} is
 
 $$
 H^{(2)} =
@@ -97,15 +97,15 @@ H^{(2)} =
 \end{pmatrix}.
 $$
 
-where $\omega_H$ and $\omega_L$ are the $|0\rangle\to|1\rangle$ transition
+where $\omega_H$ and $\omega_L$ are the $\vert 0\rangle\to\vert 1\rangle$ transition
 frequencies of the higher and lower frequency qubit respectively, and
 $\alpha_H$, $\alpha_L$ are their anharmonicities (negative for transmons).
 
-The structure shows that $|11\rangle$ couples to **both** double-excitation
-states, $|20\rangle$ and $|02\rangle$, each through a $\sqrt{2} J$ matrix element — the $\sqrt{2}$ coming
-from the $|1\rangle \to |2\rangle$ transition of the doubly-excited transmon (the bosonic $\sqrt{2}$ of
-$a^{\dagger}$). The corner entry is zero: $|20\rangle$ and $|02\rangle$ do not couple directly, only
-through $|11\rangle$. Compare the single-excitation block,
+The structure shows that $\vert 11\rangle$ couples to **both** double-excitation
+states, $\vert 20\rangle$ and $\vert 02\rangle$, each through a $\sqrt{2} J$ matrix element — the $\sqrt{2}$ coming
+from the $\vert 1\rangle \to \vert 2\rangle$ transition of the doubly-excited transmon (the bosonic $\sqrt{2}$ of
+$a^{\dagger}$). The corner entry is zero: $\vert 20\rangle$ and $\vert 02\rangle$ do not couple directly, only
+through $\vert 11\rangle$. Compare the single-excitation block,
 
 $$
 H^{(1)} =
@@ -117,9 +117,9 @@ $$
 
 whose off-diagonal is just $J$, a factor of $\sqrt2$ smaller than the
 $\sqrt2 J$ coupling at either double-excitation crossing (same physical
-$J$, larger matrix element from the bosonic $|1\rangle\to|2\rangle$
-transition). Both the $|11\rangle\leftrightarrow|20\rangle$ and
-$|11\rangle\leftrightarrow|02\rangle$ crossings are therefore stronger than
+$J$, larger matrix element from the bosonic $\vert 1\rangle\to\vert 2\rangle$
+transition). Both the $\vert 11\rangle\leftrightarrow\vert 20\rangle$ and
+$\vert 11\rangle\leftrightarrow\vert 02\rangle$ crossings are therefore stronger than
 the single-excitation one, and that strength cuts both ways: it is what
 makes the swap fast enough to be a usable gate, and it is exactly why an
 imperfect traversal (wrong amplitude, distorted pulse, timing error)
@@ -129,30 +129,30 @@ is why leakage gets its own dedicated calibration step (Stage 2) rather
 than being incidental.
 
 So in the two-excitation manifold there are two candidate partners for
-$|11\rangle$:
+$\vert 11\rangle$:
 
-- $|11\rangle \leftrightarrow |20\rangle$ (high-frequency qubit doubly excited)
-- $|11\rangle \leftrightarrow |02\rangle$ (low-frequency qubit doubly excited)
+- $\vert 11\rangle \leftrightarrow \vert 20\rangle$ (high-frequency qubit doubly excited)
+- $\vert 11\rangle \leftrightarrow \vert 02\rangle$ (low-frequency qubit doubly excited)
 
 Either realizes a CZ in principle. The resonance conditions follow from
 the diagonals of $H^{(2)}$:
 
-- $|11\rangle \leftrightarrow |20\rangle$ at $\omega_H - \omega_L = |\alpha_H|$
-- $|11\rangle \leftrightarrow |02\rangle$ at $\omega_H - \omega_L = -|\alpha_L|$
+- $\vert 11\rangle \leftrightarrow \vert 20\rangle$ at $\omega_H - \omega_L = |\alpha_H|$
+- $\vert 11\rangle \leftrightarrow \vert 02\rangle$ at $\omega_H - \omega_L = -|\alpha_L|$
 
-The single-excitation manifold {$|10\rangle, |01\rangle$} adds a third
+The single-excitation manifold {$\vert 10\rangle, \vert 01\rangle$} adds a third
 resonance at $\omega_H - \omega_L = 0$, the iSWAP point. It sits at
 $\Delta = 0$, directly between the two CZ crossings. A flux excursion
 that crosses $\Delta = 0$ transits this unwanted single-excitation exchange
 resonance on the way in and again on the way out, swapping population between
-$|10\rangle$ and $|01\rangle$, which corrupts precisely the two states the CZ
+$\vert 10\rangle$ and $\vert 01\rangle$, which corrupts precisely the two states the CZ
 is supposed to leave untouched and does so in a way no amount of phase
 calibration can undo. Keeping the whole excursion on one side of zero is
 therefore a genuine advantage: the single-excitation subspace stays idle from
 start to finish, and the only interaction the pulse ever turns on is the one
 the gate needs. So in practice the gate always targets whichever CZ crossing
 can be reached without passing through zero. With $\Delta > 0$ at idle
-(by definition of $\omega_H$ and $\omega_L$), that is the $|11\rangle\leftrightarrow|20\rangle$
+(by definition of $\omega_H$ and $\omega_L$), that is the $\vert 11\rangle\leftrightarrow\vert 20\rangle$
 crossing at $+|\alpha_H|$.
 
 <p align="center">
@@ -179,29 +179,29 @@ In both cases $\Delta$ stays positive throughout the excursion.
    <img src="../.img/fig_two_delta_cases.svg" width="620" alt="Two panels showing which qubit is fluxed depending on whether idle detuning is above or below alpha_H">
 </p>
 
-**Every node in this calibration chain uses the $|11\rangle \leftrightarrow |20\rangle$ crossing.**
+**Every node in this calibration chain uses the $\vert 11\rangle \leftrightarrow \vert 20\rangle$ crossing.**
 
 ## Mechanism
 
 A baseband flux pulse on the moving qubit sweeps the detuning $\Delta = \omega_H - \omega_L$
-toward the $|11\rangle \leftrightarrow |20\rangle$ resonance at $\Delta = |\alpha_H|$. There are two ways to spend
+toward the $\vert 11\rangle \leftrightarrow \vert 20\rangle$ resonance at $\Delta = |\alpha_H|$. There are two ways to spend
 the resulting interaction as a conditional phase:
 
-- **Adiabatic.** Ramp into the avoided crossing slowly enough that $|11\rangle$
-  follows the lower eigenstate without ever fully populating $|20\rangle$,
+- **Adiabatic.** Ramp into the avoided crossing slowly enough that $\vert 11\rangle$
+  follows the lower eigenstate without ever fully populating $\vert 20\rangle$,
   accumulating a dynamical phase along the way. Leakage-robust, but slower.
-- **Diabatic.** Pulse fast to (or near) resonance and let $|11\rangle$ undergo a
-  full $2\pi$ population exchange with $|20\rangle$ — out to $|20\rangle$ and back — returning
-  to $|11\rangle$ with the conditional phase banked.
+- **Diabatic.** Pulse fast to (or near) resonance and let $\vert 11\rangle$ undergo a
+  full $2\pi$ population exchange with $\vert 20\rangle$ — out to $\vert 20\rangle$ and back — returning
+  to $\vert 11\rangle$ with the conditional phase banked.
 
-**This stack uses the diabatic gate.** Over the excursion, $|11\rangle$ acquires a
-phase $\zeta(t)$ relative to the single-excitation states $|01\rangle$, $|10\rangle$; the gate is
+**This stack uses the diabatic gate.** Over the excursion, $\vert 11\rangle$ acquires a
+phase $\zeta(t)$ relative to the single-excitation states $\vert 01\rangle$, $\vert 10\rangle$; the gate is
 calibrated so that
 
 $$\int \zeta(t)\, dt = (2n+1)\pi, \quad n \in \mathbb{Z},$$
 
-i.e. an _odd_ multiple of $\pi$. The residual single-qubit phases on $|01\rangle$ and
-$|10\rangle$ are removed by virtual-Z compensation (node **34a**), yielding the ideal
+i.e. an _odd_ multiple of $\pi$. The residual single-qubit phases on $\vert 01\rangle$ and
+$\vert 10\rangle$ are removed by virtual-Z compensation (node **34a**), yielding the ideal
 $U_\mathrm{CZ}$ above.
 
 ### How the physics maps onto the calibration stages
@@ -233,7 +233,7 @@ A CZ chain will happily converge onto a bad operating point if the single-qubit 
 | Flux bias points           | [`02c`](../1Q_calibrations/02c_resonator_spectroscopy_vs_flux.py), [`03b`](../1Q_calibrations/03b_qubit_spectroscopy_vs_flux.py), [`09a`](../1Q_calibrations/09a_ramsey_vs_flux_calibration.py)                                                   | Sets the idle point and the frequency-vs-flux conversion                                                                                                                                                                     |
 | Single-qubit gates         | [`04b`](../1Q_calibrations/04b_power_rabi.py), [`10b`](../1Q_calibrations/10b_drag_calibration_180_minus_180.py), verified by [`11a`](../1Q_calibrations/11a_single_qubit_randomized_benchmarking.py) and [`20`](../1Q_calibrations/20_all_xy.py) | Every CZ node brackets the gate with x90/x180 pulses; their errors alias into the extracted phase                                                                                                                            |
 | Readout + discrimination   | [`07`](../1Q_calibrations/07_iq_blobs.py), [`08a`](../1Q_calibrations/08a_readout_frequency_optimization.py), [`08b`](../1Q_calibrations/08b_readout_power_optimization.py)                                                                       | Most CZ nodes discriminate computational states; leakage nodes (**32a/32b**) hard-require GEF (see next row)                                                                                                                 |
-| GEF (three-state) readout  | [`12`](../1Q_calibrations/12_Qubit_Spectroscopy_E_to_F.py), [`13`](../1Q_calibrations/13_power_rabi_ef.py), [`14`](../1Q_calibrations/14_gef_readout_frequency_optimization.py), [`15`](../1Q_calibrations/15_iq_blobs_gef.py)                    | Leakage nodes **32a/32b** measure $|f\rangle$ population and refuse to run without it; **30** (CZ mode), **31**, **33a** and **33b** also use GEF when state discrimination is on. 32b further needs an $|e\rangle \to |f\rangle$ $\pi$ pulse                  |
+| GEF (three-state) readout  | [`12`](../1Q_calibrations/12_Qubit_Spectroscopy_E_to_F.py), [`13`](../1Q_calibrations/13_power_rabi_ef.py), [`14a`](../1Q_calibrations/14a_gef_readout_frequency_optimization.py), [`14b`](../1Q_calibrations/14b_gef_readout_power_optimization.py), [`15`](../1Q_calibrations/15_iq_blobs_gef.py) | Leakage nodes **32a/32b** measure $\vert f\rangle$ population and refuse to run without it; **30** (CZ mode), **31**, **33a** and **33b** also use GEF when state discrimination is on. 32b further needs an $\vert e\rangle \to \vert f\rangle$ $\pi$ pulse                  |
 | XY–Z timing alignment      | [`16a`](../1Q_calibrations/16a_xyz_delay.py), [`16b`](../1Q_calibrations/16b_xy_coupler_z_delay.py)                                                                                                                                               | A misaligned flux pulse truncates the interaction window                                                                                                                                                                     |
 | Flux-line distortions      | [1Q README](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c) (`17a` / `17b` / `17c`)                                                                                                                                             | A distorted pulse can still show a chevron, so **30/31 may succeed anyway** — but the fringe will look **asymmetric**, and the gate waveform is wrong, which **will cap CZ fidelity**. Predistort before you trust a number. |
 | Coupler spectroscopy       | [`22a`](../1Q_calibrations/22a_three_tone_coupler_spectroscopy_flux_pulse.py) / [`22b`](../1Q_calibrations/22b_three_tone_coupler_spectroscopy_vs_coupler_flux.py) — **tunable coupler only**                                                     | Maps coupler frequency vs flux; this is how you set a sensible decouple bias before **30**                                                                                                                                   |
@@ -242,7 +242,7 @@ A CZ chain will happily converge onto a bad operating point if the single-qubit 
 
 Tunable-coupler pairs additionally need a coupler flux pulse on the gate; the leakage and bootstrap nodes will not run without it. Nodes **22a/22b** and **21a/21b/21c** are how that coupler is found and its flux line predistorted.
 
-**Role vocabulary used throughout.** The **moving qubit** is the one whose flux line is pulsed to reach the avoided crossing; the **stationary qubit** stays at its idle point. These roles are independent of which qubit you call control or target in the circuit sense. Because the gate rides the $|11\rangle\leftrightarrow|20\rangle$ crossing, the doubly-excited (leakage) qubit is always the **higher-frequency** one.
+**Role vocabulary used throughout.** The **moving qubit** is the one whose flux line is pulsed to reach the avoided crossing; the **stationary qubit** stays at its idle point. These roles are independent of which qubit you call control or target in the circuit sense. Because the gate rides the $\vert 11\rangle\leftrightarrow\vert 20\rangle$ crossing, the doubly-excited (leakage) qubit is always the **higher-frequency** one.
 
 ---
 
@@ -288,22 +288,22 @@ Find where in flux space the interaction lives, and roughly how long and how har
 
 [`30_cz_iswap_flux_bootstrap.py`](./30_cz_iswap_flux_bootstrap.py)
 
-One 2D map over coupler flux (around the decouple bias) and moving-qubit flux finds the idle (decouple) plateau and the first interaction fringe simultaneously. Prepares $|11\rangle$ for CZ or $|10\rangle$ for iSWAP. Because it returns both biases _and_ the flux-pulse amplitudes, it **replaces** the coarse role of 31.
+One 2D map over coupler flux (around the decouple bias) and moving-qubit flux finds the idle (decouple) plateau and the first interaction fringe simultaneously. Prepares $\vert 11\rangle$ for CZ or $\vert 10\rangle$ for iSWAP. Because it returns both biases _and_ the flux-pulse amplitudes, it **replaces** the coarse role of 31.
 
 <p align="center">
    <img src="../.img/bootstrap_figures_moving.png" width="390" alt="CZ flux landscape on the moving qubit: coupler flux vs qubit flux, with decoupling offset and CZ operating point marked">
    <img src="../.img/bootstrap_figures_stationary.png" width="390" alt="Same flux landscape read out on the stationary qubit">
 </p>
 
-The figures above are example data for this type of experiment. Both qubits are read out on the same 2D map. The horizontal line is the coupler decoupling offset (the flat region where the exchange is off) and the vertical line the moving-qubit flux at the first interaction fringe; together they fix the operating point. The interaction shows up as loss of population on the moving qubit and gain on the stationary one, so the two panels should mirror each other — if they do not, you are looking at a feature that is not the $|11\rangle\leftrightarrow|20\rangle$ exchange.
+The figures above are example data for this type of experiment. Both qubits are read out on the same 2D map. The horizontal line is the coupler decoupling offset (the flat region where the exchange is off) and the vertical line the moving-qubit flux at the first interaction fringe; together they fix the operating point. The interaction shows up as loss of population on the moving qubit and gain on the stationary one, so the two panels should mirror each other — if they do not, you are looking at a feature that is not the $\vert 11\rangle\leftrightarrow\vert 20\rangle$ exchange.
 
 ### 31 — Chevron (fixed coupler; optional for tunable)
 
 [`31_chevron_11_20.py`](./31_chevron_11_20.py)
 
-Prepare $|11\rangle$ and sweep flux-pulse amplitude $\times$ duration on the moving qubit. The first chevron fringe gives the initial duration and amplitude, written back to the CZ pulse (duration rounded up to the hardware's 4 ns grid).
+Prepare $\vert 11\rangle$ and sweep flux-pulse amplitude $\times$ duration on the moving qubit. The first chevron fringe gives the initial duration and amplitude, written back to the CZ pulse (duration rounded up to the hardware's 4 ns grid).
 
-The chevron is also a visual check that flux-line predistortion (`17a`/`17b`/`17c`) is doing its job. A well-corrected flux pulse gives a left–right symmetric fringe; uncorrected distortions skew the chevron (asymmetric about the resonance amplitude, or a fringe that shears with duration). Rol et al., _Appl. Phys. Lett._ **116**, 054001 (2020), [arXiv:1907.04818](https://arxiv.org/abs/1907.04818), Figs. 2(b)–2(c), show this explicitly: without predistortion the $|11\rangle$–$|02\rangle$ chevron bends and is brighter on one side (finite rise time); with it, the pattern is almost perfectly symmetric. If you see the asymmetric case, go back to the [1Q flux-line distortions](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c) before trusting the fitted point.
+The chevron is also a visual check that flux-line predistortion (`17a`/`17b`/`17c`) is doing its job. A well-corrected flux pulse gives a left–right symmetric fringe; uncorrected distortions skew the chevron (asymmetric about the resonance amplitude, or a fringe that shears with duration). Rol et al., _Appl. Phys. Lett._ **116**, 054001 (2020), [arXiv:1907.04818](https://arxiv.org/abs/1907.04818), Figs. 2(b)–2(c), show this explicitly: without predistortion the $\vert 11\rangle$–$\vert 02\rangle$ chevron bends and is brighter on one side (finite rise time); with it, the pattern is almost perfectly symmetric. If you see the asymmetric case, go back to the [1Q flux-line distortions](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c) before trusting the fitted point.
 
 **Do you need 31 after 30?** Only for the gate duration. Node 30 writes the coupler bias and both flux amplitudes, but it never sets the qubit flux-pulse duration — measuring that is what the chevron is for. So run 31 if the pulse has no duration yet, or if you switched to a pulse shape whose duration has not been measured. Otherwise skip it: re-running 31 would overwrite the amplitudes 30 just fitted, using a sweep that holds the coupler fixed instead of mapping it.
 
@@ -311,20 +311,20 @@ The chevron is also a visual check that flux-line predistortion (`17a`/`17b`/`17
 
 **Tunable-coupler pairs only** — it tunes the coupler flux-pulse amplitude, which fixed-coupler pairs do not have.
 
-The $|11\rangle\leftrightarrow|20\rangle$ crossing that powers the gate is also the leak. Any population that finishes in $|20\rangle$ instead of returning to $|11\rangle$ is lost outside the computational subspace, where randomized benchmarking will later report it as an error it cannot distinguish from decoherence. Fixing it here, before the phase calibration, means Stage 3 tunes a gate that is already leakage-clean.
+The $\vert 11\rangle\leftrightarrow\vert 20\rangle$ crossing that powers the gate is also the leak. Any population that finishes in $\vert 20\rangle$ instead of returning to $\vert 11\rangle$ is lost outside the computational subspace, where randomized benchmarking will later report it as an error it cannot distinguish from decoherence. Fixing it here, before the phase calibration, means Stage 3 tunes a gate that is already leakage-clean.
 
-Both nodes prepare $|11\rangle$, sweep coupler amplitude, repeat the CZ `n` times, and pick the amplitude that best preserves $P(11)$. Both **require GEF readout**.
+Both nodes prepare $\vert 11\rangle$, sweep coupler amplitude, repeat the CZ `n` times, and pick the amplitude that best preserves $P(11)$. Both **require GEF readout**.
 
 - [**32a**, standard](./32a_cz_leakage_amplification.py) — straightforward repetition, $n = 1 \dots N$.
-- [**32b**, PALEA](./32b_cz_leakage_amplification_palea.py) — adds a dynamical-decoupling layer after each CZ ($|e\rangle \to |f\rangle$ $\pi$ on the high-frequency qubit, $|g\rangle \to |e\rangle$ $\pi$ on the low-frequency qubit) and sweeps even `n`. Reported to reach the same leakage sensitivity in roughly half the repetitions, and is more robust to ZZ over-rotation and single-qubit phase error.
+- [**32b**, PALEA](./32b_cz_leakage_amplification_palea.py) — adds a dynamical-decoupling layer after each CZ ($\vert e\rangle \to \vert f\rangle$ $\pi$ on the high-frequency qubit, $\vert g\rangle \to \vert e\rangle$ $\pi$ on the low-frequency qubit) and sweeps even `n`. Reported to reach the same leakage sensitivity in roughly half the repetitions, and is more robust to ZZ over-rotation and single-qubit phase error.
 
   **Ref:** Marxer et al., [arXiv:2508.16437](https://arxiv.org/abs/2508.16437) — PALEA leakage amplification
 
 Run one of them; 32b is the better choice when you can afford the EF pulses.
 
-**Done when:** there is a coupler amplitude where $P(11)$ vs repetition count `n` is flat and high — that is the leakage null. Off that amplitude, leftover $|11\rangle\leftrightarrow|20\rangle$ exchange makes $P(11)$ oscillate with `n`. The node does not fit those oscillations; it averages $P(11)$ over `n` and takes the amplitude that maximises the mean (oscillating traces average down, a flat high one does not).
+**Done when:** there is a coupler amplitude where $P(11)$ vs repetition count `n` is flat and high — that is the leakage null. Off that amplitude, leftover $\vert 11\rangle\leftrightarrow\vert 20\rangle$ exchange makes $P(11)$ oscillate with `n`. The node does not fit those oscillations; it averages $P(11)$ over `n` and takes the amplitude that maximises the mean (oscillating traces average down, a flat high one does not).
 
-Both nodes refuse to run without state discrimination; 32b additionally requires an $|e\rangle \to |f\rangle$ $\pi$ pulse on each high-frequency qubit for its PALEA layer.
+Both nodes refuse to run without state discrimination; 32b additionally requires an $\vert e\rangle \to \vert f\rangle$ $\pi$ pulse on each high-frequency qubit for its PALEA layer.
 
 ## Stage 3 — Conditional phase = π
 
@@ -342,7 +342,7 @@ Now set the quantity that actually defines the gate: $\int\zeta\,dt = \pi$. The 
    <img src="../.img/phase_error_amp.png" width="340" height="600" alt="Error-amplified conditional phase: phase difference vs CZ repetitions and amplitude, with leakage fractions">
 </p>
 
-33a (left) reads the $\pi$-crossing straight off the tanh fit at a phase difference of 0.5, with the g/e/f populations underneath as a leakage check. 33b (right) repeats the gate, so the same amplitude error fans out into the tilted fringes of the 2D map and the optimum can be located far more precisely. The lower panels are diagnostics, not fit inputs — rising $|f\rangle$ population with repetition count means Stage 2 is not done, whatever the phase fit says.
+33a (left) reads the $\pi$-crossing straight off the tanh fit at a phase difference of 0.5, with the g/e/f populations underneath as a leakage check. 33b (right) repeats the gate, so the same amplitude error fans out into the tilted fringes of the 2D map and the optimum can be located far more precisely. The lower panels are diagnostics, not fit inputs — rising $\vert f\rangle$ population with repetition count means Stage 2 is not done, whatever the phase fit says.
 
 ### 33c / 33d — JAZZ precision amplitude (optional)
 
@@ -354,7 +354,7 @@ That buys three things over 33b:
 
 - **A cleaner number.** 33b amplifies the conditional phase error, but it also amplifies everything else — residual detuning, AC-Stark shift, virtual-Z inside the CZ macro. Here those cancel, so the fitted amplitude does not inherit your single-qubit frequency calibration.
 - **Finer resolution.** The peak around $\pi$ keeps sharpening as you add echo repetitions, so you can push the amplitude precision further than 33b's train.
-- **Half the runs.** The echo sweeps the control through $|0\rangle$ and $|1\rangle$ within one sequence, instead of two separately conditioned scans.
+- **Half the runs.** The echo sweeps the control through $\vert 0\rangle$ and $\vert 1\rangle$ within one sequence, instead of two separately conditioned scans.
 
 **Ref:** [arXiv:2402.18926](https://arxiv.org/abs/2402.18926), Appendix I.1, Fig. 13 — JAZZ-N (a) and JAZZ2-N (b)
 
@@ -377,13 +377,13 @@ Run either after 33b; pick 33d if you want the tightest amplitude.
 
 ## Stage 4 — Single-qubit phase cleanup
 
-A correct conditional phase still is not a CZ: the flux excursion also drags the single-qubit phases of $|01\rangle$ and $|10\rangle$. Those are removed in software, by shifting the virtual-Z frames, at zero time cost.
+A correct conditional phase still is not a CZ: the flux excursion also drags the single-qubit phases of $\vert 01\rangle$ and $\vert 10\rangle$. Those are removed in software, by shifting the virtual-Z frames, at zero time cost.
 
 ### 34a / 34b — Phase compensation (both workflows)
 
 [`34a_cz_phase_compensation.py`](./34a_cz_phase_compensation.py) · [`34b_cz_phase_compensation_error_amp.py`](./34b_cz_phase_compensation_error_amp.py)
 
-1. [**34a**](./34a_cz_phase_compensation.py) — prepare $|{+}{+}\rangle$, apply the CZ, reconstruct each qubit's phase, and subtract it as a virtual-Z on control and target.
+1. [**34a**](./34a_cz_phase_compensation.py) — prepare $\vert {+}{+}\rangle$, apply the CZ, reconstruct each qubit's phase, and subtract it as a virtual-Z on control and target.
 
 <p align="center">
   <img src="../.img/CZ_phase_1Q.png" width="390" alt="Measured state vs virtual-Z frame for control and target, with the fitted phase peak of each">
@@ -485,7 +485,7 @@ For deep or numerous sequences, stream the circuits to the OPX rather than holdi
 
 Two qubits working does not mean the device works. The GHZ nodes chain CZs across multiple qubits and expose crosstalk and context-dependent error that pairwise benchmarking cannot see. Node 39a accepts groups of 3 to 5 qubits; 39b accepts 2 or more.
 
-- [**39a**, GHZ Z-basis](./39a_ghz_z_basis.py) — prepare the GHZ state, measure populations, report the Z-basis population fidelity $P(|0\dots0\rangle) + P(|1\dots1\rangle)$ after mitigation. Cheap; catches gross failures.
+- [**39a**, GHZ Z-basis](./39a_ghz_z_basis.py) — prepare the GHZ state, measure populations, report the Z-basis population fidelity $P(\vert 0\dots0\rangle) + P(\vert 1\dots1\rangle)$ after mitigation. Cheap; catches gross failures.
 - [**39b**, GHZ tomography](./39b_ghz_tomography.py) — full tomography by sweeping local X/Y/Z pre-rotations, reporting fidelity and purity against the ideal GHZ state. Expensive; scales steeply with qubit count.
 
 Both offer Kron and N-qubit mitigation, the latter using the full N-qubit matrix from node 38.
