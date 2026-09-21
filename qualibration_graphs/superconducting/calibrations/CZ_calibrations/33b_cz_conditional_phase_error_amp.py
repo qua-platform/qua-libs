@@ -36,7 +36,7 @@ sensitivity near the π crossing.
 
 Protocol
 --------
-Same as node 32a, with these additions:
+Same as node 33a, with these additions:
 1. Apply ``macros[operation]`` repeatedly (``number_of_operations`` sweep).
 2. Compensate the tomography frame for odd repetition counts when the moving qubit starts
    excited (π/2 frame shift before the final x90 on the stationary qubit).
@@ -55,7 +55,7 @@ in the fit criterion.
 Prerequisites:
 - Calibrated single-qubit gates for both qubits in the pair.
 - Calibrated GEF readout for both qubits (if ``use_state_discrimination=True``).
-- ``macros[operation]`` with an initial CZ amplitude from node 32a (or manual entry).
+- ``macros[operation]`` with an initial CZ amplitude from node 33a (or manual entry).
 
 State update:
 - ``qubit_pair.macros[operation].flux_pulse_qubit.amplitude`` → optimal CZ amplitude.
@@ -63,7 +63,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="32b_cz_conditional_phase_error_amp",  # Name should be unique
+    name="33b_cz_conditional_phase_error_amp",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters defined under calibration_utils/cz_conditional_phase/parameters.py
     machine=Quam.load(),
