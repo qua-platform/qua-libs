@@ -7,7 +7,7 @@ This folder takes a qubit pair from "the two qubits are individually calibrated"
 
 Calibration without verification is unfinished: nothing in nodes 30–34 measures gate fidelity, so the benchmarking chapter is where "high fidelity" stops being an assumption.
 
-The gate uses the **$\vert 11\rangle \leftrightarrow \vert 20\rangle$** avoided crossing (state convention: $\vert q_H, q_L\rangle$, higher-frequency qubit first); a baseband flux pulse on the moving qubit brings the pair into the interaction region.
+The gate uses the $\vert 11\rangle \leftrightarrow \vert 20\rangle$ avoided crossing (state convention: $\vert q_H, q_L\rangle$, higher-frequency qubit first); a baseband flux pulse on the moving qubit brings the pair into the interaction region.
 
 Hardware falls into two workflows:
 
@@ -43,7 +43,7 @@ Hardware falls into two workflows:
 
 The CZ is a two-qubit entangling gate that applies a $\pi$ phase to
 the $\vert 11\rangle$ state and leaves the other three computational basis states
-($\vert 00\rangle$, $\vert 01\rangle$, $\vert 10\rangle$) untouched:
+($\vert 00\rangle, \vert 01\rangle, \vert 10\rangle$) untouched:
 
 $$U_\mathrm{CZ} = \mathrm{diag}(1, 1, 1, -1).$$
 
@@ -86,14 +86,14 @@ resonances at detunings where the single-excitation exchange is off, so the
 interaction can be switched on and off with flux.
 
 With the qubits coupled by an exchange interaction $J$, the Hamiltonian in
-the ordered basis {$\vert 20\rangle$, $\vert 11\rangle$, $\vert 02\rangle$} is
+the ordered basis $\{\vert 20\rangle, \vert 11\rangle, \vert 02\rangle\}$ is
 
 $$
 H^{(2)} =
 \begin{pmatrix}
-2\omega_H + \alpha_H & \sqrt{2}\,J & 0 \\
-\sqrt{2}\,J & \omega_H + \omega_L & \sqrt{2}\,J \\
-0 & \sqrt{2}\,J & 2\omega_L + \alpha_L
+2\omega_H + \alpha_H & \sqrt{2} J & 0 \\
+\sqrt{2} J & \omega_H + \omega_L & \sqrt{2} J \\
+0 & \sqrt{2} J & 2\omega_L + \alpha_L
 \end{pmatrix}.
 $$
 
@@ -140,7 +140,7 @@ the diagonals of $H^{(2)}$:
 - $\vert 11\rangle \leftrightarrow \vert 20\rangle$ at $\omega_H - \omega_L = |\alpha_H|$
 - $\vert 11\rangle \leftrightarrow \vert 02\rangle$ at $\omega_H - \omega_L = -|\alpha_L|$
 
-The single-excitation manifold {$\vert 10\rangle, \vert 01\rangle$} adds a third
+The single-excitation manifold $\{\vert 10\rangle, \vert 01\rangle\}$ adds a third
 resonance at $\omega_H - \omega_L = 0$, the iSWAP point. It sits at
 $\Delta = 0$, directly between the two CZ crossings. A flux excursion
 that crosses $\Delta = 0$ transits this unwanted single-excitation exchange
@@ -198,7 +198,7 @@ the resulting interaction as a conditional phase:
 phase $\zeta(t)$ relative to the single-excitation states $\vert 01\rangle$, $\vert 10\rangle$; the gate is
 calibrated so that
 
-$$\int \zeta(t)\, dt = (2n+1)\pi, \quad n \in \mathbb{Z},$$
+$$\int \zeta(t) \mathrm{d}t = (2n+1)\pi, \quad n \in \mathbb{Z},$$
 
 i.e. an _odd_ multiple of $\pi$. The residual single-qubit phases on $\vert 01\rangle$ and
 $\vert 10\rangle$ are removed by virtual-Z compensation (node **34a**), yielding the ideal
@@ -212,7 +212,7 @@ Each stage below fixes one term in this picture, which is why the order matters:
 | ------------------------------------------------------------ | ----------------------------------- | ----- |
 | Detuning $\Delta$ at the interaction point                   | Flux-pulse amplitude & coupler bias | 1     |
 | Population left outside the computational subspace (leakage) | Coupler flux-pulse amplitude        | 2     |
-| $\int\zeta\,dt$ (the conditional phase)                      | Qubit flux-pulse amplitude          | 3     |
+| $\int \zeta \mathrm{d}t$ (the conditional phase)              | Qubit flux-pulse amplitude          | 3     |
 | Single-qubit phases on $\vert 01\rangle$, $\vert 10\rangle$  | Virtual-Z frame shifts              | 4     |
 
 **Key references:**
@@ -303,7 +303,7 @@ The figures above are example data for this type of experiment. Both qubits are 
 
 Prepare $\vert 11\rangle$ and sweep flux-pulse amplitude $\times$ duration on the moving qubit. The first chevron fringe gives the initial duration and amplitude, written back to the CZ pulse (duration rounded up to the hardware's 4 ns grid).
 
-The chevron is also a visual check that flux-line predistortion (`17a`/`17b`/`17c`) is doing its job. A well-corrected flux pulse gives a left–right symmetric fringe; uncorrected distortions skew the chevron (asymmetric about the resonance amplitude, or a fringe that shears with duration). Rol et al., _Appl. Phys. Lett._ **116**, 054001 (2020), [arXiv:1907.04818](https://arxiv.org/abs/1907.04818), Figs. 2(b)–2(c), show this explicitly: without predistortion the $\vert 11\rangle$–$\vert 02\rangle$ chevron bends and is brighter on one side (finite rise time); with it, the pattern is almost perfectly symmetric. If you see the asymmetric case, go back to the [1Q flux-line distortions](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c) before trusting the fitted point.
+The chevron is also a visual check that flux-line predistortion (`17a`/`17b`/`17c`) is doing its job. A well-corrected flux pulse gives a left–right symmetric fringe; uncorrected distortions skew the chevron (asymmetric about the resonance amplitude, or a fringe that shears with duration). Rol et al., _Appl. Phys. Lett._ **116**, 054001 (2020), [arXiv:1907.04818](https://arxiv.org/abs/1907.04818), Figs. 2(b)–2(c), show this explicitly: without predistortion the $\vert 11\rangle$ to $\vert 02\rangle$ chevron bends and is brighter on one side (finite rise time); with it, the pattern is almost perfectly symmetric. If you see the asymmetric case, go back to the [1Q flux-line distortions](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c) before trusting the fitted point.
 
 **Do you need 31 after 30?** Only for the gate duration. Node 30 writes the coupler bias and both flux amplitudes, but it never sets the qubit flux-pulse duration — measuring that is what the chevron is for. So run 31 if the pulse has no duration yet, or if you switched to a pulse shape whose duration has not been measured. Otherwise skip it: re-running 31 would overwrite the amplitudes 30 just fitted, using a sweep that holds the coupler fixed instead of mapping it.
 
@@ -328,7 +328,7 @@ Both nodes refuse to run without state discrimination; 32b additionally requires
 
 ## Stage 3 — Conditional phase = π
 
-Now set the quantity that actually defines the gate: $\int\zeta\,dt = \pi$. The gate duration is already fixed (Stage 1), so amplitude is the knob.
+Now set the quantity that actually defines the gate: $\int \zeta \mathrm{d}t = \pi$. The gate duration is already fixed (Stage 1), so amplitude is the knob.
 
 ### 33a / 33b — Conditional phase (both workflows)
 
