@@ -1,29 +1,125 @@
 """QUA program utilities for two-qubit randomized benchmarking.
 
-This module provides functions and classes for generating and executing
-QUA programs for randomized benchmarking experiments.
+Gate playback uses an unsafe switch over opcodes 0–37 only. Readout, science
+save, reset, and frame cleanup run once per circuit outside that switch.
 """
 
+from __future__ import annotations
+
+import inspect
 from typing import Literal
 
 import numpy as np
-from more_itertools import flatten
 from qm.qua import *
 from qm.qua._expressions import QuaArrayVariable, QuaVariable
 from qualang_tools.units import unit
-from qualibrate import NodeParameters, QualibrationNode
+from qualibrate import QualibrationNode
+from quam.components.pulses import SquarePulse
 from quam_config import Quam
 
+from .packing import (
+    build_packed_depth_chunks,
+    flatten_padded_chunks,
+    pack_circuits,
+    packed_packet_words,
+    validate_circuit_list,
+)
+
 # Padding value used to fill input-stream chunks to the declared array size.
-# 37 maps to case_(37) -> idle_2q (wait(4) on both qubits in play_gate). It is
-# defensive only: play_sequence is bounded by the actual chunk length so these
-# slots are never executed in normal operation. Picking an in-range case_ value
-# guarantees that an off-by-one would land on a known no-op rather than
-# undefined behavior under switch_case(..., unsafe=True).
+# 37 maps to case_(37) -> idle_2q (wait(4) on both qubits). It is defensive only:
+# packed circuit ranges never include trailing pad words, so these slots are not
+# played. Picking an in-range case_ value guarantees that an off-by-one would
+# land on a known no-op rather than undefined behavior under switch_(..., unsafe=True).
 INPUT_STREAM_PAD_VALUE = 37
 
-# OPX QUA variable budget is ~16000; leave headroom for streams, counters, sub_lens, etc.
+# OPX QUA variable budget is ~16000; leave headroom for streams, counters, etc.
 OPX_QUA_VARIABLE_BUDGET = 16000
+
+_ALIGN_ELEMENTS_KW = "align_elements"
+
+
+class CzAlignElementsUnavailable(RuntimeError):
+    """Installed CZ macro cannot opt out of explicit aligns (would be a silent no-op)."""
+
+
+def _iter_qubit_pairs(qubit_pairs):
+    """Yield pair objects from a list, dict, or QUAM pair collection."""
+    if isinstance(qubit_pairs, dict):
+        yield from qubit_pairs.values()
+        return
+    values = getattr(qubit_pairs, "values", None)
+    if callable(values):
+        yielded = list(values())
+        if yielded and not isinstance(yielded[0], (int, str)):
+            yield from yielded
+            return
+    yield from qubit_pairs
+
+
+def require_cz_align_elements(cz_macro, *, cz_operation: str, pair_label: str) -> None:
+    """Fail if ``apply`` would swallow ``align_elements=False`` via ``**kwargs``."""
+    apply = getattr(cz_macro, "apply", None)
+    if apply is None:
+        raise CzAlignElementsUnavailable(
+            f"CZ operation {cz_operation!r} on {pair_label} has no apply() method."
+        )
+    try:
+        params = inspect.signature(apply).parameters
+    except (TypeError, ValueError) as exc:
+        raise CzAlignElementsUnavailable(
+            f"Cannot inspect {cz_operation!r}.apply on {pair_label}: {exc}."
+        ) from exc
+    if _ALIGN_ELEMENTS_KW not in params:
+        raise CzAlignElementsUnavailable(
+            f"CZ operation {cz_operation!r} on {pair_label} does not accept "
+            f"apply({_ALIGN_ELEMENTS_KW}=False). The installed quam-builder revision "
+            "likely swallows unknown keywords via **kwargs, so the RB dispatcher would "
+            "still emit explicit CZ aligns. Install a quam-builder revision that adds "
+            "the explicit align_elements keyword (hotfix/cz-align-elements-opt-in)."
+        )
+
+
+def preflight_cz_align_elements(qubit_pairs, cz_operation: str) -> None:
+    """Require the CZ opt-in on every pair before tracing the unsafe switch."""
+    for qp in _iter_qubit_pairs(qubit_pairs):
+        pair_label = str(getattr(qp, "name", qp))
+        macros = getattr(qp, "macros", None)
+        if macros is None or cz_operation not in macros:
+            raise CzAlignElementsUnavailable(
+                f"Qubit pair {pair_label} has no macro {cz_operation!r}; "
+                "cannot verify align_elements support."
+            )
+        require_cz_align_elements(macros[cz_operation], cz_operation=cz_operation, pair_label=pair_label)
+
+
+_XY_ZERO_OP = "zero"
+_XY_ZERO_LEN_NS = 4
+
+
+def _xy_channels_for_pair(qp):
+    """Control and target XY lines of a qubit pair (spectators are not occupied)."""
+    for attr in ("qubit_control", "qubit_target"):
+        qubit = getattr(qp, attr, None)
+        if qubit is None:
+            continue
+        xy = getattr(qubit, "xy", None)
+        if xy is not None:
+            yield xy
+
+
+def ensure_xy_zero_pulse(qubit_pairs) -> None:
+    """Attach a 4 ns amp-0 XY ``"zero"`` pulse when a pair's XY ops lack it.
+
+    Trace-time only. Needed so ``play("zero")`` in the CZ unsafe-switch case
+    compiles on machines that do not ship the sanitized occupancy pulse.
+    Idempotent: existing ``"zero"`` operations are left unchanged.
+    """
+    for qp in _iter_qubit_pairs(qubit_pairs):
+        for xy in _xy_channels_for_pair(qp):
+            operations = getattr(xy, "operations", None)
+            if operations is None or _XY_ZERO_OP in operations:
+                continue
+            operations[_XY_ZERO_OP] = SquarePulse(length=_XY_ZERO_LEN_NS, amplitude=0)
 
 
 def compute_rb_circuit_memory_stats(
@@ -33,58 +129,58 @@ def compute_rb_circuit_memory_stats(
 ) -> dict:
     """Summarize encoded RB circuit sizes for memory validation and logging.
 
-    The ints come from ``create_qua_program`` in nodes: each circuit is
-    ``circuit_to_layer_ints(qc) + [READOUT_OPCODE]``, i.e. one
-    integer per transpiled parallel gate layer plus a trailing readout marker.
-
-    ``circuits_as_ints`` is depth-major: all sequences for depth[0], then depth[1], ...
+    ``circuits_as_ints`` is gate-only (opcodes 0–37), depth-major: all sequences
+    for depth[0], then depth[1], ... Headers are not stored in these lists.
 
     Returns:
-        Dict with keys ``num_circuits``, ``total_ints``, ``max_circuit_ints``,
-        ``max_circuit_depth``, and ``per_depth`` (list of per-depth dicts).
+        Dict with keys ``num_circuits``, ``total_ints`` (packed packet words),
+        ``total_gates``, ``max_circuit_ints``, ``max_circuit_depth``, and
+        ``per_depth``.
     """
-    expected = len(circuit_depths) * num_circuits_per_depth
-    if len(circuits_as_ints) != expected:
-        raise ValueError(
-            "circuits_as_ints length does not match circuit_depths x num_circuits_per_depth: "
-            f"got {len(circuits_as_ints)} circuits, expected {expected}."
-        )
+    gates = validate_circuit_list(
+        circuits_as_ints,
+        circuit_depths=circuit_depths,
+        num_circuits_per_depth=num_circuits_per_depth,
+    )
 
-    lengths = [len(circuit) for circuit in circuits_as_ints]
-    max_idx = int(np.argmax(lengths))
-    max_depth_idx = max_idx // num_circuits_per_depth
+    lengths = [len(circuit) for circuit in gates]
+    max_idx = int(np.argmax(lengths)) if lengths else 0
+    max_depth_idx = max_idx // num_circuits_per_depth if num_circuits_per_depth else 0
 
     per_depth = []
     for depth_idx, depth in enumerate(circuit_depths):
         start = depth_idx * num_circuits_per_depth
         end = start + num_circuits_per_depth
+        depth_circuits = gates[start:end]
         depth_lengths = lengths[start:end]
         per_depth.append(
             {
                 "depth": depth,
                 "num_circuits": len(depth_lengths),
-                "min_ints": min(depth_lengths),
-                "max_ints": max(depth_lengths),
-                "mean_ints": float(np.mean(depth_lengths)),
+                "min_ints": min(depth_lengths) if depth_lengths else 0,
+                "max_ints": max(depth_lengths) if depth_lengths else 0,
+                "mean_ints": float(np.mean(depth_lengths)) if depth_lengths else 0.0,
+                "packed_words": packed_packet_words(depth_circuits) if depth_circuits else 0,
             }
         )
 
     return {
-        "num_circuits": len(circuits_as_ints),
-        "total_ints": sum(lengths),
-        "max_circuit_ints": lengths[max_idx],
-        "max_circuit_depth": circuit_depths[max_depth_idx],
+        "num_circuits": len(gates),
+        "total_ints": packed_packet_words(gates) if gates else 1,
+        "total_gates": sum(lengths),
+        "max_circuit_ints": lengths[max_idx] if lengths else 0,
+        "max_circuit_depth": circuit_depths[max_depth_idx] if circuit_depths else 0,
         "per_depth": per_depth,
     }
 
 
 def format_per_depth_memory_summary(per_depth: list[dict]) -> str:
-    """Format per-depth int-count stats for logs and error messages."""
-    lines = ["Per depth (ints per circuit: min–max, mean):"]
+    """Format per-depth gate-count stats for logs and error messages."""
+    lines = ["Per depth (gates per circuit: min–max, mean):"]
     for entry in per_depth:
         lines.append(
             f"  depth={entry['depth']}: {entry['num_circuits']} circuits, "
-            f"{entry['min_ints']}–{entry['max_ints']} ints "
+            f"{entry['min_ints']}–{entry['max_ints']} gates "
             f"(mean {entry['mean_ints']:.1f})"
         )
     return "\n".join(lines)
@@ -94,8 +190,8 @@ def format_per_depth_chunk_summary(
     chunks_per_depth: list[list[list[int]]],
     circuit_depths: list[int],
 ) -> str:
-    """Format per-depth input-stream sub-chunk sizes for logs."""
-    lines = ["Per depth input-stream sub-chunks (ints per sub-chunk):"]
+    """Format per-depth packed input-stream sub-chunk sizes for logs."""
+    lines = ["Per depth packed input-stream sub-chunks (words per sub-chunk):"]
     total_sub_chunks = 0
     for depth, sub_chunks in zip(circuit_depths, chunks_per_depth):
         chunk_lengths = [len(sc) for sc in sub_chunks]
@@ -105,7 +201,7 @@ def format_per_depth_chunk_summary(
         else:
             sizes = " + ".join(str(n) for n in chunk_lengths)
         lines.append(
-            f"  depth={depth}: {len(sub_chunks)} sub-chunk(s), " f"{sizes} ints (depth total {sum(chunk_lengths)})"
+            f"  depth={depth}: {len(sub_chunks)} sub-chunk(s), " f"{sizes} words (depth total {sum(chunk_lengths)})"
         )
     lines.append(f"  → {total_sub_chunks} sub-chunk(s) total (one host push per sub-chunk per pair)")
     return "\n".join(lines)
@@ -129,8 +225,9 @@ def log_rb_circuit_memory_stats(
     log_callable(
         "RB circuit OPX memory summary stats: "
         f"{stats['num_circuits']} circuits, "
-        f"{stats['total_ints']} total ints, "
-        f"largest circuit {stats['max_circuit_ints']} ints "
+        f"{stats['total_gates']} gates, "
+        f"{stats['total_ints']} packed words, "
+        f"largest circuit {stats['max_circuit_ints']} gates "
         f"(depth={stats['max_circuit_depth']} Cliffords), "
         f"use_input_stream={use_input_stream}, "
         f"budget={max_chunk_ints}"
@@ -144,14 +241,14 @@ def log_rb_circuit_memory_stats(
 
 
 def validate_without_inputstream_path(stats: dict, max_chunk_ints: int) -> None:
-    """Fail fast before QUA compile when the non-input-stream declare array would exceed budget."""
+    """Fail fast before QUA compile when the non-input-stream packed array would exceed budget."""
     total = stats["total_ints"]
     if total <= max_chunk_ints:
         return
     raise ValueError(
-        "Flattened RB sequence exceeds the OPX QUA variable budget for the "
-        f"non-input-stream path: {total} ints in "
-        f"declare(int, value=job_sequence), limit is max_chunk_ints={max_chunk_ints} "
+        "Packed RB sequence exceeds the OPX QUA variable budget for the "
+        f"non-input-stream path: {total} packed words in "
+        f"declare(int, value=packed_sequence), limit is max_chunk_ints={max_chunk_ints} "
         f"(OPX budget ~{OPX_QUA_VARIABLE_BUDGET}). "
         "Enable use_input_stream=True, reduce circuit_depths, or reduce "
         "num_circuits_per_depth.\n"
@@ -180,319 +277,218 @@ def build_single_depth_chunks(
     max_chunk_ints: int,
     per_depth: list[dict] | None = None,
 ) -> tuple[list[list[list[int]]], int]:
-    """Pack circuits into per-depth sub-chunks for the input-stream QUA path.
+    """Pack gate-only circuits into per-depth length-delimited input-stream chunks.
 
-    Circuits are grouped strictly by depth (never crossing depth boundaries):
-    for each depth in ``circuit_depths``, the corresponding
-    ``num_circuits_per_depth`` circuits are greedily packed into sub-chunks
-    such that the total int count of each sub-chunk is <= ``max_chunk_ints``.
-
-    Args:
-        circuits_as_ints: Flat list of all circuits (each itself a list of ints
-            terminated by a readout marker (opcode 38)), in the same order produced by
-            ``create_qua_program``: depth-major, then circuit_index within depth.
-        circuit_depths: Ordered list of depths (Cliffords) being benchmarked.
-            Used only to slice ``circuits_as_ints`` into per-depth groups.
-        num_circuits_per_depth: Number of circuits per depth.
-        max_chunk_ints: Maximum number of ints permitted per sub-chunk
-            (typically slightly below the OPX 16000 variable cap to leave
-            headroom for other declared variables).
-
-    Returns:
-        chunks_per_depth: ``len(circuit_depths)`` entries, one per depth. Each
-            entry is a list of sub-chunks; each sub-chunk is a flat list[int]
-            of concatenated full circuits (including their trailing readout markers)
-            with total length <= max_chunk_ints. No padding is applied here;
-            padding to the declared input-stream size happens at push time.
-        declared_size: ``max`` over all sub-chunks of their int length. This is
-            the size that the input stream is declared with; smaller sub-chunks
-            are padded to this size before push.
-
-    Raises:
-        ValueError: If any single circuit's int count exceeds ``max_chunk_ints``
-            (single-depth chunking cannot accommodate it). The error message
-            includes the offending depth, circuit index, and lengths.
+    Wrapper around :func:`build_packed_depth_chunks`. ``per_depth`` is accepted
+    for call-site compatibility and is unused (packing validates on its own).
     """
-    if len(circuits_as_ints) != len(circuit_depths) * num_circuits_per_depth:
-        raise ValueError(
-            "circuits_as_ints length does not match circuit_depths x num_circuits_per_depth: "
-            f"got {len(circuits_as_ints)} circuits, expected "
-            f"{len(circuit_depths)} x {num_circuits_per_depth} = "
-            f"{len(circuit_depths) * num_circuits_per_depth}."
-        )
-
-    chunks_per_depth: list[list[list[int]]] = []
-    declared_size = 0
-    if per_depth is None:
-        per_depth = compute_rb_circuit_memory_stats(circuits_as_ints, circuit_depths, num_circuits_per_depth)[
-            "per_depth"
-        ]
-
-    for depth_idx, depth in enumerate(circuit_depths):
-        start = depth_idx * num_circuits_per_depth
-        end = start + num_circuits_per_depth
-        circuits_for_this_depth = circuits_as_ints[start:end]
-
-        sub_chunks: list[list[int]] = []
-        current_chunk: list[int] = []
-
-        for circ_idx, circuit in enumerate(circuits_for_this_depth):
-            if len(circuit) > max_chunk_ints:
-                raise ValueError(
-                    f"Single circuit too large for input-stream chunk: depth={depth} "
-                    f"Cliffords, circuit_index={circ_idx}, circuit_ints={len(circuit)}, "
-                    f"max_chunk_ints={max_chunk_ints}. Reduce depth, raise "
-                    "max_chunk_ints (must stay < 16000), or reduce "
-                    f"num_circuits_per_depth.\n"
-                    f"{format_per_depth_memory_summary(per_depth)}"
-                )
-            if len(current_chunk) + len(circuit) > max_chunk_ints:
-                sub_chunks.append(current_chunk)
-                current_chunk = []
-            current_chunk.extend(circuit)
-
-        if current_chunk:
-            sub_chunks.append(current_chunk)
-
-        for sc in sub_chunks:
-            declared_size = max(declared_size, len(sc))
-
-        chunks_per_depth.append(sub_chunks)
-
-    return chunks_per_depth, declared_size
+    del per_depth
+    return build_packed_depth_chunks(
+        circuits_as_ints,
+        circuit_depths,
+        num_circuits_per_depth,
+        max_chunk_ints,
+    )
 
 
-def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-statements
+def play_gate(
     gate: QuaVariable,
     qubit_pair: Quam.qubit_pair_type,
-    state: QuaVariable,
-    state_control: QuaVariable,
-    state_target: QuaVariable,
-    state_st: "_ResultSource",
-    reset_type: Literal["thermal", "active"],
     cz_operation: str = "cz_unipolar",
-    simulate: bool = False,
 ):
-    """
-    Play a single gate from the gate mapping based on the gate integer value.
+    """Play one coherent RB layer (opcodes 0–37) with no readout or explicit align.
 
-    Args:
-        gate: Integer variable representing the gate to play.
-        qubit_pair: The qubit pair on which to apply the gate.
-        state: Variable to store the combined 2-qubit state.
-        state_control: Variable to store the control qubit state.
-        state_target: Variable to store the target qubit state.
-        state_st: Stream to save the state measurement.
-        reset_type: Type of reset to use ("thermal" or "active").
-        cz_operation: Name of the CZ operation macro to use.
-        simulate: Whether resets run in simulation mode.
+    1Q layers are analog XY only: ``x90``/``x180``/``y90``/``y180``/``-y90``.
+    CZ uses ``apply(align_elements=False)`` after :func:`preflight_cz_align_elements`,
+    then ``play("zero")`` on both XY so the compiler occupies those elements for
+    the flux case (frame-only compensation has no analog envelope).
+    Circuit-boundary align/readout/reset lives in :func:`readout_save_and_reset`.
     """
+    preflight_cz_align_elements(qubit_pair, cz_operation)
+
     with switch_(gate, unsafe=True):
 
         with case_(0):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
                 qp.qubit_target.xy.play("x90")
-                qp.align()
         with case_(1):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
                 qp.qubit_target.xy.play("x180")
-                qp.align()
         with case_(2):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.frame_rotation(np.pi / 2)
-                qp.align()
+                qp.qubit_target.xy.play("y90")
         with case_(3):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.frame_rotation(np.pi)
-                qp.align()
+                qp.qubit_target.xy.play("y180")
         with case_(4):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-                qp.align()
+                qp.qubit_target.xy.play("-y90")
         with case_(5):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x90")
-                qp.align()
         with case_(6):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x180")
                 qp.qubit_target.xy.play("x90")
-                qp.align()
         with case_(7):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x180")
                 qp.qubit_target.xy.play("x180")
-                qp.align()
         with case_(8):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.frame_rotation(np.pi / 2)
-                qp.align()
+                qp.qubit_target.xy.play("y90")
         with case_(9):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.frame_rotation(np.pi)
-                qp.align()
+                qp.qubit_target.xy.play("y180")
         with case_(10):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-                qp.align()
+                qp.qubit_target.xy.play("-y90")
         with case_(11):
             for qp in qubit_pair.values():
                 qp.qubit_control.xy.play("x180")
-                qp.align()
         with case_(12):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi / 2)
+                qp.qubit_control.xy.play("y90")
                 qp.qubit_target.xy.play("x90")
-                qp.align()
         with case_(13):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi / 2)
+                qp.qubit_control.xy.play("y90")
                 qp.qubit_target.xy.play("x180")
-                qp.align()
         with case_(14):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi / 2)
-                qp.qubit_target.xy.frame_rotation(np.pi / 2)
-                qp.align()
+                qp.qubit_control.xy.play("y90")
+                qp.qubit_target.xy.play("y90")
         with case_(15):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi / 2)
-                qp.qubit_target.xy.frame_rotation(np.pi)
-                qp.align()
+                qp.qubit_control.xy.play("y90")
+                qp.qubit_target.xy.play("y180")
         with case_(16):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi / 2)
-                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-                qp.align()
+                qp.qubit_control.xy.play("y90")
+                qp.qubit_target.xy.play("-y90")
         with case_(17):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi / 2)
-                qp.align()
+                qp.qubit_control.xy.play("y90")
         with case_(18):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi)
+                qp.qubit_control.xy.play("y180")
                 qp.qubit_target.xy.play("x90")
-                qp.align()
         with case_(19):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi)
+                qp.qubit_control.xy.play("y180")
                 qp.qubit_target.xy.play("x180")
-                qp.align()
         with case_(20):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi)
-                qp.qubit_target.xy.frame_rotation(np.pi / 2)
-                qp.align()
+                qp.qubit_control.xy.play("y180")
+                qp.qubit_target.xy.play("y90")
         with case_(21):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi)
-                qp.qubit_target.xy.frame_rotation(np.pi)
-                qp.align()
+                qp.qubit_control.xy.play("y180")
+                qp.qubit_target.xy.play("y180")
         with case_(22):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi)
-                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-                qp.align()
+                qp.qubit_control.xy.play("y180")
+                qp.qubit_target.xy.play("-y90")
         with case_(23):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(np.pi)
-                qp.align()
+                qp.qubit_control.xy.play("y180")
         with case_(24):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
+                qp.qubit_control.xy.play("-y90")
                 qp.qubit_target.xy.play("x90")
-                qp.align()
         with case_(25):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
+                qp.qubit_control.xy.play("-y90")
                 qp.qubit_target.xy.play("x180")
-                qp.align()
         with case_(26):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-                qp.qubit_target.xy.frame_rotation(np.pi / 2)
-                qp.align()
+                qp.qubit_control.xy.play("-y90")
+                qp.qubit_target.xy.play("y90")
         with case_(27):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-                qp.qubit_target.xy.frame_rotation(np.pi)
-                qp.align()
+                qp.qubit_control.xy.play("-y90")
+                qp.qubit_target.xy.play("y180")
         with case_(28):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-                qp.align()
+                qp.qubit_control.xy.play("-y90")
+                qp.qubit_target.xy.play("-y90")
         with case_(29):
             for qp in qubit_pair.values():
-                qp.qubit_control.xy.frame_rotation(3 * np.pi / 2)
-                qp.align()
+                qp.qubit_control.xy.play("-y90")
         with case_(30):
             for qp in qubit_pair.values():
                 qp.qubit_target.xy.play("x90")
-                qp.align()
         with case_(31):
             for qp in qubit_pair.values():
                 qp.qubit_target.xy.play("x180")
-                qp.align()
         with case_(32):
             for qp in qubit_pair.values():
-                qp.qubit_target.xy.frame_rotation(np.pi / 2)
-                qp.align()
+                qp.qubit_target.xy.play("y90")
         with case_(33):
             for qp in qubit_pair.values():
-                qp.qubit_target.xy.frame_rotation(np.pi)
-                qp.align()
+                qp.qubit_target.xy.play("y180")
         with case_(34):
             for qp in qubit_pair.values():
-                qp.qubit_target.xy.frame_rotation(3 * np.pi / 2)
-                qp.align()
+                qp.qubit_target.xy.play("-y90")
         with case_(35):  # idle gate
             for qp in qubit_pair.values():
                 qp.qubit_control.wait(4)
                 qp.qubit_target.wait(4)
-                qp.align()
         with case_(36):  # CZ
             for qp in qubit_pair.values():
-                qp.macros[cz_operation].apply()
-                qp.align()
+                qp.macros[cz_operation].apply(align_elements=False)
+                qp.qubit_control.xy.play("zero")
+                qp.qubit_target.xy.play("zero")
         with case_(37):  # idle_2q
             for qp in qubit_pair.values():
-                # Wait for 4 cycles
                 qp.qubit_control.wait(4)
                 qp.qubit_target.wait(4)
-                qp.align()
 
-        with case_(38):  # readout and thermalization
-            align()
-            # Readout the qubits and save the state
-            for i, qp in qubit_pair.items():
-                qp.qubit_control.readout_state(state_control)
-                qp.qubit_target.readout_state(state_target)
-                assign(state, state_control * 2 + state_target)
-                save(state, state_st[i])
-            align()
 
-            # Reset the qubits and reset the frame to avoid accumulation of rotations
-            for qp in qubit_pair.values():
-                qp.qubit_control.reset(reset_type, simulate)
-                qp.qubit_target.reset(reset_type, simulate)
-                reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
-            align()
+def readout_save_and_reset(
+    qubit_pair: Quam.qubit_pair_type,
+    state: QuaVariable,
+    state_control: QuaVariable,
+    state_target: QuaVariable,
+    state_st,
+    reset_type: Literal["thermal", "active"],
+    simulate: bool = False,
+):
+    """Science readout, save, reset, and frame cleanup for one circuit repetition.
+
+    Aligns all participating resources after the last coherent pulse (XY-only
+    align is not enough when CZ flux / spectators may still be active). Empty
+    circuits still call this helper once.
+    """
+    align()
+    for i, qp in qubit_pair.items():
+        qp.qubit_control.readout_state(state_control)
+        qp.qubit_target.readout_state(state_target)
+        assign(state, state_control * 2 + state_target)
+        save(state, state_st[i])
+    align()
+
+    for qp in qubit_pair.values():
+        qp.qubit_control.reset(reset_type, simulate)
+        qp.qubit_target.reset(reset_type, simulate)
+        reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
+    align()
 
 
 def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     sequence: QuaArrayVariable,
-    depth: int,
+    circuit_start,
+    circuit_stop,
     qubit_pair: Quam.qubit_pair_type,
-    state: list[QuaVariable],
+    state: QuaVariable,
     state_control: QuaVariable,
     state_target: QuaVariable,
     state_st,
@@ -500,35 +496,24 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
     cz_operation: str = "cz_unipolar",
     simulate: bool = False,
 ):
-    """
-    Play a sequence of gates up to the specified depth.
+    """Play one packed circuit's gates, then perform the circuit-boundary helper.
 
-    Args:
-        sequence: Array variable containing the gate sequence.
-        depth: Number of gates to play from the sequence.
-        qubit_pair: The qubit pair on which to apply the gates.
-        state: List of variables to store the combined 2-qubit state.
-        state_control: Variable to store the control qubit state.
-        state_target: Variable to store the target qubit state.
-        state_st: Stream to save the state measurement.
-        reset_type: Type of reset to use ("thermal" or "active").
-        cz_operation: Name of the CZ operation macro to use.
-        simulate: Whether resets run in simulation mode.
+    ``circuit_start`` / ``circuit_stop`` are absolute indices of gate fields
+    (headers never enter the switch). When they are equal the gate loop is
+    skipped and readout still runs.
     """
-
-    i = declare(int)
-    with for_(i, 0, i < depth, i + 1):
-        play_gate(
-            sequence[i],
-            qubit_pair,
-            state,
-            state_control,
-            state_target,
-            state_st,
-            reset_type,
-            cz_operation,
-            simulate,
-        )
+    gate_index = declare(int)
+    with for_(gate_index, circuit_start, gate_index < circuit_stop, gate_index + 1):
+        play_gate(sequence[gate_index], qubit_pair, cz_operation)
+    readout_save_and_reset(
+        qubit_pair,
+        state,
+        state_control,
+        state_target,
+        state_st,
+        reset_type,
+        simulate,
+    )
 
 
 class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -548,9 +533,8 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         Args:
             node: The qualibration node containing experiment parameters.
             num_pairs: Number of qubit pairs in the experiment.
-            circuits_as_ints: List of circuits, each a list of ints terminated
-                by a readout marker (opcode 38). Order is depth-major, then
-                circuit_index within depth (as produced by ``create_qua_program``).
+            circuits_as_ints: Gate-only circuits (opcodes 0–37), depth-major then
+                sequence within depth. Do not append a readout marker.
             machine: The QUAM machine configuration.
             qubit_pairs: List of qubit pairs to benchmark.
         """
@@ -558,16 +542,27 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         self.u = unit(coerce_to_integer=True)
         self.node = node
         self.num_pairs = num_pairs
-        self.circuits_as_ints = circuits_as_ints
         self.machine = machine
         self.qubit_pairs = qubit_pairs
+
+        preflight_cz_align_elements(qubit_pairs, self.node.parameters.operation)
+        ensure_xy_zero_pulse(qubit_pairs)
 
         circuit_depths = list(self.node.namespace["circuit_depths"])
         num_circuits_per_depth = self.node.parameters.num_circuits_per_depth
         max_chunk_ints = self.node.parameters.max_chunk_ints
-        memory_stats = compute_rb_circuit_memory_stats(circuits_as_ints, circuit_depths, num_circuits_per_depth)
+
+        self.circuits_as_ints = validate_circuit_list(
+            circuits_as_ints,
+            circuit_depths=circuit_depths,
+            num_circuits_per_depth=num_circuits_per_depth,
+        )
+        memory_stats = compute_rb_circuit_memory_stats(
+            self.circuits_as_ints, circuit_depths, num_circuits_per_depth
+        )
 
         self.declared_size = None
+        self.chunks_per_depth = None
         if self.node.parameters.use_input_stream:
             self.chunks_per_depth, self.declared_size = build_single_depth_chunks(
                 circuits_as_ints=self.circuits_as_ints,
@@ -577,6 +572,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 per_depth=memory_stats["per_depth"],
             )
         else:
+            self.packed_sequence = pack_circuits(self.circuits_as_ints, validate=False)
             validate_without_inputstream_path(memory_stats, max_chunk_ints)
 
         if self.node.parameters.verbose_memory_log:
@@ -592,25 +588,27 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
             )
 
     def _get_qua_program_with_input_stream(self):
-        # Flatten chunks_per_depth into a single ordered list of sub-chunks.
-        # Order: depth-major, then sub_chunk_index within depth -- same order
+        # Flatten chunks_per_depth into a single ordered list of packed packets.
+        # Order: depth-major, then sub_chunk_index within depth — same order
         # the QUA program consumes them and the host pushes them in.
         flat_sub_chunks = [sc for sub_chunks in self.chunks_per_depth for sc in sub_chunks]
-        sub_chunk_lengths = [len(sc) for sc in flat_sub_chunks]
         n_sub_chunks = len(flat_sub_chunks)
+        num_shots = self.node.parameters.num_shots
+        num_depths = len(self.node.namespace["circuit_depths"])
+        num_circuits_per_depth = self.node.parameters.num_circuits_per_depth
 
         with program() as rb:
 
             n = declare(int)
+            n_done = declare(int)
             n_st = declare_stream()
-            # Replace the Python-unrolled per-sub-chunk loop with a QUA for_
-            # loop so the (huge) play_gate switch_case body appears in the
-            # compiled program ONCE per multiplex batch, not once per sub-chunk.
-            # Sub-chunk lengths live in a tiny QUA array (one int per
-            # sub-chunk, typically <= a few tens of entries).
             j = declare(int)
-            i = declare(int)
-            sub_lens = declare(int, value=sub_chunk_lengths)
+            c = declare(int)
+            cursor = declare(int)
+            n_in_chunk = declare(int)
+            length = declare(int)
+            circuit_start = declare(int)
+            circuit_stop = declare(int)
 
             sequence = declare_input_stream("client", stream_id="sequence", dtype=int, size=self.declared_size)
 
@@ -637,14 +635,23 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                     )
                 align()
 
-                # Chunk outer, shot inner — one advance per sub-chunk; shots replay
-                # the same chunk on the OPX without extra host pushes.
+                assign(n_done, 0)
+                # multiplex → chunk → circuit → shot → gate. One advance per
+                # packed packet; shots replay the same circuit range on the OPX.
                 with for_(j, 0, j < n_sub_chunks, j + 1):
                     advance_input_stream(sequence)
-                    with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
-                        with for_(i, 0, i < sub_lens[j], i + 1):
-                            play_gate(
-                                sequence[i],
+                    assign(n_in_chunk, sequence[0])
+                    assign(cursor, 1)
+                    with for_(c, 0, c < n_in_chunk, c + 1):
+                        assign(length, sequence[cursor])
+                        assign(circuit_start, cursor + 1)
+                        assign(circuit_stop, circuit_start + length)
+                        assign(cursor, circuit_stop)
+                        with for_(n, 0, n < num_shots, n + 1):
+                            play_sequence(
+                                sequence,
+                                circuit_start,
+                                circuit_stop,
                                 multiplexed_qubit_pairs,
                                 state,
                                 state_control,
@@ -654,36 +661,36 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                                 self.node.parameters.operation,
                                 self.node.parameters.simulate,
                             )
-                        with if_(j == n_sub_chunks - 1):
-                            save(n, n_st)
+                            assign(n_done, n_done + 1)
+                            save(n_done, n_st)
 
             with stream_processing():
                 n_st.save("n")
                 for k in range(len(self.qubit_pairs)):
-                    state_st[k].buffer(self.node.parameters.num_circuits_per_depth).buffer(
-                        self.node.parameters.num_shots
-                    ).buffer(len(self.node.namespace["circuit_depths"])).save(f"state{k + 1}")
+                    state_st[k].buffer(num_shots).buffer(num_circuits_per_depth).buffer(num_depths).save(
+                        f"state{k + 1}"
+                    )
         return rb
 
     def _padded_chunks(self) -> list[list[int]]:
-        """Return the flat depth-major list of sub-chunks, each padded to
+        """Return the flat depth-major list of packed sub-chunks, each padded to
         ``self.declared_size`` ints with :data:`INPUT_STREAM_PAD_VALUE`.
 
-        ``push_all_chunks`` pushes this list once per multiplex batch (one host
-        push per sub-chunk; shots replay each chunk on the OPX).
+        Pad words sit after the last parsed circuit and are never passed to
+        ``play_gate``. ``push_all_chunks`` pushes this list once per multiplex
+        batch (one host push per sub-chunk; shots replay each circuit on the OPX).
         """
-        declared = self.declared_size
-        return [
-            sub_chunk + [INPUT_STREAM_PAD_VALUE] * (declared - len(sub_chunk))
-            for sub_chunks in self.chunks_per_depth
-            for sub_chunk in sub_chunks
-        ]
+        return flatten_padded_chunks(
+            self.chunks_per_depth,
+            self.declared_size,
+            pad_value=INPUT_STREAM_PAD_VALUE,
+        )
 
     def push_all_chunks(self, job) -> None:
         """Push input-stream chunks in the order the QUA program consumes them.
 
         Order mirrors ``_get_qua_program_with_input_stream``:
-        ``for batch: for sub_chunk: advance; for shot: replay``.
+        ``for batch: for sub_chunk: advance; for circuit: for shot: replay``.
         Each chunk is pushed once per multiplex batch; shots replay on the OPX.
 
         Args:
@@ -701,36 +708,38 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 job.push_to_input_stream("sequence", chunk)
 
     def _get_qua_program_without_input_stream(self):
-
-        job_sequence = list(flatten(self.circuits_as_ints))
-        sequence_length = len(job_sequence)
+        packed = self.packed_sequence
+        n_circuits = packed[0]
+        num_shots = self.node.parameters.num_shots
+        num_depths = len(self.node.namespace["circuit_depths"])
+        num_circuits_per_depth = self.node.parameters.num_circuits_per_depth
 
         with program() as rb:
 
             n = declare(int)
             n_st = declare_stream()
+            c = declare(int)
+            cursor = declare(int)
+            length = declare(int)
+            circuit_start = declare(int)
+            circuit_stop = declare(int)
 
-            job_sequence_qua = declare(int, value=job_sequence)
+            job_sequence_qua = declare(int, value=packed)
 
-            # The relevant streams
             state_st = [declare_stream() for _ in range(self.num_pairs)]
 
             for multiplexed_qubit_pairs in self.qubit_pairs.batch():
-                n = declare(int)
                 state_control = declare(int)
                 state_target = declare(int)
                 state = declare(int)
-                i = declare(int)
 
-                # Bring the active qubits to the desired frequency point
                 for qp in multiplexed_qubit_pairs.values():
                     self.node.machine.initialize_qpu(target=qp.qubit_control)
                     self.node.machine.initialize_qpu(target=qp.qubit_target)
                 align()
 
-                # play sequences
-                with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
-                    # Reset the qubits
+                # multiplex → shot → circuit (depth-major) → gate
+                with for_(n, 0, n < num_shots, n + 1):
                     for qp in multiplexed_qubit_pairs.values():
                         qp.qubit_control.reset(
                             self.node.parameters.reset_type,
@@ -742,28 +751,34 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                         )
                     align()
 
-                    # Play the sequence (multiplexed pair inside the)
-                    play_sequence(
-                        job_sequence_qua,
-                        sequence_length,
-                        multiplexed_qubit_pairs,
-                        state,
-                        state_control,
-                        state_target,
-                        state_st,
-                        self.node.parameters.reset_type,
-                        self.node.parameters.operation,
-                        self.node.parameters.simulate,
-                    )
+                    assign(cursor, 1)
+                    with for_(c, 0, c < n_circuits, c + 1):
+                        assign(length, job_sequence_qua[cursor])
+                        assign(circuit_start, cursor + 1)
+                        assign(circuit_stop, circuit_start + length)
+                        play_sequence(
+                            job_sequence_qua,
+                            circuit_start,
+                            circuit_stop,
+                            multiplexed_qubit_pairs,
+                            state,
+                            state_control,
+                            state_target,
+                            state_st,
+                            self.node.parameters.reset_type,
+                            self.node.parameters.operation,
+                            self.node.parameters.simulate,
+                        )
+                        assign(cursor, circuit_stop)
 
                     save(n, n_st)
 
             with stream_processing():
                 n_st.save("n")
                 for i in range(len(self.qubit_pairs)):
-                    state_st[i].buffer(self.node.parameters.num_circuits_per_depth).buffer(
-                        len(self.node.namespace["circuit_depths"])
-                    ).buffer(self.node.parameters.num_shots).save(f"state{i + 1}")
+                    state_st[i].buffer(num_circuits_per_depth).buffer(num_depths).buffer(num_shots).save(
+                        f"state{i + 1}"
+                    )
         return rb
 
     def get_qua_program(self):
