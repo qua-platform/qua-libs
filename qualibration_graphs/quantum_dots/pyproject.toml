@@ -27,7 +27,7 @@ dependencies = [
     "tqdm>=4.67.1",
     "qiskit<2.0",
     "scikit-image>=0.20.0",
-    "qua-dashboards @ git+https://github.com/qua-platform/qua-dashboards.git@main",
+    "qua-dashboards @ git+https://github.com/qua-platform/qua-dashboards.git@release/nightly",
 ]
 
 [project.optional-dependencies]
