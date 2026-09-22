@@ -91,7 +91,7 @@ Two details are important:
 - it only considers dataclass field names already defined on the macro
 - passing `None` is treated the same as not passing an override at all
 
-So `resolve_params(...)` is convenient to be able to pass override arguements
+So `resolve_params(...)` is convenient to be able to pass override arguments
 into the macro's `apply(...)` without manually listing them all in the function
 declaration. 
 
