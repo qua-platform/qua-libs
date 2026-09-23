@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import ClassVar, Literal, Optional
 
 from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
@@ -26,4 +26,4 @@ class Parameters(
     NodeSpecificParameters,
     QubitPairExperimentNodeParameters,
 ):
-    pass
+    targets_name: ClassVar[str] = "qubit_pairs"
