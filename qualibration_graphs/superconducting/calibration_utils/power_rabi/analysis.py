@@ -21,6 +21,8 @@ MAX_RAW_FIT_GAP = 0.2  # max allowed gap, in signal space, between the fit and t
 # Error-amplification sinc fit (see _sinc_refined_prefactor)
 SINC_FIT_LOBES = 2  # sinc lobes kept per side in the fit window
 SINC_FIT_MIN_POINTS = 8  # widen the window if the lobe estimate leaves fewer points than this
+MIN_SINC_SNR = 3.0  # fitted lobe height / residual scatter around the fitted sinc
+MAX_SINC_PIXEL_SHIFT = 1.0  # swept amplitudes accepted on each side of the extremum: a 2N+1 pixels wide band
 
 
 def _raw_pi_prefactor(signal_1d: xr.DataArray, freq: float) -> float:
@@ -80,6 +82,11 @@ class FitParameters:
 
     raw_fit_consistent: bool = True
     """Whether the fit-free raw peak agrees with the fitted pi point in signal space."""
+
+    sinc_used: bool = False
+    """Whether the reported prefactor comes from the error-amplification sinc fit; False when that fit
+    is disabled, not applicable (single-pulse sweep) or rejected, i.e. when the swept-amplitude
+    extremum of the pulse-averaged curve is reported instead."""
 
 
 def _rabi_fit_quality(fit: xr.Dataset, use_state_disc: bool) -> dict[str, dict[str, float]]:
@@ -216,8 +223,9 @@ def _sinc_refined_prefactor(signal_1d: xr.DataArray, coarse: float, n_pulse_valu
     `signal_1d` is the pulse-averaged signal versus "amp_prefactor", `coarse` the swept amplitude at its
     extremum (the legacy answer, reused as the seed and centre of the fit window), `n_pulse_values` the
     number of averaged pulse numbers K (it sets the lobe width) and `find_min` whether the pi amplitude
-    shows up as a dip rather than a peak. Returns NaN when the curve is unusable or the fit does not
-    converge inside the window, so that the caller can fall back on `coarse`.
+    shows up as a dip rather than a peak. Returns NaN when the curve is unusable, when the fit does not
+    converge inside the window, when its centre lands outside the pixel band centred on `coarse` or when
+    the lobe does not rise clear of the residual scatter, so that the caller falls back on `coarse`.
     """
     x = np.asarray(signal_1d["amp_prefactor"].values, dtype=float)
     # Flip dips into peaks so that the direction convention is handled in a single place below.
@@ -258,7 +266,18 @@ def _sinc_refined_prefactor(signal_1d: xr.DataArray, coarse: float, n_pulse_valu
     a_pi = float(popt[2])
     # A fit sitting on the edge of the window has not converged onto a lobe centre: prefer the extremum.
     margin = 0.01 * (hi - lo)
-    return a_pi if lo + margin < a_pi < hi - margin else float("nan")
+    if not lo + margin < a_pi < hi - margin:
+        return float("nan")
+    # The sinc only refines the extremum to sub-step resolution, so a centre that has walked out of the
+    # pixel band around it is fitting something else than the main lobe. The band covers the extremum's
+    # own pixel and MAX_SINC_PIXEL_SHIFT of them on each side, hence the extra half pixel to its edge.
+    if abs(a_pi - coarse) > (MAX_SINC_PIXEL_SHIFT + 0.5) * step:
+        return float("nan")
+    # A lobe that does not stand clear of the scatter around the fitted curve is noise, not a peak.
+    scatter = float(np.std(y_w - _sinc_model(x_w, *popt)))
+    if popt[0] < MIN_SINC_SNR * scatter:
+        return float("nan")
+    return a_pi
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, dict[str, FitParameters]]:
@@ -331,6 +350,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
             )
             ds_fit["opt_amp_prefactor"] = xr.where(np.isfinite(refined), refined, coarse)
             ds_fit["opt_amp_prefactor_raw"] = coarse
+            ds_fit["sinc_used"] = np.isfinite(refined)
         else:
             ds_fit["opt_amp_prefactor"] = coarse
 
@@ -405,6 +425,7 @@ def _extract_relevant_fit_parameters(
             n_periods=quality.get(str(q), {}).get("n_periods", float("nan")),
             pts_per_period=quality.get(str(q), {}).get("pts_per_period", float("nan")),
             raw_fit_consistent=bool(_raw_gap_ok(quality.get(str(q), {}))),
+            sinc_used=bool(fit.sinc_used.sel(qubit=q).values) if "sinc_used" in fit else False,
         )
         for q in fit.qubit.values
     }
