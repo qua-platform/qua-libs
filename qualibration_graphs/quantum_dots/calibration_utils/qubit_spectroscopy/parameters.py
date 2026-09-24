@@ -6,7 +6,7 @@ from qualibration_libs.parameters import (
     CommonNodeParameters,
     QubitsExperimentNodeParameters,
 )
-from calibration_utils.heralded_initialization_utils import HeraldedInitializeParameters
+from quam_config import MacroParameters
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -32,7 +32,7 @@ class Parameters(
     NodeParameters,
     CommonNodeParameters,
     NodeSpecificParameters,
-    HeraldedInitializeParameters,
+    MacroParameters,
     QubitsExperimentNodeParameters,
 ):
     """Parameter set for 08b qubit spectroscopy."""
