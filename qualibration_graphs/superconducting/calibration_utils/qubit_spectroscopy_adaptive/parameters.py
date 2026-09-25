@@ -24,6 +24,7 @@ class NodeSpecificParameters(RunnableParameters):
     use_simulated_data: bool = False
     """Generate deterministic synthetic data without connecting to the QOP."""
 
+
 class Parameters(
     NodeParameters,
     CommonNodeParameters,

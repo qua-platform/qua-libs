@@ -101,9 +101,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
     return fit_data, fit_results
 
 
-def _smooth_and_estimate_noise(
-    amplitude: NDArray[np.float64], smooth_window: int
-) -> tuple[NDArray[np.float64], float]:
+def _smooth_and_estimate_noise(amplitude: NDArray[np.float64], smooth_window: int) -> tuple[NDArray[np.float64], float]:
     """Savgol-smooth a valid trace and estimate per-point noise using robust MAD.
 
     Uses the resonator spectroscopy convention; the caller checks that the
@@ -120,8 +118,10 @@ def _smooth_and_estimate_noise(
 
 
 def _peak_snr(
-    trace: NDArray[np.float64], baseline: NDArray[np.float64],
-    detuning: NDArray[np.float64], position: float,
+    trace: NDArray[np.float64],
+    baseline: NDArray[np.float64],
+    detuning: NDArray[np.float64],
+    position: float,
 ) -> float:
     """Measure the selected feature's prominence relative to per-point MAD noise."""
     if len(trace) < 5 or not np.isfinite(position):
@@ -151,22 +151,28 @@ def _peak_snr(
 def _add_quality_metrics(fit: xr.Dataset) -> xr.Dataset:
     """Add informational scores without changing peak selection or success criteria."""
     y_pred = lorentzian_peak(
-        fit.detuning, fit.amplitude, fit.position, fit.width / 2,
+        fit.detuning,
+        fit.amplitude,
+        fit.position,
+        fit.width / 2,
         fit.base_line.mean(dim="detuning", skipna=False),
     )
     observed = fit.I_rot
     ss_res = ((observed - y_pred) ** 2).sum(dim="detuning", skipna=False)
-    ss_tot = ((observed - observed.mean(dim="detuning", skipna=False)) ** 2).sum(
-        dim="detuning", skipna=False
-    )
+    ss_tot = ((observed - observed.mean(dim="detuning", skipna=False)) ** 2).sum(dim="detuning", skipna=False)
     valid = np.isfinite(observed).all(dim="detuning") & np.isfinite(y_pred).all(dim="detuning")
     # An exactly constant trace can still have tiny mean-subtraction roundoff.
     varying = observed.max(dim="detuning") > observed.min(dim="detuning")
     r2 = (1.0 - ss_res / ss_tot.where((ss_tot > 0) & varying)).where(valid)
     peak_snr = xr.apply_ufunc(
-        _peak_snr, observed, fit.base_line, fit.detuning, fit.position,
+        _peak_snr,
+        observed,
+        fit.base_line,
+        fit.detuning,
+        fit.position,
         input_core_dims=[["detuning"], ["detuning"], ["detuning"], []],
-        vectorize=True, output_dtypes=[float],
+        vectorize=True,
+        output_dtypes=[float],
     )
     fit = fit.assign(r2=r2, peak_snr=peak_snr)
     fit.r2.attrs = {"long_name": "R² of reconstructed Lorentzian over full sweep"}
@@ -215,7 +221,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     fwhm_success = np.abs(fwhm) < node.parameters.frequency_span_in_mhz * 1e6 + full_freq
     saturation_amp_success = np.abs(fit.saturation_amplitude) < limits[0].max_wf_amplitude
     # x180amp_success = np.abs(fit.x180_amplitude.data) < limits[0].max_x180_wf_amplitude
-    success_criteria = freq_success & fwhm_success & saturation_amp_success 
+    success_criteria = freq_success & fwhm_success & saturation_amp_success
     fit = fit.assign({"success": success_criteria})
 
     fit_results = {

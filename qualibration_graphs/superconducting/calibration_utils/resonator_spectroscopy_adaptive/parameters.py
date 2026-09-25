@@ -10,10 +10,11 @@ class NodeSpecificParameters(RunnableParameters):
     """Span of frequencies to sweep in MHz. Default is 30 MHz."""
     frequency_step_in_mhz: float = 0.1
     """Step size for frequency sweep in MHz. Default is 0.1 MHz."""
-    max_iterations: int =1
+    max_iterations: int = 1
     """For use with loop. Default only run once"""
     use_simulated_data: bool = False
     """Generate deterministic synthetic data without connecting to the QOP."""
+
 
 class Parameters(
     NodeParameters,
