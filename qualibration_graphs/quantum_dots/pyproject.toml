@@ -52,9 +52,6 @@ line-length = 120
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv.sources]
-virtual-qpu = { git = "https://github.com/qua-platform/virtual_qpu.git" }
-
 [dependency-groups]
 dev = [
     "ipykernel>=7.0.0a1",
