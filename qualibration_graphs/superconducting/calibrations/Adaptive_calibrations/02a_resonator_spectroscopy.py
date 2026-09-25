@@ -70,9 +70,9 @@ node = QualibrationNode[Parameters, Quam](
 def custom_param(node: QualibrationNode[Parameters, Quam]) -> None:
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
-    node.parameters.qubits = ["qB1","qB2","qB3"]
-    node.parameters.sweep.frequency_span_in_mhz=20.0
-    node.parameters.sweep.frequency_step_in_mhz=0.1
+    node.parameters.qubits = ["qB1", "qB2", "qB3"]
+    node.parameters.sweep.frequency_span_in_mhz = 20.0
+    node.parameters.sweep.frequency_step_in_mhz = 0.1
     pass
 
 
@@ -102,7 +102,7 @@ def _setup_sweep_and_program(node: QualibrationNode[Parameters, Quam], span_hz: 
         "qubit": xr.DataArray(qubits.get_names()),
         "detuning": xr.DataArray(dfs, attrs={"long_name": "readout frequency", "units": "Hz"}),
     }
-    a=1 # manual amplitude scale tuning
+    a = 1  # manual amplitude scale tuning
     # The QUA program stored in the node namespace to be transfer to the simulation and execution run_actions
     with program() as node.namespace["qua_program"]:
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
@@ -121,7 +121,7 @@ def _setup_sweep_and_program(node: QualibrationNode[Parameters, Quam], span_hz: 
                         # Update the resonator frequencies for all resonators
                         rr.update_frequency(df + rr.intermediate_frequency)
                         # Measure the resonator
-                        
+
                         rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
                         # wait for the resonator to deplete
                         rr.wait(rr.depletion_time * u.ns)

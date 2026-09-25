@@ -1,6 +1,7 @@
 from qualibrate import QualibrationNode, QualibrationGraph
 
-def should_repeat_ramsey(graph: QualibrationGraph,node: QualibrationNode, target: str) -> bool:
+
+def should_repeat_ramsey(graph: QualibrationGraph, node: QualibrationNode, target: str) -> bool:
     """Retry until T2* crosses the target threshold."""
     fit = node.results.get("fit_results", {}).get(target, {})
     t2_star = fit.get("t2_star")
@@ -18,7 +19,7 @@ def should_repeat_ramsey(graph: QualibrationGraph,node: QualibrationNode, target
 
 
 # dummy function (the rabi retry but the numbers make no sense, it's just there to pass some v alue)
-def ramsey_retry_params(graph: QualibrationGraph,node: QualibrationNode, target: str):
+def ramsey_retry_params(graph: QualibrationGraph, node: QualibrationNode, target: str):
     fit = node.results.get("fit_results", {}).get(target, {})
     if fit.get("success"):
         # Narrow the sweep around the fitted pi amplitude

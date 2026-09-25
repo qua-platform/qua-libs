@@ -1,6 +1,4 @@
-
 from qualibrate.core import GraphParameters, QualibrationGraph, QualibrationLibrary
-
 
 # --- resolve_params callbacks ---
 # Each function is called once per qubit after its source node finishes.
@@ -60,4 +58,3 @@ def _t1_diagnostic_params(rabi_node, qubit):
         return {"max_delay": 50e-6}
     # No fit at all: suspect short T1 — compressed range for quick diagnosis.
     return {"max_delay": 20e-6}
-
