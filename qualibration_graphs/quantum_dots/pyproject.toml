@@ -28,6 +28,7 @@ dependencies = [
     "qiskit<2.0",
     "scikit-image>=0.20.0",
     "qua-dashboards @ git+https://github.com/qua-platform/qua-dashboards.git@main",
+    "jax>=0.4.31,<0.7",
 ]
 
 [project.optional-dependencies]
