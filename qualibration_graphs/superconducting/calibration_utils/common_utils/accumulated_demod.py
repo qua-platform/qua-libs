@@ -1,0 +1,229 @@
+"""Readout acquisition with accumulated demodulation.
+
+What is acquired
+----------------
+``demod.accumulated`` returns the running integral of the demodulated readout signal, i.e.
+the *path* ``X(t) = (I(t), Q(t))`` sampled at the end of every chunk. Its last element is
+exactly what a conventional full demodulation over the whole pulse would have returned, and
+every earlier element is what a shorter readout would have returned, so one acquisition
+carries every integration duration up to the pulse length.
+
+Flat integration weights
+------------------------
+``demod.accumulated`` requires ``samples_per_chunk >= 7`` (28 ns) once a pulse carries
+arbitrary integration weights. Nodes that chunk more finely than that therefore need flat
+weights, and :func:`preflight_accumulated_demod` refuses anything else up front, since a
+silently coarsened chunk grid is invisible in the resulting dataset.
+
+Resource budget
+---------------
+Accumulated I/Q demodulation costs 4 PPU processing blocks per measured qubit -- one per
+single-output ``demod.accumulated``, see :func:`declare_path_arrays` for why there are four
+rather than two -- against a limit of 16 per MW-FEM (20 per OPX+).
+:func:`accumulated_demod_batches` spends that budget per FEM on measured qubits only: a batch
+holds ``limit // 4`` of them, and the selected qubits outside it stay silent rather than
+playing an idle readout, so they cost nothing. Their feedline tones are therefore missing
+while the batch runs, which is a real difference from a production multiplexed readout; a
+node that needs the production crosstalk environment has to play those readouts itself and
+budget 1 block for each.
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+from qm.qua import declare, fixed
+
+# PPU processing-block budget, per FEM.
+BLOCKS_PER_ACCUMULATED_READOUT = 4  # four demod.accumulated, one block each
+MW_FEM_BLOCK_LIMIT = 16
+OPX_PLUS_BLOCK_LIMIT = 20
+
+# demod chunking is expressed in units of 4 ADC samples.
+SAMPLES_PER_CHUNK_UNIT_NS = 4
+
+
+# --------------------------------------------------------------------------------------
+# Preflight
+# --------------------------------------------------------------------------------------
+def flat_weights_reason(pulse) -> Optional[str]:
+    """Describe why ``pulse`` does not carry flat integration weights, or None if it does.
+
+    Flat means constant magnitude over the pulse: quam stores that as ``[(value, length)]``
+    (or a single scalar). A nonzero ``integration_weights_angle`` is *not* a problem here --
+    it only rotates the IQ plane.
+    """
+    weights = pulse.integration_weights
+    if weights is None:
+        return None
+    if isinstance(weights, str):
+        # A quam reference such as '#./default_integration_weights' resolves to flat weights.
+        return None if "default_integration_weights" in weights else f"weights reference {weights!r} is not the default"
+    if isinstance(weights, (int, float)):
+        return None
+    try:
+        segments = list(weights)
+    except TypeError:
+        return f"unrecognised integration_weights {weights!r}"
+    values = []
+    for segment in segments:
+        if isinstance(segment, (tuple, list)) and len(segment) == 2:
+            values.append(segment[0])
+        else:
+            values.append(segment)
+    if len(set(values)) <= 1:
+        return None
+    return f"integration weights vary over the pulse ({len(set(values))} distinct values)"
+
+
+def n_chunks_for(pulse, samples_per_chunk: int) -> int:
+    """Number of accumulated-demod chunks covering ``pulse``.
+
+    Raises:
+        ValueError: If the pulse length is not an exact multiple of the chunk duration --
+            ``demod.accumulated`` requires the chunks to tile the pulse.
+    """
+    chunk_ns = SAMPLES_PER_CHUNK_UNIT_NS * samples_per_chunk
+    if pulse.length % chunk_ns:
+        raise ValueError(
+            f"readout length {pulse.length} ns is not a multiple of the chunk duration "
+            f"{chunk_ns} ns (samples_per_chunk={samples_per_chunk}); the chunks must tile "
+            f"the pulse exactly."
+        )
+    return pulse.length // chunk_ns
+
+
+def preflight_accumulated_demod(
+    qubits: Sequence[Any], operation: str, samples_per_chunk: int, reset_type: str
+) -> Dict[str, int]:
+    """Validate the acquisition and return the per-qubit chunk count.
+
+    Everything that would make the acquired data quietly wrong is a hard failure here rather
+    than a warning, because none of it is visible in the resulting dataset.
+
+    Args:
+        qubits: The qubits the node operates on.
+        operation: Name of the resonator operation to acquire with.
+        samples_per_chunk: Chunk size in units of 4 ns.
+        reset_type: The node's reset type; only thermal reset is supported.
+
+    Returns:
+        Mapping of qubit name to its number of chunks.
+
+    Raises:
+        ValueError: On any unsupported configuration.
+    """
+    if samples_per_chunk < 1:
+        raise ValueError(f"samples_per_chunk must be >= 1 (got {samples_per_chunk}).")
+    if reset_type != "thermal":
+        raise ValueError(f"Only 'thermal' reset is supported, got {reset_type!r}.")
+
+    chunks: Dict[str, int] = {}
+    for qubit in qubits:
+        pulse = qubit.resonator.operations.get(operation)
+        if pulse is None:
+            raise ValueError(f"{qubit.name}: resonator has no operation {operation!r}.")
+        reason = flat_weights_reason(pulse)
+        if reason is not None:
+            raise ValueError(
+                f"{qubit.name}: {reason}. Accumulated demodulation at "
+                f"{SAMPLES_PER_CHUNK_UNIT_NS * samples_per_chunk} ns chunks requires flat "
+                f"integration weights (arbitrary weights force chunks of >= 28 ns)."
+            )
+        chunks[qubit.name] = n_chunks_for(pulse, samples_per_chunk)
+    return chunks
+
+
+# --------------------------------------------------------------------------------------
+# Batching against the PPU block budget
+# --------------------------------------------------------------------------------------
+def _fem_key(qubit) -> Tuple[Any, Any]:
+    """Identify the FEM (or controller) whose block budget this resonator draws on."""
+    port = getattr(qubit.resonator, "opx_output", None)
+    return (getattr(port, "controller_id", None), getattr(port, "fem_id", None))
+
+
+def _block_limit(qubit) -> int:
+    """PPU block limit of the FEM this resonator lives on."""
+    from quam.components import MWChannel
+
+    return MW_FEM_BLOCK_LIMIT if isinstance(qubit.resonator, MWChannel) else OPX_PLUS_BLOCK_LIMIT
+
+
+def max_measured_per_batch(n_in_group: int, block_limit: int) -> int:
+    """Largest number of simultaneously demodulated qubits within one FEM.
+
+    Only measured qubits draw on the budget, at 4 blocks each, so ``4 m <= limit``. A selected
+    qubit that is not in the current batch is left silent and costs nothing, which is what
+    makes the batch size independent of how many qubits are selected: 4 on an MW-FEM and 5 on
+    an OPX+, however large the group.
+    """
+    return min(n_in_group, block_limit // BLOCKS_PER_ACCUMULATED_READOUT)
+
+
+def accumulated_demod_batches(qubits: Sequence[Any], multiplexed: bool) -> List[Dict[int, Any]]:
+    """Split the qubits into batches that fit the accumulated-demod block budget.
+
+    Each batch is a ``{index_in_qubits: qubit}`` mapping, matching the shape of
+    ``BatchableList.batch()`` so node code reads the same as elsewhere. Qubits on different
+    FEMs are packed into the same batch, since their budgets are independent. Qubits outside
+    the current batch are not addressed at all, so their resonators are silent while it runs.
+
+    Args:
+        qubits: The qubits the node operates on.
+        multiplexed: If False every qubit is measured on its own and the limit never binds.
+
+    Raises:
+        ValueError: If a FEM's block limit has no room for a single accumulated demodulation.
+    """
+    if not multiplexed:
+        return [{i: qubit} for i, qubit in enumerate(qubits)]
+
+    groups: Dict[Tuple[Any, Any], List[Tuple[int, Any]]] = defaultdict(list)
+    for i, qubit in enumerate(qubits):
+        groups[_fem_key(qubit)].append((i, qubit))
+
+    per_group_batches: List[List[List[Tuple[int, Any]]]] = []
+    for key, items in groups.items():
+        limit = _block_limit(items[0][1])
+        max_measured = max_measured_per_batch(len(items), limit)
+        if max_measured == 0:
+            raise ValueError(
+                f"FEM {key} reports a limit of {limit} processing blocks, which is below the "
+                f"{BLOCKS_PER_ACCUMULATED_READOUT} that one accumulated demodulation needs."
+            )
+        per_group_batches.append([items[j : j + max_measured] for j in range(0, len(items), max_measured)])
+
+    n_batches = max(len(batches) for batches in per_group_batches)
+    merged: List[Dict[int, Any]] = []
+    for b in range(n_batches):
+        batch: Dict[int, Any] = {}
+        for group_batches in per_group_batches:
+            if b < len(group_batches):
+                batch.update(dict(group_batches[b]))
+        merged.append(batch)
+    return merged
+
+
+# --------------------------------------------------------------------------------------
+# QUA macros
+# --------------------------------------------------------------------------------------
+def declare_path_arrays(n_chunks: int):
+    """Declare the four QUA arrays that the accumulated demodulation fills.
+
+    A complex input channel (an IQ pair, or an MW FEM input) rejects
+    ``dual_demod.accumulated``: the QOP supports complex demodulation only for *full*
+    demodulation. The four single-output demodulations that a dual demod would have paired
+    internally are therefore acquired separately, as ``(II, IQ, QI, QQ)``, and recombined
+    afterwards on the PPU::
+
+        I(t) = II(t) + IQ(t)
+        Q(t) = QI(t) + QQ(t)
+
+    That is exactly the pairing ``_InComplexChannel.measure`` uses for full demodulation, so
+    the endpoint of the recombined path is still the quantity a conventional ``measure``
+    would have returned. The tuple is in the order ``resonator.measure_accumulated`` expects
+    for its ``qua_vars`` argument.
+    """
+    return tuple(declare(fixed, size=n_chunks) for _ in range(4))
