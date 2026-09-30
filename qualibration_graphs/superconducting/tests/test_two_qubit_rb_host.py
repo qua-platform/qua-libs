@@ -64,11 +64,9 @@ from calibration_utils.two_qubit_rb.rb_cache import (  # noqa: E402
 )
 from calibration_utils.two_qubit_rb.rb_utils import StandardRB  # noqa: E402
 from calibration_utils.two_qubit_rb.qua_utils import (  # noqa: E402
-    ensure_xy_zero_pulse,
     play_gate,
     play_sequence,
 )
-from quam.components.pulses import SquarePulse  # noqa: E402
 
 # Sanitized gate counts matching the support reproduction's circuit lengths
 # (readout markers stripped). Do not import the customer script.
@@ -609,44 +607,7 @@ def test_cache_v2_payload_is_acquisition_miss_and_v3_key_includes_basis(tmp_path
 # --------------------------------------- CZ XY occupy (task-r)
 
 
-def _xy_channel(operations: dict | None = None) -> SimpleNamespace:
-    return SimpleNamespace(operations={} if operations is None else operations)
-
-
-def _fake_pair(
-    *,
-    control_ops: dict | None = None,
-    target_ops: dict | None = None,
-    spectator_ops: dict | None = None,
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        qubit_control=SimpleNamespace(xy=_xy_channel(control_ops)),
-        qubit_target=SimpleNamespace(xy=_xy_channel(target_ops)),
-        spectator=SimpleNamespace(xy=_xy_channel(spectator_ops)),
-    )
-
-
-def test_ensure_xy_zero_pulse_writes_4ns_amp0_and_is_idempotent():
-    existing = SquarePulse(length=16, amplitude=0.0)
-    pair = _fake_pair(target_ops={"zero": existing})
-    spectator_ops = pair.spectator.xy.operations
-
-    ensure_xy_zero_pulse([pair])
-    control_zero = pair.qubit_control.xy.operations["zero"]
-    assert isinstance(control_zero, SquarePulse)
-    assert control_zero.length == 4
-    assert control_zero.amplitude == 0
-    assert pair.qubit_target.xy.operations["zero"] is existing
-    assert existing.length == 16
-    assert "zero" not in spectator_ops
-
-    ensure_xy_zero_pulse({"p": pair})
-    assert pair.qubit_control.xy.operations["zero"] is control_zero
-    assert pair.qubit_target.xy.operations["zero"] is existing
-    assert "zero" not in spectator_ops
-
-
-def test_play_gate_source_zero_occupy_only_in_cz_case():
+def test_play_gate_source_xy_wait_occupy_only_in_cz_case():
     src = inspect.getsource(play_gate)
     impl = src.split('"""', 2)[-1]
     assert "align(" not in impl
@@ -656,11 +617,12 @@ def test_play_gate_source_zero_occupy_only_in_cz_case():
     cz_body = impl[cz_start:cz_end]
     rest = impl[:cz_start] + impl[cz_end:]
 
-    assert cz_body.count('play("zero")') == 2
-    assert "qubit_control.xy.play" in cz_body and '"zero"' in cz_body
-    assert "qubit_target.xy.play" in cz_body
+    assert cz_body.count("xy.wait(4)") == 2
+    assert "qubit_control.xy.wait(4)" in cz_body
+    assert "qubit_target.xy.wait(4)" in cz_body
     assert "align_elements=False" in cz_body
-    assert 'play("zero")' not in rest
+    assert 'play("zero")' not in impl
+    assert "xy.wait(" not in rest
     assert "with case_(0)" in rest
     assert "with case_(35)" in rest
     assert "with case_(37)" in rest
