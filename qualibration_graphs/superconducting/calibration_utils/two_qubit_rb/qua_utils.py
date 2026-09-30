@@ -14,7 +14,6 @@ from qm.qua import *
 from qm.qua._expressions import QuaArrayVariable, QuaVariable
 from qualang_tools.units import unit
 from qualibrate import QualibrationNode
-from quam.components.pulses import SquarePulse
 from quam_config import Quam
 
 from .packing import (
@@ -90,36 +89,6 @@ def preflight_cz_align_elements(qubit_pairs, cz_operation: str) -> None:
                 "cannot verify align_elements support."
             )
         require_cz_align_elements(macros[cz_operation], cz_operation=cz_operation, pair_label=pair_label)
-
-
-_XY_ZERO_OP = "zero"
-_XY_ZERO_LEN_NS = 4
-
-
-def _xy_channels_for_pair(qp):
-    """Control and target XY lines of a qubit pair (spectators are not occupied)."""
-    for attr in ("qubit_control", "qubit_target"):
-        qubit = getattr(qp, attr, None)
-        if qubit is None:
-            continue
-        xy = getattr(qubit, "xy", None)
-        if xy is not None:
-            yield xy
-
-
-def ensure_xy_zero_pulse(qubit_pairs) -> None:
-    """Attach a 4 ns amp-0 XY ``"zero"`` pulse when a pair's XY ops lack it.
-
-    Trace-time only. Needed so ``play("zero")`` in the CZ unsafe-switch case
-    compiles on machines that do not ship the sanitized occupancy pulse.
-    Idempotent: existing ``"zero"`` operations are left unchanged.
-    """
-    for qp in _iter_qubit_pairs(qubit_pairs):
-        for xy in _xy_channels_for_pair(qp):
-            operations = getattr(xy, "operations", None)
-            if operations is None or _XY_ZERO_OP in operations:
-                continue
-            operations[_XY_ZERO_OP] = SquarePulse(length=_XY_ZERO_LEN_NS, amplitude=0)
 
 
 def compute_rb_circuit_memory_stats(
@@ -300,7 +269,7 @@ def play_gate(
 
     1Q layers are analog XY only: ``x90``/``x180``/``y90``/``y180``/``-y90``.
     CZ uses ``apply(align_elements=False)`` after :func:`preflight_cz_align_elements`,
-    then ``play("zero")`` on both XY so the compiler occupies those elements for
+    then ``wait(4)`` on both XY so the compiler occupies those elements for
     the flux case (frame-only compensation has no analog envelope).
     Circuit-boundary align/readout/reset lives in :func:`readout_save_and_reset`.
     """
@@ -445,8 +414,8 @@ def play_gate(
         with case_(36):  # CZ
             for qp in qubit_pair.values():
                 qp.macros[cz_operation].apply(align_elements=False)
-                qp.qubit_control.xy.play("zero")
-                qp.qubit_target.xy.play("zero")
+                qp.qubit_control.xy.wait(4)
+                qp.qubit_target.xy.wait(4)
         with case_(37):  # idle_2q
             for qp in qubit_pair.values():
                 qp.qubit_control.wait(4)
@@ -546,7 +515,6 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
         self.qubit_pairs = qubit_pairs
 
         preflight_cz_align_elements(qubit_pairs, self.node.parameters.operation)
-        ensure_xy_zero_pulse(qubit_pairs)
 
         circuit_depths = list(self.node.namespace["circuit_depths"])
         num_circuits_per_depth = self.node.parameters.num_circuits_per_depth
