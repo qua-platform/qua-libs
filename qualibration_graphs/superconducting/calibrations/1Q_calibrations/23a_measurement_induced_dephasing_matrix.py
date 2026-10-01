@@ -88,7 +88,7 @@ Next steps before going to the next node:
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="23_measurement_induced_dephasing_matrix",
+    name="23a_measurement_induced_dephasing_matrix",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
