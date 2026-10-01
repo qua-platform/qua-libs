@@ -1,0 +1,35 @@
+from qualibrate.core import NodeParameters
+from qualibrate.core.parameters import RunnableParameters
+from qualibration_libs.parameters import (
+    CommonNodeParameters,
+    QubitsExperimentNodeParameters,
+)
+
+from quam_config import MacroParameters
+
+
+class NodeSpecificParameters(RunnableParameters):
+    """Parameters for Ramsey 11a."""
+
+    num_shots: int = 300
+    """Number of averages to perform. Default is 100."""
+    detuning_span_in_mhz: float = 5.0
+    """Frequency detuning span. Default 5MHz."""
+    detuning_step_in_mhz: float = 0.1
+    """Frequency detuning step. Default 0.1MHz"""
+    idle_time_ns: int = 100
+    """Short idle time in ns (gives wide fringes for coarse localisation)."""
+    idle_time_long_ns: int = 400
+    """Long idle time in ns (gives narrow fringes for precision + T2* via amplitude ratio)."""
+    use_simulated_data: bool = False
+    """Whether to generate simulated data instead of measuring via the OPX. Default False."""
+
+
+class Parameters(
+    NodeParameters,
+    CommonNodeParameters,
+    NodeSpecificParameters,
+    MacroParameters,
+    QubitsExperimentNodeParameters,
+):
+    """Parameter set for 11b_ramsey_detuning."""
