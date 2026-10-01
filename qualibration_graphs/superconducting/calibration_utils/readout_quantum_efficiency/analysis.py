@@ -159,7 +159,7 @@ def _correct_readout_errors(state: xr.DataArray, qubits) -> xr.DataArray:
         except np.linalg.LinAlgError:
             logging.getLogger(__name__).warning(
                 f"{q.name}: singular readout confusion matrix, using the uncorrected probability. "
-                "Re-run node 16_iq_blobs or 15_readout_power_optimization."
+                "Re-run node 07_iq_blobs or 08b_readout_power_optimization."
             )
             corrected.append(p_meas)
             continue

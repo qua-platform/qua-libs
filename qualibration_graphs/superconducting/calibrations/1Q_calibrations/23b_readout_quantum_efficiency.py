@@ -78,7 +78,7 @@ depletion.
 
 Prerequisites:
     - Having calibrated the readout parameters (nodes 02a, 08a).
-    - Having calibrated the qubit x90/x180 pulses (nodes 04b, 06a).
+    - Having calibrated the qubit x90/x180 pulses (node 04b, and optionally 10b for DRAG).
     - Having calibrated the readout discrimination threshold AND the confusion matrix
       (node 08b_readout_power_optimization or 07_iq_blobs) - the confusion matrix is used to
       undo readout assignment errors on the fringes.
