@@ -90,7 +90,7 @@ State update:
 
 
 node = QualibrationNode[Parameters, Quam](
-    name="08c_readout_quantum_efficiency",
+    name="23b_readout_quantum_efficiency",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
