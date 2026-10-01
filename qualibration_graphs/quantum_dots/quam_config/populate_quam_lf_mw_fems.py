@@ -185,10 +185,9 @@ machine.update_cross_compensation_submatrix(
         qds["virtual_dot_4"].physical_channel,
     ],
     matrix=[
-        [0.1, 0.2, 0.3],
-        [0.3, 0.2, 0.1],
-        [0.2, 0.1, 0.3],
-        [0.1, 0.2, 0.3],
+        [0.1, 0.2, 0.3, 0.4],
+        [0.4, 0.3, 0.2, 0.1],
+        [0.2, 0.1, 0.4, 0.3],
     ],
     target="opx",
 )
