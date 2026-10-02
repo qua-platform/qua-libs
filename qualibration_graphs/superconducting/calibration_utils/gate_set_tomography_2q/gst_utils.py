@@ -20,7 +20,6 @@ from calibration_utils.gate_set_tomography.gst_utils import (
 # {0: I, 1: x90, 2: y90}. CZ is a dedicated opcode.
 SQ_I, SQ_X90, SQ_Y90 = 0, 1, 2
 LAYER_CZ = 9
-LAYER_PAD = -1
 OUTCOME_LABELS = ("00", "01", "10", "11")
 
 _SINGLE_QUBIT_X = {"Gxpi2", "Gx"}
@@ -109,6 +108,8 @@ def encode_native_layer(native_layer: list[dict[str, Any]]) -> int:
         else:
             q0_gate = code
     if cz:
+        if q0_gate != SQ_I or q1_gate != SQ_I:
+            raise ValueError(f"CZ cannot share a layer with a single-qubit gate: {native_layer}")
         return LAYER_CZ
     return q0_gate + 3 * q1_gate
 
@@ -140,15 +141,20 @@ def tokenize_pygsti_circuit(circuit) -> list[int]:
 
 
 def tokenize_gst_circuits(circuits: Iterable) -> tuple[list[list[int]], list[int]]:
-    """Pad tokenized 2Q circuits to a rectangular table for AIS / static compile."""
+    """Length-prefix 2Q circuits into a rectangular table for AIS / static compile.
+
+    Each row is ``[L, op_1, ..., op_L, 0, ...]`` with width ``max_depth + 1``.
+    Slot 0 is the true layer count so the QUA loop never executes the padding.
+    """
     tokenized = [tokenize_pygsti_circuit(circuit) for circuit in circuits]
     if not tokenized:
         return [], []
     depths = [len(tokens) for tokens in tokenized]
     max_depth = max(max(depths), 1)
-    padded = []
-    for tokens in tokenized:
-        padded.append(list(tokens) + [LAYER_PAD] * (max_depth - len(tokens)))
+    used = {op for tokens in tokenized for op in tokens}
+    if not used <= set(range(LAYER_CZ + 1)):
+        raise ValueError(f"2Q GST opcodes {sorted(used)} outside switch cases 0..{LAYER_CZ}")
+    padded = [[len(tokens)] + tokens + [0] * (max_depth - len(tokens)) for tokens in tokenized]
     return padded, depths
 
 
@@ -208,7 +214,7 @@ def setup_gst_experiment_2q(
     tokenized, depths = tokenize_gst_circuits(circuits)
     max_germs_depth = max(depths) if depths else 1
     total_germs_num = len(tokenized)
-    static_gate_table_size = total_germs_num * max_germs_depth
+    static_gate_table_size = total_germs_num * (max_germs_depth + 1)
 
     return GST2QExperimentDesign(
         std_model=std_model,
@@ -222,12 +228,14 @@ def setup_gst_experiment_2q(
     )
 
 
-def play_tokenized_gst_circuits_2q(tokenized_germ, depth: int, qubit_pair, cz_operation: str):
-    """Play a tokenized 2Q GST circuit on one qubit pair."""
+def play_tokenized_gst_circuits_2q(tokenized_germ, qubit_pair, cz_operation: str):
+    """Play a length-prefixed 2Q GST circuit. Slot 0 is the layer count; opcodes start at 1."""
     i = declare(int)
+    n_layers = declare(int)
     q0 = qubit_pair.qubit_control
     q1 = qubit_pair.qubit_target
-    with for_(i, 0, i < depth, i + 1):
+    assign(n_layers, tokenized_germ[0])
+    with for_(i, 1, i <= n_layers, i + 1):
         with switch_(tokenized_germ[i], unsafe=True):
             with case_(0):  # I ⊗ I
                 q0.xy.wait(4)
@@ -258,8 +266,6 @@ def play_tokenized_gst_circuits_2q(tokenized_germ, depth: int, qubit_pair, cz_op
                 q1.xy.play("y90")
             with case_(LAYER_CZ):
                 qubit_pair.macros[cz_operation].apply()
-            with case_(LAYER_PAD):
-                pass
         align()
 
 
@@ -267,7 +273,6 @@ __all__ = [
     "GERM_TOKENS_STREAM_NAME",
     "GST2QExperimentDesign",
     "LAYER_CZ",
-    "LAYER_PAD",
     "OPX1000_GATE_TABLE_LIMIT",
     "OUTCOME_LABELS",
     "log_gst_design_summary",

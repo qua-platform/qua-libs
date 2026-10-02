@@ -5,8 +5,10 @@ Two-Qubit Gate Set Tomography (Advance Input Stream)
 (fallback ``smq2Q_XYCPHASE``) as in ``CQT_2Q_GST.ipynb``.
 
 Native gates: I, x90, y90 on both qubits, plus the calibrated CZ macro.
-Circuits are tokenized per layer and streamed to the OPX via
-``advance_input_stream`` so the static gate-table limit is not hit.
+Each circuit is a length-prefixed row ``[L, op_1, ..., op_L, 0-pad]``.
+The QUA loop plays only the first ``L`` opcodes, so the padding never
+executes. Rows are streamed via ``advance_input_stream``; only
+``max_germs_depth + 1`` ints live on the OPX at compile time.
 
 Prerequisites:
     - Calibrated readout with state discrimination on both qubits.
@@ -106,6 +108,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     tokenized_germs = design.all_germs_to_qua_tokenized_labels
     max_germs_depth = design.max_germs_depth
     total_germs_num = design.total_germs_num
+    row_len = max_germs_depth + 1
 
     if node.parameters.simulate:
         with program() as node.namespace["qua_program"]:
@@ -118,7 +121,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             single_germ_order = declare(int)
             native_gate_order = declare(int)
             tokenized_germs_list = declare(int, value=np.array(tokenized_germs).flatten())
-            single_germ_list = declare(int, size=max_germs_depth)
+            single_germ_list = declare(int, size=row_len)
             germ_idx = declare(int)
 
             node.machine.initialize_qpu(target=qp.qubit_control)
@@ -127,11 +130,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             with for_(germ_idx, 0, germ_idx < total_germs_num, germ_idx + 1):
                 save(germ_idx, n_st)
-                assign(single_germ_order, germ_idx * max_germs_depth)
+                assign(single_germ_order, germ_idx * row_len)
                 with for_(
                     native_gate_order,
                     0,
-                    native_gate_order < max_germs_depth,
+                    native_gate_order < row_len,
                     native_gate_order + 1,
                 ):
                     assign(
@@ -144,7 +147,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
                     play_tokenized_gst_circuits_2q(
                         single_germ_list,
-                        depth=max_germs_depth,
                         qubit_pair=qp,
                         cz_operation=cz_operation,
                     )
@@ -169,7 +171,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_st = declare_stream()
 
             germ_idx = declare(int)
-            germ_tokens_is = declare_input_stream(int, name=GERM_TOKENS_STREAM_NAME, size=max_germs_depth)
+            germ_tokens_is = declare_input_stream(int, name=GERM_TOKENS_STREAM_NAME, size=row_len)
 
             node.machine.initialize_qpu(target=qp.qubit_control)
             node.machine.initialize_qpu(target=qp.qubit_target)
@@ -184,7 +186,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     align()
                     play_tokenized_gst_circuits_2q(
                         germ_tokens_is,
-                        depth=max_germs_depth,
                         qubit_pair=qp,
                         cz_operation=cz_operation,
                     )

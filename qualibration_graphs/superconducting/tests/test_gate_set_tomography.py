@@ -1,8 +1,8 @@
 """Pin the current GST tokenization and the shot-to-count reconstruction.
 
-The 1Q rows are length-prefixed. The 2Q rows are padded with -1 out to the longest
-circuit and have no length prefix. A later change to either convention has to
-update these checks on purpose.
+Both 1Q and 2Q rows are length-prefixed: ``[L, ops..., 0-pad]`` with width
+``max_depth + 1``. A later change to that convention has to update these checks
+on purpose.
 """
 
 import sys
@@ -20,6 +20,7 @@ from calibration_utils.gate_set_tomography.analysis import shots_to_count_datase
 from calibration_utils.gate_set_tomography.gst_utils import setup_gst_experiment  # noqa: E402
 from calibration_utils.gate_set_tomography_2q.gst_utils import (  # noqa: E402
     LAYER_CZ,
+    encode_native_layer,
     setup_gst_experiment_2q,
 )
 
@@ -51,25 +52,51 @@ def test_1q_empty_fiducial_is_not_an_idle_gate():
     assert empty_seen
 
 
-def test_2q_rows_are_padded_and_cz_opcode_matches_the_design():
+def test_2q_rows_are_length_prefixed_and_cz_opcode_matches_the_design():
     design = setup_gst_experiment_2q(1, use_fiducial_pair_reduction=True)
     rows = design.all_germs_to_qua_tokenized_labels
-    assert len(rows) == design.total_germs_num
+    width = design.max_germs_depth + 1
+    circuits = list(design.exp_design.all_circuits_needing_data)
+    assert len(rows) == design.total_germs_num == len(circuits)
+    assert design.static_gate_table_size == design.total_germs_num * width
     opcodes = set()
     n_cz = 0
-    for row, depth in zip(rows, design.all_germs_depth):
-        assert len(row) == design.max_germs_depth
-        assert all(token != -1 for token in row[:depth])
-        assert row[depth:] == [-1] * (design.max_germs_depth - depth)
-        opcodes.update(row)
-        n_cz += sum(token == LAYER_CZ for token in row)
-    assert opcodes <= set(range(10)) | {-1}
+    for circuit, row, depth in zip(circuits, rows, design.all_germs_depth):
+        assert len(row) == width
+        assert row[0] == depth == len(circuit)
+        assert all(0 <= token <= LAYER_CZ for token in row[1 : 1 + depth])
+        assert row[1 + depth :] == [0] * (width - 1 - depth)
+        opcodes.update(row[1 : 1 + depth])
+        n_cz += sum(token == LAYER_CZ for token in row[1 : 1 + depth])
+    assert opcodes <= set(range(LAYER_CZ + 1))
 
     n_gcphase = 0
-    for circuit in design.exp_design.all_circuits_needing_data:
+    for circuit in circuits:
         for layer in circuit:
             n_gcphase += sum(label.name == "Gcphase" for label in layer.components)
     assert n_cz == n_gcphase
+
+
+def test_2q_empty_circuit_is_a_zero_length_row():
+    design = setup_gst_experiment_2q(0, use_fiducial_pair_reduction=False)
+    circuits = list(design.exp_design.all_circuits_needing_data)
+    empty_seen = False
+    for circuit, row in zip(circuits, design.all_germs_to_qua_tokenized_labels):
+        assert row[0] == len(circuit)
+        if len(circuit) == 0:
+            empty_seen = True
+            assert row == [0] * len(row)
+    assert empty_seen
+
+
+def test_2q_cz_parallel_with_a_single_qubit_gate_is_rejected():
+    with pytest.raises(ValueError):
+        encode_native_layer(
+            [
+                {"gate": "X90", "qubits": ["0"]},
+                {"gate": "CZ", "qubits": ["0", "1"]},
+            ]
+        )
 
 
 def test_shots_to_count_dataset_sums_a_full_record():
