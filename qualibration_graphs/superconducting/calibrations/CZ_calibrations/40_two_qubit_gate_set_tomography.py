@@ -21,6 +21,11 @@ An older builder swallows it in ``**kwargs``, the macro still aligns, and
 every I/x90/y90 layer pays that overhead. The node refuses to compile unless
 the parameter is present.
 
+Each shot calls ``reset_frame`` on both XY elements after the qubit reset.
+The CZ virtual-Z corrections add up over tens of thousands of layers. A
+leftover Rz⊗Rz commutes with CZ and with Z readout, so the populations are
+unchanged, but the fixed-point frame drifts near ``2**16`` rotations.
+
 Prerequisites:
     - Calibrated readout with state discrimination on both qubits.
     - Calibrated single-qubit gates (x90, y90).
@@ -157,6 +162,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(n, 0, n < n_runs, n + 1):
                     qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                     qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
+                    reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
                     align()
                     play_tokenized_gst_circuits_2q(
                         single_germ_list,
@@ -196,6 +202,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 with for_(n, 0, n < n_runs, n + 1):
                     qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                     qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
+                    reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
                     align()
                     play_tokenized_gst_circuits_2q(
                         germ_tokens_is,
