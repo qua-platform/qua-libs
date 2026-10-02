@@ -14,8 +14,6 @@ from qualibrate_config.resolvers import get_qualibrate_config, get_qualibrate_co
 
 from .gst_utils import GST2QExperimentDesign, OUTCOME_LABELS
 
-_OUTCOME_FROM_INT = {i: label for i, label in enumerate(OUTCOME_LABELS)}
-
 
 def fetch_gst_2q_counts(handles, design: GST2QExperimentDesign, n_runs: int) -> xr.Dataset:
     """Histogram per-shot 2Q states (0..3) into 00/01/10/11 counts per circuit."""
@@ -31,9 +29,9 @@ def fetch_gst_2q_counts(handles, design: GST2QExperimentDesign, n_runs: int) -> 
             f"buffer({n_runs}).buffer({n_circuits}), got {flat.size} values."
         )
     shots = flat.reshape(n_circuits, n_runs)
-    counts = {label: np.zeros(n_circuits, dtype=int) for label in OUTCOME_LABELS}
-    for outcome, label in _OUTCOME_FROM_INT.items():
-        counts[label] = np.sum(shots == outcome, axis=1).astype(int)
+    if not np.isin(shots, (0, 1, 2, 3)).all():
+        raise ValueError("2Q state outside {0,1,2,3}; counts would not sum to n_runs.")
+    counts = {label: np.sum(shots == k, axis=1).astype(np.int64) for k, label in enumerate(OUTCOME_LABELS)}
 
     data_vars = {f"count_{label}": (("circuit",), counts[label]) for label in OUTCOME_LABELS}
     return xr.Dataset(

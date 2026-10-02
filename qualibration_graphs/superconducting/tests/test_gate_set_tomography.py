@@ -18,6 +18,7 @@ from pygsti.baseobjs import Label  # noqa: E402
 
 from calibration_utils.gate_set_tomography.analysis import shots_to_count_dataset  # noqa: E402
 from calibration_utils.gate_set_tomography.gst_utils import setup_gst_experiment  # noqa: E402
+from calibration_utils.gate_set_tomography_2q.analysis import fetch_gst_2q_counts  # noqa: E402
 from calibration_utils.gate_set_tomography_2q.gst_utils import (  # noqa: E402
     LAYER_CZ,
     encode_native_layer,
@@ -132,3 +133,38 @@ def test_shots_to_count_dataset_rounds_an_averaged_record():
 def test_shots_to_count_dataset_rejects_a_wrong_length():
     with pytest.raises(ValueError):
         shots_to_count_dataset([0, 1, 2], "q1", total_germs_num=2, n_runs=4)
+
+
+class _State2Q:
+    def __init__(self, values):
+        self.values = values
+
+    def fetch_all(self):
+        return self.values
+
+
+class _Handles:
+    def __init__(self, values):
+        self.values = values
+
+    def get(self, name):
+        return _State2Q(self.values) if name == "state2q" else None
+
+
+class _Design:
+    total_germs_num = 2
+
+
+def test_fetch_gst_2q_counts_are_int64_and_sum_to_n_runs():
+    # circuit 0: 00, 01, 10; circuit 1: 11, 11, 00
+    ds = fetch_gst_2q_counts(_Handles([0, 1, 2, 3, 3, 0]), _Design(), n_runs=3)
+    assert ds.count_00.dtype == np.int64
+    total = ds.count_00 + ds.count_01 + ds.count_10 + ds.count_11
+    assert list(total.values) == [3, 3]
+    assert list(ds.count_00.values) == [1, 1]
+    assert list(ds.count_11.values) == [0, 2]
+
+
+def test_fetch_gst_2q_counts_rejects_a_shot_outside_0_to_3():
+    with pytest.raises(ValueError, match=r"outside \{0,1,2,3\}"):
+        fetch_gst_2q_counts(_Handles([0, 1, 2, 3, 0, 4]), _Design(), n_runs=3)
