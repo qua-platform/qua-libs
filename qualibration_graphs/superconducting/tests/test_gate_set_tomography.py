@@ -14,6 +14,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 pytest.importorskip("pygsti")
+from pygsti.baseobjs import Label  # noqa: E402
 
 from calibration_utils.gate_set_tomography.analysis import shots_to_count_dataset  # noqa: E402
 from calibration_utils.gate_set_tomography.gst_utils import setup_gst_experiment  # noqa: E402
@@ -32,6 +33,22 @@ def test_1q_rows_are_length_prefixed():
         assert len(row) == width
         assert row[0] == n_gates
         assert row[1 + n_gates :] == [0] * (width - 1 - n_gates)
+
+
+def test_1q_empty_fiducial_is_not_an_idle_gate():
+    design = setup_gst_experiment(2)
+    circuits = list(design.exp_design.all_circuits_needing_data)
+    idle = Label(())
+    empty_seen = False
+    for circuit, row, n_gates in zip(circuits, design.all_germs_to_qua_tokenized_labels, design.all_germs_depth):
+        assert row[0] == n_gates == len(circuit)
+        n_idle = sum(layer == idle for layer in circuit.layertup)
+        assert row[1 : 1 + n_gates].count(0) == n_idle
+        if len(circuit) == 0:
+            empty_seen = True
+            assert row[0] == 0
+            assert row[1:] == [0] * (len(row) - 1)
+    assert empty_seen
 
 
 def test_2q_rows_are_padded_and_cz_opcode_matches_the_design():

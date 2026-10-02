@@ -1,14 +1,13 @@
-"""GST circuit parsing, tokenization, and input-stream helpers."""
+"""GST circuit tokenization and input-stream helpers."""
 
 from __future__ import annotations
 
-import re
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable, List
 
-import numpy as np
 import pygsti
+from pygsti.baseobjs import Label
 from pygsti.modelpacks import smq1Q_XYI as std
 from qm.qua import *
 
@@ -26,6 +25,9 @@ GATE_SET_TOKEN = {
     "y180": 4,
 }
 
+# {} is the empty circuit (zero layers). [] is Label(()), the idle gate Gi.
+LAYER_TO_QUA = {Label(()): "I", Label("Gxpi2", 0): "x90", Label("Gypi2", 0): "y90"}
+
 
 @dataclass
 class GSTExperimentDesign:
@@ -39,42 +41,6 @@ class GSTExperimentDesign:
     total_germs_num: int
     static_gate_table_size: int
     max_circuit_length: List[int]
-
-
-def parse_gst_circuit_string(circuit_str: str) -> List[str]:
-    """Parse a pyGSTi circuit string into pulse labels for QUA."""
-    clean_str = circuit_str.split()[0]
-    clean_str = clean_str.replace("@(0)", "")
-    clean_str = clean_str.replace("({})", "(I)")
-    clean_str = clean_str.replace("{}", "(I)")
-    clean_str = clean_str.replace("([])", "(I)")
-
-    token_map = {
-        "Gxpi2:0": "X",
-        "Gypi2:0": "Y",
-        "I": "I",
-    }
-    temp_str = clean_str
-    for key, token in token_map.items():
-        temp_str = temp_str.replace(key, token)
-
-    while "^" in temp_str:
-
-        def expand_match(match):
-            content = match.group(1)
-            power = int(match.group(2))
-            return content * power
-
-        temp_str = re.sub(r"\(([^)]+)\)\^(\d+)", expand_match, temp_str)
-
-    temp_str = temp_str.replace("(", "").replace(")", "")
-
-    final_map = {
-        "X": "x90",
-        "Y": "y90",
-        "I": "I",
-    }
-    return [final_map[ch] for ch in temp_str if ch in final_map]
 
 
 def tokenize_gst_circuits(gst_str: Iterable[Iterable[str]]) -> tuple[list[list[int]], list[int]]:
@@ -108,8 +74,9 @@ def setup_gst_experiment(max_circuit_depth_in_power: int) -> GSTExperimentDesign
         max_circuit_length,
     )
 
-    all_germs_from_gst_model = [s.str for s in exp_design.all_circuits_needing_data]
-    all_germs_to_qua_labels = [parse_gst_circuit_string(s) for s in all_germs_from_gst_model]
+    all_germs_to_qua_labels = [
+        [LAYER_TO_QUA[layer] for layer in c.layertup] for c in exp_design.all_circuits_needing_data
+    ]
     all_germs_to_qua_tokenized_labels, all_germs_depth = tokenize_gst_circuits(all_germs_to_qua_labels)
     max_germs_depth = max(all_germs_depth)
     total_germs_num = len(all_germs_to_qua_tokenized_labels)
@@ -161,13 +128,19 @@ def log_gst_design_summary(
 
 def play_tokenized_gst_circuits(tokenized_germ, qubit: "AnyTransmon"):
     """Play a length-prefixed GST germ. Slot 0 is the gate count; tokens start at 1."""
+    gate_ns = qubit.xy.operations["x90"].length
+    y90_ns = qubit.xy.operations["y90"].length
+    if gate_ns != y90_ns or gate_ns % 4 or gate_ns < 16:
+        raise ValueError(
+            f"x90 {gate_ns} ns and y90 {y90_ns} ns must match, be a multiple of 4 and >= 16"
+        )
     i = declare(int)
     n_gates = declare(int)
     assign(n_gates, tokenized_germ[0])
     with for_(i, 1, i <= n_gates, i + 1):
         with switch_(tokenized_germ[i], unsafe=True):
             with case_(0):
-                qubit.xy.wait(4)
+                qubit.xy.wait(gate_ns // 4)
             with case_(1):
                 qubit.xy.play("x90")
             with case_(2):
