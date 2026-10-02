@@ -229,25 +229,33 @@ def setup_gst_experiment_2q(
 
 
 def play_tokenized_gst_circuits_2q(tokenized_germ, qubit_pair, cz_operation: str):
-    """Play a length-prefixed 2Q GST circuit. Slot 0 is the layer count; opcodes start at 1."""
-    i = declare(int)
-    n_layers = declare(int)
+    """Play a length-prefixed 2Q GST circuit. Slot 0 is the layer count; opcodes start at 1.
+
+    Idle is one x90: x90 and y90 must have the same length on both qubits.
+    """
     q0 = qubit_pair.qubit_control
     q1 = qubit_pair.qubit_target
+    lengths = {(q.name, op): q.xy.operations[op].length for q in (q0, q1) for op in ("x90", "y90")}
+    gate_ns = lengths[(q0.name, "x90")]
+    if set(lengths.values()) != {gate_ns} or gate_ns % 4 or gate_ns < 16:
+        raise ValueError(f"2Q GST needs equal x90/y90 lengths on both qubits, multiple of 4, >= 16: {lengths}")
+    idle = gate_ns // 4
+    i = declare(int)
+    n_layers = declare(int)
     assign(n_layers, tokenized_germ[0])
     with for_(i, 1, i <= n_layers, i + 1):
         with switch_(tokenized_germ[i], unsafe=True):
             with case_(0):  # I ⊗ I
-                q0.xy.wait(4)
-                q1.xy.wait(4)
+                q0.xy.wait(idle)
+                q1.xy.wait(idle)
             with case_(1):  # X90 ⊗ I
                 q0.xy.play("x90")
-                q1.xy.wait(4)
+                q1.xy.wait(idle)
             with case_(2):  # Y90 ⊗ I
                 q0.xy.play("y90")
-                q1.xy.wait(4)
+                q1.xy.wait(idle)
             with case_(3):  # I ⊗ X90
-                q0.xy.wait(4)
+                q0.xy.wait(idle)
                 q1.xy.play("x90")
             with case_(4):  # X90 ⊗ X90
                 q0.xy.play("x90")
@@ -256,7 +264,7 @@ def play_tokenized_gst_circuits_2q(tokenized_germ, qubit_pair, cz_operation: str
                 q0.xy.play("y90")
                 q1.xy.play("x90")
             with case_(6):  # I ⊗ Y90
-                q0.xy.wait(4)
+                q0.xy.wait(idle)
                 q1.xy.play("y90")
             with case_(7):  # X90 ⊗ Y90
                 q0.xy.play("x90")
