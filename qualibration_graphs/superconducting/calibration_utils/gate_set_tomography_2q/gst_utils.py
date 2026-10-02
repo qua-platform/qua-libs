@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 from typing import Any, Iterable, List, Sequence
 
@@ -228,10 +229,21 @@ def setup_gst_experiment_2q(
     )
 
 
+def require_cz_align_elements(qubit_pair, cz_operation: str) -> None:
+    params = inspect.signature(qubit_pair.macros[cz_operation].apply).parameters
+    if "align_elements" not in params:
+        raise RuntimeError(
+            f"{cz_operation!r} on {qubit_pair.name} has no apply(align_elements=...); the installed "
+            "quam-builder would swallow it via **kwargs. Install quam-builder with PR #154 "
+            "(hotfix/cz-align-elements-opt-in)."
+        )
+
+
 def play_tokenized_gst_circuits_2q(tokenized_germ, qubit_pair, cz_operation: str):
     """Play a length-prefixed 2Q GST circuit. Slot 0 is the layer count; opcodes start at 1.
 
     Idle is one x90: x90 and y90 must have the same length on both qubits.
+    The switch has no align. CZ is apply(align_elements=False) plus a 16 ns XY wait.
     """
     q0 = qubit_pair.qubit_control
     q1 = qubit_pair.qubit_target
@@ -273,8 +285,9 @@ def play_tokenized_gst_circuits_2q(tokenized_germ, qubit_pair, cz_operation: str
                 q0.xy.play("y90")
                 q1.xy.play("y90")
             with case_(LAYER_CZ):
-                qubit_pair.macros[cz_operation].apply()
-        align()
+                qubit_pair.macros[cz_operation].apply(align_elements=False)
+                q0.xy.wait(4)
+                q1.xy.wait(4)
 
 
 __all__ = [
@@ -285,6 +298,7 @@ __all__ = [
     "OUTCOME_LABELS",
     "log_gst_design_summary",
     "play_tokenized_gst_circuits_2q",
+    "require_cz_align_elements",
     "setup_gst_experiment_2q",
     "start_push_gst_germs_in_background",
 ]

@@ -8,6 +8,7 @@ from .gst_utils import (
     OUTCOME_LABELS,
     log_gst_design_summary,
     play_tokenized_gst_circuits_2q,
+    require_cz_align_elements,
     setup_gst_experiment_2q,
     start_push_gst_germs_in_background,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "OUTCOME_LABELS",
     "log_gst_design_summary",
     "play_tokenized_gst_circuits_2q",
+    "require_cz_align_elements",
     "setup_gst_experiment_2q",
     "start_push_gst_germs_in_background",
     "analyse_gst_data_2q",

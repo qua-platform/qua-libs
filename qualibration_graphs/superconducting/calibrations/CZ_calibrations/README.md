@@ -499,6 +499,8 @@ Both offer Kron and N-qubit mitigation, the latter using the full N-qubit matrix
 
 37a/37b compress the gate into one average fidelity. Node 40 returns the process of each gate in the set, including the CZ, and a model-violation estimate when those processes do not explain the circuits. Keep 37b as the fidelity number you quote. The default depth (power 2, maximum length 4, fiducial-pair reduction) is 1407 circuits, streamed with `advance_input_stream`. Simulation compiles that table into the program, so keep `max_circuit_depth_in_power` at most 2 when `simulate=True`. The HTML report needs `plotly<6`; a newer plotly raises after the counts are saved.
 
+The playback switch is `unsafe=True` and has no per-layer `align()`. x90 and y90 must have the same length on both qubits, a multiple of 4 ns and at least 16 ns, because the idle waits exactly one x90. The CZ case calls `apply(align_elements=False)` and then `xy.wait(4)` on both qubits: 16 ns keeps the virtual-Z corrections from opening a gap, and it is not a stand-in for the flux pulse. `align_elements` has to be a real parameter of `CZGate.apply`. quam-builder without [PR #154](https://github.com/qua-platform/quam-builder/pull/154) (`hotfix/cz-align-elements-opt-in`) swallows that keyword in `**kwargs`, the macro still aligns, and every I/x90/y90 layer is charged the CZ align time. Node 40 raises before compile if the parameter is missing.
+
 ---
 
 # 5. Reading results and iterating

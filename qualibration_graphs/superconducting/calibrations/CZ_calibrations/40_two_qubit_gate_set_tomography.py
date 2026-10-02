@@ -10,6 +10,17 @@ The QUA loop plays only the first ``L`` opcodes, so the padding never
 executes. Rows are streamed via ``advance_input_stream``; only
 ``max_germs_depth + 1`` ints live on the OPX at compile time.
 
+x90 and y90 must have the same duration on both qubits (a multiple of 4 ns
+and at least 16 ns). The idle layer waits exactly that long on both XY lines.
+
+The unsafe switch has no ``align()``. CZ is ``apply(align_elements=False)``
+plus a 16 ns wait on both XY elements, so the virtual-Z corrections do not
+open a gap before the next pulse. That keyword has to be a real parameter of
+``CZGate.apply`` (quam-builder PR #154, ``hotfix/cz-align-elements-opt-in``).
+An older builder swallows it in ``**kwargs``, the macro still aligns, and
+every I/x90/y90 layer pays that overhead. The node refuses to compile unless
+the parameter is present.
+
 Prerequisites:
     - Calibrated readout with state discrimination on both qubits.
     - Calibrated single-qubit gates (x90, y90).
@@ -36,6 +47,7 @@ from calibration_utils.gate_set_tomography_2q import (
     build_raw_dataset_2q,
     log_gst_design_summary,
     play_tokenized_gst_circuits_2q,
+    require_cz_align_elements,
     setup_gst_experiment_2q,
     start_push_gst_germs_in_background,
     write_gst_html_report,
@@ -96,6 +108,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     if cz_operation not in qp.macros:
         available = sorted(qp.macros.keys())
         raise ValueError(f"Qubit pair {qp.name!r} has no macro {cz_operation!r}. Available macros: {available}")
+    require_cz_align_elements(qp, cz_operation)
 
     n_runs = node.parameters.num_shots
     design = setup_gst_experiment_2q(

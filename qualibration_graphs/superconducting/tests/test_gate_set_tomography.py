@@ -21,6 +21,7 @@ from calibration_utils.gate_set_tomography.gst_utils import setup_gst_experiment
 from calibration_utils.gate_set_tomography_2q.gst_utils import (  # noqa: E402
     LAYER_CZ,
     encode_native_layer,
+    require_cz_align_elements,
     setup_gst_experiment_2q,
 )
 
@@ -87,6 +88,19 @@ def test_2q_empty_circuit_is_a_zero_length_row():
             empty_seen = True
             assert row == [0] * len(row)
     assert empty_seen
+
+
+def test_require_cz_align_elements_rejects_a_kwargs_only_apply():
+    class _Macro:
+        def apply(self, **kwargs):
+            return kwargs
+
+    class _Pair:
+        name = "q0-q1"
+        macros = {"cz": _Macro()}
+
+    with pytest.raises(RuntimeError, match="align_elements"):
+        require_cz_align_elements(_Pair(), "cz")
 
 
 def test_2q_cz_parallel_with_a_single_qubit_gate_is_rejected():
