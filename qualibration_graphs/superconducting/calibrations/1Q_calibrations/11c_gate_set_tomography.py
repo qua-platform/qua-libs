@@ -41,7 +41,7 @@ from calibration_utils.gate_set_tomography import (
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 
-#%%
+# %%
 # %% {Node initialisation}
 description = """
         GATE SET TOMOGRAPHY (AIS)
@@ -84,8 +84,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     if len(qubits) != 1:
         raise ValueError(
-            "GST currently supports exactly one qubit per run. "
-            f"Got {len(qubits)} qubits: {qubits.get_names()}."
+            "GST currently supports exactly one qubit per run. " f"Got {len(qubits)} qubits: {qubits.get_names()}."
         )
 
     qubit = qubits[0]
@@ -107,9 +106,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             single_germ_order = declare(int)
             native_gate_order = declare(int)
-            tokenized_germs_list = declare(
-                int, value=np.array(tokenized_germs).flatten()
-            )
+            tokenized_germs_list = declare(int, value=np.array(tokenized_germs).flatten())
             single_germ_list = declare(int, size=row_len)
             germ_idx = declare(int)
 
@@ -150,9 +147,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_st = [declare_stream()]
 
             germ_idx = declare(int)
-            germ_tokens_is = declare_input_stream(
-                int, name=GERM_TOKENS_STREAM_NAME, size=row_len
-            )
+            germ_tokens_is = declare_input_stream(int, name=GERM_TOKENS_STREAM_NAME, size=row_len)
 
             node.machine.initialize_qpu(target=qubit)
             align()
@@ -182,9 +177,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Simulate the QUA program (uses static gate table; input streams are unreliable in sim)."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
@@ -227,9 +220,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     """Load a previously acquired dataset and rebuild the GST experiment design."""
     node.load_from_id(node.parameters.load_data_id)
     node.namespace["qubits"] = get_qubits(node)
-    node.namespace["gst_design"] = setup_gst_experiment(
-        node.parameters.max_circuit_depth_in_power
-    )
+    node.namespace["gst_design"] = setup_gst_experiment(node.parameters.max_circuit_depth_in_power)
 
 
 # %% {Analyse_data}
@@ -274,5 +265,6 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
             node.results["gst_report_dir"] = report_dirname
             node.results["gst_report_main"] = report_main
         node.save()
+
 
 # %%

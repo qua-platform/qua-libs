@@ -93,9 +93,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     cz_operation = node.parameters.operation
     if cz_operation not in qp.macros:
         available = sorted(qp.macros.keys())
-        raise ValueError(
-            f"Qubit pair {qp.name!r} has no macro {cz_operation!r}. Available macros: {available}"
-        )
+        raise ValueError(f"Qubit pair {qp.name!r} has no macro {cz_operation!r}. Available macros: {available}")
 
     n_runs = node.parameters.num_shots
     design = setup_gst_experiment_2q(
@@ -171,9 +169,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             state_st = declare_stream()
 
             germ_idx = declare(int)
-            germ_tokens_is = declare_input_stream(
-                int, name=GERM_TOKENS_STREAM_NAME, size=max_germs_depth
-            )
+            germ_tokens_is = declare_input_stream(int, name=GERM_TOKENS_STREAM_NAME, size=max_germs_depth)
 
             node.machine.initialize_qpu(target=qp.qubit_control)
             node.machine.initialize_qpu(target=qp.qubit_target)
@@ -212,9 +208,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Simulate the QUA program (uses static gate table; input streams are unreliable in sim)."""
     qmm = node.machine.connect()
     config = node.machine.generate_config()
-    samples, fig, wf_report = simulate_and_plot(
-        qmm, config, node.namespace["qua_program"], node.parameters
-    )
+    samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
 
@@ -302,5 +296,6 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
             node.results["gst_report_dir"] = report_dirname
             node.results["gst_report_main"] = report_main
         node.save()
+
 
 # %%

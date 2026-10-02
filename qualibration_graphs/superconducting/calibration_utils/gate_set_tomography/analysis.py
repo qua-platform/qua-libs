@@ -183,9 +183,7 @@ def run_gst_analysis(
 
         for j, gate in enumerate(gst_results_dict[cond]["gate_op"].keys()):
             matrix_ptm = est_model.operations[native_gate_keys[j]].to_dense()
-            choi = pygsti.tools.jamiolkowski.jamiolkowski_iso(
-                matrix_ptm, op_mx_basis="pp", choi_mx_basis="std"
-            )
+            choi = pygsti.tools.jamiolkowski.jamiolkowski_iso(matrix_ptm, op_mx_basis="pp", choi_mx_basis="std")
             infidelity = pygsti.tools.entanglement_infidelity(
                 matrix_ptm,
                 std_model.operations[native_gate_keys[j]].to_dense(),

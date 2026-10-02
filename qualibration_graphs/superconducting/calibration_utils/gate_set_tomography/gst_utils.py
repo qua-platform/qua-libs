@@ -90,9 +90,7 @@ def tokenize_gst_circuits(gst_str: Iterable[Iterable[str]]) -> tuple[list[list[i
 
     for germ in gst_str:
         tokenized_circuits.append(
-            [len(germ)]
-            + [GATE_SET_TOKEN[g] for g in germ]
-            + [0] * (max_gate_set_length - len(germ))
+            [len(germ)] + [GATE_SET_TOKEN[g] for g in germ] + [0] * (max_gate_set_length - len(germ))
         )
 
     return tokenized_circuits, gate_set_length_list
@@ -100,9 +98,7 @@ def tokenize_gst_circuits(gst_str: Iterable[Iterable[str]]) -> tuple[list[list[i
 
 def setup_gst_experiment(max_circuit_depth_in_power: int) -> GSTExperimentDesign:
     """Build the pyGSTi StandardGSTDesign and tokenize all germ sequences."""
-    max_circuit_length = [
-        2**i for i in range(max(max_circuit_depth_in_power, 0) + 1)
-    ]
+    max_circuit_length = [2**i for i in range(max(max_circuit_depth_in_power, 0) + 1)]
     std_model = std.target_model()
     exp_design = pygsti.protocols.StandardGSTDesign(
         std_model,
@@ -154,17 +150,11 @@ def log_gst_design_summary(
             "this node streams germs via advance_input_stream."
         )
     else:
-        log_callable(
-            "Static table fits in OPX memory; AIS still used to avoid future depth scaling issues."
-        )
+        log_callable("Static table fits in OPX memory; AIS still used to avoid future depth scaling issues.")
     log_callable(f"Input stream pushes (one per circuit): {design.total_germs_num}")
+    log_callable(f"Stream processing: buffer({n_runs}).buffer({design.total_germs_num})  " "[inner=runs, outer=germs]")
     log_callable(
-        f"Stream processing: buffer({n_runs}).buffer({design.total_germs_num})  "
-        "[inner=runs, outer=germs]"
-    )
-    log_callable(
-        f"Total measurements: {n_runs} runs x {design.total_germs_num} germs = "
-        f"{n_runs * design.total_germs_num}"
+        f"Total measurements: {n_runs} runs x {design.total_germs_num} germs = " f"{n_runs * design.total_germs_num}"
     )
     log_callable("=====================================")
 
