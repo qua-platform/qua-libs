@@ -32,6 +32,7 @@ Hardware falls into two workflows:
    - [Readout characterisation (35, 38)](#readout-characterisation-35-38)
    - [Two-qubit gate quality (36, 37a, 37b)](#two-qubit-gate-quality-36-37a-37b)
    - [Multi-qubit validation (39a, 39b)](#multi-qubit-validation-39a-39b)
+   - [Gate set tomography (40)](#gate-set-tomography-40)
 5. [Reading results and iterating](#5-reading-results-and-iterating)
    - [Symptoms and where to go back to](#symptoms-and-where-to-go-back-to)
 6. [Project structure](#6-project-structure)
@@ -492,6 +493,14 @@ Both offer Kron and N-qubit mitigation, the latter using the full N-qubit matrix
 
 > **Topology constraint.** GHZ preparation uses a **linear CZ ladder** over the qubits in list order — it is not a general graph builder. Every consecutive pair must actually be coupled.
 
+## Gate set tomography (40)
+
+[**40**, two-qubit gate set tomography](./40_two_qubit_gate_set_tomography.py) fits pyGSTi `smq2Q_XYICPHASE` (I, x90, and y90 on both qubits, plus one CZ) with StandardGST. It needs a CZ that already has its conditional phase (33a) and single-qubit phase compensation (34a), and the pair must define the macro named by `operation`. The macros this repo actually builds are `cz_flattop`, `cz_unipolar`, `cz_bipolar`, `cz_flattop_erf`, and `cz_SNZ`. The parameter list also names `cz_gaussian_bipolar` and `cz_gaussian_unipolar`, which are not defined here.
+
+37a/37b compress the gate into one average fidelity. Node 40 returns the process of each gate in the set, including the CZ, and a model-violation estimate when those processes do not explain the circuits. Keep 37b as the fidelity number you quote. The default depth (power 2, maximum length 4, fiducial-pair reduction) is 1407 circuits, streamed with `advance_input_stream`. Simulation compiles that table into the program, so keep `max_circuit_depth_in_power` at most 2 when `simulate=True`. The HTML report needs `plotly<6`; a newer plotly raises after the counts are saved.
+
+The playback switch is `unsafe=True` and has no per-layer `align()`. x90 and y90 must have the same length on both qubits, a multiple of 4 ns and at least 16 ns, because the idle waits exactly one x90. The CZ case calls `apply(align_elements=False)` and then `xy.wait(4)` on both qubits: 16 ns keeps the virtual-Z corrections from opening a gap, and it is not a stand-in for the flux pulse. `align_elements` has to be a real parameter of `CZGate.apply`. quam-builder without [PR #154](https://github.com/qua-platform/quam-builder/pull/154) (`hotfix/cz-align-elements-opt-in`) swallows that keyword in `**kwargs`, the macro still aligns, and every I/x90/y90 layer is charged the CZ align time. Node 40 raises before compile if the parameter is missing. Every shot calls `reset_frame` on both XY elements after the qubit reset: the virtual-Z corrections accumulate over tens of thousands of CZ layers, and the fixed-point frame drifts near \(2^{16}\) rotations. A leftover \(R_z\otimes R_z\) still commutes with CZ and with Z readout.
+
 ---
 
 # 5. Reading results and iterating
@@ -549,6 +558,7 @@ If the 1Q layer has also drifted, fix that first (see [1Q retuning](../1Q_calibr
 | **38**  | [`38_n_qubit_confusion_matrix.py`](./38_n_qubit_confusion_matrix.py)                           |       ✓       |        ✓        | Readout model       |
 | **39a** | [`39a_ghz_z_basis.py`](./39a_ghz_z_basis.py)                                                   |       ✓       |        ✓        | Benchmark (N-qubit) |
 | **39b** | [`39b_ghz_tomography.py`](./39b_ghz_tomography.py)                                             |       ✓       |        ✓        | Benchmark (N-qubit) |
+| **40**  | [`40_two_qubit_gate_set_tomography.py`](./40_two_qubit_gate_set_tomography.py)                 |       ✓       |        ✓        | Benchmark           |
 | **98**  | [`98_CZ_calibration_graph_tunable_couplers.py`](./98_CZ_calibration_graph_tunable_couplers.py) |       —       |        ✓        | Orchestration       |
 | **99**  | [`99_CZ_calibration_graph_fixed_couplers.py`](./99_CZ_calibration_graph_fixed_couplers.py)     |       ✓       |        —        | Orchestration       |
 
