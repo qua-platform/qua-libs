@@ -9,7 +9,7 @@ import numpy as np
 import pygsti
 from qm.qua import *
 
-from calibration_utils.gate_set_tomography_ais.gst_utils import (
+from calibration_utils.gate_set_tomography.gst_utils import (
     GERM_TOKENS_STREAM_NAME,
     OPX1000_GATE_TABLE_LIMIT,
     log_gst_design_summary,

@@ -26,7 +26,7 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualibrate import QualibrationNode
 from quam_config import Quam
 
-from calibration_utils.gate_set_tomography_ais import (
+from calibration_utils.gate_set_tomography import (
     Parameters,
     GERM_TOKENS_STREAM_NAME,
     analyse_gst_data,
@@ -58,7 +58,7 @@ State update:
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="70a_gate_set_tomography_ais",
+    name="11c_gate_set_tomography",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),

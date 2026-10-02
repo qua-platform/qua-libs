@@ -1,7 +1,7 @@
 """
 Two-Qubit Gate Set Tomography (Advance Input Stream)
 ====================================================
-2Q variant of ``70a_gate_set_tomography_ais`` using pyGSTi ``smq2Q_XYICPHASE``
+2Q variant of ``11c_gate_set_tomography`` using pyGSTi ``smq2Q_XYICPHASE``
 (fallback ``smq2Q_XYCPHASE``) as in ``CQT_2Q_GST.ipynb``.
 
 Native gates: I, x90, y90 on both qubits, plus the calibrated CZ macro.
@@ -27,7 +27,7 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualibrate import QualibrationNode
 from quam_config import Quam
 
-from calibration_utils.gate_set_tomography_ais_2q import (
+from calibration_utils.gate_set_tomography_2q import (
     Parameters,
     GERM_TOKENS_STREAM_NAME,
     analyse_gst_data_2q,
@@ -58,7 +58,7 @@ State update:
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="70b_two_qubit_gate_set_tomography_ais",
+    name="40_two_qubit_gate_set_tomography",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
