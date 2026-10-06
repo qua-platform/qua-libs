@@ -17,34 +17,28 @@ from quam_config import Quam
 from calibration_utils.two_q_confusion_matrix import (
     Parameters,
     compute_confusion_matrices,
+    compute_kron_confusion_matrices,
     is_confusion_matrix_valid,
     plot_confusion_matrices,
-    process_raw_dataset,
 )
 
 # %% {Initialisation}
 description = """
-**TWO-QUBIT READOUT CONFUSION MATRIX MEASUREMENT**
+This experiment measures readout error when simultaneously measuring two qubits.
 
-This experiment measures the readout error when simultaneously measuring the state of two qubits.
+Process:
+1. Prepare all computational basis states (|00⟩, |01⟩, |10⟩, |11⟩)
+2. Perform simultaneous readout on both qubits
+3. Build the confusion matrix from measurement results
 
-The process involves:
-
-1. Preparing the two qubits in all possible combinations of computational basis states (|00⟩, |01⟩, |10⟩, |11⟩)
-2. Performing simultaneous readout on both qubits
-3. Calculating the confusion matrix based on the measurement results
-
-For each prepared state, we measure the readout result of both qubits. The measurement process involves:
-initializing both qubits to the ground state, applying single-qubit gates to prepare the desired input state,
-and performing simultaneous readout on both qubits.
+Outcomes:
+- 4×4 confusion matrix (measured vs prepared two-qubit states)
+- Kronecker-product reference and direct-minus-Kron difference plots
+- Readout fidelity metrics for simultaneous two-qubit measurement
 
 Prerequisites:
 - Calibrated single-qubit gates for both qubits in the pair
 - Calibrated readout for both qubits
-
-Outcomes:
-- 4x4 confusion matrix representing the probabilities of measuring each two-qubit state given a prepared input state
-- Readout fidelity metrics for simultaneous two-qubit measurement
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -58,7 +52,6 @@ node = QualibrationNode[Parameters, Quam](
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Set custom parameters for debugging purposes only."""
-    # node.parameters.qubit_pairs = ["q1_q2"]
     pass
 
 
@@ -183,12 +176,20 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process raw data and compute confusion matrices."""
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    confusions = compute_confusion_matrices(node.results["ds_raw"], node, log_callable=node.log)
+    qubit_pairs = node.namespace["qubit_pairs"]
+    confusions = compute_confusion_matrices(
+        node.results["ds_raw"],
+        [qp.name for qp in qubit_pairs],
+        node.parameters.num_shots,
+        ["init_state_control", "init_state_target"],
+        log_callable=node.log,
+    )
+    kron_confs = compute_kron_confusion_matrices({qp.name: [qp.qubit_control, qp.qubit_target] for qp in qubit_pairs})
     node.results["confusions"] = confusions
+    node.results["kron_confs"] = kron_confs
     node.outcomes = {
         qp.name: ("successful" if is_confusion_matrix_valid(confusions.get(qp.name, np.empty(0))) else "failed")
-        for qp in node.namespace["qubit_pairs"]
+        for qp in qubit_pairs
     }
 
 
@@ -201,6 +202,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["confusions"],
         qubit_pairs,
         node,
+        kron_confs=node.results["kron_confs"],
     )
     for name, fig in figures.items():
         node.results[name] = fig

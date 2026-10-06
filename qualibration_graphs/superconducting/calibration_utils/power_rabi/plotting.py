@@ -155,10 +155,17 @@ def plot_individual_data_with_fit_2D(
         ax=ax2, add_colorbar=False, x="amp_mV", y="nb_of_pulses", robust=True
     )
     ax2.set_xlabel("amplitude prefactor")
-    # Overlay fitted pi-pulse amplitude when fit succeeded
+    # Overlay fitted pi-pulse amplitude when fit succeeded, labelled with how it was obtained: the sinc
+    # fit locates the optimum between swept amplitudes ("sub-pixel"), whereas the extremum of the
+    # pulse-averaged curve - also the fallback when the sinc fit fails - can only be a swept amplitude
+    # ("pixel"). opt_amp_prefactor_raw holds that extremum and is absent when the sinc fit is disabled.
     if fit is not None and bool(fit.success):
+        opt = float(fit.opt_amp_prefactor)
+        sub_pixel = "opt_amp_prefactor_raw" in fit and opt != float(fit.opt_amp_prefactor_raw)
         ax2.axvline(
-            x=fit.opt_amp_prefactor,
+            x=opt,
             color="g",
             linestyle="-",
+            label=f"{'sub-pixel (sinc fit)' if sub_pixel else 'pixel (avg extremum)'} \namp prefactor: x{opt:.4f}",
         )
+        ax2.legend(fontsize=16, loc="lower right")

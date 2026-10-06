@@ -247,7 +247,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             measured_qubit_name = (
                 qp.qubit_control.name if node.parameters.measure_qubit == "control" else qp.qubit_target.name
             )
-            node.machine.qubits[measured_qubit_name].extras[f"{qp.coupler.name}_dispersion_load_id"] = node.snapshot_idx
+            extras = node.machine.qubits[measured_qubit_name].extras
+            extras[f"{qp.coupler.name}_ramsey_vs_coupler_load_id"] = node.snapshot_idx
 
 
 # %% {Save_results}

@@ -307,30 +307,6 @@ def plot_raw_data_with_fit(
     return figures
 
 
-def plot_spectroscopy_curve(ds_fit: xr.Dataset, qubits) -> Optional[plt.Figure]:
-    """Legacy multi-qubit freq-vs-flux figure; prefer ``plot_raw_data_with_fit``."""
-    if "spec_curve_flux" not in ds_fit or "spec_curve_freq" not in ds_fit:
-        return None
-    source_label = ds_fit.attrs.get("freq_to_flux_sources", ds_fit.attrs.get("freq_to_flux_source", "measured"))
-    grid_locations = [q.grid_location for q in qubits]
-    grid_curve = QubitGrid(ds_fit, grid_locations)
-    n_plotted = 0
-    for ax, qubit in grid_iter(grid_curve):
-        plot_freq_vs_flux_curve(ax, ds_fit, qubit, source_label=source_label)
-        qname = qubit["qubit"]
-        if qname in ds_fit["spec_curve_flux"].spec_qubit.values.tolist():
-            flux_arr = ds_fit["spec_curve_flux"].sel(spec_qubit=qname).values
-            freq_arr = ds_fit["spec_curve_freq"].sel(spec_qubit=qname).values
-            if np.isfinite(flux_arr).any() and np.isfinite(freq_arr).any():
-                n_plotted += 1
-    if not n_plotted:
-        plt.close(grid_curve.fig)
-        return None
-    grid_curve.fig.suptitle(_debug_suptitle(f"Freq-vs-flux curve used ({source_label})"), fontsize=16)
-    grid_curve.fig.tight_layout()
-    return grid_curve.fig
-
-
 # ---------------------------------------------------------------------------
 # Extended plotting (ported from CS_installations' node 20 plotting.py)
 # ---------------------------------------------------------------------------

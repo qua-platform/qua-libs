@@ -59,7 +59,7 @@ Outputs and state updates
 REMINDER: Digital filters add a global delay — recalibrate IQ blobs
 (rotation_angle & ge_threshold) and (16a) XYZ_delay.
 
-Ref: https://arxiv.org/abs/2111.13504
+Ref: Hellings et al., arXiv:2503.04610 — long-timescale in-situ flux-line IIR.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -364,9 +364,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Process raw dataset, extract Ramsey phase, compute flux response, and fit exponentials."""
-    # Convert IQ → V in place so debug raw plots use calibrated units.
-    node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
-    ds_fit, fit_results = fit_raw_data(node.results["ds_raw"], node)
+    ds_proc = process_raw_dataset(node.results["ds_raw"], node)
+    node.results["ds_proc"] = ds_proc
+    ds_fit, fit_results = fit_raw_data(ds_proc, node)
     node.results["ds_fit"] = ds_fit
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
@@ -383,7 +383,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_fit"],
         qubits,
         node.results["fit_results"],
-        ds_raw=node.results.get("ds_raw"),
+        ds_proc=node.results.get("ds_proc"),
         debug=node.parameters.debug_plots,
         log_scale=node.parameters.time_axis == "log",
     )

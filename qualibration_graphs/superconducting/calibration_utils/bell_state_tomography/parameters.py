@@ -37,6 +37,9 @@ class NodeSpecificParameters(RunnableParameters):
     operation: Literal["cz_flattop", "cz_unipolar", "cz_bipolar", "cz_flattop_erf", "cz_SNZ"] = "cz_unipolar"
     """Type of CZ operation to perform; one of 'cz_flattop', 'cz_unipolar', 'cz_bipolar', 'cz_flattop_erf', or 'cz_SNZ'. Default is 'cz_unipolar'."""
 
+    plot_level: Literal["full", "minimal"] = "minimal"
+    """Plot correlated 3D bars only (minimal), or both methods with heatmaps and Pauli bars (full)."""
+
 
 class Parameters(
     NodeParameters,

@@ -8,6 +8,7 @@ from qualibrate import QualibrationNode
 from qualibration_libs.analysis import fit_oscillation, oscillation
 from qualibration_libs.data import add_amplitude_and_phase, convert_IQ_to_V
 from quam_config.instrument_limits import instrument_limits
+from scipy.optimize import curve_fit
 
 # Fit-quality gates applied to the single-pulse Rabi fit (see _rabi_fit_quality): the library's
 # fit_oscillation returns *some* sinusoid even on pure noise, and a noise-derived pi-amplitude that
@@ -16,6 +17,12 @@ MIN_OSC_AMP_SNR = 3.0  # fitted amplitude / residual scatter
 MIN_N_PERIODS = 0.75  # Rabi periods spanned by the sweep; below this the frequency is unconstrained
 MIN_PTS_PER_PERIOD = 8.0  # sweep points per Rabi period (aliasing guard)
 MAX_RAW_FIT_GAP = 0.2  # max allowed gap, in signal space, between the fit and the raw-peak cross-check
+
+# Error-amplification sinc fit (see _sinc_refined_prefactor)
+SINC_FIT_LOBES = 2  # sinc lobes kept per side in the fit window
+SINC_FIT_MIN_POINTS = 8  # widen the window if the lobe estimate leaves fewer points than this
+MIN_SINC_SNR = 3.0  # fitted lobe height / residual scatter around the fitted sinc
+MAX_SINC_PIXEL_SHIFT = 1.0  # swept amplitudes accepted on each side of the extremum: a 2N+1 pixels wide band
 
 
 def _raw_pi_prefactor(signal_1d: xr.DataArray, freq: float) -> float:
@@ -75,6 +82,11 @@ class FitParameters:
 
     raw_fit_consistent: bool = True
     """Whether the fit-free raw peak agrees with the fitted pi point in signal space."""
+
+    sinc_used: bool = False
+    """Whether the reported prefactor comes from the error-amplification sinc fit; False when that fit
+    is disabled, not applicable (single-pulse sweep) or rejected, i.e. when the swept-amplitude
+    extremum of the pulse-averaged curve is reported instead."""
 
 
 def _rabi_fit_quality(fit: xr.Dataset, use_state_disc: bool) -> dict[str, dict[str, float]]:
@@ -193,6 +205,81 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     return ds
 
 
+def _sinc_model(a: np.ndarray, A: float, B: float, a_0: float, w: float) -> np.ndarray:
+    """Sinc peak: f(a) = B + A * sin(w * (a - a_0)) / (w * (a - a_0)) = B + A * np.sinc(w * (a - a_0) / pi)."""
+    return B + A * np.sinc(w * (a - a_0) / np.pi)
+
+
+def _sinc_refined_prefactor(signal_1d: xr.DataArray, coarse: float, n_pulse_values: int, find_min: bool) -> float:
+    """Locate the pi amplitude of the pulse-averaged error-amplification curve by fitting its sinc lobe.
+
+    Averaging the N-pulse Rabi signal over the swept pulse numbers N = 1, 3, ..., 2K-1 turns it into a
+    Dirichlet kernel, <cos(N.theta)>_N = sin(2K.theta) / (2K.sin(theta)) with theta = pi.a/a_pi, which
+    close to the pi amplitude (theta = pi + d) reduces to sinc(2K.d) = sin(2K.d) / (2K.d). The averaged
+    curve therefore carries a sinc main lobe centred on a_pi and 1/K times narrower than a Rabi period,
+    so fitting it resolves a_pi well below one amplitude step. The same holds for the x90-like sweeps
+    N = 2, 6, ..., 4K-2, whose total rotation is again an odd multiple of pi at the correct amplitude.
+
+    `signal_1d` is the pulse-averaged signal versus "amp_prefactor", `coarse` the swept amplitude at its
+    extremum (the legacy answer, reused as the seed and centre of the fit window), `n_pulse_values` the
+    number of averaged pulse numbers K (it sets the lobe width) and `find_min` whether the pi amplitude
+    shows up as a dip rather than a peak. Returns NaN when the curve is unusable, when the fit does not
+    converge inside the window, when its centre lands outside the pixel band centred on `coarse` or when
+    the lobe does not rise clear of the residual scatter, so that the caller falls back on `coarse`.
+    """
+    x = np.asarray(signal_1d["amp_prefactor"].values, dtype=float)
+    # Flip dips into peaks so that the direction convention is handled in a single place below.
+    y = np.asarray(signal_1d.values, dtype=float) * (-1.0 if find_min else 1.0)
+    m = np.isfinite(x) & np.isfinite(y)
+    x, y = x[m], y[m]
+    if x.size < 5 or not np.isfinite(coarse) or n_pulse_values < 1:
+        return float("nan")
+    # The kernel first vanishes at |a - a_pi| = a_pi / (2K); keep a few lobes so that the width is
+    # constrained by the data while staying away from the revivals at a -> 0 and a -> 2.a_pi, where the
+    # sinc approximation of the Dirichlet kernel no longer holds.
+    lobe = abs(coarse) / (2.0 * n_pulse_values)
+    step = float(np.median(np.abs(np.diff(x))))
+    half_window = max(SINC_FIT_LOBES * lobe, 0.5 * SINC_FIT_MIN_POINTS * step)
+    lo, hi = max(coarse - half_window, float(x.min())), min(coarse + half_window, float(x.max()))
+    win = (x >= lo) & (
+        x <= hi
+    )  # A boolean mask, one entry per amplitude point: True if that point lies inside the window [lo, hi]
+    if not lo < coarse < hi or win.sum() < 5:
+        return float("nan")
+    x_w, y_w = x[win], y[win]
+    amp_0 = float(np.nanmax(y_w) - np.nanmedian(y_w))
+    if not np.isfinite(amp_0) or amp_0 <= 0:
+        amp_0 = 1.0
+    w_0 = np.pi / lobe  # = 2.K.pi / a_pi, the width implied by the number of averaged pulse numbers
+    try:
+        popt, _ = curve_fit(
+            _sinc_model,
+            x_w,
+            y_w,
+            p0=[amp_0, float(np.nanmedian(y_w)), coarse, w_0],
+            bounds=([0.0, -np.inf, lo, w_0 / 10.0], [np.inf, np.inf, hi, w_0 * 10.0]),
+            maxfev=10000,
+        )
+    except Exception:  # pragma: no cover - any fit failure must leave the node on the legacy estimate
+        logging.getLogger(__name__).warning("Power Rabi sinc fit failed; keeping the averaged-curve extremum.")
+        return float("nan")
+    a_pi = float(popt[2])
+    # A fit sitting on the edge of the window has not converged onto a lobe centre: prefer the extremum.
+    margin = 0.01 * (hi - lo)
+    if not lo + margin < a_pi < hi - margin:
+        return float("nan")
+    # The sinc only refines the extremum to sub-step resolution, so a centre that has walked out of the
+    # pixel band around it is fitting something else than the main lobe. The band covers the extremum's
+    # own pixel and MAX_SINC_PIXEL_SHIFT of them on each side, hence the extra half pixel to its edge.
+    if abs(a_pi - coarse) > (MAX_SINC_PIXEL_SHIFT + 0.5) * step:
+        return float("nan")
+    # A lobe that does not stand clear of the scatter around the fitted curve is noise, not a peak.
+    scatter = float(np.std(y_w - _sinc_model(x_w, *popt)))
+    if popt[0] < MIN_SINC_SNR * scatter:
+        return float("nan")
+    return a_pi
+
+
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, dict[str, FitParameters]]:
     """
     Fit the qubit frequency and FWHM for each qubit in the dataset.
@@ -241,12 +328,31 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
             ds_fit["data_mean"] = ds.state.mean(dim="nb_of_pulses")
         else:
             ds_fit["data_mean"] = ds.I.mean(dim="nb_of_pulses")
-        if (not ds.nb_of_pulses.data[0] % 2 and operation == "x180") or (
-            ds.nb_of_pulses.data[0] % 2 and operation != "x180"
-        ):
-            ds_fit["opt_amp_prefactor"] = ds_fit["data_mean"].idxmin(dim="amp_prefactor")
+        # An even number of x180 pulses (or an odd number of x90-like pulses) brings the qubit back to
+        # the ground state at the correct amplitude, so the averaged signal dips instead of peaking.
+        find_min = bool(
+            (not ds.nb_of_pulses.data[0] % 2 and operation == "x180")
+            or (ds.nb_of_pulses.data[0] % 2 and operation != "x180")
+        )
+        data_mean = ds_fit["data_mean"]
+        coarse = data_mean.idxmin(dim="amp_prefactor") if find_min else data_mean.idxmax(dim="amp_prefactor")
+        if getattr(node.parameters, "use_sinc_fit_for_error_amplification", True):
+            # Refine the extremum to sub-step resolution by fitting the sinc lobe of the averaged curve,
+            # keeping the extremum itself as the fallback and as the raw-peak diagnostic.
+            refined = xr.DataArray(
+                [
+                    _sinc_refined_prefactor(
+                        data_mean.sel(qubit=q), float(coarse.sel(qubit=q)), len(ds.nb_of_pulses), find_min
+                    )
+                    for q in ds_fit.qubit.values
+                ],
+                coords={"qubit": ds_fit.qubit.data},
+            )
+            ds_fit["opt_amp_prefactor"] = xr.where(np.isfinite(refined), refined, coarse)
+            ds_fit["opt_amp_prefactor_raw"] = coarse
+            ds_fit["sinc_used"] = np.isfinite(refined)
         else:
-            ds_fit["opt_amp_prefactor"] = ds_fit["data_mean"].idxmax(dim="amp_prefactor")
+            ds_fit["opt_amp_prefactor"] = coarse
 
     fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
     return fit_data, fit_results
@@ -319,6 +425,7 @@ def _extract_relevant_fit_parameters(
             n_periods=quality.get(str(q), {}).get("n_periods", float("nan")),
             pts_per_period=quality.get(str(q), {}).get("pts_per_period", float("nan")),
             raw_fit_consistent=bool(_raw_gap_ok(quality.get(str(q), {}))),
+            sinc_used=bool(fit.sinc_used.sel(qubit=q).values) if "sinc_used" in fit else False,
         )
         for q in fit.qubit.values
     }

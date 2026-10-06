@@ -67,16 +67,21 @@ def plan_lo_shift_for_frequency_window(
     qubits: Sequence[AnyTransmon],
     dfs: NDArray[np.integer] | NDArray[np.floating],
     *,
+    if_base_hz: Optional[Sequence[float]] = None,
     log_callable: Optional[LogCallable] = None,
 ) -> LoShiftPlan:
-    """Decide LO shifts so ``intermediate_frequency + dfs`` stays in usable IF reach.
+    """Decide LO shifts so ``if_base + dfs`` stays in usable IF reach.
 
     Parameters
     ----------
     qubits
-        Qubit-like objects with ``xy`` (and ``name``).
+        Qubit-like objects with ``xy`` (and ``name``). LO shifts apply to these channels.
     dfs
         Relative frequency sweep axis in Hz (same array used in QUA ``from_array``).
+    if_base_hz
+        Optional per-qubit IF centre for the sweep (same length as ``qubits``).
+        Defaults to each qubit's ``xy.intermediate_frequency``. Use this for three-tone
+        spectroscopy where the drive IF is ``coupler_RF - LO`` rather than the qubit idle IF.
 
     Returns
     -------
@@ -89,8 +94,8 @@ def plan_lo_shift_for_frequency_window(
     dfs_mid = int((dfs.min() + dfs.max()) / 2)
     plan = LoShiftPlan()
 
-    for q in qubits:
-        if_lo = q.xy.intermediate_frequency
+    for i, q in enumerate(qubits):
+        if_lo = int(if_base_hz[i]) if if_base_hz is not None else q.xy.intermediate_frequency
         if_low = if_lo + int(dfs.min())
         if_high = if_lo + int(dfs.max())
 
@@ -98,7 +103,9 @@ def plan_lo_shift_for_frequency_window(
             lo_now = _upconverter_frequency(q.xy)
             band = getattr(q.xy.opx_output, "band", None)
             band_floor = _BAND_FLOOR_HZ.get(band)
-            lo_frequency = None if lo_now is None else lo_now + dfs_mid
+            # Move the LO to the sweep centre so residual IF is ``dfs - dfs_mid`` (near 0).
+            shift = int(if_lo) + dfs_mid
+            lo_frequency = None if lo_now is None else lo_now + shift
 
             if lo_frequency is None:
                 warnings.warn(
@@ -121,12 +128,12 @@ def plan_lo_shift_for_frequency_window(
                     "Qubit LO has been changed to reach desired detuning, "
                     "active reset will not work. Reset type changed to thermal."
                 )
-                plan.if_update.append(dfs_mid)
+                plan.if_update.append(shift)
                 with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
                     if log_callable is not None:
                         log_callable(f"Updating {q_upd.name} LO to {lo_frequency}")
                     q_upd.xy.opx_output.upconverter_frequency = lo_frequency
-                    q_upd.xy.RF_frequency += dfs_mid
+                    q_upd.xy.RF_frequency += shift
                     plan.tracked_qubits.append(q_upd)
         else:
             edge = max(abs(if_low), abs(if_high))
