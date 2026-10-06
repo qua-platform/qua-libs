@@ -37,7 +37,7 @@ Amplification (PALEA) protocol, as described in Marxer et al., arXiv:2508.16437
 
 PALEA is designed to coherently amplify population leakage from |11> to |20> caused by imperfect
 diabatic transitions during the CZ gate, while remaining robust against other error sources such
-as ZZ over-rotation and single-qubit phase errors. Compared to standard leakage amplification (node 33a),
+as ZZ over-rotation and single-qubit phase errors. Compared to standard leakage amplification (node 32a),
 PALEA achieves at least a factor-of-two reduction in leakage for the same number of gate repetitions.
 
 **Protocol:**
@@ -57,7 +57,7 @@ Prerequisites:
 - Tunable-coupler architecture: ``macros[operation]`` must define ``coupler_flux_pulse`` (fixed-coupler pairs are not supported).
 - Calibrated single-qubit gates (X_pi^{01} and X_pi^{12}) for both qubits in the pair
 - Calibrated readout with state discrimination for |g>, |e>, |f>
-- Initial estimate of the CZ coupler amplitude (typically from node 30 or 33a)
+- Initial estimate of the CZ coupler amplitude (typically from node 30 or 32a)
 
 State update:
 - The optimal CZ coupler amplitude: qubit_pair.macros[operation].coupler_flux_pulse.amplitude
@@ -65,7 +65,7 @@ State update:
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
 node = QualibrationNode[Parameters, Quam](
-    name="33b_cz_leakage_amplification_palea",  # Name should be unique
+    name="32b_cz_leakage_amplification_palea",  # Name should be unique
     description=description,  # Describe what the node is doing, which is also reflected in the QUAlibrate GUI
     parameters=Parameters(),  # Node parameters: calibration_utils/cz_leakage_amp/parameters.py
     machine=Quam.load(),  # Instantiate the QUAM class from the state file
@@ -86,7 +86,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):  # pylint: dis
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     if not node.parameters.use_state_discrimination:
         raise ValueError(
-            "33b_cz_leakage_amplification_palea requires use_state_discrimination=True for P(11) analysis."
+            "32b_cz_leakage_amplification_palea requires use_state_discrimination=True for P(11) analysis."
         )
 
     # Get the active qubit pairs from the node and organize them by batches

@@ -197,3 +197,15 @@ def center_matrix(da: xr.DataArray) -> xr.DataArray:
         ]
     )
     return da.assign(center_matrix=(["I", "Q"], center))
+
+
+def gef_centers_in_raw_adc(center_matrix_volts: np.ndarray, readout_length: float) -> list:
+    """Invert ``convert_IQ_to_V`` so ``gef_centers`` match the QUA ``measure`` output.
+
+    ``process_raw_dataset`` scales I/Q with ``convert_IQ_to_V``, which always uses
+    ``operations["readout"].length``. The inverse must use that same length even when the
+    node played ``readout_GEF``. Using the GEF pulse length inflates the stored centers by
+    ``L_GEF / L_readout`` and makes ``readout_state_gef`` mis-assign |e> as |g>.
+    """
+    scaled = np.asarray(center_matrix_volts, dtype=float) * readout_length / 2**12
+    return [[float(i), float(q_val)] for i, q_val in scaled.tolist()]
