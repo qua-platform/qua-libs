@@ -51,7 +51,7 @@ Simulation and historical-data analysis do not update the machine state.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="14a_gef_readout_duration_optimization",
+    name="14c_gef_readout_duration_optimization",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),

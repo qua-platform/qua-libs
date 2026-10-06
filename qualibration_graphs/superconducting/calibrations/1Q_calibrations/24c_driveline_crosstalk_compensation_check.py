@@ -47,7 +47,7 @@ QUAlibrate storage; the matrix H5 is copied to QEC/crosstalktest.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="11e_driveline_crosstalk_compensation_check",
+    name="24c_driveline_crosstalk_compensation_check",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
@@ -160,12 +160,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["amplitude_input"] = magnitude = read_matrix(node, "amplitude")
     node.namespace["phase_input"] = phase = read_matrix(node, "phase")
     if phase.attrs.get("amplitude_matrix_sha256") != node.namespace["amplitude_matrix_sha256"]:
-        raise ValueError("Phase matrix belongs to a different amplitude run; rerun 11d")
+        raise ValueError("Phase matrix belongs to a different amplitude run; rerun 24b")
     if not np.allclose(magnitude.amplitude_ratio, phase.amplitude_ratio, rtol=1e-12, atol=0, equal_nan=True):
-        raise ValueError("Amplitude matrix changed after phase calibration; rerun 11d")
+        raise ValueError("Amplitude matrix changed after phase calibration; rerun 24b")
     off_diagonal = phase.compensation_phase_rad.where(phase.qubit != phase.drive_qubit)
     if int(off_diagonal.count()) != len(phase.qubit) * (len(phase.qubit) - 1):
-        raise ValueError("Missing compensation phases; rerun 11d")
+        raise ValueError("Missing compensation phases; rerun 24b")
     node.namespace["qua_program"], node.namespace["sweep_axes"] = _build_program(
         node, magnitude, phase.compensation_phase_rad.fillna(0) / (2 * np.pi)
     )

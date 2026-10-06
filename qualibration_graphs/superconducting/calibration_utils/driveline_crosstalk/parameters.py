@@ -86,7 +86,7 @@ class CommonParameters(NodeParameters, CommonNodeParameters, NodeSpecificParamet
 class AmplitudeParameters(
     NodeParameters, CommonNodeParameters, AmplitudeNodeSpecificParameters, QubitsExperimentNodeParameters
 ):
-    """Parameter set for 11c_driveline_crosstalk_amplitude."""
+    """Parameter set for 24a_driveline_crosstalk_amplitude."""
 
     timeout: int = Field(default=300, ge=1, le=300)
     """Session timeout in seconds, bounded by the cloud execution limit."""
@@ -95,7 +95,7 @@ class AmplitudeParameters(
 class PhaseParameters(
     NodeParameters, CommonNodeParameters, PhaseNodeSpecificParameters, QubitsExperimentNodeParameters
 ):
-    """Parameter set for 11d_driveline_crosstalk_phase."""
+    """Parameter set for 24b_driveline_crosstalk_phase."""
 
     timeout: int = Field(default=300, ge=1, le=300)
     """Session timeout in seconds, bounded by the cloud execution limit."""
@@ -104,7 +104,7 @@ class PhaseParameters(
 class CheckParameters(
     NodeParameters, CommonNodeParameters, CheckNodeSpecificParameters, QubitsExperimentNodeParameters
 ):
-    """Parameter set for 11e_driveline_crosstalk_compensation_check."""
+    """Parameter set for 24c_driveline_crosstalk_compensation_check."""
 
     timeout: int = Field(default=300, ge=1, le=300)
     """Session timeout in seconds, bounded by the cloud execution limit."""

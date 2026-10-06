@@ -55,7 +55,7 @@ class Parameters(
     NodeSpecificParameters,
     QubitsExperimentNodeParameters,
 ):
-    """Parameter set for 15d_readout_induced_dephasing."""
+    """Parameter set for 23c_readout_induced_dephasing."""
 
 
 def amplitude_factors(parameters: Parameters) -> np.ndarray:

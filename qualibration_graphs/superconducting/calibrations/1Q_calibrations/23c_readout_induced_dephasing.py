@@ -63,7 +63,7 @@ rotation may be compensated later with a virtual Z correction.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="15d_readout_induced_dephasing",
+    name="23c_readout_induced_dephasing",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),

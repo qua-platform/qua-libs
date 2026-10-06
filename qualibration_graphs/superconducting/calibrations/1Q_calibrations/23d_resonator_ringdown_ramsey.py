@@ -39,7 +39,7 @@ machine state.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="15e_resonator_ringdown_ramsey",
+    name="23d_resonator_ringdown_ramsey",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),

@@ -39,13 +39,13 @@ from quam_config import Quam
 description = """DRIVE-LINE CROSSTALK PHASE CALIBRATION
 Read amplitude_matrix.h5. Apply simultaneous source a and target r*a pulses.
 Sweep phase x amplitude, refine the coarse minimum in a narrow phase window,
-and return destructive compensation phase. Independent validation is in 11e.
+and return destructive compensation phase. Independent validation is in 24c.
 The active machine state is not updated. Full datasets and figures use normal
 QUAlibrate storage; the matrix H5 is copied to QEC/crosstalktest.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="11d_driveline_crosstalk_phase",
+    name="24b_driveline_crosstalk_phase",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),

@@ -43,7 +43,7 @@ QUAlibrate storage; the matrix H5 is copied to QEC/crosstalktest.
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="11c_driveline_crosstalk_amplitude",
+    name="24a_driveline_crosstalk_amplitude",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),

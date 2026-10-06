@@ -36,7 +36,7 @@ class NodeSpecificParameters(RunnableParameters):
 
 
 class Parameters(NodeParameters, CommonNodeParameters, NodeSpecificParameters, QubitsExperimentNodeParameters):
-    """Parameter set for 15e_resonator_ringdown_ramsey."""
+    """Parameter set for 23d_resonator_ringdown_ramsey."""
 
 
 def delay_values(parameters: NodeSpecificParameters) -> np.ndarray:
