@@ -45,6 +45,7 @@ QSWITCH_IP = "127.0.0.1"  # QSwitch UDP :5025
 # 1b. QSWITCH (UDP)
 # ===========================================================================
 
+
 class QSwitch_LAN:
     def __init__(self, ip_addr, port=5025, timeout=3.0):
         self._ip = ip_addr
@@ -210,10 +211,7 @@ v_ch = CONTACTS[SWEEP_CONTACT]
 for ch in {v_ch, SENSOR_CHANNEL}:
     qdac.channel(ch).output_range(OUTPUT_RANGE)
     qdac.channel(ch).output_filter(OUTPUT_FILTER)
-print(
-    f"QDAC ch {v_ch} and ch {SENSOR_CHANNEL}: "
-    f"output_range={OUTPUT_RANGE}  output_filter={OUTPUT_FILTER}"
-)
+print(f"QDAC ch {v_ch} and ch {SENSOR_CHANNEL}: " f"output_range={OUTPUT_RANGE}  output_filter={OUTPUT_FILTER}")
 
 sleep(0.2)
 
