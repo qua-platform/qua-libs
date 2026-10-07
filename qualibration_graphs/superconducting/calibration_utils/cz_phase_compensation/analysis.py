@@ -31,8 +31,13 @@ class FitResults:
     success: bool
 
 
+def wrap_phase(phase):
+    """Wrap a phase in 2π units to the [-0.5, 0.5) range (representing -π to π)."""
+    return (phase + 0.5) % 1 - 0.5
+
+
 def fix_oscillation_phi_2pi(fit_data):
-    """Extract and normalise the oscillation phase to the [0, 1) range (representing 0 to 2π).
+    """Extract and normalise the oscillation phase to the [-0.5, 0.5) range (representing -π to π).
 
     Parameters:
     -----------
@@ -42,10 +47,10 @@ def fix_oscillation_phi_2pi(fit_data):
     Returns:
     --------
     xr.DataArray
-        Phase values normalised to [0, 1).
+        Phase values normalised to [-0.5, 0.5).
     """
     phase = fit_data.sel(fit_vals="phi")
-    phase = (phase / (2 * np.pi)) % 1
+    phase = wrap_phase(phase / (2 * np.pi))
     return phase
 
 

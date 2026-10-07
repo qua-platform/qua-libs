@@ -35,6 +35,11 @@ class FitResults:
     target_sinc_params: Dict[str, float] = field(default_factory=dict)
 
 
+def wrap_phase(phase):
+    """Wrap a phase in 2π units to the [-0.5, 0.5) range (representing -π to π)."""
+    return (phase + 0.5) % 1 - 0.5
+
+
 def _sinc_model(x: np.ndarray, A: float, B: float, x_0: float, w: float) -> np.ndarray:
     """Sinc model used to localise the central peak of the averaged signal."""
     return B + A * np.sinc(w * (x - x_0) / np.pi)
