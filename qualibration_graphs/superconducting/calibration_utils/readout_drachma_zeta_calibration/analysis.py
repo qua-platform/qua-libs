@@ -14,7 +14,8 @@ class FitParameters:
     zeta_excited_hz: float
     power_ground: float
     power_excited: float
-    p_value_ge: float
+    p_value_noop_ground: float
+    p_value_noop_excited: float
     zeta_difference_hz: float
     unconstrained_zeta_ground_hz: float
     unconstrained_zeta_excited_hz: float
@@ -58,15 +59,14 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, dict[str, FitParamet
         )
         idx = dict(zip(STATES, pair)) if pair is not None else free_idx
         chosen = {s: float(zeta[s][idx[s]]) for s in STATES}
-        # z-test reported at the point whose summed ground+excited power is lowest.
-        joint_idx = int(ds["power"].sel(qubit=q).sum("state").argmin("point"))
-        p_value = float(ds["p_value_ge"].sel(qubit=q).isel(point=joint_idx))
+        p_value = {s: float(ds["p_value_noop"].sel(qubit=q, state=s).isel(point=idx[s])) for s in STATES}
         fits[str(q)] = FitParameters(
             zeta_ground_hz=chosen["ground"],
             zeta_excited_hz=chosen["excited"],
             power_ground=float(power["ground"][idx["ground"]]),
             power_excited=float(power["excited"][idx["excited"]]),
-            p_value_ge=p_value,
+            p_value_noop_ground=p_value["ground"],
+            p_value_noop_excited=p_value["excited"],
             zeta_difference_hz=chosen["excited"] - chosen["ground"],
             unconstrained_zeta_ground_hz=float(zeta["ground"][free_idx["ground"]]),
             unconstrained_zeta_excited_hz=float(zeta["excited"][free_idx["excited"]]),
@@ -83,7 +83,7 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, dict[str, FitParamet
 
 
 def log_fitted_results(fit_results: dict, alpha: float, log_callable=None):
-    """Log one line per qubit with the best zetas and the g-vs-e z-test at the joint-best point."""
+    """Log one line per qubit with the best zetas and the test-vs-no-operation z-test at each chosen point."""
     if log_callable is None:
         log_callable = print
     for q, fit in fit_results.items():
@@ -92,10 +92,11 @@ def log_fitted_results(fit_results: dict, alpha: float, log_callable=None):
             if fit["success"]
             else "FAIL! (no zeta pair within max_zeta_difference_hz, or minimum at the edge of the scan)"
         )
-        verdict = "indistinguishable (depleted)" if fit["p_value_ge"] > alpha else "distinguishable (not depleted)"
+        verdicts = {s: "depleted" if fit[f"p_value_noop_{s}"] > alpha else "not depleted" for s in STATES}
         log_callable(
             f"Results for qubit {q}: zeta_ground = {fit['zeta_ground_hz'] * 1e-3:.2f} kHz, "
             f"zeta_excited = {fit['zeta_excited_hz'] * 1e-3:.2f} kHz "
             f"(difference {fit['zeta_difference_hz'] * 1e-3:+.2f} kHz) | "
-            f"g-vs-e z-test p = {fit['p_value_ge']:.3g}, {verdict} | --> {status}"
+            f"vs no-operation p: ground = {fit['p_value_noop_ground']:.3g} ({verdicts['ground']}), "
+            f"excited = {fit['p_value_noop_excited']:.3g} ({verdicts['excited']}) | --> {status}"
         )
