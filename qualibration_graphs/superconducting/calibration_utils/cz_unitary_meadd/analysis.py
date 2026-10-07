@@ -75,8 +75,8 @@ class FitResults:
         phi_floquet: Optional |11>-reference estimate of phi (known modulo π), None if not measured.
         fidelity: Process fidelity to CZ of the fitted gate, as measured (coherent errors only).
         corrected_fidelity: Process fidelity expected after applying the suggested phase_shift values.
-        suggested_phase_shift_control/target: phase_shift values (units of 2π) that set zeta to 0 and gamma to
-            the target chosen by the correction_target parameter.
+        suggested_phase_shift_control/target: phase_shift values (units of 2π, in [-0.5, 0.5)) that set zeta to 0
+            and gamma to the target chosen by the correction_target parameter.
         success: True if all quality checks passed.
     """
 
@@ -207,8 +207,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             corrected_fidelity=process_fidelity(
                 gate_unitary(values["phi"], values["theta"], values["chi"] + zeta, gamma_target, 0.0)
             ),
-            suggested_phase_shift_control=float((x_control + s * a / (2 * np.pi)) % 1),
-            suggested_phase_shift_target=float((x_target + s * b / (2 * np.pi)) % 1),
+            suggested_phase_shift_control=float(wrap_phase(x_control + s * a / (2 * np.pi))),
+            suggested_phase_shift_target=float(wrap_phase(x_target + s * b / (2 * np.pi))),
             success=success,
         )
         fits.append(curves.assign(success=success))
@@ -342,6 +342,11 @@ def gate_unitary(phi: float, theta: float, chi: float, gamma: float, zeta: float
 def process_fidelity(unitary: np.ndarray) -> float:
     """Process fidelity |Tr(CZ† U)|² / 16 of a two-qubit unitary to the ideal CZ."""
     return float(abs(np.trace(CZ.conj().T @ unitary)) ** 2 / 16)
+
+
+def wrap_phase(phase):
+    """Wrap a phase in 2π units to the [-0.5, 0.5) range (representing -π to π)."""
+    return (phase + 0.5) % 1 - 0.5
 
 
 def optimal_gamma(phi: float) -> float:
