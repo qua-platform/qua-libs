@@ -7,6 +7,10 @@ import numpy as np
 import xarray as xr
 from matplotlib.figure import Figure
 
+from calibration_utils.cz_unitary_meadd.analysis import PAULI_LABELS, gate_unitary, pauli_chi_matrix
+
+_CZ = np.diag([1, 1, 1, -1])
+
 
 def _figure(num_pairs: int, title: str):
     fig, axes = plt.subplots(num_pairs, 3, figsize=(15, 3.8 * num_pairs), squeeze=False)
@@ -99,4 +103,78 @@ def plot_floquet(ds_fit: xr.Dataset, fit_results: Dict[str, Dict]) -> Figure:
         for ax in row:
             ax.set_xlabel("number of CZ gates")
     fig.tight_layout()
+    return fig
+
+
+def _angle_table_rows(r: Dict) -> list:
+    """Rows [angle, measured (rad), ideal (rad), measured - ideal (mrad)] for the angle table."""
+    rows = []
+    for label, key, ideal, ideal_label in (
+        ("ϕ", "phi", np.pi, "π"),
+        ("ϕ (Floquet)", "phi_floquet", np.pi, "π"),
+        ("θ", "theta", 0.0, "0"),
+        ("γ", "gamma", 0.0, "0"),
+        ("ζ", "zeta", 0.0, "0"),
+    ):
+        if r.get(key) is None:
+            continue
+        value, err = r[key], r[f"{key}_err"]
+        rows.append([label, f"{value:.4f} ± {err:.4f}", ideal_label, f"{1e3 * (value - ideal):+.2f} ± {1e3 * err:.2f}"])
+    # The swap phase χ has no ideal value: it is undefined when θ = 0
+    rows.append(["χ (swap phase)", f"{r['chi']:.3f}", "—", f"sign margin {r['chi_sign_margin']:.2f}"])
+    return rows
+
+
+def plot_process_matrix(fit_results: Dict[str, Dict]) -> Figure:
+    """Pauli-basis process matrix χ of the ideal CZ, of the reconstructed gate W, their difference, and the angles.
+
+    Each pair gets two rows (real and imaginary parts) and a table of the fitted angles against the ideal CZ.
+    χ of the measured gate comes from the fitted angles, so it shows only the coherent part of the gate (no
+    decoherence or leakage).
+    """
+    chi_ideal = pauli_chi_matrix(_CZ)
+    num_pairs = len(fit_results)
+    fig = plt.figure(figsize=(22, 10 * num_pairs))
+    grid = fig.add_gridspec(2 * num_pairs, 4, width_ratios=[1, 1, 1, 1.1])
+    fig.suptitle("Process matrix χ (Pauli basis, control first)")
+    for i, (qp_name, r) in enumerate(fit_results.items()):
+        unitary = gate_unitary(r["phi"], r["theta"], r["chi"], r["gamma"], r["zeta"])
+        chi_measured = pauli_chi_matrix(unitary)
+        fidelity = abs(np.trace(_CZ.conj().T @ unitary)) ** 2 / 16
+        diff = chi_measured - chi_ideal
+        diff_max = max(np.max(np.abs(np.nan_to_num(diff))), 1e-6)
+        for j, part, name in ((2 * i, np.real, "Re"), (2 * i + 1, np.imag, "Im")):
+            panels = (
+                (0, part(chi_ideal), 0.25, f"{qp_name}: {name} χ, ideal CZ"),
+                (1, part(chi_measured), 0.25, f"{name} χ, measured (process fidelity {fidelity:.5f})"),
+                (2, part(diff), diff_max, f"{name} χ, measured - ideal ({_status(r)})"),
+            )
+            for k, data, vmax, title in panels:
+                ax = fig.add_subplot(grid[j, k])
+                image = ax.imshow(data, cmap="RdBu", vmin=-vmax, vmax=vmax)
+                fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+                ax.set_xticks(range(len(PAULI_LABELS)), PAULI_LABELS, rotation=90, fontsize=7)
+                ax.set_yticks(range(len(PAULI_LABELS)), PAULI_LABELS, fontsize=7)
+                ax.set_title(title)
+
+        ax = fig.add_subplot(grid[2 * i : 2 * i + 2, 3])
+        ax.axis("off")
+        table = ax.table(
+            cellText=_angle_table_rows(r),
+            colLabels=["angle", "measured", "ideal CZ", "Δ (mrad)"],
+            colWidths=[0.24, 0.3, 0.16, 0.3],
+            bbox=[0, 0.25, 1, 0.5],
+            cellLoc="center",
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        ax.text(
+            0.5,
+            0.78,
+            f"{qp_name}: fitted angles in rad, Δ = measured - ideal ({_status(r)})",
+            ha="center",
+            fontsize=11,
+            transform=ax.transAxes,
+        )
+    fig.tight_layout(rect=(0, 0, 1, 0.98))
     return fig

@@ -11,6 +11,7 @@ from calibration_utils.cz_unitary_meadd import (
     plot_floquet,
     plot_meadd_phi,
     plot_meadd_theta,
+    plot_process_matrix,
     process_raw_dataset,
     require_prerequisites,
 )
@@ -317,12 +318,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot one figure per sub-experiment, with one row per qubit pair."""
+    """Plot one figure per sub-experiment and one for the process matrix, with one row per qubit pair."""
     ds_fit, fit_results = node.results["ds_fit"], node.results["fit_results"]
     node.results["figures"] = {
         "meadd_phi": plot_meadd_phi(ds_fit, fit_results),
         "meadd_theta": plot_meadd_theta(ds_fit, fit_results),
         "floquet": plot_floquet(ds_fit, fit_results),
+        "process_matrix": plot_process_matrix(fit_results),
     }
     plt.show()
 

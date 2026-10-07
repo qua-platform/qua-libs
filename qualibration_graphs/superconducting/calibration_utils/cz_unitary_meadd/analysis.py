@@ -44,6 +44,16 @@ KEPT_FRACTION_MIN = 0.5
 # A pair fails if a phase line fit has a residual above this value, which means the unwrap slipped by 2π
 UNWRAP_RESIDUAL_MAX = np.pi / 2
 
+_PAULIS = {
+    "I": np.eye(2),
+    "X": np.array([[0, 1], [1, 0]]),
+    "Y": np.array([[0, -1j], [1j, 0]]),
+    "Z": np.diag([1, -1]),
+}
+# Two-qubit Pauli basis, control (L) first
+PAULI_LABELS = [a + b for a in _PAULIS for b in _PAULIS]
+_TWO_QUBIT_PAULIS = [np.kron(_PAULIS[a], _PAULIS[b]) for a in _PAULIS for b in _PAULIS]
+
 
 @dataclass
 class FitResults:
@@ -294,6 +304,29 @@ def analyze_pair(rows: List[Dict[str, int]], P: np.ndarray, zeta_raw_offset: flo
         coords={**meadd, **floquet},
     )
     return values, curves
+
+
+def gate_unitary(phi: float, theta: float, chi: float, gamma: float, zeta: float) -> np.ndarray:
+    """The 4x4 gate model W of the module docstring for the given angles, in the basis |b_L b_R>."""
+    c, s = np.cos(theta), np.sin(theta)
+    return np.array(
+        [
+            [np.exp(1j * gamma), 0, 0, 0],
+            [0, np.exp(-1j * zeta) * c, -1j * np.exp(1j * chi) * s, 0],
+            [0, -1j * np.exp(-1j * chi) * s, np.exp(1j * zeta) * c, 0],
+            [0, 0, 0, np.exp(-1j * (gamma + phi))],
+        ]
+    )
+
+
+def pauli_chi_matrix(unitary: np.ndarray) -> np.ndarray:
+    """Process matrix χ of a two-qubit unitary in the Pauli basis, ordered as PAULI_LABELS.
+
+    With U = Σ_m c_m P_m and c_m = Tr(P_m U) / 4, the process is ρ -> Σ_mn χ_mn P_m ρ P_n with χ_mn = c_m c_n*.
+    χ does not depend on the global phase of U, and its trace is 1.
+    """
+    coeffs = np.array([np.trace(P @ unitary) / 4 for P in _TWO_QUBIT_PAULIS])
+    return np.outer(coeffs, coeffs.conj())
 
 
 def _z_expectations(p: np.ndarray) -> Tuple[float, float]:
