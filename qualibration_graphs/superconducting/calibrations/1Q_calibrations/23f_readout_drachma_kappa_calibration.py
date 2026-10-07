@@ -24,12 +24,13 @@ from quam.components.pulses import SquareReadoutPulse
 from quam_config import Quam
 
 from calibration_utils.readout_drachma_common import (
+    NOOP_SUFFIX,
     STATES,
     amplitude_scale_to_fit,
     assign_core_labels,
     build_batch_groups,
     fetch_round_traces,
-    plot_ge_pvalue_vs_point,
+    plot_noop_pvalue_vs_point,
     process_raw_dataset,
     scale_pulse_kwargs,
     waveform_peak,
@@ -51,7 +52,8 @@ arXiv:2406.04891) by minimising the photon population left in the resonator righ
 Same measurement as 23e_readout_drachma_zeta_calibration, but the scanned knob is kappa. The two
 kappas are chosen jointly: |kappa_ground - kappa_excited| must stay within max_kappa_difference_hz,
 and among the allowed pairs the one with the lowest noise-weighted excess residual power is taken.
-A ground-vs-excited z-test is logged and plotted as an extra depletion check.
+Every shot also measures a single no-operation reference, and a z-test of each (state, point) against it is
+logged and plotted as an extra depletion check.
 
 Details (scan grid, joint pair selection, amplitude limit): calibration_utils/readout_drachma_kappa_calibration/README.md
 
@@ -248,6 +250,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         Q = [declare(fixed) for _ in range(num_qubits)]
         I_st = {s: [declare_output_stream() for _ in range(num_qubits)] for s in STATES}
         Q_st = {s: [declare_output_stream() for _ in range(num_qubits)] for s in STATES}
+        I_noop_st = [declare_output_stream() for _ in range(num_qubits)]
+        Q_noop_st = [declare_output_stream() for _ in range(num_qubits)]
 
         for multiplexed_qubits in qubits.batch():
             for qubit in multiplexed_qubits.values():
@@ -256,6 +260,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
             with for_(n, 0, n < node.parameters.num_shots, n + 1):
                 save(n, n_st)
+                # Single no-operation reference: the probe right after reset, no DRACHMA pulse.
+                for i, qubit in multiplexed_qubits.items():
+                    qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                align()
+                for i, qubit in multiplexed_qubits.items():
+                    rr = qubit.resonator
+                    reset_if_phase(rr.name)
+                    rr.measure(PROBE_OPERATION, qua_vars=(I[i], Q[i]))
+                    save(I[i], I_noop_st[i])
+                    save(Q[i], Q_noop_st[i])
+                    rr.wait(depletion_time // 4)
+                align()
                 for state in STATES:
                     # num_points is a plain Python int, so this loop unrolls at compile time.
                     for point in range(num_points):
@@ -280,6 +296,11 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         with stream_processing():
             n_st.save("n")
+            for i in range(num_qubits):
+                I_noop_st[i].average().save(f"I_{NOOP_SUFFIX}{i + 1}")
+                Q_noop_st[i].average().save(f"Q_{NOOP_SUFFIX}{i + 1}")
+                (I_noop_st[i] * I_noop_st[i]).average().save(f"I_sq_{NOOP_SUFFIX}{i + 1}")
+                (Q_noop_st[i] * Q_noop_st[i]).average().save(f"Q_sq_{NOOP_SUFFIX}{i + 1}")
             for state in STATES:
                 for i in range(num_qubits):
                     I_st[state][i].buffer(num_points).average().save(f"I_{state}{i + 1}")
@@ -319,7 +340,10 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
         coords = dict(node.namespace["sweep_axes"])
         coords.update(node.namespace["kappa_coords"])
         node.results["ds_raw"] = xr.Dataset(
-            {name: (("qubit", "point"), arr) for name, arr in raw_traces.items()},
+            {
+                name: (("qubit",) if name.endswith(f"_{NOOP_SUFFIX}") else ("qubit", "point"), arr)
+                for name, arr in raw_traces.items()
+            },
             coords=coords,
         )
     finally:
@@ -344,7 +368,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Convert the probe I/Q to volts, compute the residual power vs kappa and the g-vs-e z-test, and
+    """Convert the probe I/Q to volts, compute the residual power vs kappa and the test-vs-no-operation z-test, and
     pick the power minimum per qubit and state."""
     ds = process_raw_dataset(node.results["ds_raw"], node.parameters.probe_length, node.parameters.num_shots)
     node.results["ds_raw"] = ds
@@ -361,10 +385,10 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the residual probe power vs kappa and the g-vs-e z-test p-value, one subplot per qubit."""
+    """Plot the residual probe power vs kappa and the test-vs-no-operation z-test p-value, one subplot per qubit."""
     fig_power = plot_power_vs_kappa(node.results["ds_fit"], node.namespace["qubits"], node.results["fit_results"])
-    fig_pvalue = plot_ge_pvalue_vs_point(node.results["ds_fit"], node.namespace["qubits"], node.parameters.alpha)
-    node.results["figures"] = {"power_vs_kappa": fig_power, "ge_pvalue": fig_pvalue}
+    fig_pvalue = plot_noop_pvalue_vs_point(node.results["ds_fit"], node.namespace["qubits"], node.parameters.alpha)
+    node.results["figures"] = {"power_vs_kappa": fig_power, "noop_pvalue": fig_pvalue}
     plt.show()
 
 

@@ -40,10 +40,10 @@ is not updated and a message asks for a lower pulse amplitude.
 
 ## Extra depletion check
 
-A ground-vs-excited z-test (chi-squared on the I/Q mean difference, 2 degrees of freedom,
-`p = exp(-chi2 / 2)`) is computed at every point; no no-operation reference is used. `p > alpha` means
-the two states leave indistinguishable probe fields, i.e. the resonator is depleted. It is logged and
-plotted only.
+Every shot also measures a single no-operation reference (reset, then the probe only, no DRACHMA pulse).
+A z-test (chi-squared on the I/Q mean difference, 2 degrees of freedom, `p = exp(-chi2 / 2)`) of each
+(state, point) against it is computed. `p > alpha` means the probe field is indistinguishable from the
+reference, i.e. the resonator is depleted. It is logged and plotted only.
 
 ## State update
 
@@ -64,5 +64,5 @@ plotted only.
   `log_fitted_results`.
 - **`plotting.py`** — `plot_power_vs_zeta`: residual probe power vs zeta, ground and excited overlaid.
 - Shared pieces live in `calibration_utils/readout_drachma_common/`: the trace fetching and
-  `process_raw_dataset` (`traces.py`), `plot_ge_pvalue_vs_point` (`plotting.py`), pair selection
+  `process_raw_dataset` (`traces.py`), `plot_noop_pvalue_vs_point` (`plotting.py`), pair selection
   (`pairs.py`), waveform-peak helpers (`waveform.py`) and the batching helpers (`batching.py`).

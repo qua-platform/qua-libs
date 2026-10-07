@@ -37,8 +37,8 @@ class NodeSpecificParameters(RunnableParameters):
     qubit reset, so the resonator is empty for sure. Overrides resonator.depletion_time for this node only.
     Must be a positive multiple of 4. Default 5 us."""
     alpha: float = 0.001
-    """Significance level of the ground-vs-excited z-test: p > alpha means the two states are
-    indistinguishable in the probe, i.e. the resonator is depleted. Default is 0.05."""
+    """Significance level of the test-vs-no-operation z-test: p > alpha means the probe field is
+    indistinguishable from the no-operation reference, i.e. the resonator is depleted. Default is 0.05."""
 
 
 class Parameters(
