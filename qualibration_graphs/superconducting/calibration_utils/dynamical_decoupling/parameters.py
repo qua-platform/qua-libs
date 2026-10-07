@@ -160,7 +160,11 @@ def assign_schedule_coords(ds, schedule: dict):
         windows=(("point",), windows, {"long_name": "number of windows"}),
         time=(("point",), windows * schedule["window_ns"], {"long_name": "total evolution time", "units": "ns"}),
         total_pulses=(("pulses_per_window", "point"), n_values[:, None] * windows[None, :]),
-        tau=(("qubit", "pulses_per_window"), free_ns / (2 * n_values), {"long_name": "pulse half-spacing", "units": "ns"}),
+        tau=(
+            ("qubit", "pulses_per_window"),
+            free_ns / (2 * n_values),
+            {"long_name": "pulse half-spacing", "units": "ns"},
+        ),
         pulse_spacing=(("qubit", "pulses_per_window"), spacing_ns, {"long_name": "pi-pulse spacing", "units": "ns"}),
         window_ns=schedule["window_ns"],
         sequence=schedule["sequence"],

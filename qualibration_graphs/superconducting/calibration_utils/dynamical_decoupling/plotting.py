@@ -158,7 +158,15 @@ def plot_noise_spectrum(ds_fit: xr.Dataset, qubits: List[AnyTransmon]):
         for mask, face, label in groups:
             if np.any(mask & np.isfinite(psd)):
                 ax.errorbar(
-                    f0[mask], psd[mask], yerr=err[mask], fmt="o", ms=5, mfc=face, mec="k", ecolor="k", capsize=2,
+                    f0[mask],
+                    psd[mask],
+                    yerr=err[mask],
+                    fmt="o",
+                    ms=5,
+                    mfc=face,
+                    mec="k",
+                    ecolor="k",
+                    capsize=2,
                     label=label,
                 )
         A, beta, C = (float(fit[f"noise_fit_{k}"]) for k in ("amplitude", "exponent", "floor"))
@@ -169,7 +177,11 @@ def plot_noise_spectrum(ds_fit: xr.Dataset, qubits: List[AnyTransmon]):
             ax.text(
                 0.98,
                 0.98,
-                rf"$A$ (1 MHz) = {A:.0f} $\pm$ {dA:.0f} Hz" "\n" rf"$\beta$ = {beta:.2f} $\pm$ {dbeta:.2f}" "\n" rf"$C$ = {C:.0f} $\pm$ {dC:.0f} Hz",
+                rf"$A$ (1 MHz) = {A:.0f} $\pm$ {dA:.0f} Hz"
+                "\n"
+                rf"$\beta$ = {beta:.2f} $\pm$ {dbeta:.2f}"
+                "\n"
+                rf"$C$ = {C:.0f} $\pm$ {dC:.0f} Hz",
                 transform=ax.transAxes,
                 ha="right",
                 va="top",
@@ -218,7 +230,13 @@ def _mark_floor_shifted(ax, n_values, values, shifted):
     from the decision)."""
     if np.any(shifted):
         ax.plot(
-            n_values[shifted], values[shifted], "o", ms=7, mfc="white", mec="tab:orange", mew=1.5,
+            n_values[shifted],
+            values[shifted],
+            "o",
+            ms=7,
+            mfc="white",
+            mec="tab:orange",
+            mew=1.5,
             label=rf"excluded: decay floor $\neq$ $N$ = {n_values[0]} (leakage/heating?)",
         )
 

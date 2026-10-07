@@ -316,7 +316,9 @@ def test_noise_power_law_fit():
 
 def test_noise_fit_can_be_disabled():
     # Decays whose dephasing spectrum is a clean power law + floor, S_f = 3000 (1 MHz / f)^0.8 + 300 Hz
-    sched = get_sweep_schedule(Parameters(sequence={"sequence": "CPMG"}, sweep={"max_num_windows": 60}), [_qubit("q1", 48)])
+    sched = get_sweep_schedule(
+        Parameters(sequence={"sequence": "CPMG"}, sweep={"max_num_windows": 60}), [_qubit("q1", 48)]
+    )
     n_values = sched["pulses_per_window"]
     ds = xr.Dataset(
         coords={"qubit": ["q1"], "pulses_per_window": n_values, "point": np.arange(len(sched["window_counts"]))}
@@ -364,4 +366,3 @@ def test_floor_shift_is_flagged_and_excluded():
     # Unshifted curves keep an unbiased T2
     T2_us = 1e-3 * f.T2.values[:-2]
     assert np.max(np.abs(T2_us / true_T2[:-2] - 1)) < 0.08
-

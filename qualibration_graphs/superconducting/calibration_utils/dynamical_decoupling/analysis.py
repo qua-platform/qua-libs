@@ -9,7 +9,6 @@ from scipy.optimize import least_squares
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 
-
 ALPHA_BOUNDS = (1.0, 3.0)  # stretch exponent: 1 = exponential, 2 = Gaussian
 ALPHA_RELIABLE_MAX = 1.5  # above this, the first-order noise spectrum is unreliable
 MIN_COHERENCE_FOR_MEASURED_ERROR = 0.2  # below this after M windows, use the fitted error per round
