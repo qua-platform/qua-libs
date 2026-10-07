@@ -1,34 +1,40 @@
-"""QUA helpers for playing compiled CAFE circuits."""
+"""QUA helpers for playing compiled CAFE circuits.
 
-from qm.qua import assign
+Every frame rotation is a compile-time constant, selected with ``switch_`` like the gates of
+the two-qubit RB node. No angle is loaded from a QUA array or held in a QUA variable while
+the pulses play.
+"""
 
-from .circuits import NUM_ANGLES_PER_QUBIT_LAYER, NUM_STATES
+import numpy as np
+from qm.qua import case_, switch_
 
-# Flat-array strides, matching the C-order layout of CafeCircuitAngles
-QUBIT_STRIDE = NUM_ANGLES_PER_QUBIT_LAYER
-LAYER_STRIDE = 2 * QUBIT_STRIDE
-CIRCUIT_STRIDE = 2 * LAYER_STRIDE
+# Frame rotations smaller than this (in units of 2π) are skipped
+_MIN_ANGLE_2PI = 1e-9
 
 
-def play_compiled_layer(qubit, angles, offset, angle_var) -> None:
+def play_layer(qubit, angles_2pi) -> None:
     """Play ``Rz(a) · Ry(π/2) · Rz(b) · Ry(π/2) · Rz(c)`` on one qubit.
 
-    ``angles[offset : offset + 3]`` holds (a, b, c) in units of 2π. Z rotations are virtual
-    frame rotations; ``angle_var`` is a QUA fixed variable used to load each angle.
+    ``angles_2pi`` holds (a, b, c) in units of 2π. Z rotations are virtual frame rotations.
     """
+    a, b, c = (float(angle) for angle in angles_2pi)
     # Time order: Rz(c), y90, Rz(b), y90, Rz(a)
-    for k, pulse in ((2, "y90"), (1, "y90"), (0, None)):
-        assign(angle_var, angles[offset + k])
-        qubit.xy.frame_rotation_2pi(angle_var)
+    for angle, pulse in ((c, "y90"), (b, "y90"), (a, None)):
+        if abs(angle) > _MIN_ANGLE_2PI:
+            qubit.xy.frame_rotation_2pi(angle)
         if pulse is not None:
             qubit.xy.play(pulse)
 
 
-def preparation_offset(state_index):
-    """Start of one state's preparation angles in the flat preparation array."""
-    return state_index * CIRCUIT_STRIDE
+def play_layer_cases(qubit_pair, case_var, layers: np.ndarray) -> None:
+    """Play on both qubits of the pair the layer selected by the QUA int ``case_var``.
 
-
-def undo_offset(variant_index: int, depth_index, state_index, num_depths: int):
-    """Start of one circuit's undo angles in the flat undo array."""
-    return ((variant_index * num_depths + depth_index) * NUM_STATES + state_index) * CIRCUIT_STRIDE
+    ``layers`` has shape (n_cases, 2 qubits, 3), qubit 0 being ``qubit_control``. ``case_var``
+    must lie in [0, n_cases).
+    """
+    with switch_(case_var, unsafe=True):
+        for i, layer in enumerate(layers):
+            with case_(i):
+                play_layer(qubit_pair.qubit_control, layer[0])
+                play_layer(qubit_pair.qubit_target, layer[1])
+    qubit_pair.align()

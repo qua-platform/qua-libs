@@ -8,10 +8,16 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from calibration_utils.cz_cafe.analysis import fit_cafe_curve, model_fidelity  # noqa: E402
+from calibration_utils.cz_cafe.analysis import (  # noqa: E402
+    MAX_DEPTH0_CHI2_RED,
+    depth0_consistency,
+    fit_cafe_curve,
+    model_fidelity,
+)
 from calibration_utils.cz_cafe.circuits import (  # noqa: E402
     CZ,
     build_circuit_angles,
+    compiled_layer,
     cycle_unitary,
     fsim_unitary,
     one_cz_preparation,
@@ -48,6 +54,61 @@ def test_compiled_circuits_return_to_ground_with_reference_gate(variant, referen
         for istate in range(16):
             p00 = simulate_return_probability(angles.preparation[istate], angles.undo[0, idepth, istate], cycle, depth)
             assert p00 == pytest.approx(1, abs=1e-10)
+
+
+@pytest.mark.parametrize("variant", ["cafe", "decaf"])
+@pytest.mark.parametrize("reference", [CZ, fsim_unitary(0.04, 0.03, -0.05)])
+def test_switch_tables_reproduce_every_circuit(variant, reference):
+    """The tables played by the QUA switch cases (units of 2π) give back every compiled circuit."""
+    depths = list(range(0, 10))
+    angles = build_circuit_angles([variant], depths, reference)
+    preparation = 2 * np.pi * angles.preparation_2pi()
+    undo_circuits, undo_index = angles.undo_table_2pi()
+    undo_circuits = 2 * np.pi * undo_circuits
+    assert undo_index.shape == (1, len(depths), 16)
+    cycle = cycle_unitary(reference, variant)
+    for idepth, depth in enumerate(depths):
+        for istate in range(16):
+            undo = undo_circuits[undo_index[0, idepth, istate]]
+            p00 = simulate_return_probability(preparation[istate], undo, cycle, depth)
+            assert p00 == pytest.approx(1, abs=1e-10)
+
+
+def test_undo_table_shares_circuits_between_depths():
+    # With an ideal CZ, CZ^n is the identity for even n and CZ for odd n: 2 x 16 distinct circuits
+    _, index = build_circuit_angles(["cafe"], list(range(0, 17)), CZ).undo_table_2pi()
+    assert len(np.unique(index)) == 32
+    assert np.array_equal(index[0, 0], index[0, 2])
+
+
+def _random_unitary(rng, dim):
+    q, r = np.linalg.qr(rng.normal(size=(dim, dim)) + 1j * rng.normal(size=(dim, dim)))
+    return q * (np.diag(r) / abs(np.diag(r)))
+
+
+def test_depth0_return_probability_is_state_independent_for_any_gate():
+    """The n = 0 check in the analysis relies on this: any two-qubit gate error gives the same P(|00>)."""
+    rng = np.random.default_rng(3)
+    angles = build_circuit_angles(["cafe"], [0], CZ)
+    for _ in range(5):
+        gate = _random_unitary(rng, 4)
+        p = []
+        for istate in range(16):
+            prep, undo = angles.preparation[istate], angles.undo[0, 0, istate]
+            psi = compiled_layer(prep[1]) @ gate @ compiled_layer(prep[0]) @ np.array([1, 0, 0, 0])
+            psi = compiled_layer(undo[1]) @ gate @ compiled_layer(undo[0]) @ psi
+            p.append(abs(psi[0]) ** 2)
+        assert np.ptp(p) == pytest.approx(0, abs=1e-10)
+
+
+def test_depth0_consistency_flags_state_dependent_data():
+    rng = np.random.default_rng(5)
+    shots = 100
+    consistent = rng.binomial(shots, 0.9, size=16) / shots
+    assert depth0_consistency(consistent, shots) < MAX_DEPTH0_CHI2_RED
+    # Measured depth-0 data from hardware where the layers were not played as compiled
+    measured = np.array([0.71, 0.64, 0.8, 0.68, 0.28, 0.24, 0.21, 0.29, 0.7, 0.75, 0.59, 0.7, 0.32, 0.44, 0.27, 0.37])
+    assert depth0_consistency(measured, shots) > MAX_DEPTH0_CHI2_RED
 
 
 def _layer(angles, z_sign=1, y_sign=1):

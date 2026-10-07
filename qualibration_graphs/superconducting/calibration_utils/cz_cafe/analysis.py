@@ -44,6 +44,9 @@ _LOWER = np.array([0.0, 0.0, -0.5, -0.5, -0.2])
 _UPPER = np.array([0.999, 0.5, 0.5, 0.5, 0.5])
 MIN_R_SQUARED = 0.9
 MAX_CHI2_RED_UNCONVERGED = 4.0
+# Depth-0 consistency: the 16 return probabilities at n = 0 must agree within shot noise
+MAX_DEPTH0_CHI2_RED = 5.0
+MAX_DEPTH0_SPREAD = 0.15
 
 
 @dataclass
@@ -80,6 +83,8 @@ class FitResults:
     delta_phi: float = float("nan")
     """Fitted conditional-phase error (rad)."""
     r_squared: float = float("nan")
+    depth0_chi2_red: float = float("nan")
+    """Spread of the 16 return probabilities at n = 0 relative to shot noise (see ``depth0_consistency``)."""
     quadratic: QuadraticBudget = field(default_factory=QuadraticBudget)
     message: str = ""
     """Why the fit was flagged as failed (empty on success)."""
@@ -242,6 +247,32 @@ def _apply_success_rules(
         results.message = "; ".join(reasons)
 
 
+def depth0_consistency(p_return: np.ndarray, shots: int) -> float:
+    """Reduced chi² of the 16 return probabilities at n = 0 around their mean.
+
+    At n = 0 the second preparation layer is followed directly by its inverse, so every circuit
+    reduces to ``L0^† · CZ · CZ · L0`` with the same ``L0`` for all 16 states. Whatever the CZ
+    error, the 16 probabilities share one expected value. A large spread means the
+    single-qubit layers are not played as compiled.
+    """
+    p = np.asarray(p_return, dtype=float)
+    mean = p.mean()
+    variance = max(mean * (1 - mean), 1.0 / shots) / shots
+    return float(np.sum((p - mean) ** 2) / variance / (p.size - 1))
+
+
+def _flag_inconsistent_depth0(results: FitResults, p_return_depth0: np.ndarray, shots: int) -> None:
+    results.depth0_chi2_red = depth0_consistency(p_return_depth0, shots)
+    spread = float(np.ptp(p_return_depth0))
+    if results.depth0_chi2_red > MAX_DEPTH0_CHI2_RED and spread > MAX_DEPTH0_SPREAD:
+        reason = (
+            f"n = 0 return probabilities vary across SIC states (spread {spread:.2f}, "
+            f"chi²_red = {results.depth0_chi2_red:.1f}): single-qubit layers are not played as compiled"
+        )
+        results.success = False
+        results.message = "; ".join(filter(None, [results.message, reason]))
+
+
 def fit_quadratic(depths: np.ndarray, fidelity: np.ndarray, sigma: np.ndarray, max_depth: int) -> QuadraticBudget:
     """Fit F_n ≈ a - b n - c n^2 over depths <= ``max_depth`` (Eq. 8)."""
     mask = np.asarray(depths) <= max_depth
@@ -273,6 +304,7 @@ def log_fitted_results(fit_results: Dict[str, Dict[str, FitResults]], log_callab
                 f"\tIncoherent error = {fr.incoherent_error:.2e} ± {fr.incoherent_error_error:.1e}\n"
                 f"\tCoherent error   = {fr.coherent_error:.2e} ± {fr.coherent_error_error:.1e}\n"
                 f"\tSPAM offset      = {fr.spam:.4f}, R² = {fr.r_squared:.3f}\n"
+                f"\tn = 0 consistency across states: chi²_red = {fr.depth0_chi2_red:.1f} (expect ~1)\n"
                 f"\tQuadratic check (n ≤ {fr.quadratic.max_depth}): F = {fr.quadratic.fidelity:.5f}, "
                 f"incoh = {fr.quadratic.incoherent_error:.2e}, coh = {fr.quadratic.coherent_error:.2e}"
             )
@@ -317,6 +349,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
                 reference_gate=reference_gates[qp_name],
                 quadratic_max_depth=quadratic_max_depth,
             )
+            if 0 in depths and "p_return" in sel:
+                _flag_inconsistent_depth0(fr, sel.p_return.sel(depth=0).values, node.parameters.num_shots)
             fit_results[qp_name][variant] = fr
             if np.all(np.isfinite(params)):
                 curves[iq, iv] = model_fidelity(depth_fine, *params, variant, reference_gates[qp_name])

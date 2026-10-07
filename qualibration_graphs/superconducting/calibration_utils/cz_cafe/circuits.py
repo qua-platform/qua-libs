@@ -190,13 +190,27 @@ class CafeCircuitAngles:
     undo: np.ndarray
     """Shape (n_variants, n_depths, 16 states, 2 layers, 2 qubits, 3)."""
 
-    def flat_preparation_2pi(self) -> list:
-        """Preparation angles in units of 2π, wrapped to [-0.5, 0.5), flattened (C order)."""
-        return _wrap_2pi(self.preparation).ravel().tolist()
+    def preparation_2pi(self) -> np.ndarray:
+        """Preparation angles in units of 2π, wrapped to [-0.5, 0.5). Shape (16 states, 2 layers, 2 qubits, 3)."""
+        return _wrap_2pi(self.preparation)
 
-    def flat_undo_2pi(self) -> list:
-        """Undo angles in units of 2π, wrapped to [-0.5, 0.5), flattened (C order)."""
-        return _wrap_2pi(self.undo).ravel().tolist()
+    def undo_table_2pi(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Distinct undo circuits and the circuit used by every (variant, depth, state).
+
+        Many depths share their undo circuit (with an ideal CZ reference, every even depth
+        undoes the bare SIC state), so the QUA program only needs one switch case per
+        distinct circuit.
+
+        Returns:
+            circuits: angles in units of 2π, shape (n_distinct, 2 layers, 2 qubits, 3).
+            index: int array of shape (n_variants, n_depths, 16 states) into ``circuits``.
+        """
+        undo = _wrap_2pi(self.undo)
+        flat = undo.reshape(-1, *undo.shape[3:])
+        _, first, inverse = np.unique(
+            np.round(flat.reshape(len(flat), -1), 9), axis=0, return_index=True, return_inverse=True
+        )
+        return flat[first], inverse.reshape(undo.shape[:3])
 
 
 def _wrap_2pi(angles: np.ndarray) -> np.ndarray:

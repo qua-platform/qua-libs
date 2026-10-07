@@ -16,13 +16,7 @@ from calibration_utils.cz_cafe import (
     process_raw_dataset,
     reference_gates_per_pair,
 )
-from calibration_utils.cz_cafe.qua_utils import (
-    LAYER_STRIDE,
-    QUBIT_STRIDE,
-    play_compiled_layer,
-    preparation_offset,
-    undo_offset,
-)
+from calibration_utils.cz_cafe.qua_utils import play_layer_cases
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
@@ -130,7 +124,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     )
     node.namespace["reference_gates"] = reference_gates
     circuit_angles = {name: build_circuit_angles(variants, depths, gate) for name, gate in reference_gates.items()}
-    preparation_angles = next(iter(circuit_angles.values())).flat_preparation_2pi()
+    # Every angle is played as a compile-time constant, one switch case per circuit
+    preparation_layers = next(iter(circuit_angles.values())).preparation_2pi()
+    undo_tables = {name: angles.undo_table_2pi() for name, angles in circuit_angles.items()}
 
     # Register the sweep axes to be added to the dataset when fetching data
     node.namespace["sweep_axes"] = {
@@ -148,13 +144,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         depth_idx = declare(int)
         depth = declare(int)
         depths_qua = declare(int, value=depths)
-        prep_qua = declare(fixed, value=preparation_angles)
-        undo_qua = [declare(fixed, value=circuit_angles[qp.name].flat_undo_2pi()) for qp in qubit_pairs]
+        undo_index_qua = [declare(int, value=undo_tables[qp.name][1].ravel().tolist()) for qp in qubit_pairs]
         # Per-pair variables so that multiplexed pairs run in parallel
         count = [declare(int) for _ in range(num_qubit_pairs)]
-        offset = [declare(int) for _ in range(num_qubit_pairs)]
-        angle_c = [declare(fixed) for _ in range(num_qubit_pairs)]
-        angle_t = [declare(fixed) for _ in range(num_qubit_pairs)]
+        undo_case = [declare(int) for _ in range(num_qubit_pairs)]
         state_c = [declare(int) for _ in range(num_qubit_pairs)]
         state_t = [declare(int) for _ in range(num_qubit_pairs)]
         flag = [declare(bool) for _ in range(num_qubit_pairs)]
@@ -163,12 +156,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         if record_leakage:
             f_control_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
             f_target_st = [declare_output_stream() for _ in range(num_qubit_pairs)]
-
-        def play_layer(ii, qp, angles, start):
-            """Play one compiled two-qubit layer whose angles start at ``start``."""
-            play_compiled_layer(qp.qubit_control, angles, start, angle_c[ii])
-            play_compiled_layer(qp.qubit_target, angles, start + QUBIT_STRIDE, angle_t[ii])
-            qp.align()
 
         def save_flag(ii, condition, stream):
             assign(flag[ii], condition)
@@ -188,36 +175,37 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(depth_idx, 0, depth_idx < len(depths), depth_idx + 1):
                         assign(depth, depths_qua[depth_idx])
                         with for_(state_idx, 0, state_idx < NUM_STATES, state_idx + 1):
+                            # Select the undo circuit before the sequence starts, so that no
+                            # real-time computation happens between pulses
+                            for ii, qp in multiplexed_qubit_pairs.items():
+                                assign(
+                                    undo_case[ii],
+                                    undo_index_qua[ii][(iv * len(depths) + depth_idx) * NUM_STATES + state_idx],
+                                )
                             # Reset the qubits and their frames
                             for qp in multiplexed_qubit_pairs.values():
                                 qp.qubit_control.reset(node.parameters.reset_type, node.parameters.simulate)
                                 qp.qubit_target.reset(node.parameters.reset_type, node.parameters.simulate)
+                                reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
                             align()
 
                             for ii, qp in multiplexed_qubit_pairs.items():
-                                # reset_frame(qp.qubit_control.xy.name)
-                                # reset_frame(qp.qubit_target.xy.name)
+                                undo_layers = undo_tables[qp.name][0]
                                 # 1. Prepare the SIC state with one CZ
-                                assign(offset[ii], preparation_offset(state_idx))
-                                play_layer(ii, qp, prep_qua, offset[ii])
+                                play_layer_cases(qp, state_idx, preparation_layers[:, 0])
                                 qp.macros[operation].apply()
-                                # qp.align()
-                                play_layer(ii, qp, prep_qua, offset[ii] + LAYER_STRIDE)
+                                play_layer_cases(qp, state_idx, preparation_layers[:, 1])
                                 # 2. Repeat the cycle
                                 with for_(count[ii], 0, count[ii] < depth, count[ii] + 1):
                                     qp.macros[operation].apply()
                                     if variant == "decaf":
-                                        # qp.align()
                                         qp.qubit_control.xy.play("x180")
                                         qp.qubit_target.xy.play("x180")
-                                    # qp.align()
                                 # 3. Undo the state expected from the reference cycle
-                                assign(offset[ii], undo_offset(iv, depth_idx, state_idx, len(depths)))
-                                play_layer(ii, qp, undo_qua[ii], offset[ii])
+                                play_layer_cases(qp, undo_case[ii], undo_layers[:, 0])
                                 qp.macros[operation].apply()
-                                # qp.align()
-                                play_layer(ii, qp, undo_qua[ii], offset[ii] + LAYER_STRIDE)
-                            qp.align()
+                                play_layer_cases(qp, undo_case[ii], undo_layers[:, 1])
+                            align()
 
                             # Measure both qubits and record whether they returned to |00>
                             for ii, qp in multiplexed_qubit_pairs.items():
