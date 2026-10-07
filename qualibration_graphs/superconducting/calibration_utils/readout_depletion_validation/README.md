@@ -1,4 +1,4 @@
-# Resonator DRACHMA — Residual Photon Diagnostic
+# Resonator Readout — Residual Photon Diagnostic
 
 Backs the `23c_readout_depletion_validation` calibration node
 (`calibrations/1Q_calibrations/23c_readout_depletion_validation.py`).
@@ -11,32 +11,30 @@ from the resonator's kappa and its dispersive shifts (chi_ground,
 chi_excited) — is designed to ring the intracavity field down to (near)
 vacuum by the end of the pulse, without a separate depletion segment.
 
-This node checks whether that cancellation actually works, by comparing the
-residual photon population left in the resonator right after two "test"
-operations:
+This node checks whether a readout pulse actually leaves the resonator empty
+(for DRACHMA: whether that cancellation works), by comparing the residual
+photon population left right after two conditions:
 
-1. **drachma** — the shaped DRACHMA readout pulse.
+1. **the test operation** — `node.parameters.test_operation` (default
+   `readout_drachma`; any readout pulse on `qubit.resonator.operations`, e.g.
+   square, CLEAR or DRACHMA). Qubits lacking it are skipped.
 2. **no_operation** — nothing at all, as a ~vacuum reference.
-
-A third, **readout** condition (a regular, unshaped readout pulse, as a
-passive-ring-down baseline) can be added via
-`Parameters.include_readout_baseline` (off by default).
 
 Each condition is run with the qubit in both **ground** and **excited**
 (DRACHMA's cancellation depends on chi_ground *and* chi_excited together, so
 both states need checking). Immediately after the test pulse, a
 zero-amplitude ("pure listening", no drive) probe pulse measures the
 resonator's residual field, and the final plot compares `|IQ|` across
-conditions per qubit/state — DRACHMA should decay fastest, using
+conditions per qubit/state — a well-depleting pulse (e.g. DRACHMA) should decay fastest, using
 `no_operation` as the zero-photon reference.
 
 **The probe pulse is always a dedicated, zero-amplitude `SquareReadoutPulse`**
 (`PROBE_OPERATION`, built fresh per qubit in `create_qua_program` and removed
 again in `save_results` — it never reaches the saved QuAM state), regardless
-of which conditions are enabled. Its length is `Parameters.probe_length`
+of the selected test operation. Its length is `Parameters.probe_length`
 (default 3000 ns), the same for every qubit. This keeps the probe identical
 across conditions (so they stay directly comparable) and independent of
-whichever pulse the `"readout"` operation on the resonator points at.
+whichever readout pulse is being tested.
 
 `InOutIQChannel.measure_sliced` (`qua.demod.sliced`) requires the probed
 pulse's integration-weight duration to be an **exact** multiple of
@@ -46,15 +44,16 @@ that `segment_length_ns` is a multiple of 4 and divides `probe_length`.
 
 ## State update
 
-`qubit.resonator.depletion_time` is set to the ground-vs-excited depletion time of the
-DRACHMA condition (clamped to at least `min_depletion_time_ns`, default 16 ns). A qubit that is
-not depleted within the probe window gets a logged warning and `probe_length` as its depletion time.
+`qubit.resonator.depletion_time` is set to the longer of the ground and excited depletion times of
+the test operation versus `no_operation` (clamped to at least `min_depletion_time_ns`, default
+16 ns). A qubit that is not depleted within the probe window in either state gets a logged warning
+and `probe_length` as its depletion time.
 
 ## Prerequisites
 
 - Calibrated readout (02a, 02b) and x180 pulse (03a, 04b).
-- A `"readout_drachma"` operation (`DrachmaReadoutPulse`) on `qubit.resonator.operations`
-  (name set by `Parameters.drachma_operation`). Qubits without it are skipped rather than failing
+- The test operation (default `"readout_drachma"`, a `DrachmaReadoutPulse`) on
+  `qubit.resonator.operations` (name set by `Parameters.test_operation`). Qubits without it are skipped rather than failing
   the node: in multiplexed mode a single qubit playing an undefined operation would abort the shared
   real-time program and silently drop every qubit's results.
 
@@ -89,7 +88,7 @@ amplitude's shot-noise std via first-order error propagation of
 `amp = sqrt(I^2+Q^2)`, using only the diagonal `Var(I)`/`Var(Q)` terms. The
 I-Q cross/covariance term (`2*I*Q*Cov(I,Q)/amp^2`) was also implemented and
 tested against real run data (run #52, 5000 shots/condition): it contributed
-under 1.5% (median) to the total variance for every `drachma`/`no_operation`
+under 1.5% (median) to the total variance for every test-operation/`no_operation`
 (qubit, state) signal, with no consistent sign across segments — consistent
 with sampling noise in the `Cov(I,Q)` estimate itself rather than a real I/Q
 correlation — so it was dropped as negligible rather than kept as permanent
@@ -118,6 +117,16 @@ significance" is a meaningfully different outcome from "reached it exactly
 at the last segment", so neither test falls back to the last segment, or to
 the full readout length, in that case.
 
+**Written depletion time.** `select_depletion_time` takes, per qubit, the
+longer of the ground and excited `compute_stat_depletion_time` results
+(test operation vs `no_operation`); NaN if either state never depleted. That
+value (`depletion_time_ns`) is what `update_state` writes to
+`qubit.resonator.depletion_time`. The ground-vs-excited test is kept as an
+independent diagnostic only. `depletion_debounce_segments` defaults to 1.
+
+All plots use probe time (ns, the start of each segment — same definition as the
+depletion time, dataset coordinate `time_ns`) on the x-axis.
+
 Results (`p_value`/`depletion_time_stat_ns`, `p_value_ge`/
 `depletion_time_ge_ns`) are plotted by `plot_pvalue_grid`/
 `plot_ge_pvalue_grid` and summarized to stdout by `log_depletion_summary`.
@@ -130,22 +139,22 @@ here as a follow-up, not a silent gap.
 
 ## Files
 
-- **`parameters.py`** — `Parameters` (`num_shots`, `operation`,
-  `drachma_operation`, `include_readout_baseline`, `probe_length`, `segment_length_ns`,
+- **`parameters.py`** — `Parameters` (`num_shots`, `test_operation`,
+  `probe_length`, `segment_length_ns`,
   `depletion_debounce_segments`, `alpha`, ...).
 - **`analysis.py`** — `resolve_conditions` (the acquired/analysed condition
-  tuples, from `parameters.include_readout_baseline` — call only from
+  tuples, from `parameters.test_operation` — call only from
   finalized parameters, see its docstring), `fetch_sliced_iq_traces` (pulls
   the `II/IQ/QI/QQ/I_sq/Q_sq` result handles per condition/state/qubit and
   stacks them), `process_raw_dataset` (volts conversion, stacking into
   `(condition, state, qubit, segment)`, I/Q combination, `IQ_abs`/`var_I`/
   `var_Q`, and shot-noise std `IQ_abs_std`), `compute_stat_depletion_time`
   and `compute_ge_depletion_time` (the two tests above, sharing
-  `_chi2_pvalue`/`_scan_depletion_time`), and `log_depletion_summary`.
-- **`plotting.py`** — `plot_drachma_residuals`: `|IQ|` vs probe segment with
+  `_chi2_pvalue`/`_scan_depletion_time`), `select_depletion_time` (longer of ground/excited), and `log_depletion_summary`.
+- **`plotting.py`** — `plot_residuals`: `|IQ|` vs probe time with
   ±std error bars, one subplot per qubit, one trace per (condition, state)
   actually present in the dataset. `plot_pvalue_grid`/`plot_ge_pvalue_grid`:
-  same grid layout, p-value (log scale) vs probe segment for the two
+  same grid layout, p-value (log scale) vs probe time for the two
   depletion-time tests, sharing `_draw_pvalue_axis`.
 - Multiplexing/core-assignment helpers (`build_batch_groups`,
   `assign_core_labels`) live in `calibration_utils/readout_drachma_common/batching.py`.

@@ -27,11 +27,12 @@ from calibration_utils.readout_depletion_validation import (
     compute_stat_depletion_time,
     fetch_sliced_iq_traces,
     log_depletion_summary,
-    plot_drachma_residuals,
     plot_ge_pvalue_grid,
     plot_pvalue_grid,
+    plot_residuals,
     process_raw_dataset,
     resolve_conditions,
+    select_depletion_time,
 )
 from calibration_utils.readout_drachma_common import (
     assign_core_labels,
@@ -41,26 +42,25 @@ from qualibrate import QualibrationNode
 
 # %% {Description}
 description = """
-        RESONATOR DRACHMA READOUT - RESIDUAL PHOTON NUMBER DIAGNOSTIC
-Checks how many photons are left in the readout resonator right after a DRACHMA readout pulse
-(Jerger et al., arXiv:2406.04891), whose shaped waveform is designed to ring the cavity down to
-vacuum without separate depletion segments. For each condition (DRACHMA pulse, no operation as a
-vacuum reference, optionally a regular readout pulse) and for both |g> and |e>, a zero-amplitude
-probe pulse is played immediately afterwards and its sliced dual-demodulation result is streamed
-over the probe window. Comparing the residual |IQ| vs time with the no-operation trace, and the
-ground vs excited traces with each other, gives the depletion time of the resonator.
+Checks how many photons are left in the readout resonator right after a selectable test operation
+(node.parameters.test_operation, default "readout_drachma"; any readout pulse on qubit.resonator.operations,
+e.g. square, CLEAR or DRACHMA) compared with no operation at all. For both conditions and for both |g> and |e>,
+a zero-amplitude probe pulse is played immediately afterwards and its sliced dual-demodulation result is
+streamed over the probe window. Comparing the residual |IQ| vs time of the test operation with the
+no-operation trace gives the depletion time of the resonator (the longer of the ground and excited times at
+which the two become statistically indistinguishable). The ground-vs-excited test is an extra diagnostic.
 
 Details (probe pulse, sliced demodulation, statistical tests): calibration_utils/readout_depletion_validation/README.md
 
 Prerequisites:
     - Having calibrated the readout parameters (nodes 02a, 02b) and the qubit x180 pulse (nodes 03a, 04b).
-    - A "readout_drachma" operation (DrachmaReadoutPulse) on qubit.resonator.operations. Qubits
-      without it are skipped.
+    - The test operation (default "readout_drachma", a DrachmaReadoutPulse) on qubit.resonator.operations.
+      Qubits without it are skipped.
 
 State update:
-    - qubit.resonator.depletion_time: the ground-vs-excited depletion time of the DRACHMA condition
-      (at least min_depletion_time_ns). A qubit not depleted within the probe window gets a warning
-      and probe_length as its depletion time.
+    - qubit.resonator.depletion_time: the longer of the ground and excited depletion times of the test
+      operation vs no operation (at least min_depletion_time_ns). A qubit not depleted within the probe window
+      gets a warning and probe_length as its depletion time.
 """
 
 
@@ -88,22 +88,19 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     # node.parameters.qubits = ["qB1", "qB2", "qB3"]
     node.parameters.num_shots = 1000
     # node.parameters.load_data_id = 255
-    node.parameters.multiplexed = True
+    node.parameters.multiplexed = False
     node.parameters.timeout = 300
-    node.parameters.include_readout_baseline = False
 
 
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
-    """Build the per-qubit DRACHMA pulse, then for each (condition, state) pair -- condition
-    in conditions (drachma / no_operation, plus readout if include_readout_baseline), state
+    """For each (condition, state) pair -- condition in (test_operation, no_operation), state
     in (ground / excited) -- prepare the qubit, play the test pulse, and stream the sliced
     dual-demodulation result of the zero-amplitude residual-photon probe that immediately
     follows it."""
     all_qubits = get_qubits(node)
-    operation = node.parameters.operation
-    drachma_operation = node.parameters.drachma_operation
+    test_operation = node.parameters.test_operation
     probe_length = node.parameters.probe_length
     segment_length_ns = node.parameters.segment_length_ns
     # measure_sliced needs the probe length to be an exact multiple of the segment length, and
@@ -125,19 +122,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["ge_test_conditions"] = ge_test_conditions
     states = STATES
 
-    # This node does not build the DRACHMA pulse itself -- qubit.resonator.operations[drachma_operation]
-    # must already exist (a DrachmaReadoutPulse). Qubits missing it
+    # This node does not build the test pulse itself -- qubit.resonator.operations[test_operation]
+    # must already exist (a DrachmaReadoutPulse for DRACHMA). Qubits missing it
     # are excluded from the run rather than failing the whole node -- e.g. in multiplexed mode
     # a single qubit playing an undefined operation aborts the shared real-time program for
     # every qubit, silently dropping ALL streamed results (not just that qubit's).
-    kept_qubits = [q for q in all_qubits if q.resonator.operations.get(drachma_operation)]
+    kept_qubits = [q for q in all_qubits if q.resonator.operations.get(test_operation)]
     skipped_names = [q.name for q in all_qubits if q not in kept_qubits]
     if skipped_names:
-        message = f"Skipping qubits without a pre-built '{drachma_operation}' operation: {skipped_names}."
+        message = f"Skipping qubits without a pre-built '{test_operation}' operation: {skipped_names}."
         node.log(message)
         print(message)
     if not kept_qubits:
-        raise RuntimeError(f"No qubits have a pre-built '{drachma_operation}' operation.")
+        raise RuntimeError(f"No qubits have a pre-built '{test_operation}' operation.")
 
     # Dedicated zero-amplitude probe pulse, same length for every qubit. Removed again in
     # save_results before node.save() persists machine state.
@@ -146,7 +143,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     batch_groups = build_batch_groups(kept_qubits, node.parameters)
     node.log(
-        f"DRACHMA batching: {len(kept_qubits)} qubits into {len(batch_groups)} "
+        f"Batching: {len(kept_qubits)} qubits into {len(batch_groups)} "
         f"batch(es) of sizes {[len(b) for b in batch_groups]} "
         f"(multiplexed={node.parameters.multiplexed})."
     )
@@ -194,7 +191,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         n = declare(int)
         n_st = declare_output_stream()
 
-        # Dummy I/Q pair reused for the test-pulse measurement (drachma/readout) whose result
+        # Dummy I/Q pair reused for the test-pulse measurement whose result
         # is never read -- declared once and passed as qua_vars to every rr.measure() call
         # below instead of letting it declare (and discard) a fresh pair each time.
         I_dummy = declare(fixed)
@@ -234,12 +231,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             if state == "excited":
                                 qubit.xy.play("x180")
                                 qubit.align()
-                            # Play the test pulse to populate the cavity (nothing for no_operation).
+                            # Play the test pulse to populate the cavity (the condition IS the operation name; nothing for no_operation).
                             reset_if_phase(rr.name)
-                            if condition == "drachma":
-                                rr.measure(drachma_operation, qua_vars=(I_dummy, Q_dummy))
-                            elif condition == "readout":
-                                rr.measure(operation, qua_vars=(I_dummy, Q_dummy))
+                            if condition != "no_operation":
+                                rr.measure(condition, qua_vars=(I_dummy, Q_dummy))
                             # Probe the residual cavity field: no drive (PROBE_OPERATION's own
                             # amplitude is 0), sliced dual demod instead of a full raw-ADC-trace
                             # stream. Always PROBE_OPERATION, regardless of condition -- the
@@ -332,7 +327,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     load_data_id = node.parameters.load_data_id
     # alpha/depletion_debounce_segments are post-hoc analysis knobs (re-analysing the same
     # loaded dataset with a different threshold/debounce), not acquisition parameters -- unlike
-    # num_shots/multiplexed/include_readout_baseline, they must survive load_from_id below
+    # num_shots/multiplexed/test_operation, they must survive load_from_id below
     # overwriting node.parameters with the historical run's saved values.
     alpha = node.parameters.alpha
     depletion_debounce_segments = node.parameters.depletion_debounce_segments
@@ -342,8 +337,8 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.depletion_debounce_segments = depletion_debounce_segments
     node.namespace["qubits"] = get_qubits(node)
     # Resolved from the just-restored (historical) parameters, not the CURRENT default --
-    # otherwise a replay of a run acquired with a different include_readout_baseline setting
-    # would silently drop or KeyError on the "readout" condition. See resolve_conditions.
+    # otherwise a replay of a run acquired with a different test_operation would KeyError on
+    # its condition. See resolve_conditions.
     conditions, ge_test_conditions = resolve_conditions(node.parameters)
     node.namespace["conditions"] = conditions
     node.namespace["ge_test_conditions"] = ge_test_conditions
@@ -352,7 +347,7 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Convert the sliced dual-demod counts to volts, stack the per-(condition, state) streams into "condition" and "state" dimensions, compute the residual-field amplitude |IQ| vs segment and its shot-noise std, run the statistical (chi-squared) depletion-time test, and run a ground-vs-excited distinguishability test as a further independent check."""
+    """Convert the sliced dual-demod counts to volts, stack the per-(condition, state) streams into "condition" and "state" dimensions, compute the residual-field amplitude |IQ| vs time and its shot-noise std, run the statistical (chi-squared) depletion-time test vs no_operation (depletion time = longer of ground/excited), and run a ground-vs-excited distinguishability test as a further independent check."""
     conditions = node.namespace["conditions"]
     ge_test_conditions = node.namespace["ge_test_conditions"]
 
@@ -365,26 +360,37 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     p_value_ge, t_dep_ge_ns = compute_ge_depletion_time(ds, node, ge_test_conditions)
     ds = ds.assign(p_value_ge=p_value_ge, depletion_time_ge_ns=t_dep_ge_ns)
 
+    # The depletion time written to state: longer of the ground/excited test-vs-no_operation times.
+    ds = ds.assign(depletion_time_ns=select_depletion_time(t_dep_stat_ns))
+
     node.results["ds_fit"] = ds
     node.outcomes = {q: "successful" for q in ds.qubit.values}
 
-    log_depletion_summary(ds, t_dep_stat_ns, t_dep_ge_ns, test_conditions, ge_test_conditions)
+    log_depletion_summary(ds, t_dep_stat_ns, t_dep_ge_ns, test_conditions, ge_test_conditions, ds["depletion_time_ns"])
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the residual photon amplitude |IQ| (µV) vs probe segment, with ±std (shot noise)
-    error bars, one subplot per qubit -- 3 traces per subplot (drachma+ground, drachma+excited,
-    no_operation+ground baseline). Also plot the statistical depletion-time test's p-value vs
-    segment, one subplot per qubit with ground/excited overlaid, for drachma (and readout, if
-    enabled) vs no_operation. Also plot the ground-vs-excited distinguishability test's p-value
-    vs segment, one subplot per qubit with a single trace (drachma only)."""
+    """Plot the residual photon amplitude |IQ| (µV) vs probe time, with ±std (shot noise)
+    error bars, one subplot per qubit -- 3 traces per subplot (test operation + ground, test
+    operation + excited, no_operation + ground baseline), with the chosen depletion time
+    marked. Also plot the statistical depletion-time test's p-value vs time, one subplot per
+    qubit with ground/excited overlaid, for the test operation vs no_operation. Also plot the
+    ground-vs-excited distinguishability test's p-value vs time, one subplot per qubit with a
+    single trace (test operation only)."""
     ds = node.results["ds_fit"]
     conditions = node.namespace["conditions"]
     ge_test_conditions = node.namespace["ge_test_conditions"]
 
-    fig = plot_drachma_residuals(ds, node.namespace["qubits"], conditions, STATES)
+    test_operation = node.parameters.test_operation
+    fig = plot_residuals(
+        ds,
+        node.namespace["qubits"],
+        conditions,
+        STATES,
+        t_dep_ns=ds["depletion_time_ns"].sel(test_condition=test_operation),
+    )
 
     test_conditions = tuple(c for c in conditions if c != "no_operation")
     fig_pvalue = plot_pvalue_grid(
@@ -405,9 +411,9 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     )
 
     node.results["figures"] = {
-        "drachma_residual": fig,
-        "drachma_pvalue": fig_pvalue,
-        "drachma_ge_pvalue": fig_ge_pvalue,
+        "residual": fig,
+        "pvalue": fig_pvalue,
+        "ge_pvalue": fig_ge_pvalue,
     }
     plt.show()
 
@@ -415,20 +421,20 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Write the ground-vs-excited depletion time (drachma vs. no reference needed) into
+    """Write the depletion time -- the longer of the ground/excited times at which the test
+    operation becomes statistically indistinguishable from no_operation -- into
     qubit.resonator.depletion_time (ns), clamped to at least min_depletion_time_ns. If a qubit
     never reached depletion within the probe window (NaN), log a warning and fall back to the
     probe pulse length instead."""
     ds = node.results["ds_fit"]
-    ge_condition = node.namespace["ge_test_conditions"][0]
-    t_dep_ge_ns = ds["depletion_time_ge_ns"].sel(test_condition=ge_condition)
+    t_dep_ns = ds["depletion_time_ns"].sel(test_condition=node.parameters.test_operation)
     min_t_ns = node.parameters.min_depletion_time_ns
 
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            t_ns = float(t_dep_ge_ns.sel(qubit=q.name))
+            t_ns = float(t_dep_ns.sel(qubit=q.name))
             if np.isnan(t_ns):
                 t_ns = node.parameters.probe_length
                 message = (
@@ -441,7 +447,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             t_ns = max(round(t_ns), min_t_ns)
             if t_ns != round(measured_t_ns):
                 message = (
-                    f"{q.name}: measured ge depletion time {measured_t_ns:.0f} ns below "
+                    f"{q.name}: measured depletion time {measured_t_ns:.0f} ns below "
                     f"minimum -- setting resonator.depletion_time to {t_ns} ns."
                 )
                 node.log(message)

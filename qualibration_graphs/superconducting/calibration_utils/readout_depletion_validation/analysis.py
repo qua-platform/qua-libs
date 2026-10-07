@@ -32,21 +32,16 @@ def fetch_sliced_iq_traces(job, qubits, conditions: list, states: list, num_segm
 
 
 def resolve_conditions(parameters) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """The test conditions this run acquires/analyses: "readout" is included only when
-    parameters.include_readout_baseline is set. The ground-vs-excited distinguishability test
-    only ever checks "drachma".
+    """The conditions this run acquires/analyses: the selected parameters.test_operation and the
+    "no_operation" reference. The ground-vs-excited distinguishability test only checks
+    test_operation.
 
     Must be called from parameters that are already final -- i.e. after custom_param, or
     (on the load_data_id replay path) after load_from_id has overwritten node.parameters with
-    the historical run's values. Computing this once at import time instead would silently
-    analyse a replayed dataset under the CURRENT default rather than the setting it was
+    the historical run's values, so a replayed dataset is analysed under the operation it was
     actually acquired with.
     """
-    conditions = (
-        ("drachma", "readout", "no_operation") if parameters.include_readout_baseline else ("drachma", "no_operation")
-    )
-    ge_test_conditions = ("drachma",)
-    return conditions, ge_test_conditions
+    return (parameters.test_operation, "no_operation"), (parameters.test_operation,)
 
 
 def convert_sliced_demod_to_volts(ds: xr.Dataset, keys: list[str], squared: bool = False) -> xr.Dataset:
@@ -95,6 +90,12 @@ def process_raw_dataset(ds: xr.Dataset, conditions: list, states: list) -> xr.Da
         for key in SLICE_KEYS + MOMENT_KEYS
     }
     ds = ds.assign(**stacked)
+
+    # Time (ns) of the start of each probe segment -- the same definition the depletion time
+    # uses (segment index * segment length). Identical for every qubit (shared segment length).
+    segment_length_ns = float(ds["segment_length_ns"].values[0])
+    ds = ds.assign_coords(time_ns=("segment", ds["segment"].values * segment_length_ns))
+    ds.time_ns.attrs = {"long_name": "probe time", "units": "ns"}
 
     # Combine the four sliced dual-demod projections into I/Q -- the IF demodulation already
     # happened on-chip (via the integration weights), so no further digital demod is needed.
@@ -233,11 +234,23 @@ def compute_stat_depletion_time(
         ),
     )
     t_dep_stat_ns.attrs = {
-        "long_name": "statistical DRACHMA depletion time (chi2 test, p>alpha sustained)",
+        "long_name": "statistical depletion time (chi2 test, p>alpha sustained)",
         "units": "ns",
     }
 
     return p_value, t_dep_stat_ns
+
+
+def select_depletion_time(t_dep_stat_ns: xr.DataArray) -> xr.DataArray:
+    """Depletion time per (test_condition, qubit): the longer of the ground and excited
+    statistical-test times, so the resonator is empty for both states. NaN (not depleted within
+    the window) if either state never depleted -- xarray's max would silently skip a NaN."""
+    t_dep_ns = t_dep_stat_ns.max(dim="state", skipna=False)
+    t_dep_ns.attrs = {
+        "long_name": "depletion time (longer of ground/excited vs no_operation)",
+        "units": "ns",
+    }
+    return t_dep_ns
 
 
 def compute_ge_depletion_time(
@@ -291,7 +304,7 @@ def compute_ge_depletion_time(
         ),
     )
     t_dep_ge_ns.attrs = {
-        "long_name": "ground-vs-excited DRACHMA depletion time (chi2 test, p>alpha sustained)",
+        "long_name": "ground-vs-excited depletion time (chi2 test, p>alpha sustained)",
         "units": "ns",
     }
 
@@ -304,6 +317,7 @@ def log_depletion_summary(
     t_dep_ge_ns: xr.DataArray,
     test_conditions: tuple,
     ge_test_conditions: tuple,
+    t_dep_ns: xr.DataArray | None = None,
 ) -> None:
     """Print the two depletion-time tests' results as plain tables (one row per
     qubit/state/condition), NaN rendered as "not depleted"."""
@@ -323,3 +337,9 @@ def log_depletion_summary(
         for qname in ds.qubit.values:
             t_ns = float(t_dep_ge_ns.sel(test_condition=condition, qubit=qname))
             print(f"{qname:6s} {condition:13s} {label(t_ns)}")
+
+    if t_dep_ns is not None:
+        print(f"{'qubit':6s} {'condition':13s} {'t_dep (longer of ground/excited, written to state)':s}")
+        for condition in test_conditions:
+            for qname in ds.qubit.values:
+                print(f"{qname:6s} {condition:13s} {label(float(t_dep_ns.sel(test_condition=condition, qubit=qname)))}")
