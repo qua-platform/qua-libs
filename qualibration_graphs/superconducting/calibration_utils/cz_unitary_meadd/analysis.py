@@ -9,6 +9,11 @@ Gate model (basis |b_L b_R>, L = control, R = target), up to a global phase:
 
 Methods: J. A. Gross et al., arXiv:2404.12550 (MEADD) for ϕ, θ and χ; F. Arute et al., arXiv:2010.07965
 (Floquet characterization) for γ and ζ.
+
+Virtual-Z corrections Z(a) on L and Z(b) on R after the gate map γ -> γ - (a + b) / 2, ζ -> ζ + (a - b) / 2 and
+χ -> χ - (a - b) / 2, and leave ϕ and θ unchanged. With ϕ = π + δ, the process fidelity to CZ,
+|Tr(CZ† W)|² / 16 = |e^{iγ} + 2 cosθ cosζ + e^{-i(γ+δ)}|² / 16, is largest at ζ = 0 and γ = -δ/2, where it equals
+(1 + cos²θ + 2 cosθ cos(δ/2)) / 4. χ does not enter the fidelity.
 """
 
 import logging
@@ -44,6 +49,8 @@ KEPT_FRACTION_MIN = 0.5
 # A pair fails if a phase line fit has a residual above this value, which means the unwrap slipped by 2π
 UNWRAP_RESIDUAL_MAX = np.pi / 2
 
+CZ = np.diag([1, 1, 1, -1])
+
 _PAULIS = {
     "I": np.eye(2),
     "X": np.array([[0, 1], [1, 0]]),
@@ -66,7 +73,10 @@ class FitResults:
         max_unwrap_residual: Largest residual of the phase line fits.
         zeta_in_range: False if cos(Ω)/cos(θ) exceeds 1 by more than the measurement error allows.
         phi_floquet: Optional |11>-reference estimate of phi (known modulo π), None if not measured.
-        suggested_phase_shift_control/target: phase_shift values (units of 2π) that would zero gamma and zeta.
+        fidelity: Process fidelity to CZ of the fitted gate, as measured (coherent errors only).
+        corrected_fidelity: Process fidelity expected after applying the suggested phase_shift values.
+        suggested_phase_shift_control/target: phase_shift values (units of 2π) that set zeta to 0 and gamma to
+            the target chosen by the correction_target parameter.
         success: True if all quality checks passed.
     """
 
@@ -85,6 +95,8 @@ class FitResults:
     zeta_in_range: bool
     phi_floquet: Optional[float]
     phi_floquet_err: Optional[float]
+    fidelity: float
+    corrected_fidelity: float
     suggested_phase_shift_control: float
     suggested_phase_shift_target: float
     success: bool
@@ -109,6 +121,7 @@ def log_fitted_results(fit_results: Dict[str, Dict], log_callable=None):
                 f"\tphi - pi (Floquet) = {1e3 * (r['phi_floquet'] - np.pi):.2f} ± {1e3 * r['phi_floquet_err']:.2f} mrad"
             )
         lines += [
+            f"\tprocess fidelity = {r['fidelity']:.5f} ({r['corrected_fidelity']:.5f} after suggested corrections)",
             f"\tmin kept fraction = {r['kept_fraction_min']:.3f} (fail below {KEPT_FRACTION_MIN})",
             f"\tmax unwrap residual = {r['max_unwrap_residual']:.3f} rad (fail above {UNWRAP_RESIDUAL_MAX:.3f})",
             f"\tzeta in range = {r['zeta_in_range']}",
@@ -167,7 +180,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
         dict(exp=int(e), prep=int(p), ro=int(r), ncz=int(n))
         for e, p, r, n in zip(ds.experiment.values, ds.preparation.values, ds.readout.values, ds.ncz.values)
     ]
-    s = node.parameters.frame_sign
+    s = -1 if node.parameters.invert_frame_sign else 1
     fits, fit_results = [], {}
     for qp in node.namespace["qubit_pairs"]:
         ds_qp = ds.sel(qubit_pair=qp.name)
@@ -183,12 +196,19 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             and values["max_unwrap_residual"] <= UNWRAP_RESIDUAL_MAX
             and values["zeta_in_range"]
         )
-        # Z(γ - ζ) on L and Z(γ + ζ) on R after the gate zero both γ and ζ
+        # Z(a) on L and Z(b) on R after the gate, with a + b = 2(γ - γ_target) and a - b = -2ζ
         gamma, zeta = values["gamma"], values["zeta"]
+        gamma_target = optimal_gamma(values["phi"]) if node.parameters.correction_target == "max_fidelity" else 0.0
+        a = gamma - gamma_target - zeta
+        b = gamma - gamma_target + zeta
         fit_results[qp.name] = FitResults(
             **values,
-            suggested_phase_shift_control=float((x_control + s * (gamma - zeta) / (2 * np.pi)) % 1),
-            suggested_phase_shift_target=float((x_target + s * (gamma + zeta) / (2 * np.pi)) % 1),
+            fidelity=process_fidelity(gate_unitary(values["phi"], values["theta"], values["chi"], gamma, zeta)),
+            corrected_fidelity=process_fidelity(
+                gate_unitary(values["phi"], values["theta"], values["chi"] + zeta, gamma_target, 0.0)
+            ),
+            suggested_phase_shift_control=float((x_control + s * a / (2 * np.pi)) % 1),
+            suggested_phase_shift_target=float((x_target + s * b / (2 * np.pi)) % 1),
             success=success,
         )
         fits.append(curves.assign(success=success))
@@ -317,6 +337,17 @@ def gate_unitary(phi: float, theta: float, chi: float, gamma: float, zeta: float
             [0, 0, 0, np.exp(-1j * (gamma + phi))],
         ]
     )
+
+
+def process_fidelity(unitary: np.ndarray) -> float:
+    """Process fidelity |Tr(CZ† U)|² / 16 of a two-qubit unitary to the ideal CZ."""
+    return float(abs(np.trace(CZ.conj().T @ unitary)) ** 2 / 16)
+
+
+def optimal_gamma(phi: float) -> float:
+    """Value of γ that maximizes the process fidelity to CZ for a conditional phase ϕ: it splits ϕ - π over |00>
+    and |11>."""
+    return -(phi - np.pi) / 2
 
 
 def pauli_chi_matrix(unitary: np.ndarray) -> np.ndarray:

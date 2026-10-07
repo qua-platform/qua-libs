@@ -26,10 +26,17 @@ class NodeSpecificParameters(RunnableParameters):
     """Add the |11>-reference Floquet circuits that give a second, noisier estimate of phi. Default is False."""
     use_readout_mitigation: bool = True
     """Correct the joint probabilities with the pair's 4x4 confusion matrix from node 35. Default is True."""
-    frame_sign: Literal[-1, 1] = 1
-    """Sign s such that frame_rotation_2pi(x) acts as Z(s * 2pi * x) in the analysis convention. It sets the
-    sign of chi and of the suggested phase corrections. Flip it if applying the suggested corrections doubles
-    gamma and zeta instead of zeroing them. Default is 1."""
+    correction_target: Literal["max_fidelity", "ideal_cz"] = "max_fidelity"
+    """Value of gamma that the suggested phase corrections aim for (zeta is always set to 0). 'max_fidelity' sets
+    gamma = -(phi - pi) / 2, which gives the highest fidelity to CZ for the measured phi. 'ideal_cz' sets gamma = 0,
+    the value of the ideal CZ; use it if phi will be recalibrated afterwards. Default is 'max_fidelity'."""
+    update_phase_shifts: bool = True
+    """Write the suggested phase_shift_control and phase_shift_target to the CZ macro of every pair whose fit
+    succeeded. Default is True."""
+    invert_frame_sign: bool = False
+    """Use the sign s = -1 instead of s = +1, where frame_rotation_2pi(x) acts as Z(s * 2pi * x) in the analysis
+    convention. It sets the sign of chi and of the suggested phase corrections. Set it to True if applying the
+    suggested corrections doubles gamma and zeta instead of zeroing them. Default is False."""
 
 
 class Parameters(

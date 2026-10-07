@@ -7,9 +7,7 @@ import numpy as np
 import xarray as xr
 from matplotlib.figure import Figure
 
-from calibration_utils.cz_unitary_meadd.analysis import PAULI_LABELS, gate_unitary, pauli_chi_matrix
-
-_CZ = np.diag([1, 1, 1, -1])
+from calibration_utils.cz_unitary_meadd.analysis import CZ, PAULI_LABELS, gate_unitary, pauli_chi_matrix
 
 
 def _figure(num_pairs: int, title: str):
@@ -132,7 +130,7 @@ def plot_process_matrix(fit_results: Dict[str, Dict]) -> Figure:
     χ of the measured gate comes from the fitted angles, so it shows only the coherent part of the gate (no
     decoherence or leakage).
     """
-    chi_ideal = pauli_chi_matrix(_CZ)
+    chi_ideal = pauli_chi_matrix(CZ)
     num_pairs = len(fit_results)
     fig = plt.figure(figsize=(22, 10 * num_pairs))
     grid = fig.add_gridspec(2 * num_pairs, 4, width_ratios=[1, 1, 1, 1.1])
@@ -140,13 +138,12 @@ def plot_process_matrix(fit_results: Dict[str, Dict]) -> Figure:
     for i, (qp_name, r) in enumerate(fit_results.items()):
         unitary = gate_unitary(r["phi"], r["theta"], r["chi"], r["gamma"], r["zeta"])
         chi_measured = pauli_chi_matrix(unitary)
-        fidelity = abs(np.trace(_CZ.conj().T @ unitary)) ** 2 / 16
         diff = chi_measured - chi_ideal
         diff_max = max(np.max(np.abs(np.nan_to_num(diff))), 1e-6)
         for j, part, name in ((2 * i, np.real, "Re"), (2 * i + 1, np.imag, "Im")):
             panels = (
                 (0, part(chi_ideal), 0.25, f"{qp_name}: {name} χ, ideal CZ"),
-                (1, part(chi_measured), 0.25, f"{name} χ, measured (process fidelity {fidelity:.5f})"),
+                (1, part(chi_measured), 0.25, f"{name} χ, measured (process fidelity {r['fidelity']:.5f})"),
                 (2, part(diff), diff_max, f"{name} χ, measured - ideal ({_status(r)})"),
             )
             for k, data, vmax, title in panels:
@@ -174,6 +171,18 @@ def plot_process_matrix(fit_results: Dict[str, Dict]) -> Figure:
             f"{qp_name}: fitted angles in rad, Δ = measured - ideal ({_status(r)})",
             ha="center",
             fontsize=11,
+            transform=ax.transAxes,
+        )
+        ax.text(
+            0.5,
+            0.18,
+            f"process fidelity {r['fidelity']:.5f} as measured\n"
+            f"{r['corrected_fidelity']:.5f} after the suggested Z corrections\n"
+            f"phase_shift_control -> {r['suggested_phase_shift_control']:.5f}\n"
+            f"phase_shift_target -> {r['suggested_phase_shift_target']:.5f}",
+            ha="center",
+            va="top",
+            fontsize=10,
             transform=ax.transAxes,
         )
     fig.tight_layout(rect=(0, 0, 1, 0.98))

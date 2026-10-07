@@ -60,9 +60,11 @@ Prerequisites:
     - A calibrated CZ macro (conditional phase within a few hundred mrad of π).
     - The pair's readout confusion matrix (node 35) if use_readout_mitigation is True.
 
-State update:
-    - None. The node only characterizes the gate. It logs the phase_shift_control / phase_shift_target values
-      that would zero γ and ζ.
+State update (if update_phase_shifts is True and the fit succeeded):
+    - phase_shift_control and phase_shift_target of the CZ macro, set to virtual-Z corrections that zero ζ and set
+      γ to the target chosen by correction_target. ϕ and θ cannot be changed by single-qubit Z rotations, so the
+      corrected gate reaches the fidelity reported as "after suggested corrections". If a rerun shows γ and ζ
+      doubled instead of zeroed, set invert_frame_sign to True.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -327,6 +329,20 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         "process_matrix": plot_process_matrix(fit_results),
     }
     plt.show()
+
+
+# %% {Update_state}
+@node.run_action(skip_if=node.parameters.simulate or not node.parameters.update_phase_shifts)
+def update_state(node: QualibrationNode[Parameters, Quam]):
+    """Write the suggested virtual-Z corrections to the CZ macro of every pair whose fit succeeded."""
+    operation = node.parameters.operation
+    with node.record_state_updates():
+        for qp in node.namespace["qubit_pairs"]:
+            if node.outcomes[qp.name] == "failed":
+                continue
+            fit_result = node.results["fit_results"][qp.name]
+            qp.macros[operation].phase_shift_control = fit_result["suggested_phase_shift_control"]
+            qp.macros[operation].phase_shift_target = fit_result["suggested_phase_shift_target"]
 
 
 # %% {Save_results}
