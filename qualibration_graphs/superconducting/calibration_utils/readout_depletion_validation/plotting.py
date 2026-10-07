@@ -4,13 +4,13 @@ from matplotlib.figure import Figure
 from qualibration_libs.plotting import QubitGrid, grid_iter
 
 
-def plot_drachma_residuals(ds: xr.Dataset, qubits, conditions: tuple, states: tuple) -> Figure:
-    """Plot the residual photon amplitude |IQ| (µV) vs probe segment, with ±std (shot noise)
+def plot_residuals(ds: xr.Dataset, qubits, conditions: tuple, states: tuple, t_dep_ns: xr.DataArray = None) -> Figure:
+    """Plot the residual photon amplitude |IQ| (µV) vs probe time, with ±std (shot noise)
     error bars, one subplot per qubit (physical layout via QubitGrid). Draws every
     (condition, state) pair except "no_operation", plus a single "no_operation" trace (at the
     first state) as the zero-photon baseline -- so the plot follows whatever conditions this
-    run actually acquired (e.g. the "readout" baseline, when include_readout_baseline is set),
-    rather than a fixed hard-coded trace list."""
+    run actually acquired, rather than a fixed hard-coded trace list. If t_dep_ns (per qubit) is
+    given, the chosen depletion time is marked with a vertical line."""
     grid = QubitGrid(ds, [q.grid_location for q in qubits], size=4.5)
 
     traces = [
@@ -29,7 +29,7 @@ def plot_drachma_residuals(ds: xr.Dataset, qubits, conditions: tuple, states: tu
             trace = ds["IQ_abs"].sel(qubit=qname, condition=condition, state=state)
             std_trace = ds["IQ_abs_std"].sel(qubit=qname, condition=condition, state=state)
             ax.errorbar(
-                trace.segment,
+                trace.time_ns,
                 1e6 * trace.values,
                 yerr=1e6 * std_trace.values,
                 label=label,
@@ -38,32 +38,37 @@ def plot_drachma_residuals(ds: xr.Dataset, qubits, conditions: tuple, states: tu
                 markersize=3,
             )
 
+        if t_dep_ns is not None:
+            t_ns = float(t_dep_ns.sel(qubit=qname))
+            if not np.isnan(t_ns):
+                ax.axvline(t_ns, color="k", linestyle="--", linewidth=1)
+                ax.text(t_ns, ax.get_ylim()[1], f"  {t_ns:.0f} ns", rotation=90, va="top", ha="left", fontsize=8)
+
         ax.set_title(qname)
-        ax.set_xlabel("probe segment")
+        ax.set_xlabel("probe time [ns]")
         ax.set_ylabel("|IQ| [µV]")
 
     handles, labels = ax.get_legend_handles_labels()
-    grid.fig.suptitle("Resonator DRACHMA — residual photon amplitude vs probe segment", fontsize=12)
+    grid.fig.suptitle("Resonator residual photon amplitude vs probe time", fontsize=12)
     grid.fig.tight_layout(rect=(0, 0.04, 1, 1))
     grid.fig.legend(handles, labels, loc="lower center", ncol=len(traces))
     return grid.fig
 
 
-def _draw_pvalue_axis(ax, traces: list, alpha: float, segment_length_ns: float) -> None:
+def _draw_pvalue_axis(ax, traces: list, alpha: float) -> None:
     """Shared body of plot_pvalue_grid/plot_ge_pvalue_grid: draws each (label, p_value_trace,
     t_dep_ns) trace on a log-scale p-value axis, floors values to 1e-300 (chi2.sf underflows
     to exact 0.0 for large chi2_stat -- a log axis silently drops those points, leaving gaps,
-    without the floor), and marks each trace's detected depletion segment (if not NaN) with a
+    without the floor), and marks each trace's detected depletion time (if not NaN) with a
     color-matched vertical line + rotated ns label. Also draws the p=alpha threshold line."""
     for label, trace, t_dep_ns in traces:
         plotted = np.clip(trace.values, 1e-300, None)
-        (line,) = ax.plot(trace.segment, plotted, label=label, marker="o", markersize=3)
+        (line,) = ax.plot(trace.time_ns, plotted, label=label, marker="o", markersize=3)
 
         if t_dep_ns is not None and not np.isnan(t_dep_ns):
-            segment_idx = t_dep_ns / segment_length_ns
-            ax.axvline(segment_idx, color=line.get_color(), linestyle="--", linewidth=1)
+            ax.axvline(t_dep_ns, color=line.get_color(), linestyle="--", linewidth=1)
             ax.text(
-                segment_idx,
+                t_dep_ns,
                 ax.get_ylim()[1],
                 f"  {t_dep_ns:.0f} ns",
                 rotation=90,
@@ -75,7 +80,7 @@ def _draw_pvalue_axis(ax, traces: list, alpha: float, segment_length_ns: float) 
 
     ax.axhline(alpha, color="k", linestyle="--", linewidth=1, label=f"α = {alpha}")
     ax.set_yscale("log")
-    ax.set_xlabel("probe segment")
+    ax.set_xlabel("probe time [ns]")
     ax.set_ylabel("p-value")
 
 
@@ -94,7 +99,6 @@ def plot_pvalue_grid(
 
     for ax, qubit in grid_iter(grid):
         qname = qubit["qubit"]
-        segment_length_ns = float(ds["segment_length_ns"].sel(qubit=qname))
 
         traces = []
         for condition in test_conditions:
@@ -107,11 +111,11 @@ def plot_pvalue_grid(
                 )
                 traces.append((f"{condition} ({state})", trace, t_dep_ns))
 
-        _draw_pvalue_axis(ax, traces, alpha, segment_length_ns)
+        _draw_pvalue_axis(ax, traces, alpha)
         ax.set_title(qname)
 
     handles, labels = ax.get_legend_handles_labels()
-    grid.fig.suptitle("Resonator DRACHMA — depletion-time p-value vs probe segment", fontsize=12)
+    grid.fig.suptitle("Resonator depletion-time p-value vs probe time", fontsize=12)
     grid.fig.tight_layout(rect=(0, 0.04, 1, 1))
     grid.fig.legend(handles, labels, loc="lower center", ncol=len(handles))
     return grid.fig
@@ -131,7 +135,6 @@ def plot_ge_pvalue_grid(
 
     for ax, qubit in grid_iter(grid):
         qname = qubit["qubit"]
-        segment_length_ns = float(ds["segment_length_ns"].sel(qubit=qname))
 
         traces = []
         for condition in test_conditions:
@@ -141,11 +144,11 @@ def plot_ge_pvalue_grid(
             )
             traces.append((condition, trace, t_dep_ns))
 
-        _draw_pvalue_axis(ax, traces, alpha, segment_length_ns)
+        _draw_pvalue_axis(ax, traces, alpha)
         ax.set_title(qname)
 
     handles, labels = ax.get_legend_handles_labels()
-    grid.fig.suptitle("Resonator DRACHMA — ground-vs-excited depletion p-value vs probe segment", fontsize=12)
+    grid.fig.suptitle("Resonator ground-vs-excited depletion p-value vs probe time", fontsize=12)
     grid.fig.tight_layout(rect=(0, 0.04, 1, 1))
     grid.fig.legend(handles, labels, loc="lower center", ncol=len(handles))
     return grid.fig

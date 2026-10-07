@@ -5,9 +5,10 @@ from .analysis import (
     log_depletion_summary,
     process_raw_dataset,
     resolve_conditions,
+    select_depletion_time,
 )
 from .parameters import Parameters
-from .plotting import plot_drachma_residuals, plot_ge_pvalue_grid, plot_pvalue_grid
+from .plotting import plot_residuals, plot_ge_pvalue_grid, plot_pvalue_grid
 
 __all__ = [
     "Parameters",
@@ -15,9 +16,10 @@ __all__ = [
     "compute_stat_depletion_time",
     "fetch_sliced_iq_traces",
     "log_depletion_summary",
-    "plot_drachma_residuals",
+    "plot_residuals",
     "plot_ge_pvalue_grid",
     "plot_pvalue_grid",
     "process_raw_dataset",
     "resolve_conditions",
+    "select_depletion_time",
 ]
