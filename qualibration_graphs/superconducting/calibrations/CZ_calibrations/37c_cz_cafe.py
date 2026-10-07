@@ -195,29 +195,29 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             align()
 
                             for ii, qp in multiplexed_qubit_pairs.items():
-                                reset_frame(qp.qubit_control.xy.name)
-                                reset_frame(qp.qubit_target.xy.name)
+                                # reset_frame(qp.qubit_control.xy.name)
+                                # reset_frame(qp.qubit_target.xy.name)
                                 # 1. Prepare the SIC state with one CZ
                                 assign(offset[ii], preparation_offset(state_idx))
                                 play_layer(ii, qp, prep_qua, offset[ii])
                                 qp.macros[operation].apply()
-                                qp.align()
+                                # qp.align()
                                 play_layer(ii, qp, prep_qua, offset[ii] + LAYER_STRIDE)
                                 # 2. Repeat the cycle
                                 with for_(count[ii], 0, count[ii] < depth, count[ii] + 1):
                                     qp.macros[operation].apply()
                                     if variant == "decaf":
-                                        qp.align()
+                                        # qp.align()
                                         qp.qubit_control.xy.play("x180")
                                         qp.qubit_target.xy.play("x180")
-                                    qp.align()
+                                    # qp.align()
                                 # 3. Undo the state expected from the reference cycle
                                 assign(offset[ii], undo_offset(iv, depth_idx, state_idx, len(depths)))
                                 play_layer(ii, qp, undo_qua[ii], offset[ii])
                                 qp.macros[operation].apply()
-                                qp.align()
+                                # qp.align()
                                 play_layer(ii, qp, undo_qua[ii], offset[ii] + LAYER_STRIDE)
-                            align()
+                            qp.align()
 
                             # Measure both qubits and record whether they returned to |00>
                             for ii, qp in multiplexed_qubit_pairs.items():
