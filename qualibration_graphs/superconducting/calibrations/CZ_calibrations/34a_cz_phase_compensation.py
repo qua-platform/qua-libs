@@ -11,6 +11,7 @@ from calibration_utils.cz_phase_compensation import (
     plot_raw_data_with_fit,
     process_raw_dataset,
 )
+from calibration_utils.common_utils.phase import wrap_phase
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -269,12 +270,12 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 continue
             old_phase_control = qp.macros[cz_operation].phase_shift_control
             old_phase_target = qp.macros[cz_operation].phase_shift_target
-            qp.macros[cz_operation].phase_shift_control = (
+            qp.macros[cz_operation].phase_shift_control = wrap_phase(
                 old_phase_control - float(node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_control_phase.values)
-            ) % 1
-            qp.macros[cz_operation].phase_shift_target = (
+            )
+            qp.macros[cz_operation].phase_shift_target = wrap_phase(
                 old_phase_target - float(node.results["ds_fit"].sel(qubit_pair=qp.name).fitted_target_phase.values)
-            ) % 1
+            )
 
 
 # %% {Save_results}

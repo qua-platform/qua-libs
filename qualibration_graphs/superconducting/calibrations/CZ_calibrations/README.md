@@ -32,6 +32,7 @@ Hardware falls into two workflows:
    - [Readout characterisation (35, 38)](#readout-characterisation-35-38)
    - [Two-qubit gate quality (36, 37a, 37b)](#two-qubit-gate-quality-36-37a-37b)
    - [Multi-qubit validation (39a, 39b)](#multi-qubit-validation-39a-39b)
+   - [CZ unitary reconstruction (40)](#cz-unitary-reconstruction-40)
 5. [Reading results and iterating](#5-reading-results-and-iterating)
    - [Symptoms and where to go back to](#symptoms-and-where-to-go-back-to)
 6. [Project structure](#6-project-structure)
@@ -397,6 +398,8 @@ A correct conditional phase still is not a CZ: the flux excursion also drags the
 
 34a scans both qubits over the virtual-Z frame in the same run; the fitted peak of each cosine is the phase that gets subtracted into the frames. Here both land within 0.01 of zero, meaning the frames were already nearly correct — after a first update from a fresh gate you should expect the peaks to move to zero, not to already sit there. 34b repeats the CZ so that cosine sharpens into a sinc, fitted separately for control and target. The residual phase each fit reports is _added_ to the frame already set by 34a, so the peaks should sit closer to zero than they did before — the two panels must both converge for the node to succeed.
 
+Both nodes store `phase_shift_control` and `phase_shift_target` in units of $2\pi$, wrapped to $[-0.5, 0.5)$.
+
 **Done when:** the reconstructed per-qubit phases are consistent with zero after the update. Neither node enforces a tolerance on the residual — they only require their fits to converge — so decide for yourself when the residual is small enough. At this point the pulse is a CZ; go measure it.
 
 ## Choosing the flux-pulse shape
@@ -417,7 +420,7 @@ The flux-pulse shape is a real fidelity lever — a smoother or net-zero wavefor
 | `GaussianFilteredSymmetricBipolarPulse` | Symmetric bipolar square, Gaussian-filtered, net-zero                                                             |
 | `SNZPulse`                              | Sudden net-zero ([Negîrneac et al., _Phys. Rev. Lett._ **126**, 220502 (2021)](https://arxiv.org/abs/2008.07411)) |
 
-The default populate in this folder currently attaches three of them as CZ macros: `cz_unipolar` (`SquarePulse`), `cz_flattop` (`FlatTopGaussianPulse`), `cz_bipolar` (`CosineBipolarPulse`). The others can be hung on a `CZGate` the same way. Every node that plays a CZ takes the shape from its `operation` parameter.
+The default populate in this folder currently attaches three of them as CZ macros: `cz_unipolar` (`SquarePulse`), `cz_flattop` (`FlatTopGaussianPulse`), `cz_bipolar` (`CosineBipolarPulse`). The others can be hung on a `CZGate` the same way. Every node that plays a CZ takes the shape from its `operation` parameter. Nodes 33a, 33b, 34a, 34b and 40 also accept `cz_SNZ` for an `SNZPulse` macro.
 
 ---
 
@@ -425,12 +428,13 @@ The default populate in this folder currently attaches three of them as CZ macro
 
 Nothing in Stages 1–4 measures gate fidelity — each node optimises its own local objective and declares success on its own fit. This chapter is where you find out whether the gate is actually good, and it is the only part that reports a fidelity.
 
-The three tracks are independent of one another; run whichever answer you need.
+The four tracks are independent of one another; run whichever answer you need.
 
 ```text
   35  two-qubit confusion matrix  -->  36  Bell-state tomography
   37a standard RB (reference)     -->  37b interleaved CZ RB
   38  N-qubit confusion matrix    -->  39a GHZ Z-basis  -->  39b GHZ tomography
+  35  two-qubit confusion matrix  -->  40  CZ unitary reconstruction
 ```
 
 The arrows are hard dependencies: the tomography nodes consume the confusion matrices for readout error mitigation, and interleaved RB is meaningless without a reference curve from the same CZ pulse.
@@ -492,6 +496,46 @@ Both offer Kron and N-qubit mitigation, the latter using the full N-qubit matrix
 
 > **Topology constraint.** GHZ preparation uses a **linear CZ ladder** over the qubits in list order — it is not a general graph builder. Every consecutive pair must actually be coupled.
 
+## CZ unitary reconstruction (40)
+
+[**40**, CZ unitary reconstruction](./40_cz_unitary_MEADD.py) measures every coherent error of the CZ in one run. Bell tomography and RB give one number; node 40 tells you which angle is wrong. It fits the gate to the excitation-number-conserving model (control first, basis $\vert b_c b_t\rangle$, up to a global phase):
+
+$$
+W=\begin{pmatrix}
+e^{i\gamma} & 0 & 0 & 0\\
+0 & e^{-i\zeta}\cos\theta & -i e^{i\chi}\sin\theta & 0\\
+0 & -i e^{-i\chi}\sin\theta & e^{i\zeta}\cos\theta & 0\\
+0 & 0 & 0 & e^{-i(\gamma+\phi)}
+\end{pmatrix}
+$$
+
+| Angle    | Meaning                                       | Ideal CZ  | Fixed by                       |
+| -------- | --------------------------------------------- | --------- | ------------------------------ |
+| $\phi$   | Conditional phase                             | $\pi$     | Stage 3 (33a–33d)              |
+| $\theta$ | Swap angle between $\vert 01\rangle$ and $\vert 10\rangle$ | 0 | Operating point, pulse shape |
+| $\chi$   | Swap phase (undefined when $\theta = 0$)      | —         | Does not affect fidelity       |
+| $\gamma$ | Common single-qubit phase                     | 0         | Virtual-Z (this node, or 34)   |
+| $\zeta$  | Differential single-qubit phase               | 0         | Virtual-Z (this node, or 34)   |
+
+Three sub-experiments run interleaved inside the same shot loop, so slow drifts affect them equally:
+
+- **MEADD-$\phi$** ([Gross et al., arXiv:2404.12550](https://arxiv.org/abs/2404.12550)): repeat (CZ, then X⊗X) from $\vert 0{+}\rangle$ and $\vert {+}0\rangle$. The phase of the determinant of the odd-parity matrix grows as $2n\phi$ per CZ pair.
+- **MEADD-$\theta$**: from $\vert 10\rangle$, repeat (CZ without its virtual-Z corrections, then X⊗X or Y⊗X). The odd-parity Bloch vector, read with Z and Bell-basis readouts, rotates by $4\theta\cos\chi$ and $4\theta\sin\chi$ per CZ pair.
+- **Floquet** ([Arute et al., arXiv:2010.07965](https://arxiv.org/abs/2010.07965)): repeat the CZ alone from $\vert 0{+}\rangle$ and $\vert {+}0\rangle$. The determinant gives $\gamma$ and the $\vert 10\rangle$ eigenphase gives $\zeta$.
+
+Key parameters: `max_cz_meadd` and `step_cz_meadd` set the MEADD depths (the step must be even, and a step of 4 cancels microwave pulse errors to first order); `max_cz_floquet` sets the Floquet depths; `use_readout_mitigation` (default on) needs a valid confusion matrix from node 35.
+
+The node produces four figures: one per sub-experiment, and the Pauli-basis process matrix of the ideal and reconstructed gates with a table of the five angles. It reports the process fidelity to CZ of the reconstructed gate. This fidelity covers coherent errors only; decoherence and leakage are not included.
+
+**State update.** The node writes `phase_shift_control` and `phase_shift_target` of the CZ macro so that $\zeta = 0$ and $\gamma$ reaches the target set by `correction_target`:
+
+- `max_fidelity` (default) sets $\gamma = -(\phi - \pi)/2$, the value with the highest fidelity for the measured $\phi$.
+- `ideal_cz` sets $\gamma = 0$. Use it if you will recalibrate $\phi$ afterwards.
+
+Virtual-Z rotations cannot change $\phi$ or $\theta$, so the log and the figure also report the fidelity expected after the update. If that number is still low, go back to Stage 3 for $\phi$ or to the operating point for $\theta$.
+
+**Fails when** any angle is not finite, the odd-parity fraction of the $\theta$ circuits drops below 0.5 (leakage), a phase line fit has a residual above $\pi/2$ (the unwrap slipped by $2\pi$), or $\zeta$ is out of range ($\cos\Omega / \cos\theta$ exceeds 1 by more than the measurement error). The sign of $\chi$ is unreliable when the logged sign margin is below about 0.2.
+
 ---
 
 # 5. Reading results and iterating
@@ -508,6 +552,7 @@ The diagrams above are drawn as straight lines, but calibration is a loop: you b
 | Conditional phase fits, but 33b's optimum keeps moving           | Residual long-timescale distortion                     | [1Q flux-line distortions](../1Q_calibrations/README.md#flux-line-distortions-17a--17b--17c) (`17a`/`17b`)  |
 | High $\vert f\rangle$ population after the gate                  | Coupler amplitude off the leakage-null                 | Stage 2 (32a/32b)                                                                                           |
 | Bell fidelity low but purity high                                | Coherent error — phases, not decoherence               | Stage 3 and 4 (33b, 34a/34b)                                                                                |
+| Bell fidelity low, 33b and 34 already converged                  | Swap error ($\theta$) or residual phase error        | Run 40 to see which angle is off                                                                            |
 | Bell fidelity and purity both low                                | Decoherence or leakage                                 | Stage 2, and check T1/T2 (05, 06a)                                                                          |
 | Bell fidelity much better with Joint than Kron mitigation        | Readout crosstalk, not gate error                      | Re-run 35; revisit 08a/08b                                                                                  |
 | RB decay non-exponential or with a long tail                     | Leakage out of the computational subspace              | Stage 2 (32a/32b)                                                                                           |
@@ -549,6 +594,7 @@ If the 1Q layer has also drifted, fix that first (see [1Q retuning](../1Q_calibr
 | **38**  | [`38_n_qubit_confusion_matrix.py`](./38_n_qubit_confusion_matrix.py)                           |       ✓       |        ✓        | Readout model       |
 | **39a** | [`39a_ghz_z_basis.py`](./39a_ghz_z_basis.py)                                                   |       ✓       |        ✓        | Benchmark (N-qubit) |
 | **39b** | [`39b_ghz_tomography.py`](./39b_ghz_tomography.py)                                             |       ✓       |        ✓        | Benchmark (N-qubit) |
+| **40**  | [`40_cz_unitary_MEADD.py`](./40_cz_unitary_MEADD.py)                                           |       ✓       |        ✓        | Benchmark / Virtual-Z |
 | **98**  | [`98_CZ_calibration_graph_tunable_couplers.py`](./98_CZ_calibration_graph_tunable_couplers.py) |       —       |        ✓        | Orchestration       |
 | **99**  | [`99_CZ_calibration_graph_fixed_couplers.py`](./99_CZ_calibration_graph_fixed_couplers.py)     |       ✓       |        —        | Orchestration       |
 
@@ -575,6 +621,6 @@ If the 1Q layer has also drifted, fix that first (see [1Q retuning](../1Q_calibr
 Not covered by any graph, and run by hand or in a custom graph:
 
 - The **JAZZ** refinements (33c/33d).
-- All of **verification and benchmarking** (35–39).
+- All of **verification and benchmarking** (35–40).
 
 ---
