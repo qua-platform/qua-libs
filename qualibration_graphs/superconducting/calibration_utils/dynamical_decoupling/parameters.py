@@ -8,9 +8,6 @@ from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonN
 
 from .dd_sequences import DD_SEQUENCES, MIN_WAIT_CC, DDSequence, get_dd_sequence
 
-# Patches grouped-parameter defaults before this node is constructed, so the GUI keeps submitted values.
-import qualibrate_group_defaults  # noqa: F401, E402
-
 
 class DDSequenceParameters(GroupParameters):
     """DD sequence and idle window."""
