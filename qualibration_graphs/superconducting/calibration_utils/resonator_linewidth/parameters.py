@@ -23,6 +23,18 @@ class Parameters(
     """Probe power, as a scale factor on each qubit's operating readout amplitude. Kept well below 1 so
     that the resonator is probed in the low-power (unsaturated) regime. Must be within [0, 2). Default is 0.1."""
 
+    probe_skip_ns: int | None = None
+    """Start of the probe pulse that is not integrated, while the resonator is still filling up. The circle
+    fit assumes the steady-state response; integrating the fill-up broadens the resonance and biases kappa
+    high (about +90% for a 0.8 us readout-length probe at kappa/2pi = 0.7 MHz). None derives it per qubit as
+    8 / kappa (fill-up transient below ~2%) from the stored linewidth, or 2000 ns when none is stored.
+    Multiple of 4."""
+
+    probe_window_ns: int | None = None
+    """Integration window after the skip. Longer averages more signal, but the qubit prepared in |1> decays
+    during it, which mixes the two resonances and inflates the |1> linewidth. None takes min(2000 ns, T1 / 10)
+    per qubit (2000 ns when T1 is unknown). Multiple of 4."""
+
     measure_excited_state: bool = True
     """Also sweep the resonance with the qubit prepared in |1>, which is what yields chi. The two
     states are measured back to back at each frequency, so slow drift subtracts out of the splitting.

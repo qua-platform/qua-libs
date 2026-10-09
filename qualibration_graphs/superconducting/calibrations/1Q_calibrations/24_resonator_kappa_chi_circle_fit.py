@@ -18,11 +18,14 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 
+from quam.components.pulses import SquareReadoutPulse
 from quam_config import Quam
 
 from calibration_utils.resonator_linewidth import (
+    SKIP_IN_LIFETIMES,
     FitParameters,
     Parameters,
+    choose_probe_timing,
     fit_raw_data,
     log_fitted_results,
     plot_circle_fit,
@@ -45,6 +48,13 @@ data rather than assumed, because an assumed delay makes Q_c silently wrong.
 The probe power is a scale factor on each qubit's own readout amplitude, so the absolute power
 differs per qubit. The node records that power alongside Q_i, which matters because two-level-system
 loss saturates with power and Q_i is only interpretable together with the power it was measured at.
+
+The probe is a dedicated pulse, not the readout pulse. The circle fit assumes the steady-state response,
+but a readout-length pulse (~1 us) is integrated mostly while the resonator is still filling up, which
+broadens the resonance and biases kappa high. The probe therefore skips the first probe_skip_ns
+(default 8 / kappa from the stored linewidth) and integrates only the following probe_window_ns
+(default min(2 us, T1 / 10), so that |1> barely decays). The temporary probe operation is removed
+again before the state is saved; the readout operation is never modified.
 
 Prerequisites:
     - Having calibrated the readout frequency (node 02a_resonator_spectroscopy.py).
@@ -82,6 +92,10 @@ node = QualibrationNode[Parameters, Quam](
     machine=Quam.load(),
 )
 
+PROBE_OPERATION = "linewidth_probe"
+"""Temporary low-amplitude probe pulse built per qubit in create_qua_program (zero integration weights
+during the fill-up skip) and removed again in save_results, so it never reaches the saved state."""
+
 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]) -> None:
@@ -102,9 +116,23 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]) -> None:
     span = node.parameters.frequency_span_in_mhz * u.MHz
     step = node.parameters.frequency_step_in_mhz * u.MHz
     dfs = np.arange(-span / 2, +span / 2, step)
-    # The probe power is a real-time amplitude scale, so nothing in the config is modified and there
-    # is nothing to revert when the node finishes.
     probe_scale = node.parameters.probe_amplitude_scale
+
+    # Dedicated probe per qubit: the readout amplitude scaled down, long enough to skip the fill-up and
+    # then integrate a steady-state window. Integration weights are zero during the skip.
+    probe_timing = {}
+    for qubit in qubits:
+        skip_ns, window_ns, source = choose_probe_timing(qubit, node.parameters)
+        readout = qubit.resonator.operations["readout"]
+        qubit.resonator.operations[PROBE_OPERATION] = SquareReadoutPulse(
+            length=skip_ns + window_ns,
+            amplitude=readout.amplitude * probe_scale,
+            integration_weights=[(0.0, skip_ns), (1.0, window_ns)] if skip_ns > 0 else [(1.0, window_ns)],
+            integration_weights_angle=readout.integration_weights_angle,
+        )
+        probe_timing[qubit.name] = (skip_ns, window_ns)
+        node.log(f"{qubit.name} probe: {source}.")
+    node.namespace["probe_timing"] = probe_timing
 
     # The prepared states, innermost in the sweep. Measuring |0> and |1> back to back at each
     # frequency means slow drift subtracts out of the splitting, which is what chi is made of.
@@ -137,7 +165,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]) -> None:
                             if prepared_state == 1:
                                 qubit.xy.play("x180")
                                 qubit.align()
-                            rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=probe_scale)
+                            rr.measure(PROBE_OPERATION, qua_vars=(I[i], Q[i]))
                             rr.wait(rr.depletion_time * u.ns)
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
@@ -176,7 +204,13 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]) -> None:
                 start_time=data_fetcher.t_start,
             )
         node.log(job.execution_report())
-    node.results["ds_raw"] = dataset
+    # Kept on the dataset so the volts conversion and the skip check also work for a reloaded run.
+    timing = node.namespace["probe_timing"]
+    names = list(dataset.qubit.values)
+    node.results["ds_raw"] = dataset.assign_coords(
+        probe_skip_ns=("qubit", [timing[name][0] for name in names]),
+        probe_window_ns=("qubit", [timing[name][1] for name in names]),
+    )
 
 
 # %% {Load_historical_data}
@@ -201,6 +235,21 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
+
+    # The skip was chosen from the stored kappa (or a fallback). If the fitted kappa needs a longer one,
+    # part of the fill-up was integrated and kappa is biased high; the next run derives the skip from it.
+    if "probe_skip_ns" in node.results["ds_raw"].coords:
+        for name, result in node.results["fit_results"].items():
+            if not result["success"]:
+                continue
+            skip_ns = float(node.results["ds_raw"].probe_skip_ns.sel(qubit=name))
+            needed_ns = SKIP_IN_LIFETIMES * result["photon_lifetime_ns"]
+            if skip_ns < 0.75 * needed_ns:
+                node.log(
+                    f"WARNING {name}: the probe skipped {skip_ns:.0f} ns, shorter than {SKIP_IN_LIFETIMES}/κ = "
+                    f"{needed_ns:.0f} ns for the fitted κ, so part of the fill-up was integrated and κ may be "
+                    f"biased high. Re-run: the next run derives the skip from this κ."
+                )
 
     warn_fraction = node.parameters.kappa_mismatch_warning_fraction
     for name, result in node.results["fit_results"].items():
@@ -278,4 +327,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]) -> None:
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]) -> None:
+    # The probe operation is temporary; it must not reach the saved state.
+    for qubit in node.namespace.get("qubits", []):
+        qubit.resonator.operations.pop(PROBE_OPERATION, None)
     node.save()
