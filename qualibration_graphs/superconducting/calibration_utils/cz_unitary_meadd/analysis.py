@@ -25,6 +25,7 @@ import xarray as xr
 from qualibrate import QualibrationNode
 
 from calibration_utils.common_utils.confusion_matrix import recover_prepared_probs
+from calibration_utils.common_utils.phase import wrap_phase
 from calibration_utils.cz_unitary_meadd.circuits import (
     EXP_FLOQUET,
     EXP_PHI,
@@ -179,7 +180,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
 
         values, curves = analyze_pair(rows, ds_qp.probs.values, zeta_raw_offset)
         success = bool(
-            all(np.isfinite(v) for v in values.values() if v is not None)
+            all(np.isfinite(v) for v in values.values())
             and values["kept_fraction_min"] >= KEPT_FRACTION_MIN
             and values["max_unwrap_residual"] <= UNWRAP_RESIDUAL_MAX
             and values["zeta_in_range"]
@@ -273,8 +274,6 @@ def analyze_pair(rows: List[Dict[str, int]], P: np.ndarray, zeta_raw_offset: flo
         zeta_in_range=bool(zeta_in_range),
     )
 
-    meadd = {"cz_pairs": n}
-    floquet = {"ncz_floquet": ncz_floquet}
     curves = xr.Dataset(
         {
             # Diagonal of M_n: target qubit for prep 0P, control qubit for prep P0
@@ -299,7 +298,7 @@ def analyze_pair(rows: List[Dict[str, int]], P: np.ndarray, zeta_raw_offset: flo
             "floquet_eigphase": ("ncz_floquet", eigphase),
             "floquet_eigphase_fit": ("ncz_floquet", eigphase_fit),
         },
-        coords={**meadd, **floquet},
+        coords={"cz_pairs": n, "ncz_floquet": ncz_floquet},
     )
     return values, curves
 
@@ -320,11 +319,6 @@ def gate_unitary(phi: float, theta: float, chi: float, gamma: float, zeta: float
 def process_fidelity(unitary: np.ndarray) -> float:
     """Process fidelity |Tr(CZ† U)|² / 16 of a two-qubit unitary to the ideal CZ."""
     return float(abs(np.trace(CZ.conj().T @ unitary)) ** 2 / 16)
-
-
-def wrap_phase(phase):
-    """Wrap a phase in 2π units to the [-0.5, 0.5) range (representing -π to π)."""
-    return (phase + 0.5) % 1 - 0.5
 
 
 def optimal_gamma(phi: float) -> float:
@@ -364,8 +358,7 @@ def _odd_block_matrices(rows, P, lookup, exp) -> Tuple[np.ndarray, np.ndarray]:
             zl_y, zr_y = _z_expectations(P[lookup[(exp, prep, RO_YY, ncz)]])
             xy[prep] = dict(L=zl_x + 1j * zl_y, R=zr_x + 1j * zr_y)
         # Row <01| from R, row <10| from L
-        a, b = PREP_0P, PREP_P0
-        matrices.append([[xy[a]["R"], xy[b]["R"]], [xy[a]["L"], xy[b]["L"]]])
+        matrices.append([[xy[PREP_0P]["R"], xy[PREP_P0]["R"]], [xy[PREP_0P]["L"], xy[PREP_P0]["L"]]])
     return depths, np.array(matrices)
 
 

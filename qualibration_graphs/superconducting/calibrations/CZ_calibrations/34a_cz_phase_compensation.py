@@ -10,8 +10,8 @@ from calibration_utils.cz_phase_compensation import (
     log_fitted_results,
     plot_raw_data_with_fit,
     process_raw_dataset,
-    wrap_phase,
 )
+from calibration_utils.common_utils.phase import wrap_phase
 from qm.qua import *
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session

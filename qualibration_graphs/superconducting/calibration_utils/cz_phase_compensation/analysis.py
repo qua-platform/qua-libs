@@ -9,6 +9,8 @@ from qualibration_libs.analysis import fit_oscillation, oscillation
 from qualibration_libs.data import convert_IQ_to_V
 from scipy.optimize import curve_fit
 
+from calibration_utils.common_utils.phase import wrap_phase
+
 
 @dataclass
 class FitResults:
@@ -29,11 +31,6 @@ class FitResults:
     control_phase_correction: float
     target_phase_correction: float
     success: bool
-
-
-def wrap_phase(phase):
-    """Wrap a phase in 2π units to the [-0.5, 0.5) range (representing -π to π)."""
-    return (phase + 0.5) % 1 - 0.5
 
 
 def fix_oscillation_phi_2pi(fit_data):
