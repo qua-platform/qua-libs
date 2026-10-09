@@ -1,5 +1,7 @@
 from .analysis import (
+    SKIP_IN_LIFETIMES,
     FitParameters,
+    choose_probe_timing,
     fit_cable_delay,
     fit_circle,
     fit_phase,
@@ -14,6 +16,8 @@ from .plotting import plot_circle_fit, plot_dispersive_shift, plot_magnitude_wit
 __all__ = [
     "Parameters",
     "FitParameters",
+    "SKIP_IN_LIFETIMES",
+    "choose_probe_timing",
     "process_raw_dataset",
     "fit_raw_data",
     "log_fitted_results",

@@ -292,8 +292,15 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
     The complex transmission is rebuilt from `I` and `Q` where it is needed rather than stored, so
     that the dataset keeps to real dtypes and saves to HDF5 unchanged.
+
+    Only the probe's integration window is demodulated, so the volts conversion divides by that window
+    (stored on the dataset as `probe_window_ns`) rather than by the readout length. Datasets acquired
+    before the probe had a window fall back to the readout length.
     """
-    ds = convert_IQ_to_V(ds, node.namespace["qubits"])
+    if "probe_window_ns" in ds.coords:
+        ds = ds.assign({key: ds[key] * 2**12 / ds["probe_window_ns"] for key in ("I", "Q")})
+    else:
+        ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     full_freq = np.array([ds.detuning.values + q.resonator.RF_frequency for q in node.namespace["qubits"]])
     ds = ds.assign_coords(full_freq=(["qubit", "detuning"], full_freq))
     ds.full_freq.attrs = {"long_name": "RF frequency", "units": "Hz"}
@@ -315,6 +322,57 @@ def _stored_kappa_hz(resonator) -> float:
     if extras.get("kappa_ext_hz") is not None and extras.get("kappa_int_hz") is not None:
         return float(extras["kappa_ext_hz"]) + float(extras["kappa_int_hz"])
     return float("nan")
+
+
+# Probe timing: integration starts this many photon lifetimes (1 / kappa) after the probe turns on, where
+# the fill-up transient exp(-kappa t / 2) is down to ~2%.
+SKIP_IN_LIFETIMES = 8
+FALLBACK_SKIP_NS = 2000  # no stored kappa: enough for kappa/2pi >~ 0.6 MHz
+MAX_SKIP_NS = 20000
+MAX_WINDOW_NS = 2000
+MIN_WINDOW_NS = 400
+WINDOW_OVER_T1 = 0.1  # keeps the |1> decay during the window small
+
+
+def _round_up_to_4(value_ns: float) -> int:
+    return int(4 * np.ceil(value_ns / 4))
+
+
+def choose_probe_timing(qubit, params) -> Tuple[int, int, str]:
+    """Skip and integration window of the linewidth probe for one qubit, in ns.
+
+    Explicit parameters win. Otherwise the skip is 8 photon lifetimes of the stored kappa (2000 ns when
+    none is stored) and the window is min(2000 ns, T1 / 10) (2000 ns when T1 is unknown).
+
+    Returns
+    -------
+    skip_ns, window_ns, source : int, int, str
+        `source` says where each value came from, for the log.
+    """
+    if params.probe_skip_ns is not None:
+        skip_ns, skip_source = _round_up_to_4(params.probe_skip_ns), "parameter"
+    else:
+        kappa_hz = _stored_kappa_hz(qubit.resonator)
+        if np.isfinite(kappa_hz) and kappa_hz > 0:
+            lifetime_ns = 1e9 / (2 * np.pi * kappa_hz)
+            skip_ns = _round_up_to_4(min(SKIP_IN_LIFETIMES * lifetime_ns, MAX_SKIP_NS))
+            skip_source = f"{SKIP_IN_LIFETIMES}/kappa, stored kappa/2pi = {1e-6 * kappa_hz:.3f} MHz"
+        else:
+            skip_ns, skip_source = FALLBACK_SKIP_NS, "fallback, no stored kappa"
+
+    if params.probe_window_ns is not None:
+        window_ns, window_source = _round_up_to_4(params.probe_window_ns), "parameter"
+    else:
+        t1 = getattr(qubit, "T1", None)
+        if t1 is not None and np.isfinite(t1) and t1 > 0:
+            window_ns = _round_up_to_4(max(MIN_WINDOW_NS, min(MAX_WINDOW_NS, WINDOW_OVER_T1 * t1 * 1e9)))
+            window_source = f"min({MAX_WINDOW_NS} ns, T1/10), T1 = {1e6 * t1:.1f} us"
+        else:
+            window_ns, window_source = MAX_WINDOW_NS, "default, T1 unknown"
+
+    if skip_ns < 0 or window_ns <= 0:
+        raise ValueError(f"{qubit.name}: probe skip {skip_ns} ns must be >= 0 and window {window_ns} ns > 0.")
+    return skip_ns, window_ns, f"skip {skip_ns} ns ({skip_source}), window {window_ns} ns ({window_source})"
 
 
 def _fit_one_state(ds_q: xr.Dataset, tau_guess: float, params, state=None) -> Dict[str, object]:
