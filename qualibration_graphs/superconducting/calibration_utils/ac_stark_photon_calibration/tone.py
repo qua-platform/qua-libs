@@ -66,7 +66,7 @@ def steady_state_pad_ns(qubit, lifetimes: float) -> int:
     Parameters
     ----------
     qubit
-        Must carry a resonator whose extras hold the linewidth written by node 23a.
+        Must carry a resonator whose extras hold the linewidth written by node 24.
     lifetimes : float
         Number of photon lifetimes 1/kappa to wait. Use `steady_state_fraction` to turn that into
         the fraction of the steady-state photon number it reaches: 8 lifetimes give 96%. Zero or

@@ -36,13 +36,13 @@ class Parameters(
     """Minimum R² of the fitted |S21| magnitude against the data for the fit to count as successful."""
 
     max_chi_over_kappa: float = 0.3
-    """Warn when |chi| / kappa exceeds this. Above it the weak-dispersive formulas that node 23b uses
+    """Warn when |chi| / kappa exceeds this. Above it the weak-dispersive formulas that node 25 uses
     to turn a Stark shift into a photon number no longer hold, and the general steady-state
     expressions are needed instead. Default is 0.3."""
 
     chi_mismatch_warning_fraction: float = 0.2
     """Warn when the fitted chi disagrees with a chi already stored on the qubit by more than this
-    fraction. Everything node 23b reports scales with chi. Default is 0.2, i.e. 20%."""
+    fraction. Everything node 25 reports scales with chi. Default is 0.2, i.e. 20%."""
 
     kappa_mismatch_warning_fraction: float = 0.2
     """Warn when the fitted kappa_tot disagrees with a kappa already stored on the resonator by more

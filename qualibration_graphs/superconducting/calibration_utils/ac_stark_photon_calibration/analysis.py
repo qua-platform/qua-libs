@@ -129,7 +129,7 @@ class FitParameters:
     flipped so that the photon number comes out positive."""
     tone_frequency_hz: float
     tone_detuning_hz: float
-    """Tone frequency minus the midpoint of the two dressed resonances. NaN when neither node 23a's
+    """Tone frequency minus the midpoint of the two dressed resonances. NaN when neither node 24's
     measured resonances nor a bare resonator frequency is in state, in which case the expected
     Gamma_d ratio is evaluated at zero detuning."""
     detuning_source: str
@@ -246,7 +246,7 @@ def photons_per_mw_fit(power_mw: np.ndarray, n_bar: np.ndarray) -> Tuple[float, 
 
 
 def kappa_tot_hz_from_extras(qubit) -> float:
-    """Read kappa_tot in Hz from a resonator's extras, as node 23a wrote it.
+    """Read kappa_tot in Hz from a resonator's extras, as node 24 wrote it.
 
     Raises
     ------
@@ -259,7 +259,7 @@ def kappa_tot_hz_from_extras(qubit) -> float:
     if missing:
         raise MissingResonatorLinewidthError(
             f"{qubit.name}: {' and '.join(missing)} missing from qubit.resonator.extras. "
-            f"Run node 23a_resonator_linewidth first; this node will not assume a linewidth."
+            f"Run node 24_resonator_kappa_chi_circle_fit first; this node will not assume a linewidth."
         )
     return float(extras["kappa_ext_hz"]) + float(extras["kappa_int_hz"])
 
@@ -384,14 +384,14 @@ def dressed_resonances(qubit, chi_hz: float) -> Tuple[float, float, str]:
     did, makes the reported detuning exactly minus chi whenever the tone defaults to the readout
     frequency, so it carries no information at all.
 
-    Preference order: the two resonances node 23a fitted, then a stored bare resonator frequency,
+    Preference order: the two resonances node 24 fitted, then a stored bare resonator frequency,
     then nothing.
     """
     extras = getattr(qubit.resonator, "extras", None) or {}
     ground = extras.get("f_r_ground_hz")
     excited = extras.get("f_r_excited_hz")
     if ground is not None and excited is not None and np.isfinite(ground) and np.isfinite(excited):
-        return float(ground), float(excited), "measured by node 23a"
+        return float(ground), float(excited), "measured by node 24"
     bare = getattr(qubit.resonator, "frequency_bare", None)
     if isinstance(bare, (int, float)) and np.isfinite(bare) and bare > 0:
         return float(bare) - chi_hz, float(bare) + chi_hz, "stored bare frequency"

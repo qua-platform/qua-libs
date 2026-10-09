@@ -77,7 +77,7 @@ there comes from extending the fitted line.
 
 Prerequisites:
     - Having measured the resonator linewidth and the dispersive shift chi
-      (node 23a_resonator_linewidth.py). This node stops with an error when kappa is missing, rather
+      (node 24_resonator_kappa_chi_circle_fit.py). This node stops with an error when kappa is missing, rather
       than assuming a linewidth, because the sequence itself needs it.
     - Having calibrated the pi/2 pulse (node 04b_power_rabi.py).
     - The resonator needs a `const` operation; the node sets its length and amplitude and reverts them.
@@ -102,7 +102,7 @@ whose failure they predict, and measurement-induced state transitions generally 
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="23b_ac_stark_photon_calibration",
+    name="25_photon_number_stark_ramsey",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
@@ -483,7 +483,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
             node.log(
                 f"{name}: no measured resonances and no bare resonator frequency in state, so the tone "
                 f"detuning is unknown and the predicted Γ_d ratio assumes the tone sits at the midpoint of "
-                f"the dressed pair. Node 23a can store f_r_ground_hz and f_r_excited_hz to fix this."
+                f"the dressed pair. Node 24 can store f_r_ground_hz and f_r_excited_hz to fix this."
             )
 
     # The critical photon number comes from stored state, not from this node's data, so these checks
