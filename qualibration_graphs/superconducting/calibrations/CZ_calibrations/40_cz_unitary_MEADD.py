@@ -21,10 +21,8 @@ from calibration_utils.cz_unitary_meadd.circuits import (
     EXP_THETA_XX,
     EXP_THETA_YX,
     PREP_0P,
-    PREP_1P,
     PREP_10,
     PREP_P0,
-    PREP_P1,
     RO_XODD,
     RO_XX,
     RO_YODD,
@@ -60,11 +58,10 @@ Prerequisites:
     - A calibrated CZ macro (conditional phase within a few hundred mrad of π).
     - The pair's readout confusion matrix (node 35) if use_readout_mitigation is True.
 
-State update (if update_phase_shifts is True and the fit succeeded):
+State update (if the fit succeeded):
     - phase_shift_control and phase_shift_target of the CZ macro, set to virtual-Z corrections that zero ζ and set
       γ to the target chosen by correction_target. ϕ and θ cannot be changed by single-qubit Z rotations, so the
-      corrected gate reaches the fidelity reported as "after suggested corrections". If a rerun shows γ and ζ
-      doubled instead of zeroed, set invert_frame_sign to True.
+      corrected gate reaches the fidelity reported as "after suggested corrections".
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -92,8 +89,6 @@ PREPARATION_PULSES = {
     PREP_P0: ("y90", None),
     PREP_0P: (None, "y90"),
     PREP_10: ("x180", None),
-    PREP_P1: ("y90", "x180"),
-    PREP_1P: ("x180", "y90"),
 }
 
 
@@ -164,7 +159,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         node.parameters.max_cz_meadd,
         node.parameters.step_cz_meadd,
         node.parameters.max_cz_floquet,
-        node.parameters.include_floquet_phi,
     )
     num_circuits = len(circuits)
 
@@ -332,7 +326,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate or not node.parameters.update_phase_shifts)
+@node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Write the suggested virtual-Z corrections to the CZ macro of every pair whose fit succeeded."""
     operation = node.parameters.operation

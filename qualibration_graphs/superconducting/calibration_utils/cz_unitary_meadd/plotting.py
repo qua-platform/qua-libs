@@ -109,13 +109,10 @@ def _angle_table_rows(r: Dict) -> list:
     rows = []
     for label, key, ideal, ideal_label in (
         ("ϕ", "phi", np.pi, "π"),
-        ("ϕ (Floquet)", "phi_floquet", np.pi, "π"),
         ("θ", "theta", 0.0, "0"),
         ("γ", "gamma", 0.0, "0"),
         ("ζ", "zeta", 0.0, "0"),
     ):
-        if r.get(key) is None:
-            continue
         value, err = r[key], r[f"{key}_err"]
         rows.append([label, f"{value:.4f} ± {err:.4f}", ideal_label, f"{1e3 * (value - ideal):+.2f} ± {1e3 * err:.2f}"])
     # The swap phase χ has no ideal value: it is undefined when θ = 0

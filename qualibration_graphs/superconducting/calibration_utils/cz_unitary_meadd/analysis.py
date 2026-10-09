@@ -18,7 +18,7 @@ Virtual-Z corrections Z(a) on L and Z(b) on R after the gate map γ -> γ - (a +
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import xarray as xr
@@ -31,10 +31,8 @@ from calibration_utils.cz_unitary_meadd.circuits import (
     EXP_THETA_XX,
     EXP_THETA_YX,
     PREP_0P,
-    PREP_1P,
     PREP_10,
     PREP_P0,
-    PREP_P1,
     RO_XODD,
     RO_XX,
     RO_YODD,
@@ -72,7 +70,6 @@ class FitResults:
         kept_fraction_min: Smallest odd-parity fraction in the theta circuits (low values mean leakage).
         max_unwrap_residual: Largest residual of the phase line fits.
         zeta_in_range: False if cos(Ω)/cos(θ) exceeds 1 by more than the measurement error allows.
-        phi_floquet: Optional |11>-reference estimate of phi (known modulo π), None if not measured.
         fidelity: Process fidelity to CZ of the fitted gate, as measured (coherent errors only).
         corrected_fidelity: Process fidelity expected after applying the suggested phase_shift values.
         suggested_phase_shift_control/target: phase_shift values (units of 2π, in [-0.5, 0.5)) that set zeta to 0
@@ -93,8 +90,6 @@ class FitResults:
     kept_fraction_min: float
     max_unwrap_residual: float
     zeta_in_range: bool
-    phi_floquet: Optional[float]
-    phi_floquet_err: Optional[float]
     fidelity: float
     corrected_fidelity: float
     suggested_phase_shift_control: float
@@ -116,10 +111,6 @@ def log_fitted_results(fit_results: Dict[str, Dict], log_callable=None):
             f"\tgamma    = {1e3 * r['gamma']:.2f} ± {1e3 * r['gamma_err']:.2f} mrad",
             f"\tzeta     = {1e3 * r['zeta']:.2f} ± {1e3 * r['zeta_err']:.2f} mrad",
         ]
-        if r["phi_floquet"] is not None:
-            lines.append(
-                f"\tphi - pi (Floquet) = {1e3 * (r['phi_floquet'] - np.pi):.2f} ± {1e3 * r['phi_floquet_err']:.2f} mrad"
-            )
         lines += [
             f"\tprocess fidelity = {r['fidelity']:.5f} ({r['corrected_fidelity']:.5f} after suggested corrections)",
             f"\tmin kept fraction = {r['kept_fraction_min']:.3f} (fail below {KEPT_FRACTION_MIN})",
@@ -140,9 +131,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
     """
     params = node.parameters
     qubit_pairs = node.namespace["qubit_pairs"]
-    rows = build_circuit_table(
-        params.max_cz_meadd, params.step_cz_meadd, params.max_cz_floquet, params.include_floquet_phi
-    )
+    rows = build_circuit_table(params.max_cz_meadd, params.step_cz_meadd, params.max_cz_floquet)
     coord_names = {"experiment": "exp", "preparation": "prep", "readout": "ro", "ncz": "ncz"}
     ds = ds.assign_coords({name: ("circuit", [r[key] for r in rows]) for name, key in coord_names.items()})
 
@@ -180,14 +169,13 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
         dict(exp=int(e), prep=int(p), ro=int(r), ncz=int(n))
         for e, p, r, n in zip(ds.experiment.values, ds.preparation.values, ds.readout.values, ds.ncz.values)
     ]
-    s = -1 if node.parameters.invert_frame_sign else 1
     fits, fit_results = [], {}
     for qp in node.namespace["qubit_pairs"]:
         ds_qp = ds.sel(qubit_pair=qp.name)
         x_control = float(ds_qp.phase_shift_control)
         x_target = float(ds_qp.phase_shift_target)
         # zeta of the gate without virtual-Z corrections, minus zeta of the gate as used
-        zeta_raw_offset = -s * np.pi * (x_control - x_target)
+        zeta_raw_offset = np.pi * (x_control - x_target)
 
         values, curves = analyze_pair(rows, ds_qp.probs.values, zeta_raw_offset)
         success = bool(
@@ -207,8 +195,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             corrected_fidelity=process_fidelity(
                 gate_unitary(values["phi"], values["theta"], values["chi"] + zeta, gamma_target, 0.0)
             ),
-            suggested_phase_shift_control=float(wrap_phase(x_control + s * a / (2 * np.pi))),
-            suggested_phase_shift_target=float(wrap_phase(x_target + s * b / (2 * np.pi))),
+            suggested_phase_shift_control=float(wrap_phase(x_control - a / (2 * np.pi))),
+            suggested_phase_shift_target=float(wrap_phase(x_target - b / (2 * np.pi))),
             success=success,
         )
         fits.append(curves.assign(success=success))
@@ -283,17 +271,7 @@ def analyze_pair(rows: List[Dict[str, int]], P: np.ndarray, zeta_raw_offset: flo
         kept_fraction_min=float(min(theta_proj[e]["kept"].min() for e in theta_proj)),
         max_unwrap_residual=float(np.max(max_residual)),
         zeta_in_range=bool(zeta_in_range),
-        phi_floquet=None,
-        phi_floquet_err=None,
     )
-
-    # Optional |11>-reference cross-check: det N_n = e^{-2in(γ+ϕ)}, so ϕ is known only modulo π
-    if (EXP_FLOQUET, PREP_P1, RO_XX, 0) in lookup:
-        _, N_floquet = _odd_block_matrices(rows, P, lookup, EXP_FLOQUET, preps=(PREP_P1, PREP_1P))
-        slope_N, slope_N_err, _ = _line_fit(ncz_floquet, _unwrapped_det_phase(N_floquet))
-        delta = np.mod(-(slope_N - slope_det) / 2 + np.pi / 2, np.pi) - np.pi / 2
-        values["phi_floquet"] = float(np.pi + delta)
-        values["phi_floquet_err"] = float(np.hypot(slope_N_err, slope_det_err) / 2)
 
     meadd = {"cz_pairs": n}
     floquet = {"ncz_floquet": ncz_floquet}
@@ -370,26 +348,24 @@ def _z_expectations(p: np.ndarray) -> Tuple[float, float]:
     return (p[0] + p[1]) - (p[2] + p[3]), (p[0] + p[2]) - (p[1] + p[3])
 
 
-def _odd_block_matrices(rows, P, lookup, exp, preps=(PREP_0P, PREP_P0)) -> Tuple[np.ndarray, np.ndarray]:
+def _odd_block_matrices(rows, P, lookup, exp) -> Tuple[np.ndarray, np.ndarray]:
     """Build the 2x2 matrix M_n of odd-parity matrix elements for every depth of a sub-experiment.
 
     With one qubit prepared in |+> and the other in |0>, <X> + i<Y> of each qubit is one matrix element of the
-    odd-parity block times the reference phase of |00> (preps 0P, P0) or |11> (preps P1, 1P).
+    odd-parity block times the reference phase of |00>.
     Returns the depths (number of CZ gates) and an array of shape (n_depths, 2, 2).
     """
-    depths = np.array(sorted({r["ncz"] for r in rows if r["exp"] == exp and r["prep"] == preps[0]}))
+    depths = np.array(sorted({r["ncz"] for r in rows if r["exp"] == exp and r["prep"] == PREP_0P}))
     matrices = []
     for ncz in depths:
         xy = {}
-        for prep in preps:
+        for prep in (PREP_0P, PREP_P0):
             zl_x, zr_x = _z_expectations(P[lookup[(exp, prep, RO_XX, ncz)]])
             zl_y, zr_y = _z_expectations(P[lookup[(exp, prep, RO_YY, ncz)]])
             xy[prep] = dict(L=zl_x + 1j * zl_y, R=zr_x + 1j * zr_y)
-        a, b = preps
-        if preps == (PREP_0P, PREP_P0):  # |00> reference: row <01| from R, row <10| from L
-            matrices.append([[xy[a]["R"], xy[b]["R"]], [xy[a]["L"], xy[b]["L"]]])
-        else:  # |11> reference: row <01| from L, row <10| from R
-            matrices.append([[xy[a]["L"], xy[b]["L"]], [xy[a]["R"], xy[b]["R"]]])
+        # Row <01| from R, row <10| from L
+        a, b = PREP_0P, PREP_P0
+        matrices.append([[xy[a]["R"], xy[b]["R"]], [xy[a]["L"], xy[b]["L"]]])
     return depths, np.array(matrices)
 
 
