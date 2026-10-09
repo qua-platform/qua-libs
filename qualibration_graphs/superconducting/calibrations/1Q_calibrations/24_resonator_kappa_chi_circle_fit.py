@@ -53,7 +53,7 @@ Prerequisites:
 
 With measure_excited_state on, the sweep is repeated with the qubit prepared in |1>, the two states
 measured back to back at each frequency so that slow drift subtracts out of the splitting. Half that
-splitting is chi, and |chi|/kappa says whether the weak-dispersive formulas behind node 23b hold at
+splitting is chi, and |chi|/kappa says whether the weak-dispersive formulas behind node 25 hold at
 all. Both resonances are fitted separately, so a resonator whose decay depends on the qubit state
 shows it instead of hiding behind one number.
 
@@ -66,7 +66,7 @@ State update:
     - The same two with the qubit in |1>: qubit.resonator.extras["kappa_ext_excited_hz"] and
       ["kappa_int_excited_hz"]
     - The two dressed resonance frequencies: qubit.resonator.extras["f_r_ground_hz"] and
-      ["f_r_excited_hz"], which node 23b needs to measure its tone detuning against something that is
+      ["f_r_excited_hz"], which node 25 needs to measure its tone detuning against something that is
       not the tone itself
     - The dispersive shift: qubit.chi
 All in Hz. The fitted resonance frequency is reported but never written, so node 02a
@@ -76,7 +76,7 @@ spacing of two magnitude minima on a discrete grid, so it is the better estimate
 """
 
 node = QualibrationNode[Parameters, Quam](
-    name="23a_resonator_linewidth",
+    name="24_resonator_kappa_chi_circle_fit",
     description=description,
     parameters=Parameters(),
     machine=Quam.load(),
@@ -218,7 +218,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
         if np.isfinite(chi_over_kappa) and chi_over_kappa > node.parameters.max_chi_over_kappa:
             node.log(
                 f"WARNING {name}: |χ|/κ is {chi_over_kappa:.3f}, above {node.parameters.max_chi_over_kappa:.2f}. "
-                f"The weak-dispersive formulas behind node 23b assume χ ≪ κ, so the photon number it "
+                f"The weak-dispersive formulas behind node 25 assume χ ≪ κ, so the photon number it "
                 f"reports will be wrong; the general steady-state expressions are needed instead."
             )
         chi_mismatch = result["chi_mismatch_fraction"]
@@ -226,7 +226,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
             node.log(
                 f"WARNING {name}: the fitted χ of {1e-6 * result['chi_hz']:+.4f} MHz disagrees with the "
                 f"stored {1e-6 * result['stored_chi_hz']:+.4f} MHz by {100 * chi_mismatch:.0f}%. Everything "
-                f"node 23b reports scales with χ, so the old photon numbers were wrong by that factor."
+                f"node 25 reports scales with χ, so the old photon numbers were wrong by that factor."
             )
 
     node.outcomes = {
