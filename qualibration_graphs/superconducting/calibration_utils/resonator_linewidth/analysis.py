@@ -632,8 +632,10 @@ def log_fitted_results(fit_results: Dict, log_callable=None) -> None:
                 else "ABOVE 0.3, the weak-dispersive formulas no longer hold"
             )
             lines.append(f"\t|chi| / kappa: {result['chi_over_kappa']:.3f} ({verdict})")
+            kappa_g, kappa_e = result["kappa_tot_hz"], result["kappa_tot_excited_hz"]
             lines.append(
-                f"\tkappa_tot in |1>: {1e-6 * result['kappa_tot_excited_hz']:.3f} MHz | "
+                f"\tkappa_g: {1e-6 * kappa_g:.3f} MHz | kappa_e: {1e-6 * kappa_e:.3f} MHz "
+                f"(kappa_e - kappa_g = {1e-6 * (kappa_e - kappa_g):+.3f} MHz, {100 * (kappa_e / kappa_g - 1):+.0f}%) | "
                 f"kappa_ext in |1>: {1e-6 * result['kappa_ext_excited_hz']:.3f} MHz"
             )
             if np.isfinite(result["chi_mismatch_fraction"]):

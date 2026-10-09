@@ -124,8 +124,14 @@ def _dispersive_title(fit: xr.Dataset, qubit_name: str) -> str:
     ratio = float(fit["chi_over_kappa"].values)
     if not np.isfinite(chi_mhz):
         return f"{qubit_name} — no dispersive shift fitted"
+    kappa_g = float(fit["kappa_tot_hz"].values) / u.MHz
+    kappa_e = float(fit["kappa_tot_excited_hz"].values) / u.MHz
     warning = "" if ratio < 0.3 else "  (weak-dispersive limit broken)"
-    return f"{qubit_name}\n$\\chi$ = {chi_mhz:+.4f} MHz, $|\\chi|/\\kappa$ = {ratio:.2f}{warning}"
+    failed = "" if bool(fit["success"].values) else " — fit failed, values unreliable"
+    return (
+        f"{qubit_name}{failed}\n$\\chi$ = {chi_mhz:+.4f} MHz, $|\\chi|/\\kappa$ = {ratio:.2f}{warning}\n"
+        f"$\\kappa_g$ = {kappa_g:.3f} MHz, $\\kappa_e$ = {kappa_e:.3f} MHz"
+    )
 
 
 def _panel_title(fit: xr.Dataset, qubit_name: str) -> str:
