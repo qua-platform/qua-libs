@@ -75,6 +75,10 @@ State update:
     - The internal linewidth: qubit.resonator.extras["kappa_int_hz"]
     - The same two with the qubit in |1>: qubit.resonator.extras["kappa_ext_excited_hz"] and
       ["kappa_int_excited_hz"]
+    - The total linewidth per qubit state, kappa_g and kappa_e: qubit.resonator.extras["kappa_ground_hz"]
+      and ["kappa_excited_hz"] (e.g. as starting values for a DRACHMA pulse). An imperfectly prepared |1>
+      (x180 error, decay during the probe) mixes in the |0> resonance and inflates kappa_e somewhat
+      (~+5% for 5% of shots in |0>), so a small kappa_e > kappa_g is not by itself a state-dependent decay.
     - The two dressed resonance frequencies: qubit.resonator.extras["f_r_ground_hz"] and
       ["f_r_excited_hz"], which node 25 needs to measure its tone detuning against something that is
       not the tone itself
@@ -309,8 +313,11 @@ def update_state(node: QualibrationNode[Parameters, Quam]) -> None:
             result = node.results["fit_results"][qubit.name]
             qubit.resonator.extras["kappa_ext_hz"] = float(result["kappa_ext_hz"])
             qubit.resonator.extras["kappa_int_hz"] = float(result["kappa_int_hz"])
+            # Total linewidth per qubit state, the form a state-aware pulse such as DRACHMA takes.
+            qubit.resonator.extras["kappa_ground_hz"] = float(result["kappa_tot_hz"])
             if not result["excited_state_measured"]:
                 continue
+            qubit.resonator.extras["kappa_excited_hz"] = float(result["kappa_tot_excited_hz"])
             # chi goes on the qubit, in the field node 08a also writes.
             qubit.chi = float(result["chi_hz"])
             # The |1> linewidths go next to the |0> ones, so that a resonator whose decay depends on
