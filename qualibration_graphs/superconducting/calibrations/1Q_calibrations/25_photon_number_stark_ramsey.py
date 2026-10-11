@@ -22,6 +22,14 @@ from quam_config import Quam
 
 from calibration_utils.ac_stark_photon_calibration import (
     CLOCK_CYCLE_NS,
+    DEPLETION_IN_LIFETIMES,
+    GAMMA_RATIO_WARNING_FRACTION,
+    MAX_NUMBER_SPLITTING_PHASE_RAD,
+    MIN_CONTRAST_FRACTION,
+    MIN_TAU_OVER_PHOTON_LIFETIME,
+    N_BAR_OVER_CRITICAL_WARNING_FRACTION,
+    PHASE_STEP_WARNING_FRACTION_OF_PI,
+    STEADY_STATE_PAD_IN_LIFETIMES,
     FitParameters,
     Parameters,
     critical_photon_number,
@@ -51,7 +59,7 @@ is swept to produce a fringe. The fringe phase relative to the zero-amplitude re
 phase, and the fringe contrast relative to the same reference is the measurement-induced dephasing.
 
 The free evolution time is swept, and both quantities are fitted against it with a
-FREE INTERCEPT. The slope of the phase is the Stark shift Delta_omega, which divided by 2 chi gives
+FREE INTERCEPT. The slope of the phase is the Stark shift Delta_omega, which divided by 2 chi F gives
 the photon number n_bar; the slope of the log contrast ratio is the dephasing Gamma_d. The intercept
 is free on purpose: everything the tone does to the qubit outside the free evolution, meaning the
 phase picked up while the two pi/2 pulses play in a Stark-shifted qubit and the tilt of their
@@ -65,6 +73,13 @@ before any phase is accumulated. The resonator is given its own pulse-processor 
 because an element sharing a core with its qubit's drive cannot hold a tone across the Ramsey at all:
 the tone is played first and the Ramsey follows in the ring-down, producing a phase that does not
 grow with the free evolution time. Both changes are reverted when the node finishes.
+
+F is the Stark shift per photon in units of 2 chi, with no expansion in chi/kappa:
+F = (delta^2 - chi^2 + kappa^2/4) / (delta^2 + chi^2 + kappa^2/4), with delta the tone detuning from
+the midpoint of the two dressed resonances (node 24). It is 1 only for chi << kappa or a tone far
+from both resonances. For chi = kappa/2 it is 0 at the midpoint, where the tone sits by default after
+readout optimisation, and for |chi| > kappa/2 it turns negative there. The fit fails when
+|F| < MIN_ABS_STARK_FACTOR (0.3); set tone_frequency_in_ghz further from the midpoint in that case.
 
 Two independent photon numbers are reported. Gamma_d divided by the dephasing rate per photon, which
 comes from chi, kappa and the tone detuning with no expansion in chi/kappa, gives a photon number
@@ -187,7 +202,7 @@ def _warn_on_sequence_feasibility(node, qubit, amps: np.ndarray, taus_ns: list, 
     longest = max(taus_ns) * 1e-9
 
     surviving = np.exp(-gamma_per_photon(chi_rad, kappa_rad) * n_bar_max * longest)
-    if surviving < node.parameters.min_contrast_fraction:
+    if surviving < MIN_CONTRAST_FRACTION:
         node.log(
             f"WARNING {qubit.name}: at amplitude scale {max(amps):.2f} the earlier calibration predicts "
             f"n̄ = {n_bar_max:.2f}, whose dephasing leaves {100 * surviving:.1f}% of the fringe after "
@@ -196,7 +211,7 @@ def _warn_on_sequence_feasibility(node, qubit, amps: np.ndarray, taus_ns: list, 
         )
     steps = np.diff([0.0] + list(taus_ns)) * 1e-9
     largest_step = abs(2 * chi_rad * n_bar_max) * float(np.max(steps)) / np.pi
-    if largest_step >= node.parameters.phase_step_warning_fraction_of_pi:
+    if largest_step >= PHASE_STEP_WARNING_FRACTION_OF_PI:
         node.log(
             f"WARNING {qubit.name}: the fringe phase is expected to grow by {largest_step:.2f} π between "
             f"adjacent free evolution times. The phase is unwrapped along that axis, which only holds below "
@@ -234,9 +249,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]) -> None:
             )
         kappa_tot_hz = kappa_tot_hz_from_extras(qubit)
         lifetime_ns = photon_lifetime_ns(qubit)
-        pad_ns = steady_state_pad_ns(qubit, node.parameters.steady_state_pad_in_lifetimes)
+        pad_ns = steady_state_pad_ns(qubit, STEADY_STATE_PAD_IN_LIFETIMES)
         depletion_ns = max(
-            round_up_to_clock_cycle(node.parameters.depletion_in_lifetimes * lifetime_ns),
+            round_up_to_clock_cycle(DEPLETION_IN_LIFETIMES * lifetime_ns),
             round_up_to_clock_cycle(qubit.resonator.depletion_time),
         )
         x90_length_ns = int(qubit.xy.operations["x90"].length)
@@ -244,7 +259,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]) -> None:
             "kappa_tot_hz": kappa_tot_hz,
             "lifetime_ns": lifetime_ns,
             "pad_ns": pad_ns,
-            "steady_state_fraction": steady_state_fraction(node.parameters.steady_state_pad_in_lifetimes),
+            "steady_state_fraction": steady_state_fraction(STEADY_STATE_PAD_IN_LIFETIMES),
             "depletion_ns": depletion_ns,
             "depletion_over_lifetime": depletion_ns / lifetime_ns,
             "x90_length_ns": x90_length_ns,
@@ -409,17 +424,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
 
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
-    params = node.parameters
     for name, result in node.results["fit_results"].items():
-        # The weak-dispersive warning does not need a successful fit; it is a property of the chip.
-        ratio = result["chi_over_kappa"]
-        if np.isfinite(ratio) and ratio > params.weak_dispersive_warning_ratio:
-            node.log(
-                f"WARNING {name}: |χ|/κ = {ratio:.2f} is above {params.weak_dispersive_warning_ratio}, so the "
-                f"two dressed resonances are separated by less than a linewidth and the weak-dispersive "
-                f"formulas behind this node are only approximate. The exact expression is used for the "
-                f"Γ_d check, but n̄ = Δω/2χ still assumes the dispersive picture holds."
-            )
         if not result["success"]:
             continue
 
@@ -429,13 +434,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
             node.log(
                 f"WARNING {name}: only {within:.0f} of the swept free evolution times sit below the "
                 f"photon-number-splitting limit of {limit_ns:.0f} ns, where 2χτ reaches "
-                f"{params.max_number_splitting_phase_rad} rad. Past it the apparent phase follows "
+                f"{MAX_NUMBER_SPLITTING_PHASE_RAD} rad. Past it the apparent phase follows "
                 f"n̄ sin(2χτ) rather than growing, so the slope has few points to stand on. Add times "
                 f"below {limit_ns:.0f} ns."
             )
 
         leverage = result["max_tau_over_photon_lifetime"]
-        if np.isfinite(leverage) and leverage < params.min_tau_over_photon_lifetime:
+        if np.isfinite(leverage) and leverage < MIN_TAU_OVER_PHOTON_LIFETIME:
             node.log(
                 f"WARNING {name}: the longest free evolution time that kept a usable fringe is only "
                 f"{leverage:.1f} photon lifetimes. Below about one lifetime a resonator transient grows "
@@ -448,7 +453,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
             )
 
         step = result["max_phase_step_rad"] / np.pi
-        if np.isfinite(step) and step >= params.phase_step_warning_fraction_of_pi:
+        if np.isfinite(step) and step >= PHASE_STEP_WARNING_FRACTION_OF_PI:
             node.log(
                 f"WARNING {name}: the fringe phase grew by {step:.2f} π between adjacent free evolution "
                 f"times. The phase is unwrapped along that axis, which only holds below π, so the Stark "
@@ -463,7 +468,7 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
                 f"Drive-induced qubit transitions are the usual cause."
             )
         disagreement = result["gamma_ratio_disagreement"]
-        if np.isfinite(disagreement) and disagreement > params.gamma_ratio_warning_fraction:
+        if np.isfinite(disagreement) and disagreement > GAMMA_RATIO_WARNING_FRACTION:
             node.log(
                 f"WARNING {name}: Γ_d/Δω of {measured:.3f} disagrees with the predicted "
                 f"{result['expected_gamma_ratio']:.3f} by {100 * disagreement:.0f}%. Either the tone is not "
@@ -471,14 +476,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
                 f"decohering the qubit."
             )
 
-        n_ratio = result["n_bar_gamma_over_phase"]
-        if np.isfinite(n_ratio) and abs(n_ratio - 1) > params.n_bar_gamma_warning_fraction:
-            node.log(
-                f"WARNING {name}: the dephasing implies {result['n_bar_from_gamma_at_operating']:.2f} photons "
-                f"at the operating amplitude where the phase implies "
-                f"{result['n_bar_at_operating_amplitude']:.2f}, a factor of {n_ratio:.2f}. The two come from "
-                f"the same fringes by different routes, so they should agree."
-            )
         if result["detuning_source"] == "unavailable":
             node.log(
                 f"{name}: no measured resonances and no bare resonator frequency in state, so the tone "
@@ -505,16 +502,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
                 f"implies a negative g². Its sign was flipped to get a positive critical photon number, but "
                 f"check which convention χ was stored in."
             )
-        if not (params.min_plausible_coupling_g_in_hz <= g_hz <= params.max_plausible_coupling_g_in_hz):
-            node.log(
-                f"WARNING {qubit.name}: the stored χ implies g = {1e-6 * g_hz:.1f} MHz, outside the "
-                f"{1e-6 * params.min_plausible_coupling_g_in_hz:.0f} to "
-                f"{1e-6 * params.max_plausible_coupling_g_in_hz:.0f} MHz a planar chip is built for. "
-                f"The stored χ, anharmonicity or qubit frequency is probably wrong, and the critical "
-                f"photon number derived from them with it."
-            )
         headroom = result["n_bar_over_critical"]
-        if np.isfinite(headroom) and headroom > params.n_bar_over_critical_warning_fraction:
+        if np.isfinite(headroom) and headroom > N_BAR_OVER_CRITICAL_WARNING_FRACTION:
             node.log(
                 f"WARNING {qubit.name}: the readout runs at {100 * headroom:.0f}% of the critical photon "
                 f"number of {result['critical_photon_number']:.1f}, so the dispersive approximation behind "

@@ -23,6 +23,17 @@ from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
 
 __all__ = [
+    "STEADY_STATE_PAD_IN_LIFETIMES",
+    "DEPLETION_IN_LIFETIMES",
+    "MIN_CONTRAST_FRACTION",
+    "MAX_NUMBER_SPLITTING_PHASE_RAD",
+    "MIN_TAU_OVER_PHOTON_LIFETIME",
+    "MIN_PHASE_LINEARITY_R_SQUARED",
+    "MIN_LINEAR_FIT_R_SQUARED",
+    "MIN_ABS_STARK_FACTOR",
+    "PHASE_STEP_WARNING_FRACTION_OF_PI",
+    "GAMMA_RATIO_WARNING_FRACTION",
+    "N_BAR_OVER_CRITICAL_WARNING_FRACTION",
     "FitParameters",
     "MissingResonatorLinewidthError",
     "critical_photon_number",
@@ -41,6 +52,31 @@ __all__ = [
 ]
 
 _NAN = float("nan")
+
+# Settings of the method rather than of the experiment, so they are fixed here instead of being node parameters.
+STEADY_STATE_PAD_IN_LIFETIMES = 8.0
+"""Tone held before the first pi/2, in photon lifetimes 1/kappa. Eight reach 96% of the steady state."""
+DEPLETION_IN_LIFETIMES = 8.0
+"""Wait between the second pi/2 and the readout, in photon lifetimes, so no tone photons bias the readout.
+The longer of this and the stored depletion time is used."""
+MIN_CONTRAST_FRACTION = 0.15
+"""Points whose fringe contrast is below this fraction of the zero-amplitude contrast are dropped."""
+MAX_NUMBER_SPLITTING_PHASE_RAD = 1.0
+"""Times with 2 chi tau above this are dropped: past it the phase follows n_bar sin(2 chi tau), not a line."""
+MIN_TAU_OVER_PHOTON_LIFETIME = 2.0
+"""Warn when no usable time reaches this many photon lifetimes; shorter, a transient also looks linear."""
+MIN_PHASE_LINEARITY_R_SQUARED = 0.9
+"""Fail when the fringe phase against tau is less linear than this."""
+MIN_LINEAR_FIT_R_SQUARED = 0.9
+"""Fail when n_bar against tone power is less linear than this."""
+MIN_ABS_STARK_FACTOR = 0.3
+"""Fail when |F| is below this: n_bar = Delta_omega / (2 chi F) amplifies every phase error by 1/F."""
+PHASE_STEP_WARNING_FRACTION_OF_PI = 0.8
+"""Warn when the phase grows by more than this times pi between adjacent times; unwrapping needs < pi."""
+GAMMA_RATIO_WARNING_FRACTION = 0.2
+"""Warn when the measured Gamma_d / Delta_omega differs from the one predicted by chi, kappa and detuning."""
+N_BAR_OVER_CRITICAL_WARNING_FRACTION = 0.5
+"""Warn when n_bar at the operating amplitude exceeds this fraction of the critical photon number."""
 
 
 class MissingResonatorLinewidthError(RuntimeError):
@@ -68,8 +104,12 @@ class FitParameters:
     chi_hz: float
     kappa_tot_hz: float
     chi_over_kappa: float
-    """|chi| / kappa. The formulas here assume the weak-dispersive limit; above about 0.3 the two
-    dressed resonances are separated by less than a linewidth."""
+    """|chi| / kappa. Above about 0.3 the weak-dispersive n_bar = Delta_omega / 2 chi no longer holds;
+    the conversion uses the exact `stark_factor` instead."""
+    stark_factor: float
+    """F = Stark shift per photon in units of 2 chi at the tone's detuning (`stark_factor`), so that
+    n_bar = Delta_omega / (2 chi F). 1 in the weak-dispersive limit; near 0 the Stark shift carries
+    little photon information and the fit fails."""
 
     critical_photon_number: float
     """The photon number at which the dispersive approximation breaks down, derived from the stored
@@ -92,8 +132,8 @@ class FitParameters:
     """Measured slope of the induced dephasing against the Stark shift."""
     expected_gamma_ratio: float
     """What that slope should be, from chi, kappa and the tone detuning, with no approximation in
-    chi/kappa. At zero detuning it can never exceed 1, and detuning only lowers it, so a measured
-    value above 1 means something other than measurement backaction is decohering the qubit."""
+    chi/kappa: |Im(alpha_g alpha_e*) / Re(alpha_g alpha_e*)|. A measured value well above it means
+    something other than measurement backaction is decohering the qubit."""
     gamma_ratio_disagreement: float
     n_bar_from_gamma_at_operating: float
     """The photon number at the operating amplitude derived from the dephasing instead of the phase.
@@ -294,6 +334,28 @@ def gamma_per_photon(chi_rad: float, kappa_rad: float, detuning_rad: float = 0.0
     return float(abs(2 * chi_rad**2 * kappa_rad * epsilon_squared / denominator))
 
 
+def stark_factor(chi_rad: float, kappa_rad: float, detuning_rad: float = 0.0) -> float:
+    """Stark shift per photon in units of 2 chi, with no expansion in chi / kappa.
+
+    With the same steady-state fields as `gamma_per_photon`, the qubit's frequency shifts by
+    `2 chi Re(alpha_g alpha_e*)`, and the mean photon number is `(n_g + n_e) / 2`. Their ratio,
+
+        F = (delta^2 - chi^2 + kappa^2 / 4) / (delta^2 + chi^2 + kappa^2 / 4),
+
+    turns a measured Stark shift into a photon number as `n_bar = Delta_omega / (2 chi F)`.
+
+    F tends to 1 for chi << kappa or for a tone far from both resonances, which is where the familiar
+    `n_bar = Delta_omega / 2 chi` holds. Elsewhere it does not: with the tone at the midpoint of the two
+    dressed resonances F is 0 for chi = kappa / 2 (no Stark shift at all, however full the resonator)
+    and turns negative for |chi| > kappa / 2. Only squares enter, so neither sign convention matters.
+    """
+    chi_sq, delta_sq, half_kappa_sq = float(chi_rad) ** 2, float(detuning_rad) ** 2, float(kappa_rad) ** 2 / 4
+    denominator = delta_sq + chi_sq + half_kappa_sq
+    if denominator <= 0:
+        return _NAN
+    return float((delta_sq - chi_sq + half_kappa_sq) / denominator)
+
+
 def transmon_anharmonicity(qubit) -> Tuple[float, bool]:
     """The anharmonicity to use in the formulas, in Hz, and whether its sign was imposed.
 
@@ -414,16 +476,11 @@ def _signal(ds: xr.Dataset, node: QualibrationNode) -> xr.DataArray:
     return ds.I
 
 
-def _chi_hz(qubit, params) -> float:
+def _chi_hz(qubit) -> float:
     """Return the stored chi in Hz, or raise a ValueError naming why the qubit is unusable."""
     chi = getattr(qubit, "chi", None)
     if chi is None or not np.isfinite(chi) or chi == 0:
         raise ValueError("the stored chi is zero or missing")
-    if not (params.min_abs_chi_in_hz <= abs(float(chi)) <= params.max_abs_chi_in_hz):
-        raise ValueError(
-            f"the stored |chi| of {1e-6 * abs(float(chi)):.3f} MHz is outside the plausible range "
-            f"{1e-6 * params.min_abs_chi_in_hz:.3f} to {1e-6 * params.max_abs_chi_in_hz:.3f} MHz"
-        )
     return float(chi)
 
 
@@ -485,7 +542,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     fit_results : dict[str, FitParameters]
     """
     qubits = node.namespace["qubits"]
-    params = node.parameters
     signal = _signal(ds, node)
     amplitude_scales = np.asarray(ds.amp_scale.values, dtype=float)
     phases = np.asarray(ds.phase.values, dtype=float)
@@ -503,7 +559,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
         tone_frequency = _tone_frequency_hz(qubit, node)
         info = sequence.get(name, {})
         try:
-            chi_hz = _chi_hz(qubit, params)
+            chi_hz = _chi_hz(qubit)
             grid = _fringe_grid(signal.sel(qubit=name), taus.size, amplitude_scales.size, phases)
             fit_results[name], per_amp[name], per_grid[name] = _photon_calibration(
                 qubit=qubit,
@@ -514,7 +570,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
                 kappa_tot_hz=kappa_tot_hz,
                 tone_frequency=tone_frequency,
                 info=info,
-                params=params,
             )
         except Exception as error:  # a bad qubit must not take the rest of the run with it
             fit_results[name] = _failed_fit(kappa_tot_hz, tone_frequency, qubit, info, str(error))
@@ -525,7 +580,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     return ds_fit, fit_results
 
 
-def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_hz, tone_frequency, info, params):
+def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_hz, tone_frequency, info):
     """Turn one qubit's grid of fringes into its photon calibration."""
     num_taus, num_amps = grid["contrast"].shape
     reference = int(np.argmin(np.abs(amplitude_scales)))
@@ -548,7 +603,7 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
 
     # A fringe whose contrast has collapsed carries no phase, so it is dropped rather than fitted.
     with np.errstate(invalid="ignore"):
-        usable = contrast >= params.min_contrast_fraction * reference_contrast[:, None]
+        usable = contrast >= MIN_CONTRAST_FRACTION * reference_contrast[:, None]
 
     # The Stark phase is only 2 chi n_bar tau while the qubit cannot resolve one photon from the
     # next. Once 2 chi tau approaches a radian the qubit is resolving photon number, the apparent
@@ -556,7 +611,7 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
     # round and runs backwards. Those times are dropped rather than fitted, because a straight line
     # through them returns a photon number that is simply too small.
     splitting_phase = 2 * abs(chi_rad) * taus
-    within_linear_regime = splitting_phase <= params.max_number_splitting_phase_rad
+    within_linear_regime = splitting_phase <= MAX_NUMBER_SPLITTING_PHASE_RAD
     usable &= within_linear_regime[:, None]
     usable[:, reference] = True
 
@@ -580,23 +635,27 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
         gamma_mask = usable[:, a] & np.isfinite(log_ratio[:, a])
         gamma_d[a], _, gamma_r2[a] = slope_with_intercept(taus[gamma_mask], log_ratio[gamma_mask, a])
 
-    n_bar = delta_omega / (2 * chi_rad)
+    # The tone detuning has to be measured against something other than the tone.
+    f_ground, f_excited, detuning_source = dressed_resonances(qubit, chi_hz)
+    midpoint = 0.5 * (f_ground + f_excited)
+    detuning_hz = tone_frequency - midpoint if np.isfinite(midpoint) else _NAN
+    detuning_rad = 2 * np.pi * detuning_hz if np.isfinite(detuning_hz) else 0.0
+
+    # The Stark shift is 2 chi Re(alpha_g alpha_e*), which equals 2 chi n_bar only for chi << kappa.
+    # F converts it exactly at this tone's detuning (zero when the detuning is unknown).
+    factor = stark_factor(chi_rad, kappa_rad, detuning_rad)
+    n_bar = delta_omega / (2 * chi_rad * factor)
 
     # The sign relating the fitted fringe phase to the accumulated qubit phase depends on the
     # hardware's phase convention, which no part of the stored state records. The photon number is
     # positive by definition, so a sweep that comes out negative is flipped and the flip is reported.
+    # F already carries the physical sign change between regimes, so a flip here is a convention.
     inverted = bool(np.nansum(n_bar) < 0)
     if inverted:
         # The intercept is flipped with the slope it belongs to. Leaving it behind makes the fitted
         # line run opposite to the points it was fitted to, in the results and in the figure.
         n_bar, delta_omega = -n_bar, -delta_omega
         phase_shift, phase_intercept = -phase_shift, -phase_intercept
-
-    # The tone detuning has to be measured against something other than the tone.
-    f_ground, f_excited, detuning_source = dressed_resonances(qubit, chi_hz)
-    midpoint = 0.5 * (f_ground + f_excited)
-    detuning_hz = tone_frequency - midpoint if np.isfinite(midpoint) else _NAN
-    detuning_rad = 2 * np.pi * detuning_hz if np.isfinite(detuning_hz) else 0.0
 
     gamma_one_photon = gamma_per_photon(chi_rad, kappa_rad, detuning_rad)
     n_bar_gamma = (
@@ -617,7 +676,12 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
     n_bar_operating_gamma = photons_per_mw_gamma * operating_power_mw
 
     measured_ratio = _gamma_ratio(delta_omega, gamma_d)
-    expected_ratio = gamma_one_photon / (2 * abs(chi_rad)) if np.isfinite(gamma_one_photon) else _NAN
+    # Gamma_d / Delta_omega = gamma_per_photon / (2 chi F): both are per photon, so n_bar drops out.
+    expected_ratio = (
+        gamma_one_photon / (2 * abs(chi_rad) * abs(factor))
+        if np.isfinite(gamma_one_photon) and np.isfinite(factor) and factor != 0
+        else _NAN
+    )
     disagreement = abs(measured_ratio - expected_ratio) / expected_ratio if expected_ratio > 0 else _NAN
 
     # Linearity is judged on the amplitudes that carry real signal. At the bottom of the sweep the
@@ -655,13 +719,24 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
         critical_amplitude_scale = float(10 ** ((critical_power_dbm - operating_power_dbm) / 20))
 
     reasons = []
-    if not (np.isfinite(phase_linearity) and phase_linearity >= params.min_phase_linearity_r_squared):
+    if not (np.isfinite(factor) and abs(factor) >= MIN_ABS_STARK_FACTOR):
+        reasons.append(
+            f"the Stark shift per photon at this tone detuning is only {factor:+.2f} × 2χ (|χ|/κ = "
+            f"{abs(chi_hz) / kappa_tot_hz:.2f}), so the phase carries too little photon information; move the "
+            f"tone (tone_frequency_in_ghz) further from the midpoint of the dressed resonances"
+        )
+    if not np.isfinite(detuning_hz) and abs(chi_hz) / kappa_tot_hz > 0.1:
+        reasons.append(
+            f"the tone detuning is unknown, so the Stark shift cannot be converted beyond the weak-dispersive "
+            f"limit (|χ|/κ = {abs(chi_hz) / kappa_tot_hz:.2f}); run node 24 so the dressed resonances are stored"
+        )
+    if not (np.isfinite(phase_linearity) and phase_linearity >= MIN_PHASE_LINEARITY_R_SQUARED):
         reasons.append(
             f"the fringe phase grows against the free evolution time with R² of {phase_linearity:.2f}, "
-            f"below {params.min_phase_linearity_r_squared}, so it is not a Stark phase"
+            f"below {MIN_PHASE_LINEARITY_R_SQUARED}, so it is not a Stark phase"
         )
-    if not (np.isfinite(r_squared) and r_squared >= params.min_linear_fit_r_squared):
-        reasons.append(f"R² {r_squared:.2f} of n_bar against power is below {params.min_linear_fit_r_squared}")
+    if not (np.isfinite(r_squared) and r_squared >= MIN_LINEAR_FIT_R_SQUARED):
+        reasons.append(f"R² {r_squared:.2f} of n_bar against power is below {MIN_LINEAR_FIT_R_SQUARED}")
     if int(contributing.sum()) < 3:
         reasons.append(f"only {int(contributing.sum())} amplitude points produced a photon number")
     if not np.isfinite(photons_per_mw) or photons_per_mw <= 0:
@@ -675,6 +750,7 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
         chi_hz=chi_hz,
         kappa_tot_hz=kappa_tot_hz,
         chi_over_kappa=float(abs(chi_hz) / kappa_tot_hz),
+        stark_factor=float(factor),
         critical_photon_number=n_crit["critical_photon_number"],
         coupling_g_hz=n_crit["coupling_g_hz"],
         anharmonicity_sign_flipped=bool(n_crit["anharmonicity_sign_flipped"]),
@@ -692,7 +768,7 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
         linear_fit_r_squared=r_squared,
         max_phase_step_rad=max_phase_step,
         min_usable_free_evolution_count=int(usable_count[carries_signal].min()) if carries_signal.any() else 0,
-        number_splitting_phase_limit_ns=float(1e9 * params.max_number_splitting_phase_rad / (2 * abs(chi_rad))),
+        number_splitting_phase_limit_ns=float(1e9 * MAX_NUMBER_SPLITTING_PHASE_RAD / (2 * abs(chi_rad))),
         num_times_within_linear_regime=int(within_linear_regime.sum()),
         max_tau_over_photon_lifetime=float(max_tau_over_lifetime),
         num_contributing_amplitudes=int(contributing.sum()),
@@ -772,6 +848,7 @@ def _failed_fit(kappa_tot_hz: float, tone_frequency: float, qubit, info: Dict, r
         chi_hz=_NAN,
         kappa_tot_hz=kappa_tot_hz,
         chi_over_kappa=_NAN,
+        stark_factor=_NAN,
         critical_photon_number=n_crit["critical_photon_number"],
         coupling_g_hz=n_crit["coupling_g_hz"],
         anharmonicity_sign_flipped=bool(n_crit["anharmonicity_sign_flipped"]),
@@ -829,6 +906,7 @@ _SCALAR_FIELDS = (
     "chi_hz",
     "kappa_tot_hz",
     "chi_over_kappa",
+    "stark_factor",
     "critical_photon_number",
     "coupling_g_hz",
     "critical_power_dbm",
@@ -947,7 +1025,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None) -> None:
             f"{result['expected_gamma_ratio']:.3f} ({100 * result['gamma_ratio_disagreement']:.0f}% apart)",
             _critical_photon_line(result),
             f"\ttone at {1e-9 * result['tone_frequency_hz']:.6f} GHz, {detuning_text}",
-            f"\t|χ|/κ = {result['chi_over_kappa']:.3f} | steady-state pad "
+            f"\t|χ|/κ = {result['chi_over_kappa']:.3f} | Stark shift per photon F = {result['stark_factor']:+.3f} × 2χ "
+            f"(n̄ = Δω / 2χF) | steady-state pad "
             f"{result['steady_state_pad_ns']:.0f} ns reaching {100 * result['steady_state_fraction']:.0f}% "
             f"of steady state | depletion {result['depletion_over_lifetime']:.1f} photon lifetimes",
             f"\tR² of n̄ against power: {result['linear_fit_r_squared']:.3f}",
