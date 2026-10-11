@@ -49,36 +49,28 @@ from calibration_utils.ac_stark_photon_calibration import (
 # %% {Node initialisation}
 description = """
         AC STARK PHOTON NUMBER CALIBRATION
-Converts a readout drive power into the mean photon number in the resonator at the readout frequency.
+Measures how many photons a readout drive puts in the resonator (photons per mW at the readout frequency).
 
-A Stark tone is held on the resonator while a Ramsey runs on the qubit; the phase of the second pi/2 is
-swept to form a fringe. Against the zero-amplitude reference, the fringe phase gives the Stark phase and
-the contrast gives the measurement-induced dephasing. Both are fitted against the free evolution time tau
-with a free intercept: the slopes are the Stark shift Delta_omega and the dephasing Gamma_d, and
-n_bar = Delta_omega / (2 chi F), with F the exact Stark shift per photon in units of 2 chi.
+A Stark tone is held on the resonator during a Ramsey; the phase of the second pi/2 is swept to form a
+fringe. Against the zero-amplitude reference, the fringe phase grows with tau at the Stark shift
+Delta_omega, giving n_bar = Delta_omega / (2 chi F), with F the exact Stark shift per photon in units of
+2 chi. The contrast decay Gamma_d is checked against the value predicted from chi, kappa and the detuning.
 
-The tone sits tone_detuning_in_linewidths * max(|chi|, kappa) above the midpoint of the two dressed
-resonances (node 24), not at the readout frequency. There the |0> and |1> fields differ strongly when
-chi is comparable to kappa, so the fringe dies before the phase becomes linear and F is near zero. Far
-from both resonances the fields nearly coincide: dephasing per photon is small and F is close to 1.
-n_bar is then carried over to the readout frequency with the Lorentzian response of the two dressed
-resonances, assuming the drive line delivers the same power at both frequencies.
-
-After the first pi/2 the field takes a few photon lifetimes to settle, so only tau >= 4 / kappa is
-fitted. The tone is held for a steady-state pad before the first pi/2, and the resonator gets its own
-pulse-processor core so the tone can overlap the Ramsey; both are reverted when the node finishes.
-The amplitude sweep stays below the operating amplitude, so n_bar there comes from the fitted line.
+The tone sits tone_detuning_in_linewidths * max(|chi|, kappa) above the midpoint of the dressed
+resonances: there the fringe survives and F ~ 1, even when chi ~ kappa. n_bar is converted to the
+readout frequency with the resonator's Lorentzian response, assuming a flat drive line. Only tau >= 4 / kappa
+(past the field transient) is fitted, and n_bar at the operating amplitude is extrapolated from the fit.
+The const operation and the resonator's core are changed for the run and reverted afterwards.
 
 Prerequisites:
-    - Node 24_resonator_kappa_chi_circle_fit: kappa, chi and the dressed resonances. The node stops
-      without them.
-    - The pi/2 pulse (node 04b_power_rabi) and a `const` operation on the resonator.
+    - Node 24 (kappa, chi, dressed resonances); the node stops without them.
+    - The pi/2 pulse (04b_power_rabi) and a `const` operation on the resonator.
 
-State update (qubit.resonator.extras), at the readout frequency:
-    - photons_per_mw and single_photon_power_dbm (the same constant as a power level)
+State update (qubit.resonator.extras), valid at the current readout frequency:
+    - photons_per_mw, single_photon_power_dbm (same constant in dBm), photons_per_mw_source
     - n_bar_at_operating_readout_amplitude
-    - critical_photon_number (from chi, qubit frequency and anharmonicity; written even if the fit fails)
-      and critical_power_dbm. Treat both as an order of magnitude.
+    - critical_photon_number (from chi, f_01, anharmonicity; written even if the fit fails) and
+      critical_power_dbm. Order-of-magnitude estimates.
 """
 
 node = QualibrationNode[Parameters, Quam](
