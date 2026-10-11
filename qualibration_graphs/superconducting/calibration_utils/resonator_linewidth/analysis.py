@@ -386,6 +386,9 @@ def _stored_kappa_hz(resonator) -> float:
 
 # Probe timing: integration starts this many photon lifetimes (1 / kappa) after the probe turns on, where
 # the fill-up transient exp(-kappa t / 2) is down to ~2%.
+CHI_MISMATCH_WARNING_FRACTION = 0.2
+"""Warn when the fitted chi differs from the stored one (node 08a also writes it) by more than this."""
+
 SKIP_IN_LIFETIMES = 8
 FALLBACK_SKIP_NS = 2000  # no stored kappa: enough for kappa/2pi >~ 0.6 MHz
 MAX_SKIP_NS = 20000
@@ -659,8 +662,12 @@ def _attach_fit_to_dataset(
     return ds_fit
 
 
+def _mhz(hz: float) -> str:
+    return f"{1e-6 * hz:.3f}"
+
+
 def log_fitted_results(fit_results: Dict, log_callable=None) -> None:
-    """Log kappa, the collection-efficiency ceiling and the probe power for every qubit.
+    """Log kappa, Q, chi and the fit quality for every qubit; the rest stays in the fit results.
 
     `fit_results` holds either FitParameters instances or the dictionaries they become once the node
     has stored them.
@@ -672,43 +679,24 @@ def log_fitted_results(fit_results: Dict, log_callable=None) -> None:
         if not result["success"]:
             log_callable(f"Results for qubit {name}: FAIL! {result['failure_reason']}")
             continue
+        tilt = result["background_tilt"]
+        r_squared = f"{result['r_squared']:.3f}"
         lines = [
             f"Results for qubit {name}: SUCCESS!",
-            f"\tkappa_tot: {1e-6 * result['kappa_tot_hz']:.3f} MHz | "
-            f"kappa_ext: {1e-6 * result['kappa_ext_hz']:.3f} MHz | "
-            f"kappa_int: {1e-6 * result['kappa_int_hz']:.3f} MHz",
-            f"\tkappa_ext / kappa_tot: {result['kappa_ext_over_kappa_tot']:.3f} " f"(ceiling on collection efficiency)",
-            f"\tQ_l: {result['q_loaded']:.3g} | Q_c: {result['q_external']:.3g} | "
-            f"Q_i: {result['q_internal']:.3g} at {result['probe_power_dbm']:.1f} dBm",
-            f"\tfitted cable delay: {result['cable_delay_ns']:.1f} ns | R²: {result['r_squared']:.3f}"
-            f" | background tilt: {100 * result['background_tilt']:+.1f}%",
-            f"\tfitted resonance: {1e-9 * result['resonance_frequency']:.6f} GHz (reported only, not written to state)",
-            f"\tphoton lifetime: {result['photon_lifetime_ns']:.1f} ns | "
-            f"stored depletion time is {result['depletion_time_over_lifetime']:.2f} lifetimes",
+            f"\tκ: {_mhz(result['kappa_tot_hz'])} MHz (ext {_mhz(result['kappa_ext_hz'])}, int "
+            f"{_mhz(result['kappa_int_hz'])}, ext/tot {result['kappa_ext_over_kappa_tot']:.3f}) | Q_l "
+            f"{result['q_loaded']:.3g}, Q_c {result['q_external']:.3g}, Q_i {result['q_internal']:.3g} at "
+            f"{result['probe_power_dbm']:.1f} dBm",
         ]
-        if np.isfinite(result["kappa_mismatch_fraction"]):
-            lines.append(
-                f"\tstored kappa: {1e-6 * result['stored_kappa_hz']:.3f} MHz, "
-                f"disagreement {100 * result['kappa_mismatch_fraction']:.0f}%"
-            )
         if result.get("excited_state_measured"):
-            lines.append(
-                f"\tchi: {1e-6 * result['chi_hz']:+.4f} MHz (|1> resonance at "
-                f"{1e-9 * result['resonance_frequency_excited']:.6f} GHz, R² {result['r_squared_excited']:.3f})"
-            )
-            lines.append(
-                f"\t|chi| / kappa: {result['chi_over_kappa']:.3f} | "
-                f"2|chi| / kappa: {2 * result['chi_over_kappa']:.2f} (readout SNR optimum at 1)"
-            )
             kappa_g, kappa_e = result["kappa_tot_hz"], result["kappa_tot_excited_hz"]
             lines.append(
-                f"\tkappa_g: {1e-6 * kappa_g:.3f} MHz | kappa_e: {1e-6 * kappa_e:.3f} MHz "
-                f"(kappa_e - kappa_g = {1e-6 * (kappa_e - kappa_g):+.3f} MHz, {100 * (kappa_e / kappa_g - 1):+.0f}%) | "
-                f"kappa_ext in |1>: {1e-6 * result['kappa_ext_excited_hz']:.3f} MHz"
+                f"\tχ: {1e-6 * result['chi_hz']:+.4f} MHz | 2|χ|/κ: {2 * result['chi_over_kappa']:.2f} (optimum 1) | "
+                f"κ_g {_mhz(kappa_g)}, κ_e {_mhz(kappa_e)} MHz ({100 * (kappa_e / kappa_g - 1):+.0f}%)"
             )
-            if np.isfinite(result["chi_mismatch_fraction"]):
-                lines.append(
-                    f"\tstored chi: {1e-6 * result['stored_chi_hz']:+.4f} MHz, "
-                    f"disagreement {100 * result['chi_mismatch_fraction']:.0f}%"
-                )
+            r_squared = f"{result['r_squared']:.3f} (|0>), {result['r_squared_excited']:.3f} (|1>)"
+        lines.append(
+            f"\tfit R²: {r_squared} | cable delay {result['cable_delay_ns']:.0f} ns | background tilt "
+            + (f"{100 * tilt:+.1f}%" if np.isfinite(tilt) else "not corrected")
+        )
         log_callable("\n".join(lines))

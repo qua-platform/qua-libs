@@ -1,4 +1,5 @@
 from .analysis import (
+    CHI_MISMATCH_WARNING_FRACTION,
     SKIP_IN_LIFETIMES,
     FitParameters,
     choose_probe_timing,
@@ -16,6 +17,7 @@ from .plotting import plot_circle_fit, plot_dispersive_shift, plot_magnitude_wit
 __all__ = [
     "Parameters",
     "FitParameters",
+    "CHI_MISMATCH_WARNING_FRACTION",
     "SKIP_IN_LIFETIMES",
     "choose_probe_timing",
     "process_raw_dataset",

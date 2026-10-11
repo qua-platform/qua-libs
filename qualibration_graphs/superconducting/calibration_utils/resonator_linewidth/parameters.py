@@ -41,9 +41,3 @@ class Parameters(
 
     min_r_squared: float = 0.8
     """Minimum R² of the |S21| fit for success. Default is 0.8."""
-
-    chi_mismatch_warning_fraction: float = 0.2
-    """Warn when the fitted chi differs from the stored one (e.g. from node 08a) by more than this. Default is 0.2."""
-
-    kappa_mismatch_warning_fraction: float = 0.2
-    """Warn when the fitted kappa differs from the stored one by more than this. Default is 0.2."""

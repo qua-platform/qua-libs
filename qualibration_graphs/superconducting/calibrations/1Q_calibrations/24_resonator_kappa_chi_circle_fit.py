@@ -22,6 +22,7 @@ from quam.components.pulses import SquareReadoutPulse
 from quam_config import Quam
 
 from calibration_utils.resonator_linewidth import (
+    CHI_MISMATCH_WARNING_FRACTION,
     SKIP_IN_LIFETIMES,
     FitParameters,
     Parameters,
@@ -53,7 +54,8 @@ Prerequisites:
 State update (all in Hz):
     - qubit.resonator.extras: kappa_ext_hz, kappa_int_hz, kappa_ext_excited_hz, kappa_int_excited_hz,
       kappa_ground_hz, kappa_excited_hz, f_r_ground_hz, f_r_excited_hz (used by node 25).
-    - qubit.chi (also written by node 08a; this fit is the more precise one).
+    - qubit.chi (also written by node 08a; this fit is the more precise one), with qubit.extras["chi_source"]
+      and qubit.resonator.extras["kappa_source"] naming the node that wrote them.
 The fitted resonance frequency is only reported; node 02a owns the readout frequency.
 """
 
@@ -72,7 +74,6 @@ during the fill-up skip) and removed again in save_results, so it never reaches 
 @node.run_action(skip_if=node.modes.external)
 def custom_param(node: QualibrationNode[Parameters, Quam]) -> None:
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
-    # node.parameters.qubits = ["q1", "q2"]
     pass
 
 
@@ -208,39 +209,22 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
 
     log_fitted_results(node.results["fit_results"], log_callable=node.log)
 
-    # The skip was chosen from the stored kappa (or a fallback). If the fitted kappa needs a longer one,
-    # part of the fill-up was integrated and kappa is biased high; the next run derives the skip from it.
-    if "probe_skip_ns" in node.results["ds_raw"].coords:
-        for name, result in node.results["fit_results"].items():
-            if not result["success"]:
-                continue
-            skip_ns = float(node.results["ds_raw"].probe_skip_ns.sel(qubit=name))
-            needed_ns = SKIP_IN_LIFETIMES * result["photon_lifetime_ns"]
-            if skip_ns < 0.75 * needed_ns:
-                node.log(
-                    f"WARNING {name}: the probe skipped {skip_ns:.0f} ns, shorter than {SKIP_IN_LIFETIMES}/κ = "
-                    f"{needed_ns:.0f} ns for the fitted κ, so part of the fill-up was integrated and κ may be "
-                    f"biased high. Re-run: the next run derives the skip from this κ."
-                )
-
-    warn_fraction = node.parameters.kappa_mismatch_warning_fraction
+    ds_raw = node.results["ds_raw"]
     for name, result in node.results["fit_results"].items():
-        mismatch = result["kappa_mismatch_fraction"]
-        if result["success"] and np.isfinite(mismatch) and mismatch > warn_fraction:
-            node.log(
-                f"WARNING {name}: the fitted kappa_tot of {1e-6 * result['kappa_tot_hz']:.3f} MHz disagrees "
-                f"with the stored {1e-6 * result['stored_kappa_hz']:.3f} MHz by {100 * mismatch:.0f}%, "
-                f"which is more than the {100 * warn_fraction:.0f}% allowed. The resonance may not be a "
-                f"single Lorentzian."
-            )
-        if not result["success"] or not result["excited_state_measured"]:
+        if not result["success"]:
             continue
-        chi_mismatch = result["chi_mismatch_fraction"]
-        if np.isfinite(chi_mismatch) and chi_mismatch > node.parameters.chi_mismatch_warning_fraction:
+        # The skip came from the stored kappa; if the fitted kappa needs a longer one, kappa is biased high.
+        needed_ns = SKIP_IN_LIFETIMES * result["photon_lifetime_ns"]
+        if "probe_skip_ns" in ds_raw.coords and float(ds_raw.probe_skip_ns.sel(qubit=name)) < 0.75 * needed_ns:
             node.log(
-                f"WARNING {name}: the fitted χ of {1e-6 * result['chi_hz']:+.4f} MHz disagrees with the "
-                f"stored {1e-6 * result['stored_chi_hz']:+.4f} MHz by {100 * chi_mismatch:.0f}%. Node 25 converts its "
-                f"Stark shift to photons with the stored χ, so check which value to keep before running it."
+                f"WARNING {name}: the probe skip is shorter than {SKIP_IN_LIFETIMES}/κ = {needed_ns:.0f} ns for "
+                f"the fitted κ, so κ may be biased high. Re-run; the next run derives the skip from this κ."
+            )
+        mismatch = result["chi_mismatch_fraction"]
+        if np.isfinite(mismatch) and mismatch > CHI_MISMATCH_WARNING_FRACTION:
+            node.log(
+                f"WARNING {name}: fitted χ {1e-6 * result['chi_hz']:+.4f} MHz differs from the stored "
+                f"{1e-6 * result['stored_chi_hz']:+.4f} MHz (e.g. from node 08a) by {100 * mismatch:.0f}%."
             )
 
     node.outcomes = {
@@ -274,6 +258,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]) -> None:
             result = node.results["fit_results"][qubit.name]
             qubit.resonator.extras["kappa_ext_hz"] = float(result["kappa_ext_hz"])
             qubit.resonator.extras["kappa_int_hz"] = float(result["kappa_int_hz"])
+            qubit.resonator.extras["kappa_source"] = node.name
             # Total linewidth per qubit state, the form a state-aware pulse such as DRACHMA takes.
             qubit.resonator.extras["kappa_ground_hz"] = float(result["kappa_tot_hz"])
             if not result["excited_state_measured"]:
@@ -281,6 +266,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]) -> None:
             qubit.resonator.extras["kappa_excited_hz"] = float(result["kappa_tot_excited_hz"])
             # chi goes on the qubit, in the field node 08a also writes.
             qubit.chi = float(result["chi_hz"])
+            qubit.extras["chi_source"] = node.name
             # The |1> linewidths go next to the |0> ones, so that a resonator whose decay depends on
             # the qubit state shows it rather than hiding behind a single number.
             qubit.resonator.extras["kappa_ext_excited_hz"] = float(result["kappa_ext_excited_hz"])
@@ -299,3 +285,6 @@ def save_results(node: QualibrationNode[Parameters, Quam]) -> None:
     for qubit in node.namespace.get("qubits", []):
         qubit.resonator.operations.pop(PROBE_OPERATION, None)
     node.save()
+
+
+# %%
