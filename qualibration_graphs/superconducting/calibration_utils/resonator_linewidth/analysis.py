@@ -49,9 +49,10 @@ class FitParameters:
     depletion_time_over_lifetime: float
     """The stored depletion time expressed in photon lifetimes."""
     cable_delay_ns: float
+    background_tilt: float
+    """Fitted |S21| background tilt of the |0> trace, (end - start) / mean. NaN when not corrected."""
     probe_power_dbm: float
-    """Absolute power of the probe tone, which differs per qubit because the probe is a scale factor
-    on each qubit's own readout amplitude."""
+    """Absolute probe power; differs per qubit since the probe scales each qubit's readout amplitude."""
     impedance_mismatch_rad: float
     r_squared: float
     stored_kappa_hz: float
@@ -59,17 +60,13 @@ class FitParameters:
     kappa_mismatch_fraction: float
     """Relative disagreement between the fitted and the stored kappa. NaN when there is no stored kappa."""
     excited_state_measured: bool
-    """True when the resonance was also fitted with the qubit prepared in |1>, which is what yields
-    chi. Every field below is NaN when it is False."""
+    """True when the |1> resonance was also fitted. Every field below is NaN otherwise."""
     resonance_frequency_excited: float
     """Fitted resonance frequency with the qubit in |1>, in Hz."""
     chi_hz: float
-    """Half the splitting between the |0> and |1> resonances, so the full splitting is 2 chi and the
-    qubit Stark shift is 2 chi n_bar. Signed: negative when the |1> resonance sits below the |0> one,
-    which is the usual case for a transmon below its resonator."""
+    """Half the |1> minus |0> resonance splitting, signed (negative when |1> sits below |0>)."""
     chi_over_kappa: float
-    """|chi| / kappa_tot. Above about 0.3 the weak-dispersive formulas behind the photon calibration
-    stop holding and the general steady-state expressions are needed instead."""
+    """|chi| / kappa_tot. Readout SNR per unit time peaks at 2 |chi| / kappa = 1."""
     kappa_tot_excited_hz: float
     kappa_ext_excited_hz: float
     kappa_int_excited_hz: float
@@ -206,34 +203,32 @@ def _guess_resonance(freq: np.ndarray, magnitude: np.ndarray) -> Tuple[float, fl
     return f_r_guess, f_r_guess / fwhm
 
 
-def notch_port_fit(freq: np.ndarray, s21: np.ndarray, tau_guess: float, fit_delay: bool = True) -> Dict[str, object]:
-    """Run the full notch-port fit on one resonance.
+BACKGROUND_EDGE_FRACTION = 0.2
+"""Fraction of the span at each edge that seeds the background line in `notch_port_fit`. The line is then
+refined against the fitted resonance over the whole span, so the result barely depends on it."""
 
-    Parameters
-    ----------
-    freq : np.ndarray
-        Absolute RF frequency of every point, in Hz.
-    s21 : np.ndarray
-        Complex transmission at every point.
-    tau_guess : float
-        Starting guess for the cable delay, in seconds.
-    fit_delay : bool
-        When False the cable delay is held at `tau_guess` instead of being fitted.
+BACKGROUND_ITERATIONS = 4
+"""Rounds of the background refinement in `notch_port_fit`; the tilt settles to well below 0.1% in two."""
 
-    Returns
-    -------
-    dict
-        Keys: f_r, q_loaded, q_external, q_internal, kappa_tot_hz, kappa_ext_hz, kappa_int_hz,
-        cable_delay_s, phi_rad, r_squared, plus the normalised trace `s21_normalised` and the
-        fitted curve `s21_model` for plotting.
+
+def _edge_baseline(freq: np.ndarray, s21: np.ndarray, edge_fraction: float) -> np.ndarray:
+    """First guess of a linear |S21| baseline, from a line through the outer `edge_fraction` of each side.
+
+    Returns None when the deepest point of the dip lies in an edge region, where it would be mistaken for
+    background, or when the line is not positive across the span.
     """
-    freq = np.asarray(freq, dtype=float)
-    s21 = np.asarray(s21, dtype=complex)
-    if freq.size < 8:
-        raise ValueError("at least 8 frequency points are needed for a circle fit")
-    if not np.all(np.isfinite(s21)):
-        raise ValueError("the complex trace contains non-finite values")
+    num_edge = max(2, int(round(edge_fraction * freq.size)))
+    edges = np.zeros(freq.size, dtype=bool)
+    edges[:num_edge] = True
+    edges[-num_edge:] = True
+    if edges[int(np.argmin(np.abs(s21)))]:
+        return None
+    baseline = np.polyval(np.polyfit(freq[edges], np.abs(s21[edges]), 1), freq)
+    return baseline if np.all(baseline > 0) else None
 
+
+def _fit_without_background(freq: np.ndarray, s21: np.ndarray, tau_guess: float, fit_delay: bool) -> Dict[str, object]:
+    """Notch-port fit of a trace whose off-resonant level is flat (see `notch_port_fit`)."""
     freq_offset = freq - float(np.mean(freq))
     tau = fit_cable_delay(freq_offset, s21, tau_guess) if fit_delay else float(tau_guess)
     z = s21 * np.exp(2j * np.pi * freq_offset * tau)
@@ -284,7 +279,72 @@ def notch_port_fit(freq: np.ndarray, s21: np.ndarray, tau_guess: float, fit_dela
         "r_squared": r_squared,
         "s21_normalised": z_normalised,
         "s21_model": model,
+        "_off_resonant_magnitude": float(np.abs(off_resonant)),
     }
+
+
+def notch_port_fit(
+    freq: np.ndarray,
+    s21: np.ndarray,
+    tau_guess: float,
+    fit_delay: bool = True,
+    background_edge_fraction: float = BACKGROUND_EDGE_FRACTION,
+) -> Dict[str, object]:
+    """Run the full notch-port fit on one resonance.
+
+    A linear tilt of the off-resonant |S21| can be divided out first. A line through the span edges
+    seeds it; each round then fits the resonance and refits the line to |S21| / fitted resonance over
+    the whole span. Edges alone would bias kappa (~-8%), since the resonance tails still slope there.
+
+    Parameters
+    ----------
+    freq : np.ndarray
+        Absolute RF frequency of every point, in Hz.
+    s21 : np.ndarray
+        Complex transmission at every point.
+    tau_guess : float
+        Starting guess for the cable delay, in seconds.
+    fit_delay : bool
+        When False the cable delay is held at `tau_guess` instead of being fitted.
+    background_edge_fraction : float, optional
+        Fraction of the span at each edge that seeds the background line. None leaves the background
+        as measured.
+
+    Returns
+    -------
+    dict
+        Keys: f_r, q_loaded, q_external, q_internal, kappa_tot_hz, kappa_ext_hz, kappa_int_hz,
+        cable_delay_s, phi_rad, r_squared, background_tilt (relative change of the baseline across the
+        span, (end - start) / mean, NaN when not corrected), background_corrected, plus the normalised
+        trace `s21_normalised` and the fitted curve `s21_model` for plotting.
+    """
+    freq = np.asarray(freq, dtype=float)
+    s21 = np.asarray(s21, dtype=complex)
+    if freq.size < 8:
+        raise ValueError("at least 8 frequency points are needed for a circle fit")
+    if not np.all(np.isfinite(s21)):
+        raise ValueError("the complex trace contains non-finite values")
+
+    baseline = None if background_edge_fraction is None else _edge_baseline(freq, s21, background_edge_fraction)
+    if baseline is None:
+        result = _fit_without_background(freq, s21, tau_guess, fit_delay)
+        result.pop("_off_resonant_magnitude")
+        return {**result, "background_tilt": float("nan"), "background_corrected": False}
+
+    for _ in range(BACKGROUND_ITERATIONS):
+        result = _fit_without_background(freq, s21 / baseline, tau_guess, fit_delay)
+        resonance = result["_off_resonant_magnitude"] * np.abs(result["s21_model"])
+        # Weighted by the resonance magnitude so the noisy bottom of the dip, where the ratio is a
+        # quotient of two small numbers, counts for little.
+        line = np.polyfit(freq, np.abs(s21) / resonance, 1, w=np.abs(result["s21_model"]))
+        new_baseline = np.polyval(line, freq)
+        if not np.all(new_baseline > 0):
+            break
+        baseline = new_baseline
+    result = _fit_without_background(freq, s21 / baseline, tau_guess, fit_delay)
+    result.pop("_off_resonant_magnitude")
+    tilt = float((baseline[-1] - baseline[0]) / np.mean(baseline))
+    return {**result, "background_tilt": tilt, "background_corrected": True}
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
@@ -381,7 +441,13 @@ def _fit_one_state(ds_q: xr.Dataset, tau_guess: float, params, state=None) -> Di
     quad_i = ds_q.I if state is None else ds_q.I.isel(state=state)
     quad_q = ds_q.Q if state is None else ds_q.Q.isel(state=state)
     s21 = np.asarray(quad_i.values, dtype=float) + 1j * np.asarray(quad_q.values, dtype=float)
-    return notch_port_fit(freq, s21, tau_guess, fit_delay=params.fit_cable_delay)
+    return notch_port_fit(
+        freq,
+        s21,
+        tau_guess,
+        fit_delay=params.fit_cable_delay,
+        background_edge_fraction=BACKGROUND_EDGE_FRACTION if params.correct_background_tilt else None,
+    )
 
 
 def _stored_chi_hz(qubit) -> float:
@@ -469,6 +535,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             photon_lifetime_ns=lifetime_ns,
             depletion_time_over_lifetime=float(resonator.depletion_time) / lifetime_ns,
             cable_delay_ns=fit["cable_delay_s"] * 1e9,
+            background_tilt=fit["background_tilt"],
             probe_power_dbm=probe_power,
             impedance_mismatch_rad=fit["phi_rad"],
             r_squared=fit["r_squared"],
@@ -513,6 +580,7 @@ def _failed_fit(probe_power: float, stored_kappa: float, stored_chi: float, reas
         photon_lifetime_ns=nan,
         depletion_time_over_lifetime=nan,
         cable_delay_ns=nan,
+        background_tilt=nan,
         probe_power_dbm=probe_power,
         impedance_mismatch_rad=nan,
         r_squared=nan,
@@ -554,6 +622,7 @@ def _attach_fit_to_dataset(
         "kappa_ext_over_kappa_tot",
         "photon_lifetime_ns",
         "cable_delay_ns",
+        "background_tilt",
         "probe_power_dbm",
         "impedance_mismatch_rad",
         "r_squared",
@@ -611,7 +680,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None) -> None:
             f"\tkappa_ext / kappa_tot: {result['kappa_ext_over_kappa_tot']:.3f} " f"(ceiling on collection efficiency)",
             f"\tQ_l: {result['q_loaded']:.3g} | Q_c: {result['q_external']:.3g} | "
             f"Q_i: {result['q_internal']:.3g} at {result['probe_power_dbm']:.1f} dBm",
-            f"\tfitted cable delay: {result['cable_delay_ns']:.1f} ns | R²: {result['r_squared']:.3f}",
+            f"\tfitted cable delay: {result['cable_delay_ns']:.1f} ns | R²: {result['r_squared']:.3f}"
+            f" | background tilt: {100 * result['background_tilt']:+.1f}%",
             f"\tfitted resonance: {1e-9 * result['resonance_frequency']:.6f} GHz (reported only, not written to state)",
             f"\tphoton lifetime: {result['photon_lifetime_ns']:.1f} ns | "
             f"stored depletion time is {result['depletion_time_over_lifetime']:.2f} lifetimes",
@@ -626,12 +696,10 @@ def log_fitted_results(fit_results: Dict, log_callable=None) -> None:
                 f"\tchi: {1e-6 * result['chi_hz']:+.4f} MHz (|1> resonance at "
                 f"{1e-9 * result['resonance_frequency_excited']:.6f} GHz, R² {result['r_squared_excited']:.3f})"
             )
-            verdict = (
-                "weak-dispersive, the simple formulas hold"
-                if result["chi_over_kappa"] < 0.3
-                else "ABOVE 0.3, the weak-dispersive formulas no longer hold"
+            lines.append(
+                f"\t|chi| / kappa: {result['chi_over_kappa']:.3f} | "
+                f"2|chi| / kappa: {2 * result['chi_over_kappa']:.2f} (readout SNR optimum at 1)"
             )
-            lines.append(f"\t|chi| / kappa: {result['chi_over_kappa']:.3f} ({verdict})")
             kappa_g, kappa_e = result["kappa_tot_hz"], result["kappa_tot_excited_hz"]
             lines.append(
                 f"\tkappa_g: {1e-6 * kappa_g:.3f} MHz | kappa_e: {1e-6 * kappa_e:.3f} MHz "

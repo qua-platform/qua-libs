@@ -36,57 +36,25 @@ from calibration_utils.resonator_linewidth import (
 
 # %% {Node initialisation}
 description = """
-        RESONATOR LINEWIDTH (NOTCH-PORT CIRCLE FIT)
-Sweeps the readout frequency at a single low probe power and captures both quadratures, then fits a
-notch-port circle to the complex trace. The fit separates the resonator linewidth into the part that
-leaves through the feedline towards the amplifier, kappa_ext, and the part that is lost, kappa_int.
+        RESONATOR LINEWIDTH AND DISPERSIVE SHIFT (NOTCH-PORT CIRCLE FIT)
+Sweeps a low-power probe across the resonator, with the qubit in |0> and optionally |1>, and fits a
+notch-port circle to each complex trace. This gives kappa split into kappa_ext (to the amplifier) and
+kappa_int (lost), and chi as half the |0>-|1> splitting. kappa_ext / kappa_tot bounds the collection
+efficiency; 2|chi| / kappa = 1 is the readout SNR optimum.
 
-kappa_ext / kappa_tot is the hard ceiling on the collection efficiency of the resonator, so it is the
-number every later efficiency measurement is compared against. The cable delay is fitted from the
-data rather than assumed, because an assumed delay makes Q_c silently wrong.
-
-The probe power is a scale factor on each qubit's own readout amplitude, so the absolute power
-differs per qubit. The node records that power alongside Q_i, which matters because two-level-system
-loss saturates with power and Q_i is only interpretable together with the power it was measured at.
-
-The probe is a dedicated pulse, not the readout pulse. The circle fit assumes the steady-state response,
-but a readout-length pulse (~1 us) is integrated mostly while the resonator is still filling up, which
-broadens the resonance and biases kappa high. The probe therefore skips the first probe_skip_ns
-(default 8 / kappa from the stored linewidth) and integrates only the following probe_window_ns
-(default min(2 us, T1 / 10), so that |1> barely decays). The temporary probe operation is removed
-again before the state is saved; the readout operation is never modified.
+The probe is a temporary pulse that skips the resonator fill-up (default 8 / kappa) and integrates the
+next window (default min(2 us, T1 / 10)); integrating the fill-up biases kappa high. A linear tilt of the
+background |S21| and the cable delay are fitted from the data.
 
 Prerequisites:
-    - Having calibrated the readout frequency (node 02a_resonator_spectroscopy.py).
-    - Having calibrated the time of flight (node 01a_time_of_flight.py), used as the starting guess
-      for the cable delay.
+    - Readout frequency (02a_resonator_spectroscopy) and time of flight (01a_time_of_flight).
+    - For |1>: the x180 pulse (03a_qubit_spectroscopy, 04b_power_rabi).
 
-With measure_excited_state on, the sweep is repeated with the qubit prepared in |1>, the two states
-measured back to back at each frequency so that slow drift subtracts out of the splitting. Half that
-splitting is chi, and |chi|/kappa says whether the weak-dispersive formulas behind node 25 hold at
-all. Both resonances are fitted separately, so a resonator whose decay depends on the qubit state
-shows it instead of hiding behind one number.
-
-Prerequisites (only with measure_excited_state):
-    - Having calibrated the x180 pulse (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
-
-State update:
-    - The external linewidth: qubit.resonator.extras["kappa_ext_hz"]
-    - The internal linewidth: qubit.resonator.extras["kappa_int_hz"]
-    - The same two with the qubit in |1>: qubit.resonator.extras["kappa_ext_excited_hz"] and
-      ["kappa_int_excited_hz"]
-    - The total linewidth per qubit state, kappa_g and kappa_e: qubit.resonator.extras["kappa_ground_hz"]
-      and ["kappa_excited_hz"] (e.g. as starting values for a DRACHMA pulse). An imperfectly prepared |1>
-      (x180 error, decay during the probe) mixes in the |0> resonance and inflates kappa_e somewhat
-      (~+5% for 5% of shots in |0>), so a small kappa_e > kappa_g is not by itself a state-dependent decay.
-    - The two dressed resonance frequencies: qubit.resonator.extras["f_r_ground_hz"] and
-      ["f_r_excited_hz"], which node 25 needs to measure its tone detuning against something that is
-      not the tone itself
-    - The dispersive shift: qubit.chi
-All in Hz. The fitted resonance frequency is reported but never written, so node 02a
-stays the only owner of the readout frequency. chi is the one field here that another node also
-writes, node 08a; this node takes it from a full complex fit of both resonances rather than from the
-spacing of two magnitude minima on a discrete grid, so it is the better estimate.
+State update (all in Hz):
+    - qubit.resonator.extras: kappa_ext_hz, kappa_int_hz, kappa_ext_excited_hz, kappa_int_excited_hz,
+      kappa_ground_hz, kappa_excited_hz, f_r_ground_hz, f_r_excited_hz (used by node 25).
+    - qubit.chi (also written by node 08a; this fit is the more precise one).
+The fitted resonance frequency is only reported; node 02a owns the readout frequency.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -267,19 +235,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]) -> None:
             )
         if not result["success"] or not result["excited_state_measured"]:
             continue
-        chi_over_kappa = result["chi_over_kappa"]
-        if np.isfinite(chi_over_kappa) and chi_over_kappa > node.parameters.max_chi_over_kappa:
-            node.log(
-                f"WARNING {name}: |χ|/κ is {chi_over_kappa:.3f}, above {node.parameters.max_chi_over_kappa:.2f}. "
-                f"The weak-dispersive formulas behind node 25 assume χ ≪ κ, so the photon number it "
-                f"reports will be wrong; the general steady-state expressions are needed instead."
-            )
         chi_mismatch = result["chi_mismatch_fraction"]
         if np.isfinite(chi_mismatch) and chi_mismatch > node.parameters.chi_mismatch_warning_fraction:
             node.log(
                 f"WARNING {name}: the fitted χ of {1e-6 * result['chi_hz']:+.4f} MHz disagrees with the "
-                f"stored {1e-6 * result['stored_chi_hz']:+.4f} MHz by {100 * chi_mismatch:.0f}%. Everything "
-                f"node 25 reports scales with χ, so the old photon numbers were wrong by that factor."
+                f"stored {1e-6 * result['stored_chi_hz']:+.4f} MHz by {100 * chi_mismatch:.0f}%. Node 25 converts its "
+                f"Stark shift to photons with the stored χ, so check which value to keep before running it."
             )
 
     node.outcomes = {
