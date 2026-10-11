@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from qualibrate import NodeParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitsExperimentNodeParameters
@@ -14,10 +14,9 @@ class Parameters(
     num_shots: int = 1000
     """Number of averages to perform. Default is 1000."""
 
-    free_evolution_times_in_ns: List[int] = [20, 40, 60, 90, 120, 160, 240, 400]
-    """Ramsey free evolution times in ns. The Stark shift is the slope of the fringe phase against them, so
-    they should reach past a few photon lifetimes 1/kappa. Times where 2 chi tau exceeds 1 rad are dropped
-    per qubit. Default is 8 times from 20 to 400 ns."""
+    free_evolution_times_in_ns: List[int] = [200, 500, 800, 1200, 1600, 2000, 2500, 3000, 3500, 4000]
+    """Ramsey free evolution times in ns. Only times past 4 / kappa (after the field transient) are fitted,
+    and at least 3 are needed there. Default is 10 times from 0.2 to 4 us."""
 
     num_amplitude_points: int = 11
     """Number of Stark tone amplitudes, including the zero-amplitude reference. Default is 11."""
@@ -30,8 +29,10 @@ class Parameters(
     num_phase_points: int = 21
     """Number of phases of the second pi/2 pulse, spanning one full turn. Default is 21."""
 
-    tone_frequency_in_ghz: Optional[float] = None
-    """Absolute Stark tone frequency in GHz. None uses the qubit's readout frequency. Default is None."""
+    tone_detuning_in_linewidths: float = 4.0
+    """Stark tone detuning above the midpoint of the two dressed resonances (node 24), in units of
+    max(|chi|, kappa) per qubit. Far from both resonances the |0> and |1> fields are nearly equal, so the
+    fringe survives and F is close to 1. n_bar is converted back to the readout frequency. Default is 4."""
 
     separate_resonator_core: bool = True
     """Give the resonator its own pulse-processor core for the run, so the tone can overlap the Ramsey.

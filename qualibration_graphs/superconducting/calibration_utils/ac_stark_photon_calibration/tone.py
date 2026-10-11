@@ -82,15 +82,7 @@ def steady_state_pad_ns(qubit, lifetimes: float) -> int:
     return round_up_to_clock_cycle(lifetimes * photon_lifetime_ns(qubit))
 
 
-def tone_intermediate_frequency(qubit, tone_frequency_in_ghz: float = None) -> int:
-    """Intermediate frequency at which to play the tone, in Hz.
-
-    With no override the tone sits at the qubit's current readout frequency, so that whatever is
-    measured applies to the conditions the qubit is actually read out in. An override is given as an
-    absolute RF frequency in GHz and is converted using the resonator's own upconversion.
-    """
+def tone_intermediate_frequency(qubit, tone_frequency_hz: float) -> int:
+    """Intermediate frequency at which to play a tone at the absolute RF frequency `tone_frequency_hz`."""
     resonator = qubit.resonator
-    if tone_frequency_in_ghz is None:
-        return int(resonator.intermediate_frequency)
-    tone_rf_hz = float(tone_frequency_in_ghz) * 1e9
-    return int(resonator.intermediate_frequency + (tone_rf_hz - resonator.RF_frequency))
+    return int(resonator.intermediate_frequency + (float(tone_frequency_hz) - resonator.RF_frequency))

@@ -26,13 +26,11 @@ __all__ = [
     "STEADY_STATE_PAD_IN_LIFETIMES",
     "DEPLETION_IN_LIFETIMES",
     "MIN_CONTRAST_FRACTION",
-    "MAX_NUMBER_SPLITTING_PHASE_RAD",
-    "MIN_TAU_OVER_PHOTON_LIFETIME",
+    "MIN_TAU_IN_LIFETIMES",
     "MIN_PHASE_LINEARITY_R_SQUARED",
     "MIN_LINEAR_FIT_R_SQUARED",
     "MIN_ABS_STARK_FACTOR",
     "PHASE_STEP_WARNING_FRACTION_OF_PI",
-    "GAMMA_RATIO_WARNING_FRACTION",
     "N_BAR_OVER_CRITICAL_WARNING_FRACTION",
     "FitParameters",
     "MissingResonatorLinewidthError",
@@ -43,10 +41,13 @@ __all__ = [
     "gamma_per_photon",
     "kappa_tot_hz_from_extras",
     "log_fitted_results",
+    "photon_number_response",
     "photons_per_mw_fit",
     "power_dbm_to_mw",
     "process_raw_dataset",
     "slope_with_intercept",
+    "stark_factor",
+    "stark_tone_frequency_hz",
     "tone_power_dbm",
     "transmon_anharmonicity",
 ]
@@ -61,10 +62,10 @@ DEPLETION_IN_LIFETIMES = 8.0
 The longer of this and the stored depletion time is used."""
 MIN_CONTRAST_FRACTION = 0.15
 """Points whose fringe contrast is below this fraction of the zero-amplitude contrast are dropped."""
-MAX_NUMBER_SPLITTING_PHASE_RAD = 1.0
-"""Times with 2 chi tau above this are dropped: past it the phase follows n_bar sin(2 chi tau), not a line."""
-MIN_TAU_OVER_PHOTON_LIFETIME = 2.0
-"""Warn when no usable time reaches this many photon lifetimes; shorter, a transient also looks linear."""
+MIN_TAU_IN_LIFETIMES = 4.0
+"""Only free evolution times past this many photon lifetimes 1/kappa are fitted. After the first pi/2 the
+|1> half of the qubit sees the field relax from alpha_g to alpha_e, and the phase is not linear in tau
+until that transient has died out."""
 MIN_PHASE_LINEARITY_R_SQUARED = 0.9
 """Fail when the fringe phase against tau is less linear than this."""
 MIN_LINEAR_FIT_R_SQUARED = 0.9
@@ -73,8 +74,6 @@ MIN_ABS_STARK_FACTOR = 0.3
 """Fail when |F| is below this: n_bar = Delta_omega / (2 chi F) amplifies every phase error by 1/F."""
 PHASE_STEP_WARNING_FRACTION_OF_PI = 0.8
 """Warn when the phase grows by more than this times pi between adjacent times; unwrapping needs < pi."""
-GAMMA_RATIO_WARNING_FRACTION = 0.2
-"""Warn when the measured Gamma_d / Delta_omega differs from the one predicted by chi, kappa and detuning."""
 N_BAR_OVER_CRITICAL_WARNING_FRACTION = 0.5
 """Warn when n_bar at the operating amplitude exceeds this fraction of the critical photon number."""
 
@@ -93,7 +92,14 @@ class FitParameters:
     """Photon calibration results for a single qubit."""
 
     photons_per_mw: float
-    """The linear constant c in n_bar = c * P_mW, from the Stark phase."""
+    """The constant c in n_bar = c * P_mW at the readout frequency: the fit at the tone frequency times
+    readout_conversion_factor."""
+    photons_per_mw_at_tone: float
+    """The same constant at the tone frequency, where it was measured."""
+    readout_conversion_factor: float
+    """Photons at the readout frequency per photon at the tone frequency, at equal drive power, from
+    the Lorentzian response with kappa and the dressed resonances of node 24. Assumes the drive line
+    delivers the same power at both frequencies."""
     single_photon_power_dbm: float
     """The power at which n_bar = 1, the same constant read as a reference level."""
     n_bar_at_operating_amplitude: float
@@ -153,15 +159,9 @@ class FitParameters:
     unwrapped along that axis, which holds only while the step stays below pi."""
     min_usable_free_evolution_count: int
     """Fewest surviving free evolution times among the amplitudes that contributed."""
-    number_splitting_phase_limit_ns: float
-    """Longest free evolution time at which the qubit still cannot resolve one photon from the next,
-    i.e. where 2 chi tau reaches the configured limit. Times past it are dropped, because the
-    apparent phase there follows n_bar sin(2 chi tau) rather than 2 chi n_bar tau."""
-    num_times_within_linear_regime: int
-    max_tau_over_photon_lifetime: float
-    """Longest free evolution time that kept a usable fringe at any amplitude, in resonator photon
-    lifetimes. Below about one, a resonator transient grows almost linearly with time too, so the
-    linearity check above cannot tell the two apart and a straight line proves nothing."""
+    min_fitted_tau_ns: float
+    """MIN_TAU_IN_LIFETIMES / kappa: shorter free evolution times sit in the transient and are not fitted."""
+    num_times_past_transient: int
     num_contributing_amplitudes: int
 
     fringe_phase_inverted: bool
@@ -169,9 +169,7 @@ class FitParameters:
     flipped so that the photon number comes out positive."""
     tone_frequency_hz: float
     tone_detuning_hz: float
-    """Tone frequency minus the midpoint of the two dressed resonances. NaN when neither node 24's
-    measured resonances nor a bare resonator frequency is in state, in which case the expected
-    Gamma_d ratio is evaluated at zero detuning."""
+    """Tone frequency minus the midpoint of the two dressed resonances."""
     detuning_source: str
     steady_state_pad_ns: float
     steady_state_fraction: float
@@ -356,6 +354,33 @@ def stark_factor(chi_rad: float, kappa_rad: float, detuning_rad: float = 0.0) ->
     return float((delta_sq - chi_sq + half_kappa_sq) / denominator)
 
 
+def photon_number_response(freq_hz: float, f_ground: float, f_excited: float, kappa_hz: float) -> float:
+    """Mean steady-state photon number per unit drive strength squared at a drive frequency.
+
+    (n_g + n_e) / 2 with n_s = 1 / ((f - f_s)^2 + (kappa/2)^2). Only ratios of it are used, to carry a
+    photon number measured at the tone frequency over to the readout frequency at the same drive power.
+    """
+    half_kappa_sq = (kappa_hz / 2) ** 2
+    return 0.5 * (1 / ((freq_hz - f_ground) ** 2 + half_kappa_sq) + 1 / ((freq_hz - f_excited) ** 2 + half_kappa_sq))
+
+
+def stark_tone_frequency_hz(qubit, detuning_in_linewidths: float) -> float:
+    """Stark tone frequency: the midpoint of the dressed resonances plus detuning_in_linewidths * max(|chi|, kappa).
+
+    Raises a ValueError when the dressed resonances are unknown, since neither the detuning nor the
+    conversion back to the readout frequency is defined without them.
+    """
+    chi_hz = _chi_hz(qubit)
+    f_ground, f_excited, source = dressed_resonances(qubit, chi_hz)
+    if source == "unavailable":
+        raise ValueError(
+            f"{qubit.name}: the dressed resonances are unknown. Run node 24 so f_r_ground_hz and f_r_excited_hz "
+            f"are stored; the tone detuning and the photon number at the readout frequency both need them."
+        )
+    linewidth_hz = max(abs(chi_hz), kappa_tot_hz_from_extras(qubit))
+    return 0.5 * (f_ground + f_excited) + float(detuning_in_linewidths) * linewidth_hz
+
+
 def transmon_anharmonicity(qubit) -> Tuple[float, bool]:
     """The anharmonicity to use in the formulas, in Hz, and whether its sign was imposed.
 
@@ -485,11 +510,11 @@ def _chi_hz(qubit) -> float:
 
 
 def _tone_frequency_hz(qubit, node: QualibrationNode) -> float:
-    """The Stark tone frequency, defaulting to the qubit's current readout frequency."""
-    override = node.parameters.tone_frequency_in_ghz
-    if override is None:
-        return float(qubit.resonator.RF_frequency)
-    return float(override) * 1e9
+    """The Stark tone frequency the sequence played, or NaN when it cannot be derived from the state."""
+    try:
+        return stark_tone_frequency_hz(qubit, node.parameters.tone_detuning_in_linewidths)
+    except ValueError:
+        return _NAN
 
 
 def _fringe_grid(signal: xr.DataArray, num_taus: int, num_amps: int, phases: np.ndarray) -> Dict[str, np.ndarray]:
@@ -605,14 +630,16 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
     with np.errstate(invalid="ignore"):
         usable = contrast >= MIN_CONTRAST_FRACTION * reference_contrast[:, None]
 
-    # The Stark phase is only 2 chi n_bar tau while the qubit cannot resolve one photon from the
-    # next. Once 2 chi tau approaches a radian the qubit is resolving photon number, the apparent
-    # phase follows n_bar sin(2 chi tau) instead of growing, and past 2 chi tau of pi/2 it turns
-    # round and runs backwards. Those times are dropped rather than fitted, because a straight line
-    # through them returns a photon number that is simply too small.
-    splitting_phase = 2 * abs(chi_rad) * taus
-    within_linear_regime = splitting_phase <= MAX_NUMBER_SPLITTING_PHASE_RAD
-    usable &= within_linear_regime[:, None]
+    # Times inside the field transient after the first pi/2 are not fitted: the phase there is not yet
+    # linear in tau. With the tone held on there is no upper limit; the fringe contrast sets one.
+    min_tau = MIN_TAU_IN_LIFETIMES / kappa_rad
+    past_transient = taus >= min_tau
+    if past_transient.sum() < 3:
+        raise ValueError(
+            f"only {int(past_transient.sum())} free evolution times reach {MIN_TAU_IN_LIFETIMES:g}/κ = "
+            f"{1e9 * min_tau:.0f} ns; at least 3 are needed past the transient. Add longer times."
+        )
+    usable &= past_transient[:, None]
     usable[:, reference] = True
 
     phase_shift = np.full((num_taus, num_amps), _NAN)
@@ -637,9 +664,16 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
 
     # The tone detuning has to be measured against something other than the tone.
     f_ground, f_excited, detuning_source = dressed_resonances(qubit, chi_hz)
-    midpoint = 0.5 * (f_ground + f_excited)
-    detuning_hz = tone_frequency - midpoint if np.isfinite(midpoint) else _NAN
-    detuning_rad = 2 * np.pi * detuning_hz if np.isfinite(detuning_hz) else 0.0
+    if detuning_source == "unavailable" or not np.isfinite(tone_frequency):
+        raise ValueError("the dressed resonances are unknown; run node 24 first")
+    detuning_hz = tone_frequency - 0.5 * (f_ground + f_excited)
+    detuning_rad = 2 * np.pi * detuning_hz
+    # n_bar is measured at the tone frequency. The same drive power puts this many times more photons
+    # in at the readout frequency, which is what the stored calibration has to describe.
+    readout_frequency = float(qubit.resonator.RF_frequency)
+    conversion = photon_number_response(readout_frequency, f_ground, f_excited, kappa_tot_hz) / photon_number_response(
+        tone_frequency, f_ground, f_excited, kappa_tot_hz
+    )
 
     # The Stark shift is 2 chi Re(alpha_g alpha_e*), which equals 2 chi n_bar only for chi << kappa.
     # F converts it exactly at this tone's detuning (zero when the detuning is unknown).
@@ -664,9 +698,10 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
 
     power_dbm = tone_power_dbm(qubit.resonator, amplitude_scales)
     power_mw = power_dbm_to_mw(power_dbm)
-    photons_per_mw, r_squared = photons_per_mw_fit(power_mw, n_bar)
+    photons_per_mw_at_tone, r_squared = photons_per_mw_fit(power_mw, n_bar)
+    photons_per_mw = photons_per_mw_at_tone * conversion
     try:
-        photons_per_mw_gamma, _ = photons_per_mw_fit(power_mw, n_bar_gamma)
+        photons_per_mw_gamma = photons_per_mw_fit(power_mw, n_bar_gamma)[0] * conversion
     except ValueError:
         photons_per_mw_gamma = _NAN
 
@@ -694,16 +729,6 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
     phase_linearity = float(np.nanmedian(phase_r2[carries_signal])) if carries_signal.any() else _NAN
     gamma_linearity = float(np.nanmedian(gamma_r2[carries_signal])) if carries_signal.any() else _NAN
 
-    photon_lifetime = 1.0 / kappa_rad
-    longest_usable = 0.0
-    for a in range(num_amps):
-        if a == reference or usable_count[a] < 3:
-            continue
-        times = taus[usable[:, a] & np.isfinite(phase_shift[:, a])]
-        if times.size:
-            longest_usable = max(longest_usable, float(times.max()))
-    max_tau_over_lifetime = longest_usable / photon_lifetime
-
     steps = np.abs(np.diff(phase_shift, axis=0))
     max_phase_step = float(np.nanmax(steps)) if np.isfinite(steps).any() else _NAN
 
@@ -722,13 +747,8 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
     if not (np.isfinite(factor) and abs(factor) >= MIN_ABS_STARK_FACTOR):
         reasons.append(
             f"the Stark shift per photon at this tone detuning is only {factor:+.2f} × 2χ (|χ|/κ = "
-            f"{abs(chi_hz) / kappa_tot_hz:.2f}), so the phase carries too little photon information; move the "
-            f"tone (tone_frequency_in_ghz) further from the midpoint of the dressed resonances"
-        )
-    if not np.isfinite(detuning_hz) and abs(chi_hz) / kappa_tot_hz > 0.1:
-        reasons.append(
-            f"the tone detuning is unknown, so the Stark shift cannot be converted beyond the weak-dispersive "
-            f"limit (|χ|/κ = {abs(chi_hz) / kappa_tot_hz:.2f}); run node 24 so the dressed resonances are stored"
+            f"{abs(chi_hz) / kappa_tot_hz:.2f}), so the phase carries too little photon information; increase "
+            f"tone_detuning_in_linewidths"
         )
     if not (np.isfinite(phase_linearity) and phase_linearity >= MIN_PHASE_LINEARITY_R_SQUARED):
         reasons.append(
@@ -744,6 +764,8 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
 
     result = FitParameters(
         photons_per_mw=float(photons_per_mw),
+        photons_per_mw_at_tone=float(photons_per_mw_at_tone),
+        readout_conversion_factor=float(conversion),
         single_photon_power_dbm=float(-10 * np.log10(photons_per_mw)) if photons_per_mw > 0 else _NAN,
         n_bar_at_operating_amplitude=float(n_bar_operating),
         operating_power_dbm=operating_power_dbm,
@@ -768,9 +790,8 @@ def _photon_calibration(qubit, grid, amplitude_scales, taus, chi_hz, kappa_tot_h
         linear_fit_r_squared=r_squared,
         max_phase_step_rad=max_phase_step,
         min_usable_free_evolution_count=int(usable_count[carries_signal].min()) if carries_signal.any() else 0,
-        number_splitting_phase_limit_ns=float(1e9 * MAX_NUMBER_SPLITTING_PHASE_RAD / (2 * abs(chi_rad))),
-        num_times_within_linear_regime=int(within_linear_regime.sum()),
-        max_tau_over_photon_lifetime=float(max_tau_over_lifetime),
+        min_fitted_tau_ns=float(1e9 * min_tau),
+        num_times_past_transient=int(past_transient.sum()),
         num_contributing_amplitudes=int(contributing.sum()),
         fringe_phase_inverted=inverted,
         tone_frequency_hz=tone_frequency,
@@ -842,6 +863,8 @@ def _failed_fit(kappa_tot_hz: float, tone_frequency: float, qubit, info: Dict, r
     lifetime_ns = 1e9 / (2 * np.pi * kappa_tot_hz)
     return FitParameters(
         photons_per_mw=_NAN,
+        photons_per_mw_at_tone=_NAN,
+        readout_conversion_factor=_NAN,
         single_photon_power_dbm=_NAN,
         n_bar_at_operating_amplitude=_NAN,
         operating_power_dbm=_NAN,
@@ -868,9 +891,8 @@ def _failed_fit(kappa_tot_hz: float, tone_frequency: float, qubit, info: Dict, r
         linear_fit_r_squared=_NAN,
         max_phase_step_rad=_NAN,
         min_usable_free_evolution_count=0,
-        number_splitting_phase_limit_ns=_NAN,
-        num_times_within_linear_regime=0,
-        max_tau_over_photon_lifetime=_NAN,
+        min_fitted_tau_ns=float(MIN_TAU_IN_LIFETIMES * lifetime_ns),
+        num_times_past_transient=0,
         num_contributing_amplitudes=0,
         fringe_phase_inverted=False,
         tone_frequency_hz=tone_frequency,
@@ -900,6 +922,8 @@ _AMP_FIELDS = (
 )
 _SCALAR_FIELDS = (
     "photons_per_mw",
+    "photons_per_mw_at_tone",
+    "readout_conversion_factor",
     "single_photon_power_dbm",
     "n_bar_at_operating_amplitude",
     "operating_power_dbm",
@@ -922,9 +946,8 @@ _SCALAR_FIELDS = (
     "linear_fit_r_squared",
     "max_phase_step_rad",
     "min_usable_free_evolution_count",
-    "number_splitting_phase_limit_ns",
-    "num_times_within_linear_regime",
-    "max_tau_over_photon_lifetime",
+    "min_fitted_tau_ns",
+    "num_times_past_transient",
     "num_contributing_amplitudes",
     "tone_frequency_hz",
     "tone_detuning_hz",
@@ -968,30 +991,19 @@ def _attach_fit_to_dataset(ds, fit_results, per_amp, per_grid) -> xr.Dataset:
     return ds_fit
 
 
-def _critical_photon_line(result: Dict) -> str:
-    """The critical photon number line, or a note saying why there is none."""
+def _critical_photon_text(result: Dict) -> str:
     if not np.isfinite(result["critical_photon_number"]):
-        return (
-            "\tno critical photon number: it needs the stored chi, f_01 and anharmonicity, "
-            "and at least one of them is missing"
-        )
-    lines = [
-        f"\tcritical photon number: {result['critical_photon_number']:.1f} "
-        f"(implied g = {1e-6 * result['coupling_g_hz']:.1f} MHz)"
-    ]
+        return "critical photon number unknown (needs chi, f_01 and anharmonicity)"
+    text = f"critical photon number {result['critical_photon_number']:.0f}"
     if np.isfinite(result["n_bar_over_critical"]):
-        lines[0] += f", so the readout runs at {100 * result['n_bar_over_critical']:.0f}% of it"
+        text += f" (readout at {100 * result['n_bar_over_critical']:.0f}%)"
     if np.isfinite(result["critical_power_dbm"]):
-        margin_db = result["critical_power_dbm"] - result["operating_power_dbm"]
-        lines.append(
-            f"\tit is reached at {result['critical_power_dbm']:.1f} dBm, which is amplitude scale "
-            f"{result['critical_amplitude_scale']:.2f} and {margin_db:+.1f} dB from the operating power"
-        )
-    return "\n".join(lines)
+        text += f", reached at {result['critical_power_dbm']:.1f} dBm"
+    return text
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None) -> None:
-    """Log the photon calibration, the linearity that makes it falsifiable, and the cross-checks."""
+    """Log the photon calibration and its checks for every qubit; the rest stays in the fit results."""
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
     for name, result in fit_results.items():
@@ -999,51 +1011,16 @@ def log_fitted_results(fit_results: Dict, log_callable=None) -> None:
         if not result["success"]:
             log_callable(f"Results for qubit {name}: FAIL! {result['failure_reason']}")
             continue
-        detuning = result["tone_detuning_hz"]
-        detuning_text = (
-            f"{1e-6 * detuning:+.3f} MHz from the midpoint of the dressed pair ({result['detuning_source']})"
-            if np.isfinite(detuning)
-            else f"detuning unknown ({result['detuning_source']}), so the expected ratio assumes zero"
-        )
         lines = [
             f"Results for qubit {name}: SUCCESS!",
-            f"\tphotons per mW: {result['photons_per_mw']:.4g} | "
-            f"power giving n̄ = 1: {result['single_photon_power_dbm']:.1f} dBm",
-            f"\tn̄ at the operating readout amplitude ({result['operating_power_dbm']:.1f} dBm): "
-            f"{result['n_bar_at_operating_amplitude']:.2f} from the phase, "
-            f"{result['n_bar_from_gamma_at_operating']:.2f} from the dephasing "
-            f"(ratio {result['n_bar_gamma_over_phase']:.2f})",
-            f"\tphase against free evolution time: R² {result['phase_linearity_r_squared']:.3f} over "
-            f"{result['num_contributing_amplitudes']} amplitudes, at least "
-            f"{result['min_usable_free_evolution_count']:.0f} times surviving each, reaching "
-            f"{result['max_tau_over_photon_lifetime']:.1f} photon lifetimes | largest step between "
-            f"times {result['max_phase_step_rad'] / np.pi:.2f} π",
-            f"\tphoton-number-splitting limit 2χτ: times up to "
-            f"{result['number_splitting_phase_limit_ns']:.0f} ns are in the linear regime, "
-            f"{result['num_times_within_linear_regime']:.0f} of the swept times qualify",
-            f"\tΓ_d / Δω: {result['gamma_d_over_delta_omega']:.3f} against an expected "
-            f"{result['expected_gamma_ratio']:.3f} ({100 * result['gamma_ratio_disagreement']:.0f}% apart)",
-            _critical_photon_line(result),
-            f"\ttone at {1e-9 * result['tone_frequency_hz']:.6f} GHz, {detuning_text}",
-            f"\t|χ|/κ = {result['chi_over_kappa']:.3f} | Stark shift per photon F = {result['stark_factor']:+.3f} × 2χ "
-            f"(n̄ = Δω / 2χF) | steady-state pad "
-            f"{result['steady_state_pad_ns']:.0f} ns reaching {100 * result['steady_state_fraction']:.0f}% "
-            f"of steady state | depletion {result['depletion_over_lifetime']:.1f} photon lifetimes",
-            f"\tR² of n̄ against power: {result['linear_fit_r_squared']:.3f}",
+            f"\tn̄ at the operating readout amplitude: {result['n_bar_at_operating_amplitude']:.2f} | "
+            f"{result['photons_per_mw']:.4g} photons/mW "
+            f"at readout (= {result['photons_per_mw_at_tone']:.4g} at the tone × {result['readout_conversion_factor']:.1f})",
+            f"\ttone {1e-6 * result['tone_detuning_hz']:+.3f} MHz from the midpoint (F = {result['stark_factor']:+.2f}) | "
+            f"fit R²: phase {result['phase_linearity_r_squared']:.3f}, n̄ vs power {result['linear_fit_r_squared']:.3f} | "
+            f"{result['num_times_past_transient']:.0f} times from {result['min_fitted_tau_ns']:.0f} ns "
+            f"({MIN_TAU_IN_LIFETIMES:g}/κ)",
+            f"\tΓ_d/Δω: {result['gamma_d_over_delta_omega']:.3f}, predicted {result['expected_gamma_ratio']:.3f} | "
+            + _critical_photon_text(result),
         ]
-        if result["anharmonicity_sign_flipped"]:
-            lines.append(
-                "\tthe stored anharmonicity was positive and was taken as negative; a transmon "
-                "is negatively anharmonic and the populate script should be storing it signed"
-            )
-        if result["chi_sign_flipped"]:
-            lines.append(
-                "\tafter the anharmonicity sign was settled, χ still implied a negative g², so its sign was "
-                "flipped to get a positive critical photon number"
-            )
-        if result["fringe_phase_inverted"]:
-            lines.append(
-                "\tthe fringe phase ran opposite to the assumed sign convention and was flipped so that "
-                "n̄ comes out positive"
-            )
         log_callable("\n".join(lines))
