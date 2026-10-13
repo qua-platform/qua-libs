@@ -61,7 +61,7 @@ def convert_sliced_demod_to_volts(ds: xr.Dataset, keys: list[str], squared: bool
     return ds.assign({key: ds[key] * factor for key in keys})
 
 
-def process_raw_dataset(ds: xr.Dataset, conditions: list, states: list) -> xr.Dataset:
+def process_raw_dataset(ds: xr.Dataset, conditions: list, states: list, num_shots: int) -> xr.Dataset:
     """Convert the sliced dual-demod counts to volts, stack the per-(condition, state) streams
     into "condition" and "state" dimensions, combine the four projections into I/Q (I = II+IQ,
     Q = QI+QQ -- the same projection pairing quam's InOutIQChannel.measure() uses for full dual
@@ -115,10 +115,14 @@ def process_raw_dataset(ds: xr.Dataset, conditions: list, states: list) -> xr.Da
     var_I = (ds["I_sq"] - I**2).clip(min=0)
     var_Q = (ds["Q_sq"] - Q**2).clip(min=0)
     var_amp = xr.where(ds["IQ_abs"] > 0, (I**2 * var_I + Q**2 * var_Q) / ds["IQ_abs"] ** 2, np.nan)
-    ds = ds.assign(var_I=var_I, var_Q=var_Q, IQ_abs_std=np.sqrt(var_amp))
+    # The plotted |IQ| is the mean over num_shots shots, so its uncertainty is the single-shot std
+    # divided by sqrt(num_shots) (standard error of the mean) -- the same SE the chi2 tests use.
+    IQ_abs_std = np.sqrt(var_amp)
+    ds = ds.assign(var_I=var_I, var_Q=var_Q, IQ_abs_std=IQ_abs_std, IQ_abs_sem=IQ_abs_std / np.sqrt(num_shots))
     ds.var_I.attrs = {"long_name": "Var(I) (shot noise)", "units": "V^2"}
     ds.var_Q.attrs = {"long_name": "Var(Q) (shot noise)", "units": "V^2"}
-    ds.IQ_abs_std.attrs = {"long_name": "residual cavity field |IQ| std (shot noise)", "units": "V"}
+    ds.IQ_abs_std.attrs = {"long_name": "residual cavity field |IQ| single-shot std (shot noise)", "units": "V"}
+    ds.IQ_abs_sem.attrs = {"long_name": "residual cavity field |IQ| standard error of the mean", "units": "V"}
 
     return ds
 
@@ -133,6 +137,15 @@ def _chi2_pvalue(dI: xr.DataArray, dQ: xr.DataArray, SE_I: xr.DataArray, SE_Q: x
     z_Q = dQ / SE_Q
     chi2_stat = z_I**2 + z_Q**2
     return xr.apply_ufunc(chi2_dist.sf, chi2_stat, kwargs={"df": 2})
+
+
+def _chi2_neglog10p(dI: xr.DataArray, dQ: xr.DataArray, SE_I: xr.DataArray, SE_Q: xr.DataArray) -> xr.DataArray:
+    """-log10 of _chi2_pvalue, computed in log space via chi2.logsf so it stays finite where the
+    p-value itself underflows to 0.0. logsf is exact up to chi2_stat ~ 1400 (p ~ 1e-304) and
+    returns -inf beyond, i.e. +inf here -- harmless, since callers only plot it clipped to a
+    far smaller cap."""
+    chi2_stat = (dI / SE_I) ** 2 + (dQ / SE_Q) ** 2
+    return -xr.apply_ufunc(chi2_dist.logsf, chi2_stat, kwargs={"df": 2}) / np.log(10)
 
 
 def _first_sustained_segment(passed: np.ndarray, debounce: int) -> int | None:
@@ -184,7 +197,7 @@ def _scan_depletion_time(
 
 def compute_stat_depletion_time(
     ds: xr.Dataset, node: QualibrationNode, test_conditions: tuple
-) -> tuple[xr.DataArray, xr.DataArray]:
+) -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     """Statistical (chi-squared, df=2) alternative depletion-time test, per (test_condition,
     qubit, state): compares each test_condition's per-segment mean I/Q against the
     "no_operation" baseline via a two-sample z-test per quadrature, combined via _chi2_pvalue.
@@ -208,6 +221,7 @@ def compute_stat_depletion_time(
     # dim, which also contains "no_operation" -- avoids xarray reindex/alignment ambiguity
     # when test_conditions is a subset of the full condition coordinate.
     p_slices = []
+    neglog10p_slices = []
     for condition in test_conditions:
         var_I_cond = ds["var_I"].sel(condition=condition).mean(dim="segment")
         var_Q_cond = ds["var_Q"].sel(condition=condition).mean(dim="segment")
@@ -216,10 +230,13 @@ def compute_stat_depletion_time(
         dI = ds["I"].sel(condition=condition) - I_noop
         dQ = ds["Q"].sel(condition=condition) - Q_noop
         p_slices.append(_chi2_pvalue(dI, dQ, SE_I, SE_Q))
+        neglog10p_slices.append(_chi2_neglog10p(dI, dQ, SE_I, SE_Q))
 
     test_condition_coord = xr.DataArray(list(test_conditions), dims="test_condition", name="test_condition")
     p_value = xr.concat(p_slices, dim=test_condition_coord)
     p_value.attrs = {"long_name": "p-value (chi2 test, df=2) vs no_operation baseline"}
+    neglog10_p = xr.concat(neglog10p_slices, dim=test_condition_coord)
+    neglog10_p.attrs = {"long_name": "-log10 p-value (chi2 test, df=2) vs no_operation baseline"}
 
     t_dep_stat_ns = _scan_depletion_time(
         p_value,
@@ -238,7 +255,7 @@ def compute_stat_depletion_time(
         "units": "ns",
     }
 
-    return p_value, t_dep_stat_ns
+    return p_value, neglog10_p, t_dep_stat_ns
 
 
 def select_depletion_time(t_dep_stat_ns: xr.DataArray) -> xr.DataArray:
@@ -255,7 +272,7 @@ def select_depletion_time(t_dep_stat_ns: xr.DataArray) -> xr.DataArray:
 
 def compute_ge_depletion_time(
     ds: xr.Dataset, node: QualibrationNode, test_conditions: tuple
-) -> tuple[xr.DataArray, xr.DataArray]:
+) -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     """Third, independent depletion-time test: instead of comparing a test_condition against
     the "no_operation" baseline (as compute_stat_depletion_time does), directly compare the
     "ground" and "excited" state means against each other within that same condition -- if
@@ -272,6 +289,7 @@ def compute_ge_depletion_time(
     debounce = node.parameters.depletion_debounce_segments
 
     p_slices = []
+    neglog10p_slices = []
     for condition in test_conditions:
         var_I = (
             ds["var_I"].sel(condition=condition, state="ground").mean(dim="segment") / num_shots
@@ -286,10 +304,13 @@ def compute_ge_depletion_time(
         dI = ds["I"].sel(condition=condition, state="ground") - ds["I"].sel(condition=condition, state="excited")
         dQ = ds["Q"].sel(condition=condition, state="ground") - ds["Q"].sel(condition=condition, state="excited")
         p_slices.append(_chi2_pvalue(dI, dQ, SE_I, SE_Q))
+        neglog10p_slices.append(_chi2_neglog10p(dI, dQ, SE_I, SE_Q))
 
     test_condition_coord = xr.DataArray(list(test_conditions), dims="test_condition", name="test_condition")
     p_value_ge = xr.concat(p_slices, dim=test_condition_coord)
     p_value_ge.attrs = {"long_name": "p-value (chi2 test, df=2) of ground vs excited distinguishability"}
+    neglog10_p_ge = xr.concat(neglog10p_slices, dim=test_condition_coord)
+    neglog10_p_ge.attrs = {"long_name": "-log10 p-value (chi2 test, df=2) of ground vs excited distinguishability"}
 
     t_dep_ge_ns = _scan_depletion_time(
         p_value_ge,
@@ -308,7 +329,7 @@ def compute_ge_depletion_time(
         "units": "ns",
     }
 
-    return p_value_ge, t_dep_ge_ns
+    return p_value_ge, neglog10_p_ge, t_dep_ge_ns
 
 
 def log_depletion_summary(

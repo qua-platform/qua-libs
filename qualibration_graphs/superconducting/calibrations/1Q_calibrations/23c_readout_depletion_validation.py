@@ -42,7 +42,7 @@ from qualibrate import QualibrationNode
 
 # %% {Description}
 description = """
-Checks how many photons are left in the readout resonator right after a selectable test operation
+Checks the residual field amplitude |IQ| left in the readout resonator right after a selectable test operation
 (node.parameters.test_operation, default "readout_drachma"; any readout pulse on qubit.resonator.operations,
 e.g. square, CLEAR or DRACHMA) compared with no operation at all. For both conditions and for both |g> and |e>,
 a zero-amplitude probe pulse is played immediately afterwards and its sliced dual-demodulation result is
@@ -97,7 +97,7 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """For each (condition, state) pair -- condition in (test_operation, no_operation), state
     in (ground / excited) -- prepare the qubit, play the test pulse, and stream the sliced
-    dual-demodulation result of the zero-amplitude residual-photon probe that immediately
+    dual-demodulation result of the zero-amplitude residual-field probe that immediately
     follows it."""
     all_qubits = get_qubits(node)
     test_operation = node.parameters.test_operation
@@ -347,18 +347,18 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Analyse_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
-    """Convert the sliced dual-demod counts to volts, stack the per-(condition, state) streams into "condition" and "state" dimensions, compute the residual-field amplitude |IQ| vs time and its shot-noise std, run the statistical (chi-squared) depletion-time test vs no_operation (depletion time = longer of ground/excited), and run a ground-vs-excited distinguishability test as a further independent check."""
+    """Convert the sliced dual-demod counts to volts, stack the per-(condition, state) streams into "condition" and "state" dimensions, compute the residual-field amplitude |IQ| vs time and its shot-noise std / standard error of the mean, run the statistical (chi-squared) depletion-time test vs no_operation (depletion time = longer of ground/excited), and run a ground-vs-excited distinguishability test as a further independent check."""
     conditions = node.namespace["conditions"]
     ge_test_conditions = node.namespace["ge_test_conditions"]
 
-    ds = process_raw_dataset(node.results["ds_raw"], conditions, STATES)
+    ds = process_raw_dataset(node.results["ds_raw"], conditions, STATES, node.parameters.num_shots)
 
     test_conditions = tuple(c for c in conditions if c != "no_operation")
-    p_value, t_dep_stat_ns = compute_stat_depletion_time(ds, node, test_conditions)
-    ds = ds.assign(p_value=p_value, depletion_time_stat_ns=t_dep_stat_ns)
+    p_value, neglog10_p, t_dep_stat_ns = compute_stat_depletion_time(ds, node, test_conditions)
+    ds = ds.assign(p_value=p_value, neglog10_p=neglog10_p, depletion_time_stat_ns=t_dep_stat_ns)
 
-    p_value_ge, t_dep_ge_ns = compute_ge_depletion_time(ds, node, ge_test_conditions)
-    ds = ds.assign(p_value_ge=p_value_ge, depletion_time_ge_ns=t_dep_ge_ns)
+    p_value_ge, neglog10_p_ge, t_dep_ge_ns = compute_ge_depletion_time(ds, node, ge_test_conditions)
+    ds = ds.assign(p_value_ge=p_value_ge, neglog10_p_ge=neglog10_p_ge, depletion_time_ge_ns=t_dep_ge_ns)
 
     # The depletion time written to state: longer of the ground/excited test-vs-no_operation times.
     ds = ds.assign(depletion_time_ns=select_depletion_time(t_dep_stat_ns))
@@ -372,12 +372,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the residual photon amplitude |IQ| (µV) vs probe time, with ±std (shot noise)
-    error bars, one subplot per qubit -- 3 traces per subplot (test operation + ground, test
+    """Plot the residual field amplitude |IQ| (µV) vs probe time, with ±SEM (standard error of
+    the mean) error bars, one subplot per qubit -- 3 traces per subplot (test operation + ground, test
     operation + excited, no_operation + ground baseline), with the chosen depletion time
-    marked. Also plot the statistical depletion-time test's p-value vs time, one subplot per
+    marked. Also plot the statistical depletion-time test's -log10(p-value) (y-axis fixed to [0, 100]) vs time, one subplot per
     qubit with ground/excited overlaid, for the test operation vs no_operation. Also plot the
-    ground-vs-excited distinguishability test's p-value vs time, one subplot per qubit with a
+    ground-vs-excited distinguishability test's -log10(p-value) vs time, one subplot per qubit with a
     single trace (test operation only)."""
     ds = node.results["ds_fit"]
     conditions = node.namespace["conditions"]
