@@ -1,4 +1,4 @@
-# Resonator Readout — Residual Photon Diagnostic
+# Resonator Readout — Residual Field Diagnostic
 
 Backs the `23c_readout_depletion_validation` calibration node
 (`calibrations/1Q_calibrations/23c_readout_depletion_validation.py`).
@@ -13,7 +13,7 @@ vacuum by the end of the pulse, without a separate depletion segment.
 
 This node checks whether a readout pulse actually leaves the resonator empty
 (for DRACHMA: whether that cancellation works), by comparing the residual
-photon population left right after two conditions:
+field amplitude `|IQ|` (not converted to a photon number) left right after two conditions:
 
 1. **the test operation** — `node.parameters.test_operation` (default
    `readout_drachma`; any readout pulse on `qubit.resonator.operations`, e.g.
@@ -26,7 +26,7 @@ both states need checking). Immediately after the test pulse, a
 zero-amplitude ("pure listening", no drive) probe pulse measures the
 resonator's residual field, and the final plot compares `|IQ|` across
 conditions per qubit/state — a well-depleting pulse (e.g. DRACHMA) should decay fastest, using
-`no_operation` as the zero-photon reference.
+`no_operation` as the empty-resonator reference.
 
 **The probe pulse is always a dedicated, zero-amplitude `SquareReadoutPulse`**
 (`PROBE_OPERATION`, built fresh per qubit in `create_qua_program` and removed
@@ -84,7 +84,8 @@ moments (`I_sq = (II+IQ)^2`, `Q_sq = (QI+QQ)^2`, each averaged over shots —
 same element-wise stream-arithmetic technique
 `08a_readout_frequency_optimization.py` uses for its own `I_g_sq`/`Q_g_sq`
 streams). `process_raw_dataset` turns these into `IQ_abs_std`, the
-amplitude's shot-noise std via first-order error propagation of
+amplitude's single-shot std (and `IQ_abs_sem = IQ_abs_std/sqrt(num_shots)`, the standard
+error of the mean used for the plot error bars) via first-order error propagation of
 `amp = sqrt(I^2+Q^2)`, using only the diagonal `Var(I)`/`Var(Q)` terms. The
 I-Q cross/covariance term (`2*I*Q*Cov(I,Q)/amp^2`) was also implemented and
 tested against real run data (run #52, 5000 shots/condition): it contributed
@@ -148,13 +149,13 @@ here as a follow-up, not a silent gap.
   the `II/IQ/QI/QQ/I_sq/Q_sq` result handles per condition/state/qubit and
   stacks them), `process_raw_dataset` (volts conversion, stacking into
   `(condition, state, qubit, segment)`, I/Q combination, `IQ_abs`/`var_I`/
-  `var_Q`, and shot-noise std `IQ_abs_std`), `compute_stat_depletion_time`
+  `var_Q`, shot-noise std `IQ_abs_std` and standard error `IQ_abs_sem`), `compute_stat_depletion_time`
   and `compute_ge_depletion_time` (the two tests above, sharing
   `_chi2_pvalue`/`_scan_depletion_time`), `select_depletion_time` (longer of ground/excited), and `log_depletion_summary`.
 - **`plotting.py`** — `plot_residuals`: `|IQ|` vs probe time with
-  ±std error bars, one subplot per qubit, one trace per (condition, state)
+  ±SEM error bars, one subplot per qubit, one trace per (condition, state)
   actually present in the dataset. `plot_pvalue_grid`/`plot_ge_pvalue_grid`:
-  same grid layout, p-value (log scale) vs probe time for the two
+  same grid layout, −log₁₀(p-value) (y-axis fixed to [0, 100]) vs probe time for the two
   depletion-time tests, sharing `_draw_pvalue_axis`.
 - Multiplexing/core-assignment helpers (`build_batch_groups`,
   `assign_core_labels`) live in `calibration_utils/readout_drachma_common/batching.py`.

@@ -10,13 +10,13 @@ class NodeSpecificParameters(RunnableParameters):
     num_shots: int = 1000
     """Number of averages per condition. Default is 1000."""
     test_operation: str = "readout_drachma"
-    """Name of the readout operation (on qubit.resonator.operations) whose residual photons are
+    """Name of the readout operation (on qubit.resonator.operations) whose residual field is
     measured -- e.g. "readout_square", a CLEAR pulse or "readout_drachma". It is compared against
-    a "no_operation" reference. Qubits lacking this operation are skipped. The residual-photon
+    a "no_operation" reference. Qubits lacking this operation are skipped. The residual-field
     probe itself always uses a dedicated zero-amplitude pulse of length probe_length -- see the
     node's PROBE_OPERATION and create_qua_program."""
     probe_length: int = 3000
-    """Length (ns) of the zero-amplitude residual-photon probe pulse (PROBE_OPERATION, built per
+    """Length (ns) of the zero-amplitude residual-field probe pulse (PROBE_OPERATION, built per
     qubit in create_qua_program). Same for every qubit. Default 3 us."""
     depletion_time: int = 5000
     """Time (ns) waited after each probe pulse, before the next (condition, state) starts with its qubit
