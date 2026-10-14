@@ -4,7 +4,7 @@ from .analysis import (
     log_fitted_results,
     process_raw_dataset,
 )
-from .parameters import Parameters
+from .parameters import Parameters, validate_variance_options
 from .plotting import (
     plot_demod_comparison,
     plot_demod_spectrum,
@@ -34,4 +34,5 @@ __all__ = [
     "plot_weight",
     "plot_weight_spectrum",
     "process_raw_dataset",
+    "validate_variance_options",
 ]

@@ -255,6 +255,66 @@ def signal_bound(
     return np.minimum(hb, ADC_FULL_SCALE)
 
 
+def estimate_difference_noise_variance(
+    D: np.ndarray,
+    bandwidth_hz: float = SIGMA_ESTIMATE_BANDWIDTH_HZ,
+    fs: float = 1e9,
+) -> float:
+    """Per-sample variance of the noise in the averaged g/e difference `D`, estimated from `D`
+    itself: the high-frequency residual around a smooth (low-passed) copy, with the power the
+    low-pass removed added back, assuming ~white noise at the 1 ns sampling. Unlike
+    `estimate_single_shot_sigma` it needs neither the shot count nor the per-state traces, and it
+    does not inherit that estimate's conservative (larger) bias. Real signal faster than
+    `bandwidth_hz` inflates it, which errs on the safe side for a noise floor. Returns 0.0 when
+    the trace is too short to filter."""
+    D = np.asarray(D)
+    D = D[np.isfinite(D)]
+    smooth = lowpass_hann(D, bandwidth_hz, fs=fs)
+    if smooth is D:  # too short to filter
+        return 0.0
+    edge = min(100, D.size // 4)  # filter edge transients
+    resid = (D - smooth)[edge : D.size - edge]
+    if resid.size == 0:
+        return 0.0
+    return float(np.mean(np.abs(resid) ** 2) / (1 - 2 * bandwidth_hz / fs))
+
+
+def noise_only_snr2(
+    evaluate,
+    noise_variance: np.ndarray | float,
+    length: int,
+    smooth_bandwidth_hz: float | None = None,
+    n_trials: int = 64,
+    seed: int = 0,
+) -> dict[str, tuple[float, float]]:
+    """Null distribution of the predicted SNR^2 of every weight shape when the averaged g/e
+    difference is pure noise.
+
+    A weight built from the measured difference `D_hat = D + n` is then scored against that same
+    `D_hat`, so it also fits the noise `n`: the SNR is biased upward, and for a pure-noise `D_hat`
+    even the complex matched filter scores sqrt(sum |n|^2) > 0 and the signed real weight
+    sqrt(sum |n|^2 / 2). The bias cannot be seen in a single run, only subtracted.
+
+    `evaluate(D_hat) -> {shape: snr}` runs the node's own weight construction and SNR evaluation
+    on a trial difference. Each trial is complex circular white noise of per-sample variance
+    `noise_variance`, passed through the same low-pass as the data when `smooth_bandwidth_hz` is
+    set. Returns `{shape: (mean, std)}` of SNR^2 over `n_trials` trials with a fixed seed, so the
+    result is deterministic. For shapes linear in `D_hat` (constant, complex) the mean is exactly
+    the additive noise bias; for the others it is the first-order bias. All-zero where the noise
+    variance is zero.
+    """
+    variance = np.broadcast_to(np.asarray(noise_variance, dtype=float), (length,))
+    rng = np.random.default_rng(seed)
+    samples: dict[str, list[float]] = {}
+    for _ in range(n_trials):
+        noise = np.sqrt(variance / 2) * (rng.standard_normal(length) + 1j * rng.standard_normal(length))
+        if smooth_bandwidth_hz is not None:
+            noise = lowpass_hann(noise, smooth_bandwidth_hz)
+        for shape, snr in evaluate(noise).items():
+            samples.setdefault(shape, []).append(snr**2)
+    return {shape: (float(np.mean(v)), float(np.std(v))) for shape, v in samples.items()}
+
+
 def normalization_factor(
     W: np.ndarray,
     z_list: Sequence[np.ndarray],
@@ -332,6 +392,35 @@ def check_weight_limits(
     return {**margins, "binding_limit": binding_limit}
 
 
+def signed_real_weight(W: np.ndarray, D: np.ndarray) -> tuple[np.ndarray, float]:
+    """Best REAL per-sample weight for the stock `ReadoutPulse` format (real weight times ONE
+    global rotation `exp(i*phi)`), obtained by projecting the complex target `W` onto a single
+    axis: `w(t) = Re[W(t) * exp(-i*phi)]`, with `phi = 0.5 * arg(sum_t W(t) * D(t))` (no
+    conjugate). Returns `(w, phi)`; `w` is signed.
+
+    For `W = D / sigma^2` (the noise-weighted matched filter, or `W = D` for white noise) this is
+    the optimal real weight for that format: with `S0 = sum |D|^2 / sigma^2` and
+    `S2 = sum D^2 / sigma^2` its SNR is `sqrt((S0 + |S2|) / 2)`, never below the SNR of `|W|`
+    (which discards the sign where the g/e difference points away from the global axis) and
+    never above the full complex matched filter's `sqrt(S0)`.
+
+    `phi` and `phi + pi` give `(w, phi)` and `(-w, phi + pi)`, which produce the same output;
+    the branch with `sum(w) >= 0` is returned so the weight stays mostly positive like today's.
+    `phi` lives in the software demodulation frame (`omega_t` ignores the time-of-flight /
+    smearing phase), so it is NOT the hardware `integration_weights_angle`: 07_iq_blobs still
+    fits that.
+    """
+    W = np.asarray(W)
+    D = np.asarray(D)
+    s2 = np.sum(W * D)
+    phi = 0.5 * float(np.angle(s2)) if np.abs(s2) > 0 else 0.0
+    w = np.real(W * np.exp(-1j * phi))
+    if np.sum(w) < 0:
+        phi += np.pi
+        w = -w
+    return w, float(np.angle(np.exp(1j * phi)))
+
+
 def snr_for_weight(W: np.ndarray, D: np.ndarray, var: np.ndarray) -> float:
     """Predicted SNR of the linear estimator I = Re[sum_t conj(W(t)) * D(t)] against
     independent per-sample noise of variance `var(t)`:
@@ -346,6 +435,7 @@ def snr_for_weight(W: np.ndarray, D: np.ndarray, var: np.ndarray) -> float:
 
         constant weight (today):            snr_for_weight(np.ones_like(D), D, var)
         real envelope, best global angle:    snr_for_weight(np.abs(D), D, var)
+        signed real weight (signed_real_weight): snr_for_weight(w_signed, D, var)
         full complex matched filter:         snr_for_weight(D, D, var)   (or the actual,
                                               possibly variance-weighted, W the node computed)
 
