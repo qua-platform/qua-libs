@@ -11,15 +11,19 @@ from calibration_utils.readout_optimal_integration_weights.weights import (
     check_weight_limits,
     chunk4,
     envelope,
+    estimate_difference_noise_variance,
     estimate_iq_imbalance,
     estimate_single_shot_sigma,
     expand_run_length,
     fold_iq_imbalance_into_weight,
     lowpass_hann,
+    noise_only_snr2,
     normalization_factor,
     omega_t,
     optimal_weight,
+    round_to_fixed_point,
     signal_bound,
+    signed_real_weight,
     snr_for_weight,
 )
 
@@ -29,17 +33,53 @@ class OptimalWeightsFit:
     """Stores the relevant optimal-integration-weights fit results for a single qubit."""
 
     norm: float
-    """Factor W was divided by to respect the OPX overflow limits (see weights.normalization_factor).
-    May be < 1 -- the weights are then scaled UP to use the available dynamic range."""
+    """Factor the DEPLOYED weight was divided by to respect the OPX overflow limits (see
+    weights.normalization_factor). May be < 1 -- the weights are then scaled UP to use the
+    available dynamic range."""
     snr: float
-    """Predicted SNR of the deployed (possibly variance-weighted) matched-filter weight."""
+    """Predicted SNR of the full COMPLEX matched filter W (possibly variance-weighted): the
+    ceiling, a diagnostic of what full complex integration weights would add. It is not what
+    gets deployed -- see `snr_deployed`."""
     snr_constant: float
-    """Predicted SNR of today's constant weight (boxcar integration) -- the baseline being improved on."""
+    """Predicted SNR of today's constant weight (boxcar integration) -- the baseline being improved on.
+    Like the SNRs below it is the RAW value, evaluated on the same averaged difference the weights
+    were fitted to; see the `*_net` fields for the bias-corrected ones."""
     snr_real_envelope: float
-    """Predicted SNR of |env_e - env_g| with the best single global phase -- the best a stock,
-    non-time-varying-phase ReadoutPulse could achieve."""
+    """Predicted SNR of the real weight |W| with the best single global phase (what this node
+    deployed before the signed weight)."""
+    snr_signed: float
+    """Predicted SNR of the signed real weight w = Re[W*exp(-i*phi)] at 1 ns (ideal, before
+    normalization, chunking and fixed-point rounding) -- the best a stock ReadoutPulse (real
+    weight and one global angle) can do. See weights.signed_real_weight."""
+    snr_deployed: float
+    """Predicted SNR of the weight `update_state` actually writes (`Parameters.deployed_weight`),
+    evaluated on the final array: normalized, chunked to 4 ns and fixed-point rounded. This is
+    the SNR that `min_snr` and `snr_gain` are judged on."""
+    snr_constant_net: float
+    snr_real_envelope_net: float
+    snr_signed_net: float
+    snr_net: float
+    snr_deployed_net: float
+    """The five SNRs above with the noise-fitting bias removed: sqrt(max(SNR^2 - E_noise[SNR^2], 0)),
+    where E_noise is the expectation when the g/e difference is pure noise (weights.noise_only_snr2,
+    same weight construction). A weight built from the averaged difference also fits that
+    difference's noise, so the raw SNRs overstate every shape except the constant weight's (whose
+    only bias is small); the net values are the ones to compare."""
+    detection_sigma: float
+    """How many standard deviations the deployed SNR^2 sits above its noise-only expectation. Near
+    0 means there is no detectable g/e contrast: the weight is fitted to noise."""
+    detected: bool
+    """detection_sigma >= Parameters.min_detection_sigma."""
     snr_gain: float
-    """snr / snr_constant. > 1 means the matched filter beats today's readout."""
+    """snr_deployed_net / snr_constant_net. > 1 means the deployed weight beats today's readout."""
+    phi_signed_rad: float
+    """Global angle of the signed weight in the software demodulation frame. Diagnostic only: it
+    is not the hardware integration_weights_angle (07_iq_blobs fits that afterwards)."""
+    snr_gain_suspect: bool
+    """True when `snr_gain` is not finite or exceeds `Parameters.max_snr_gain`, i.e. the constant
+    weight's SNR (the denominator) is near zero because the sum of env_e - env_g nearly cancels
+    (e.g. a sign change in the response, or a weak g/e contrast). The gain is then an artefact of
+    dividing by ~0, not a real improvement, and the qubit is marked failed."""
     margin_weight: float
     margin_adc_mul: float
     margin_adc_sum: float
@@ -115,12 +155,29 @@ def log_fitted_results(ds: xr.Dataset, log_callable=None):
         qd = ds.sel(qubit=q)
         verdict = "SUCCESS!" if bool(qd.success.values) else "FAIL!"
         log_callable(
-            f"Optimal weights for qubit {q}: SNR {float(qd.snr):.2f} "
-            f"(x{float(qd.snr_gain):.2f} vs constant weights), norm={float(qd.norm):.3g}, "
+            f"Optimal weights for qubit {q}: deployed SNR {float(qd.snr_deployed_net):.3g} net "
+            f"(x{float(qd.snr_gain):.2f} vs constant weights; |W| {float(qd.snr_real_envelope_net):.3g}, "
+            f"signed {float(qd.snr_signed_net):.3g}, full complex ceiling {float(qd.snr_net):.3g}; "
+            f"raw deployed {float(qd.snr_deployed):.3g}), detection {float(qd.detection_sigma):.1f} sigma, "
+            f"norm={float(qd.norm):.3g}, "
             f"binding limit '{qd.binding_limit.values!s}' at {float(qd.margin_weight):.2f}/"
             f"{float(qd.margin_adc_mul):.2f}/{float(qd.margin_adc_sum):.2f} "
             f"(weight/adc_mul/adc_sum), single-shot sigma {float(qd.sigma_est) * 1e3:.2f} mV --> {verdict}"
         )
+        if not bool(qd.detected.values):
+            log_callable(
+                f"  FAIL for {q}: no detectable g/e contrast -- the deployed SNR sits only "
+                f"{float(qd.detection_sigma):.1f} sigma above what a weight fitted to pure noise "
+                "scores, so the apparent gain is noise fitting. Check the readout frequency/amplitude "
+                "and the envelopes plot."
+            )
+        if bool(qd.snr_gain_suspect.values):
+            log_callable(
+                f"  FAIL for {q}: SNR gain x{float(qd.snr_gain):.3g} is implausibly large -- the "
+                f"constant-weight SNR ({float(qd.snr_constant):.3g}) is near zero because "
+                "env_e - env_g nearly cancels when summed over time (weak g/e contrast or a sign "
+                "change in the response). Check the readout frequency/amplitude and the envelopes plot."
+            )
         if bool(qd.hb_capped.values):
             log_callable(
                 f"  NOTE for {q}: signal bound reached the ADC full scale ({ADC_FULL_SCALE} V); "
@@ -220,6 +277,8 @@ def _fit_single_qubit(qd: xr.Dataset, q, node: QualibrationNode) -> tuple[dict, 
         "W": np.full(length, np.nan, dtype=complex),
         "W_norm": np.full(length, np.nan, dtype=complex),
         "W_chunked": np.full(length // 4, np.nan, dtype=complex),
+        "w_deployed": np.full(length, np.nan),
+        "w_deployed_chunked": np.full(length // 4, np.nan),
         "hb": np.full(length, np.nan),
     }
 
@@ -287,7 +346,11 @@ def _fit_single_qubit(qd: xr.Dataset, q, node: QualibrationNode) -> tuple[dict, 
     env_g = envelope(apply_iq_imbalance(z_g, b), wt)
     env_e = envelope(apply_iq_imbalance(z_e, b), wt)
 
-    # Optional smoothing (default off): a zero-phase low-pass, well above any real resonator
+    # Unsmoothed difference: the noise level of the averaged g/e difference is estimated from it
+    # (its high-frequency residual) when no variance was measured, see below.
+    D_unsmoothed = env_e - env_g
+
+    # Smoothing (default on, Parameters.smooth_bandwidth_hz): a zero-phase low-pass, well above any real resonator
     # bandwidth, to suppress averaging jitter and any residual carrier leakage (plot_weight_spectrum)
     # at the source. Deliberately NOT applied to env_g_raw/env_e_raw (_demod_phase_offset needs
     # the unfiltered hardware-comparable baseband) or to z_g/z_e (the overflow bound below needs
@@ -303,19 +366,77 @@ def _fit_single_qubit(qd: xr.Dataset, q, node: QualibrationNode) -> tuple[dict, 
     # ADC (env_g_raw/env_e_raw above) -- reproduces the corrected matched filter. Everything
     # downstream uses this W.
     W = fold_iq_imbalance_into_weight(W_x, b, wt)
+
+    # D is the (IQ-imbalance-corrected) envelope difference the filter is matched to.
+    D = env_e - env_g
+
+    # The REAL weight a stock ReadoutPulse can hold (real weight times one global angle): the
+    # signed projection of W by default, |W| as the fallback. Everything deployed (overflow
+    # normalization, chunking, margins, success) is judged on this one. The IQ-imbalance fold
+    # cannot be represented exactly by a real weight with one angle, so for b != 0 the projection
+    # of the folded W keeps the correction only to first order.
+    w_signed, phi_signed = signed_real_weight(W, D)
+    deploy_signed = node.parameters.deployed_weight == "signed"
+    w_dep = w_signed if deploy_signed else np.abs(W)
+
+    # Noise-fitting bias. A weight built from the averaged difference D_hat = D + n also fits n,
+    # so its SNR against that same D_hat is biased upward (even for pure noise the complex filter
+    # scores sqrt(sum |n|^2)); only the constant weight is nearly immune. Run the node's own weight
+    # construction on pure-noise differences to get the expected noise-only SNR^2 of every shape.
+    # Noise level: the measured per-sample variance of the mean (var_g + var_e) / num_shots, else
+    # the high-frequency residual of the unsmoothed difference.
+    if variance_measured:
+        noise_variance = (var_g + var_e) / node.parameters.num_shots
+    else:
+        noise_variance = estimate_difference_noise_variance(D_unsmoothed)
+    weight_variances = (var_g, var_e) if use_var else (None, None)
+
+    def evaluate(D_in: np.ndarray) -> dict[str, float]:
+        W_in = fold_iq_imbalance_into_weight(optimal_weight(np.zeros_like(D_in), D_in, *weight_variances), b, wt)
+        w_signed_in, _ = signed_real_weight(W_in, D_in)
+        w_deployed_in = np.repeat(chunk4(w_signed_in if deploy_signed else np.abs(W_in)), 4)
+        return {
+            "constant": snr_for_weight(np.ones_like(D_in), D_in, pooled),
+            "real_envelope": snr_for_weight(np.abs(W_in), D_in, pooled),
+            "signed": snr_for_weight(w_signed_in, D_in, pooled),
+            "complex": snr_for_weight(W_in, D_in, pooled),
+            "deployed": snr_for_weight(w_deployed_in, D_in, pooled),
+        }
+
+    observed = evaluate(D)
+    noise_only = noise_only_snr2(evaluate, noise_variance, length, node.parameters.smooth_bandwidth_hz)
+    net = {shape: float(np.sqrt(max(observed[shape] ** 2 - noise_only[shape][0], 0.0))) for shape in observed}
+    dep_mean, dep_std = noise_only["deployed"]
+    excess = observed["deployed"] ** 2 - dep_mean
+    detection_sigma = float(excess / dep_std) if dep_std > 0 else (float("inf") if excess > 0 else 0.0)
+    detected = bool(detection_sigma >= node.parameters.min_detection_sigma)
+
     # Overflow normalization must see the RAW trace amplitudes: that's what the hardware
-    # actually multiplies the weight against.
-    norm = normalization_factor(W, [z_g, z_e], [var_g, var_e])
+    # actually multiplies the weight against. `norm` is the deployed weight's; `norm_complex`
+    # only scales the complex W kept for the diagnostic plots.
+    norm = normalization_factor(w_dep, [z_g, z_e], [var_g, var_e])
+    norm_complex = normalization_factor(W, [z_g, z_e], [var_g, var_e])
 
     adc_headroom = float(np.max([np.abs(z_g).max(), np.abs(z_e).max()]) / 0.5)
 
-    if not (np.isfinite(norm) and norm > 0):
+    if not (np.isfinite(norm) and norm > 0 and np.isfinite(norm_complex) and norm_complex > 0):
         fit = OptimalWeightsFit(
             norm=float(norm) if np.isfinite(norm) else float("nan"),
             snr=0.0,
             snr_constant=0.0,
             snr_real_envelope=0.0,
+            snr_signed=0.0,
+            snr_deployed=0.0,
+            snr_constant_net=0.0,
+            snr_real_envelope_net=0.0,
+            snr_signed_net=0.0,
+            snr_net=0.0,
+            snr_deployed_net=0.0,
+            detection_sigma=0.0,
+            detected=False,
             snr_gain=0.0,
+            phi_signed_rad=float("nan"),
+            snr_gain_suspect=False,
             margin_weight=float("nan"),
             margin_adc_mul=float("nan"),
             margin_adc_sum=float("nan"),
@@ -335,23 +456,29 @@ def _fit_single_qubit(qd: xr.Dataset, q, node: QualibrationNode) -> tuple[dict, 
         )
         return {**nan_arrays, "env_g": env_g, "env_e": env_e}, fit
 
-    W_norm = W / norm
+    W_norm = W / norm_complex
     W_chunked = chunk4(W_norm)
+    w_dep_norm = w_dep / norm
+    w_dep_chunked = chunk4(w_dep_norm)
     hb = signal_bound((z_g, z_e), (var_g, var_e))
     hb_capped = bool(np.any(hb >= ADC_FULL_SCALE))
     hb_chunked = chunk4(hb)
-    limits = check_weight_limits(W_chunked, hb_chunked)
+    limits = check_weight_limits(w_dep_chunked, hb_chunked)
 
-    # D is the (IQ-imbalance-corrected) envelope difference the filter is matched to.
     # snr_for_weight's magnitude form is a global-phase-invariant upper bound on the Re[...] the
     # hardware actually produces (07_iq_blobs realizes that phase by fitting
-    # integration_weights_angle), so comparing the folded W against this D is a reasonable proxy
-    # for the deployed filter's SNR even though the fold is exact only for the Re[...] output.
-    D = env_e - env_g
+    # integration_weights_angle), so comparing a weight against this D is a reasonable proxy for
+    # the deployed filter's SNR even though the IQ fold is exact only for the Re[...] output.
+    # The deployed SNR is evaluated on the final array: chunked to 4 ns and fixed-point rounded,
+    # expanded back to 1 ns.
+    w_dep_final = np.repeat(round_to_fixed_point(w_dep_chunked), 4)
     snr_const = snr_for_weight(np.ones_like(D), D, pooled)
-    snr_real_env = snr_for_weight(np.abs(D), D, pooled)
+    snr_real_env = snr_for_weight(np.abs(W), D, pooled)
+    snr_signed = snr_for_weight(w_signed, D, pooled)
     snr_full = snr_for_weight(W, D, pooled)
-    snr_gain = snr_full / snr_const if snr_const > 0 else float("inf")
+    snr_deployed = snr_for_weight(w_dep_final, D, pooled)
+    # The gain and min_snr use the bias-corrected values (see `evaluate` above).
+    snr_gain = net["deployed"] / net["constant"] if net["constant"] > 0 else float("inf")
 
     # Diagnostic only: computed just for debug_plots runs, NaN otherwise.
     demod_phase_offset_rad = (
@@ -361,15 +488,31 @@ def _fit_single_qubit(qd: xr.Dataset, q, node: QualibrationNode) -> tuple[dict, 
     margins_ok = limits["weight"] <= 1.0 and limits["adc_mul"] <= 1.0 and limits["adc_sum"] <= 1.0
     # min_snr is an absolute threshold, so it only means anything when the SNRs were computed
     # against a measured variance; without one, snr_gain carries the whole verdict.
-    snr_ok = snr_full >= node.parameters.min_snr if variance_measured else True
-    success = bool(margins_ok and snr_ok and snr_gain >= 1.0)
+    snr_ok = net["deployed"] >= node.parameters.min_snr if variance_measured else True
+    # Near-zero denominator guard: a huge (or infinite) gain means snr_constant ~ 0, not a real
+    # improvement -- fail instead of reporting a spuriously great matched filter.
+    gain_suspect = bool(not np.isfinite(snr_gain) or snr_gain > node.parameters.max_snr_gain)
+    # No detectable contrast (weight fitted to noise): fail regardless of the gain over a constant
+    # weight, which is also ~noise in that case and so can be anything.
+    success = bool(margins_ok and snr_ok and detected and snr_gain >= 1.0 and not gain_suspect)
 
     fit = OptimalWeightsFit(
         norm=float(norm),
         snr=float(snr_full),
         snr_constant=float(snr_const),
         snr_real_envelope=float(snr_real_env),
+        snr_signed=float(snr_signed),
+        snr_deployed=float(snr_deployed),
+        snr_constant_net=net["constant"],
+        snr_real_envelope_net=net["real_envelope"],
+        snr_signed_net=net["signed"],
+        snr_net=net["complex"],
+        snr_deployed_net=net["deployed"],
+        detection_sigma=detection_sigma,
+        detected=detected,
         snr_gain=float(snr_gain),
+        phi_signed_rad=float(phi_signed),
+        snr_gain_suspect=gain_suspect,
         margin_weight=limits["weight"],
         margin_adc_mul=limits["adc_mul"],
         margin_adc_sum=limits["adc_sum"],
@@ -393,6 +536,8 @@ def _fit_single_qubit(qd: xr.Dataset, q, node: QualibrationNode) -> tuple[dict, 
         "W": W,
         "W_norm": W_norm,
         "W_chunked": W_chunked,
+        "w_deployed": w_dep_norm,
+        "w_deployed_chunked": w_dep_chunked,
         "hb": hb,
     }
     return arrays, fit
@@ -438,6 +583,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
     native length and then NaN-padded onto the shared `readout_time`/`chunk_time` axes sized to
     the longest qubit.
     """
+    if node.parameters.use_variance_weighting and not has_variance(ds):
+        raise ValueError(
+            "use_variance_weighting=True but this dataset has no per-sample second moments "
+            "(it was acquired with measure_variance=False): there is no variance to weight by. "
+            "Set use_variance_weighting=False, or re-acquire with measure_variance=True."
+        )
     qubits = node.namespace["qubits"]
     width = ds.sizes["readout_time"]
     chunk_width = width // 4
@@ -467,6 +618,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
             "W_norm": (("qubit", "readout_time"), pad_stack("W_norm", width, complex)),
             "hb": (("qubit", "readout_time"), pad_stack("hb", width, float)),
             "W_chunked": (("qubit", "chunk_time"), pad_stack("W_chunked", chunk_width, complex)),
+            "w_deployed": (("qubit", "readout_time"), pad_stack("w_deployed", width, float)),
+            "w_deployed_chunked": (("qubit", "chunk_time"), pad_stack("w_deployed_chunked", chunk_width, float)),
         }
     )
     ds_fit = ds_fit.assign_coords(chunk_time=("chunk_time", 4 * np.arange(chunk_width)))
@@ -477,7 +630,16 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
         "snr",
         "snr_constant",
         "snr_real_envelope",
+        "snr_signed",
+        "snr_deployed",
+        "snr_constant_net",
+        "snr_real_envelope_net",
+        "snr_signed_net",
+        "snr_net",
+        "snr_deployed_net",
+        "detection_sigma",
         "snr_gain",
+        "phi_signed_rad",
         "margin_weight",
         "margin_adc_mul",
         "margin_adc_sum",
@@ -494,6 +656,8 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
         binding_limit=("qubit", [fit_results[name].binding_limit for name in names]),
         success=("qubit", [fit_results[name].success for name in names]),
         hb_capped=("qubit", [fit_results[name].hb_capped for name in names]),
+        detected=("qubit", [fit_results[name].detected for name in names]),
+        snr_gain_suspect=("qubit", [fit_results[name].snr_gain_suspect for name in names]),
         iq_imbalance_applied=("qubit", [fit_results[name].iq_imbalance_applied for name in names]),
         iq_imbalance_reason=("qubit", [fit_results[name].iq_imbalance_reason for name in names]),
     )

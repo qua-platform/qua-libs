@@ -1,5 +1,7 @@
 import numpy as np
 import xarray as xr
+from matplotlib.collections import LineCollection
+from matplotlib.lines import Line2D
 from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
@@ -148,27 +150,42 @@ def plot_demod_spectrum(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
 
 
 def plot_weight_spectrum(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
-    """Magnitude spectrum of the ACTUAL deployed weight W = env_e - env_g with the IQ-imbalance
-    fold applied, with +/-f_IF marked -- answers "does a residual carrier near +/-f_IF survive
-    into the weight". A large peak at f_IF or its mirror means the residual is not common-mode
-    between g and e and is worth chasing (e.g. per-shot timing jitter, or a genuinely
-    state-dependent artifact)."""
+    """Magnitude spectrum of the ideal complex weight W = env_e - env_g (variance-weighted when
+    enabled) with the IQ-imbalance fold applied, with +/-f_IF marked -- answers "does a residual
+    carrier near +/-f_IF survive into the weight". A large peak at f_IF or its mirror means the
+    residual is not common-mode between g and e and is worth chasing (e.g. per-shot timing jitter,
+    or a genuinely state-dependent artifact).
+
+    When the IQ-imbalance correction was applied, W also carries the fold term
+    -b*exp(-2i*omega*t)*conj(W) (weights.fold_iq_imbalance_into_weight), a copy of the weight
+    shifted to -2*f_IF. That is expected, not a residual carrier, so -2*f_IF is marked too
+    (wrapped into the +/-500 MHz band the 1 ns sampling resolves, where it aliases)."""
     by_name = _by_name(qubits)
-    grid = _grid(ds_fit, qubits, "Does a residual carrier survive into the deployed weight W?")
+    grid = _grid(ds_fit, qubits, "Carrier check: spectrum of the ideal complex weight W")
+    nyquist_mhz = 500.0
     for ax, qubit in grid_iter(grid):
         qd = ds_fit.sel(qubit=qubit["qubit"])
         W = qd.W.values
         W = W[np.isfinite(W)]
         freq_mhz = np.fft.fftshift(np.fft.fftfreq(W.size, d=1e-9)) / 1e6
         spectrum = np.abs(np.fft.fftshift(np.fft.fft(W))) / max(W.size, 1)
-        ax.semilogy(freq_mhz, spectrum * 1e3, label="W (deployed weight)", linewidth=1.8)
+        ax.semilogy(freq_mhz, spectrum * 1e3, linewidth=1.8)
         f_if_mhz = by_name[qubit["qubit"]].resonator.intermediate_frequency / 1e6
-        for f, style, seg_label in ((f_if_mhz, "--", "f_IF"), (-f_if_mhz, ":", "mirror")):
-            ax.axvline(f, color="grey", linestyle=style, linewidth=1, label=seg_label)
+        for f, style in ((f_if_mhz, "--"), (-f_if_mhz, ":")):
+            ax.axvline(f, color="grey", linestyle=style, linewidth=1)
+        if bool(qd.iq_imbalance_applied.values):
+            fold_mhz = (-2 * f_if_mhz + nyquist_mhz) % (2 * nyquist_mhz) - nyquist_mhz
+            ax.axvline(fold_mhz, color="tab:red", linestyle="-.", linewidth=1)
         ax.set_xlabel("Frequency [MHz]")
         ax.set_ylabel("|FFT| [mV]")
         ax.set_title(f"{qubit['qubit']} (f_IF={f_if_mhz:.1f} MHz, {_iq_imbalance_label(qd)})")
-    grid.fig.legend(*grid.fig.axes[0].get_legend_handles_labels(), loc="upper right", ncols=2)
+    handles = [
+        Line2D([], [], color="tab:blue", linewidth=1.8, label="W (ideal complex weight)"),
+        Line2D([], [], color="grey", linestyle="--", label="+f_IF"),
+        Line2D([], [], color="grey", linestyle=":", label="-f_IF (mirror)"),
+        Line2D([], [], color="tab:red", linestyle="-.", label="-2 f_IF (IQ-imbalance fold, aliased)"),
+    ]
+    grid.fig.legend(handles=handles, loc="upper left", ncols=1)  # the top-left grid slot is empty
     return _finish(grid)
 
 
@@ -176,22 +193,41 @@ def plot_weight_spectrum(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
 
 
 def plot_iq_trajectory(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
-    """env_g(t) and env_e(t) as points on a polar axis (radius = |env| in mV, angle = arg env).
-    Dots only, with low alpha so regions where many samples overlap read darker."""
-    grid = _grid(ds_fit, qubits, "IQ trajectory of the demodulated envelope")
+    """Mean env_g(t) and env_e(t) in the I-Q plane (mV, equal axes), as lines coloured by time:
+    light = pulse start, dark = pulse end (Blues for g, Reds for e). The start is marked with a
+    circle and the end with a square."""
+    grid = _grid(ds_fit, qubits, "IQ trajectory of the mean demodulated envelope (light -> dark = time)")
     for ax, qubit in grid_iter(grid):
-        # QubitGrid creates cartesian axes; swap this one for a polar axis in the same slot.
-        polar_ax = grid.fig.add_subplot(ax.get_subplotspec(), projection="polar")
-        ax.remove()
         qd = ds_fit.sel(qubit=qubit["qubit"])
-        for state, color in (("g", "tab:blue"), ("e", "tab:red")):
+        for state, cmap in (("g", "Blues"), ("e", "Reds")):
             env = qd[f"env_{state}"].values
-            env = env[np.isfinite(env)]
-            polar_ax.scatter(np.angle(env), np.abs(env) * 1e3, s=6, alpha=0.12, linewidths=0, color=color, label=state)
-        polar_ax.set_title(qubit["qubit"])
-        polar_ax.set_rlabel_position(135)
-    handles, labels = polar_ax.get_legend_handles_labels()
-    grid.fig.legend(handles, labels, loc="upper right", ncols=2, markerscale=3)
+            env = env[np.isfinite(env)] * 1e3
+            if env.size < 2:
+                continue
+            points = np.column_stack([env.real, env.imag])
+            segments = np.stack([points[:-1], points[1:]], axis=1)
+            lines = LineCollection(segments, cmap=cmap, linewidth=2)
+            # Start the colormap at 0.3 so the earliest samples stay visible on a white background.
+            lines.set_array(0.3 + 0.7 * np.linspace(0, 1, len(segments)))
+            lines.set_clim(0, 1)
+            ax.add_collection(lines)
+            colour = lines.get_cmap()(0.85)
+            ax.plot(env.real[0], env.imag[0], "o", color=colour, markersize=6, markeredgecolor="k")
+            ax.plot(env.real[-1], env.imag[-1], "s", color=colour, markersize=6, markeredgecolor="k")
+        ax.autoscale_view()
+        ax.set_aspect("equal", adjustable="datalim")
+        ax.axhline(0, color="k", linewidth=0.4)
+        ax.axvline(0, color="k", linewidth=0.4)
+        ax.set_xlabel("I [mV]")
+        ax.set_ylabel("Q [mV]")
+        ax.set_title(qubit["qubit"])
+    handles = [
+        Line2D([], [], color="tab:blue", label="g"),
+        Line2D([], [], color="tab:red", label="e"),
+        Line2D([], [], marker="o", color="grey", linestyle="", markeredgecolor="k", label="start"),
+        Line2D([], [], marker="s", color="grey", linestyle="", markeredgecolor="k", label="end"),
+    ]
+    grid.fig.legend(handles=handles, loc="upper right", ncols=4)
     return _finish(grid)
 
 
@@ -199,26 +235,43 @@ def plot_iq_trajectory(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
 
 
 def plot_weight(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
-    """|W_norm(t)| at 1 ns and chunked (so chunking loss is visible), and arg(W(t)) -- the
-    time-varying phase a stock ReadoutPulse (real envelope + one global angle) cannot express.
-    This is `W`, i.e. the IQ-imbalance correction already folded in when applied (see the panel
-    title) -- the weight actually written to hardware, applied to the raw ADC."""
-    grid = _grid(ds_fit, qubits, "Normalized weight magnitude and phase")
+    """The DEPLOYED real weight (signed projection by default) at 1 ns and chunked to 4 ns (so
+    chunking loss is visible), and arg(W(t)) -- the time-varying phase a stock ReadoutPulse (real
+    weight + one global angle) cannot express, and which the signed projection partly turns into
+    separation. W is the IQ-imbalance-folded matched filter (see the panel title); the deployed
+    weight is applied to the raw ADC. arg(W) is drawn as unwrapped points (unwrapped within
+    each stretch) only where |W| exceeds 10% of its maximum: the phase of a near-zero
+    weight is noise, and unwrapping through it runs off to hundreds of radians."""
+    grid = _grid(ds_fit, qubits, "Deployed real weight and phase of the ideal complex weight")
+    handles = []
     for ax, qubit in grid_iter(grid):
         qd = ds_fit.sel(qubit=qubit["qubit"])
         t = qd.readout_time.values
         t_chunk = qd.chunk_time.values
-        w_norm = qd.W_norm.values
-        w_chunked = qd.W_chunked.values
-        ax.plot(t, np.abs(w_norm), label="|W| (1 ns)", color="tab:purple", alpha=0.5)
-        ax.step(t_chunk, np.abs(w_chunked), where="post", label="|W| (4 ns)", color="tab:purple")
+        (h1,) = ax.plot(t, qd.w_deployed.values, label="deployed w (1 ns)", color="tab:purple", alpha=0.5)
+        (h2,) = ax.step(
+            t_chunk, qd.w_deployed_chunked.values, where="post", label="deployed w (4 ns)", color="tab:purple"
+        )
+        ax.axhline(0, color="k", linewidth=0.5)
         ax.set_xlabel("Time [ns]")
-        ax.set_ylabel("|W_norm|", color="tab:purple")
+        ax.set_ylabel("weight (normalized)", color="tab:purple")
+        W = qd.W.values
+        mag = np.abs(W)
+        valid = mag >= 0.1 * np.nanmax(mag)
         ax2 = ax.twinx()
-        ax2.plot(t, np.unwrap(np.angle(qd.W.values)), color="tab:orange", linewidth=1, label="arg(W)")
+        # Phase unwrapped within each contiguous stretch where |W| is large: unwrapping across the
+        # near-zero stretches would accumulate the phase noise of a vanishing weight into a runaway curve.
+        edges = np.flatnonzero(np.diff(np.concatenate([[0], valid.astype(int), [0]])))
+        for start, stop in zip(edges[::2], edges[1::2]):
+            ax2.scatter(t[start:stop], np.unwrap(np.angle(W[start:stop])), s=4, color="tab:orange")
         ax2.set_ylabel("arg(W) [rad]", color="tab:orange")
-        ax.set_title(f"{qubit['qubit']} ({_iq_imbalance_label(qd)})")
-    grid.fig.legend(*grid.fig.axes[0].get_legend_handles_labels(), loc="upper right", ncols=2)
+        ax.set_title(f"{qubit['qubit']} ({_iq_imbalance_label(qd)}, phi={float(qd.phi_signed_rad):.2f} rad)")
+        handles = [
+            h1,
+            h2,
+            Line2D([], [], marker="o", markersize=3, linestyle="", color="tab:orange", label="arg(W) unwrapped"),
+        ]
+    grid.fig.legend(handles=handles, loc="upper left", ncols=1)  # the top-left grid slot is empty
     return _finish(grid)
 
 
@@ -253,34 +306,55 @@ def plot_normalization(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
 
 
 def plot_snr(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
-    """Predicted SNR for constant weights (today), a real envelope with the best single global
-    phase (what a stock ReadoutPulse could do), and the full complex matched filter deployed."""
-    grid = _grid(ds_fit, qubits, "Predicted SNR: constant vs. real-envelope vs. full complex")
+    """Predicted SNR for four weight shapes: constant (today's boxcar), the real weight |W|
+    (the previous deployment), the signed real weight (best for a stock ReadoutPulse: real weight
+    and one global angle) and the full complex matched filter (the ceiling, not deployable yet).
+
+    Bars are the bias-corrected ("net") values: a weight built from the averaged g/e difference
+    also fits that difference's noise, so the raw SNR overstates every shape but the constant
+    one; the black ticks mark the raw values. The title gives each net gain over the constant
+    weight and the gain of the weight actually deployed (normalized, chunked to 4 ns;
+    `Parameters.deployed_weight`), plus how many sigma the deployed SNR^2 sits above a weight
+    fitted to pure noise."""
+    grid = _grid(ds_fit, qubits, "Predicted SNR, noise-fit bias removed (ticks: raw)")
     for ax, qubit in grid_iter(grid):
         qd = ds_fit.sel(qubit=qubit["qubit"])
-        labels = ["constant", "real envelope", "full complex"]
-        values = [
-            float(qd.snr_constant),
-            float(qd.snr_real_envelope),
-            float(qd.snr),
-        ]
-        ax.bar(labels, values, color=["tab:gray", "tab:orange", "tab:green"])
-        ax.set_ylabel("Predicted SNR")
-        snr_const = float(qd.snr_constant)
-        env_gain = float(qd.snr_real_envelope) / snr_const if snr_const > 0 else float("inf")
-        ax.set_title(f"{qubit['qubit']}\nvs constant: envelope x{env_gain:.2f}, complex x{float(qd.snr_gain):.2f}")
+        labels = ["constant", "|W| real", "signed real", "full complex"]
+        net = [float(qd.snr_constant_net), float(qd.snr_real_envelope_net), float(qd.snr_signed_net), float(qd.snr_net)]
+        raw = [float(qd.snr_constant), float(qd.snr_real_envelope), float(qd.snr_signed), float(qd.snr)]
+        ax.bar(labels, net, color=["tab:gray", "tab:orange", "tab:blue", "tab:green"])
+        ax.plot(
+            labels,
+            raw,
+            linestyle="",
+            marker="_",
+            color="k",
+            markersize=22,
+            markeredgewidth=2,
+            label="raw (noise-fitted)",
+        )
+        ax.set_ylabel("Predicted SNR" + ("" if bool(has_variance(ds_fit)) else " [arb. units]"))
+        snr_const = float(qd.snr_constant_net)
+        gains = [v / snr_const if snr_const > 0 else float("inf") for v in net]
+        ax.set_title(
+            f"{qubit['qubit']}: deployed x{float(qd.snr_gain):.2f}, {float(qd.detection_sigma):.1f} sigma above noise fit\n"
+            f"|W| x{gains[1]:.2f}, signed x{gains[2]:.2f}, complex x{gains[3]:.2f}"
+        )
+    handles, labels = ax.get_legend_handles_labels()
+    grid.fig.legend(handles, labels, loc="upper right")
     return _finish(grid)
 
 
 def plot_raw_data_with_fit(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
-    """The always-on plots: IQ trajectory, normalized weight, demodulated envelopes, weight
-    spectrum and predicted SNR. The extra debug set (variance, before/after demodulation in time
+    """The always-on plots, in reading order (data -> weight -> check -> result): demodulated
+    envelopes, normalized weight, weight spectrum (carrier check), predicted SNR, and the IQ
+    trajectory last. The extra debug set (variance, before/after demodulation in time
     and frequency, normalization headroom) is produced separately by `plot_data` when
     `node.parameters.debug_plots` is True -- see the other `plot_*` functions above."""
     return {
-        "iq_trajectory": plot_iq_trajectory(ds_fit, qubits),
-        "weight": plot_weight(ds_fit, qubits),
         "envelopes": plot_envelopes(ds_fit, qubits),
+        "weight": plot_weight(ds_fit, qubits),
         "weight_spectrum": plot_weight_spectrum(ds_fit, qubits),
         "snr": plot_snr(ds_fit, qubits),
+        "iq_trajectory": plot_iq_trajectory(ds_fit, qubits),
     }

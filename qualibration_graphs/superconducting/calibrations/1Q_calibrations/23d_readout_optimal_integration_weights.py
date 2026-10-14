@@ -38,6 +38,7 @@ from calibration_utils.readout_optimal_integration_weights import (
     plot_raw_data_with_fit,
     plot_variance,
     process_raw_dataset,
+    validate_variance_options,
 )
 from qualibrate import QualibrationNode
 
@@ -47,15 +48,20 @@ description = """
 Measures the averaged complex ADC trace for the qubit in |g> and in |e>, demodulates it in software
 and builds the time-dependent matched-filter weight W(t) = env_e(t) - env_g(t) that best separates
 the two states on the MW-FEM dual_demod readout. The weight is normalized against the OPX fixed-point
-overflow limits and chunked to the 4 ns weight grid. Optionally the IQ imbalance is folded into the
-weight and the envelopes are low-pass filtered before the fit. Diagnostics give the predicted SNR gain
-over the current constant weights.
+overflow limits and chunked to the 4 ns weight grid. The IQ imbalance is folded into the weight and the
+envelopes are low-pass filtered (10 MHz by default) before the fit. Diagnostics give the predicted SNR of
+four weight shapes (constant, |W|, signed real, full complex) with the bias from fitting the weight to
+the noise of the averaged traces removed.
 
-Every shot streams a full 1 ns trace, so the node is limited by stream-processing bandwidth: keep
-num_shots modest, or the OPX drops samples and the job returns an empty result.
+By default only the OPX-averaged trace is streamed (measure_variance=False) and the SNR is in arbitrary
+units. With measure_variance=True every shot streams a full 1 ns trace so the per-sample variance is
+measured, which gives an absolute SNR and enables use_variance_weighting; keep num_shots modest then, or
+the OPX drops samples and the job returns an empty result.
 
-A stock quam ReadoutPulse cannot hold a complex, time-varying weight, so update_state writes only the
-weight amplitude (phase discarded). Review the diagnostics before relying on the update.
+A stock quam ReadoutPulse cannot hold a complex, time-varying weight, so update_state writes the best
+real weight for it: the signed projection Re[W exp(-i phi)] by default (|W| with
+deployed_weight="magnitude"). Success is judged on that deployed weight. Review the diagnostics before
+relying on the update.
 
 Details (weight construction, IQ imbalance, overflow bounds, data volume): calibration_utils/readout_optimal_integration_weights/README.md
 
@@ -65,9 +71,9 @@ Prerequisites:
     - Having calibrated the qubit x180 pulse parameters (nodes 03a_qubit_spectroscopy.py and 04b_power_rabi.py).
 
 State update:
-    - q.resonator.operations["readout"].integration_weights: |W| as a list of (weight, 4 ns) pairs.
-      Re-run 07_iq_blobs afterward: the existing threshold and integration_weights_angle no longer
-      match the new weights.
+    - q.resonator.operations["readout"].integration_weights: the real deployed weight (signed
+      by default) as a list of (weight, 4 ns) pairs. Re-run 07_iq_blobs afterward: the existing
+      threshold and integration_weights_angle no longer match the new weights.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -154,12 +160,17 @@ def _build_batch_program(node: QualibrationNode[Parameters, Quam], batch_qubits:
                     stream = adc_state[i].input1() if port == 1 else adc_state[i].input2()
                     s_i = stream.real()
                     s_q = stream.image()
-                    # Every single-shot trace is streamed (shape (num_shots, T)); the per-sample
-                    # mean and variance are computed on the PC in execute_qua_program. This
-                    # replaces the OPX-side average and the second-moment stream, whose ADC-stream
-                    # arithmetic returns x[t]*x[0] instead of x[t]**2.
-                    s_i.save_all(f"adcI_{state}{i + 1}")
-                    s_q.save_all(f"adcQ_{state}{i + 1}")
+                    if node.parameters.measure_variance:
+                        # Every single-shot trace is streamed (shape (num_shots, T)); the per-sample
+                        # mean and variance are computed on the PC in execute_qua_program. This
+                        # replaces the OPX-side second-moment stream, whose ADC-stream
+                        # arithmetic returns x[t]*x[0] instead of x[t]**2.
+                        s_i.save_all(f"adcI_{state}{i + 1}")
+                        s_q.save_all(f"adcQ_{state}{i + 1}")
+                    else:
+                        # Only the first moment is needed: average on the OPX, shape (T,).
+                        s_i.average().save(f"adcI_{state}{i + 1}")
+                        s_q.average().save(f"adcQ_{state}{i + 1}")
                     i_st[i].average().save(f"I_{state}{i + 1}")
                     q_st[i].average().save(f"Q_{state}{i + 1}")
     return prog
@@ -175,6 +186,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     `_demod_phase_offset`). No extra hardware time over a plain ADC-trace acquisition: it's the
     same `measure()` call either way.
     """
+    validate_variance_options(node.parameters)
     all_qubits = get_qubits(node)
 
     # Each qubit's own length/smearing (per-pulse calibrated properties -- see the module
@@ -292,7 +304,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     hardware-demod diagnostic -- is fetched together, and the values are then assembled into a
     NaN-padded "qubit"-indexed dataset by hand.
 
-    Every single-shot ADC trace is streamed (`save_all`, shape (num_shots, T)), so the handles are
+    With `measure_variance=False` the averaged traces are fetched and stored directly (no second
+    moment). Otherwise every single-shot ADC trace is streamed (`save_all`, shape (num_shots, T)), so the handles are
     fetched ONCE after the job is done (polling would re-download the growing arrays each pass),
     then reduced per qubit and state to the per-sample first moment (adcI_*/adcQ_*) and second
     moment (adcI2_*/adcQ2_*), in raw ADC units -- the layout analysis.process_raw_dataset already
@@ -320,7 +333,11 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     raw_arrays = {
         f"{prefix}{state}": np.full((num_qubits, readout_time_size), np.nan)
-        for prefix in ("adcI_", "adcI2_", "adcQ_", "adcQ2_")
+        # The second-moment arrays must only exist when variance is measured: analysis.has_variance
+        # keys on their presence in the dataset.
+        for prefix in (
+            ("adcI_", "adcI2_", "adcQ_", "adcQ2_") if node.parameters.measure_variance else ("adcI_", "adcQ_")
+        )
         for state in ("g", "e")
     }
     hw_values = {f"{prefix}{state}": np.full(num_qubits, np.nan) for prefix in ("I_", "Q_") for state in ("g", "e")}
@@ -360,10 +377,20 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                 for i in idx:
                     shots = np.asarray(fetched.pop(f"{prefix}{state}{i + 1}"), dtype=float)
                     n_bytes += shots.nbytes
+                    needed = offsets_ns[i] + lengths_ns[i]
+                    if not node.parameters.measure_variance:
+                        # Already the OPX-side average: shape (T,) (tolerate a singleton leading axis).
+                        mean = np.squeeze(shots)
+                        if mean.ndim != 1 or mean.size < needed:
+                            raise RuntimeError(
+                                f"Qubit {qubits[i].name}: fetched '{prefix}{state}{i + 1}' has shape "
+                                f"{shots.shape}, expected an averaged trace of (>= {needed},) samples."
+                            )
+                        raw_arrays[f"{prefix}{state}"][i, : mean.size] = mean
+                        continue
                     # The backend returns (num_shots, 1, T) for save_all'd ADC traces: drop the singleton axis.
                     if shots.ndim == 3 and shots.shape[1] == 1:
                         shots = shots[:, 0, :]
-                    needed = offsets_ns[i] + lengths_ns[i]
                     if shots.ndim != 2 or shots.shape[1] < needed:
                         raise RuntimeError(
                             f"Qubit {qubits[i].name}: fetched '{prefix}{state}{i + 1}' has shape "
@@ -379,7 +406,8 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
                     del shots
         reduce_s = time.perf_counter() - t_reduce
         msg = (
-            f"Batch {batch_idx + 1}: fetched {n_bytes / 1e6:.1f} MB of single-shot traces in "
+            f"Batch {batch_idx + 1}: fetched {n_bytes / 1e6:.1f} MB of "
+            f"{'single-shot' if node.parameters.measure_variance else 'averaged'} traces in "
             f"{fetch_s:.1f} s, reduced in {reduce_s:.2f} s."
         )
         node.log(msg)
@@ -415,6 +443,18 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data: convert to volts and compute per-sample variance, then run the
     matched-filter construction (weights.py) per qubit."""
+    validate_variance_options(node.parameters)
+    # The dataset, not the parameter, says what was acquired (matters for load_data_id replays).
+    variance_in_data = has_variance(node.results["ds_raw"])
+    node.log(
+        "Acquisition mode: "
+        + (
+            "per-sample variance measured (absolute SNR, min_snr enforced), "
+            f"variance weighting {'ON' if node.parameters.use_variance_weighting else 'off'}."
+            if variance_in_data
+            else "no variance measured (averaged trace, flat noise, arbitrary-unit SNR, min_snr not enforced)."
+        )
+    )
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
@@ -437,8 +477,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the always-on set (predicted SNR, weight spectrum, demodulated envelopes, normalized
-    weight, IQ trajectory), plus the extra debug plots when `node.parameters.debug_plots` is True
+    """Plot the always-on set, in reading order (demodulated envelopes, deployed weight, weight
+    spectrum, predicted SNR, IQ trajectory), plus the extra debug plots when `node.parameters.debug_plots` is True
     (variance, before/after demodulation in time and frequency, normalization headroom)."""
     ds_fit = node.results["ds_fit"]
     qubits = node.namespace["qubits"]
@@ -458,11 +498,11 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Write the AMPLITUDE of the computed weights onto the qubit's 'readout' operation as real
-    (weight, 4 ns) pairs. The phase of the complex matched filter is discarded until complex
-    integration weights are supported, so the deployed weight is only an approximation of the
-    computed one. This invalidates the pulse's existing threshold and integration_weights_angle
-    -- re-run 07_iq_blobs afterward for both.
+    """Write the deployed real weight (Parameters.deployed_weight: the signed projection of the
+    matched filter by default, |W| as the fallback) onto the qubit's 'readout' operation as real
+    (weight, 4 ns) pairs. The global angle of the projection is not written: the pulse's existing
+    threshold and integration_weights_angle no longer match, so re-run 07_iq_blobs afterward for
+    both. Only the weights of qubits whose fit succeeded are written.
     """
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
@@ -471,14 +511,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             fit = node.results["ds_fit"].sel(qubit=q.name)
             ro = q.resonator.operations["readout"]
 
-            # W_chunked is NaN-padded to the longest qubit's chunk count; keep only this pulse's own.
-            w_amp = np.abs(fit.W_chunked.values)[: ro.length // 4]
-            w_amp = w_amp[np.isfinite(w_amp)]
-            if w_amp.size == 0:
+            # w_deployed_chunked is NaN-padded to the longest qubit's chunk count; keep only this pulse's own.
+            w_dep = fit.w_deployed_chunked.values[: ro.length // 4]
+            w_dep = w_dep[np.isfinite(w_dep)]
+            if w_dep.size == 0:
                 node.log(f"{q.name}: no finite weights; skipping.")
                 continue
 
-            iw = [(float(w), 4) for w in w_amp]
+            iw = [(float(w), 4) for w in w_dep]
             total_len = 4 * len(iw)
             if total_len != ro.length:
                 iw[-1] = (iw[-1][0], iw[-1][1] + (ro.length - total_len))
@@ -492,8 +532,16 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 # %% {Save_results}
 @node.run_action()
 def save_results(node: QualibrationNode[Parameters, Quam]):
+    # Core assignment is scoped to this run's qubits (see create_qua_program) -- clear it before
+    # node.save() persists node.machine so the temporary labels don't leak into shared QuAM state.
+    for qubit in node.namespace["qubits"]:
+        qubit.xy.core = None
+        qubit.resonator.core = None
+    for twpa in getattr(node.machine, "twpas", {}).values():
+        twpa.pump.core = None
+        if twpa.pump_ is not None:
+            twpa.pump_.core = None
     node.save()
-    # pass
 
 
 # %%
