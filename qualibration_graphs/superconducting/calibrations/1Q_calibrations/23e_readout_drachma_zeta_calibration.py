@@ -26,14 +26,12 @@ from quam_config import Quam
 from calibration_utils.readout_drachma_common import (
     NOOP_SUFFIX,
     STATES,
-    amplitude_scale_to_fit,
     assign_core_labels,
     build_batch_groups,
     fetch_round_traces,
+    plot_combined_objective_vs_point,
     plot_noop_pvalue_vs_point,
     process_raw_dataset,
-    scale_pulse_kwargs,
-    waveform_peak,
 )
 from calibration_utils.readout_drachma_zeta_calibration import (
     Parameters,
@@ -49,11 +47,14 @@ description = """
         RESONATOR DRACHMA READOUT - FINE CALIBRATION OF ZETA_GROUND / ZETA_EXCITED
 Fine-tunes zeta_ground_hz and zeta_excited_hz of the DRACHMA readout pulse (Jerger et al.,
 arXiv:2406.04891) by minimising the photon population left in the resonator right after the pulse.
-For every point of a linear zeta scan (ground and excited scanned in lockstep): reset the qubit
-(x180 for the excited state), play the DRACHMA pulse built with that zeta, then a zero-amplitude
-probe pulse whose integrated I/Q power (shot-noise bias removed) is the residual photon proxy.
-The zeta of each state is set to the power minimum. Every shot also measures a single no-operation reference (reset, then the probe only), and a z-test of each
-(state, point) against it is logged and plotted as an extra depletion check.
+For every point of a linear zeta scan (ground and excited scanned in lockstep, both zetas changed together
+in one pulse): reset the qubit (x180 for the excited state), play the DRACHMA pulse built with that point's
+zetas, then a zero-amplitude probe pulse whose integrated I/Q power (shot-noise bias removed) is the
+residual photon proxy. Both states are measured at every point.
+A state whose residual power does not change over the scan (chi-square flatness test) keeps its current zeta;
+a responsive state is set to its noise-weighted power minimum. Every shot also measures a single no-operation
+reference (reset, then the probe only), and a z-test of each (state, point) against it is logged (with a warning
+for a state that is never depleted) and plotted as -log10(p) as an extra depletion check.
 
 Details (scan grid, temporary operations, analysis): calibration_utils/readout_drachma_zeta_calibration/README.md
 
@@ -63,7 +64,8 @@ Prerequisites:
       qubit.resonator.operations.
 
 State update:
-    - The DRACHMA readout pulse's zeta_ground_hz and zeta_excited_hz (power minima).
+    - The DRACHMA readout pulse's zeta_ground_hz and zeta_excited_hz (power minima), only for a state whose
+      scan is not flat.
 """
 
 
@@ -101,15 +103,11 @@ def remove_temporary_operations(node: QualibrationNode[Parameters, Quam]):
     already cleaned up) is a no-op.
     """
     zeta_ops = node.namespace.pop("zeta_ops", {})
-    original_pulses = node.namespace.pop("original_drachma_pulses", {})
     for qubit in node.namespace.get("qubits", []):
         operations = qubit.resonator.operations
         operations.pop(PROBE_OPERATION, None)
-        if qubit.name in original_pulses:
-            operations[node.parameters.drachma_operation] = original_pulses[qubit.name]
-        for names in zeta_ops.get(qubit.name, {}).values():
-            for name in names:
-                operations.pop(name, None)
+        for name in zeta_ops.get(qubit.name, []):
+            operations.pop(name, None)
 
 
 # %% {Create_QUA_program}
@@ -132,11 +130,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         raise ValueError(f"zeta_num_points={num_points} must be >= 2.")
     if node.parameters.zeta_step_hz <= 0:
         raise ValueError(f"zeta_step_hz={node.parameters.zeta_step_hz} must be > 0.")
-    max_zeta_difference_hz = node.parameters.max_zeta_difference_hz
-    if max_zeta_difference_hz is not None and max_zeta_difference_hz < 0:
-        raise ValueError(f"max_zeta_difference_hz={max_zeta_difference_hz} must be >= 0 or None.")
-    if not 0 < node.parameters.max_waveform_peak <= 1:
-        raise ValueError(f"max_waveform_peak={node.parameters.max_waveform_peak} must be in (0, 1].")
 
     # Qubits missing the DRACHMA pulse are excluded rather than failing the whole node -- in
     # multiplexed mode a single qubit playing an undefined operation aborts the shared program.
@@ -152,56 +145,29 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Registered before any operation is added so remove_temporary_operations cleans up even if
     # this action fails half-way.
     node.namespace["qubits"] = kept_qubits
-    node.namespace["original_drachma_pulses"] = original_pulses = {}
-    node.namespace["zeta_ops"] = zeta_ops = {q.name: {s: [] for s in STATES} for q in kept_qubits}
+    node.namespace["zeta_ops"] = zeta_ops = {q.name: [] for q in kept_qubits}
     zeta_grids = {q.name: {} for q in kept_qubits}
     for q in kept_qubits:
         operations = q.resonator.operations
         operations[PROBE_OPERATION] = SquareReadoutPulse(length=probe_length, amplitude=0.0)
         drachma = operations[drachma_operation]
-        original_kwargs = {k: v for k, v in drachma.to_dict().items() if k != "__class__"}
-        pulse_kwargs = dict(original_kwargs)
+        pulse_kwargs = {k: v for k, v in drachma.to_dict().items() if k != "__class__"}
         # The DRACHMA result is discarded, so the copies use the default integration weights (as
         # readout_square does) instead of duplicating the pulse's long explicit weights, which would
         # exhaust the data memory.
         pulse_kwargs["integration_weights"] = DEFAULT_INTEGRATION_WEIGHTS
-        point_kwargs = {}
         for state in STATES:
-            grid = build_zeta_grid(getattr(drachma, ZETA_FIELD[state]), node.parameters.zeta_step_hz, num_points)
-            zeta_grids[q.name][state] = grid
-            for i, zeta in enumerate(grid):
-                # Copy of the DRACHMA pulse with only this state's zeta changed.
-                point_kwargs[f"{drachma_operation}_zeta_{state}_{i}"] = {**pulse_kwargs, ZETA_FIELD[state]: float(zeta)}
-        # The waveform is normalised to a fixed area, so zeta reshapes it and can push samples past full
-        # scale (the QM config rejects |sample| > 1). One common amplitude factor per qubit keeps the points
-        # comparable; the zetas are divided by factor**2 so zeta * amplitude**2 (the self-Kerr term) is
-        # unchanged and every point still probes the zeta it is labelled with.
-        factor = amplitude_scale_to_fit(
-            type(drachma),
-            [original_kwargs, *point_kwargs.values()],
-            node.parameters.max_waveform_peak,
-            compensate_kerr=True,
-        )
-        if factor < 1:
-            message = (
-                f"{q.name}: scaling the amplitude of all zeta-scan pulses by {factor:.3f} "
-                f"({drachma.amplitude:.4g} -> {drachma.amplitude * factor:.4g}, zetas divided by {factor**2:.3f}) "
-                f"to keep the waveform peak <= {node.parameters.max_waveform_peak}."
+            zeta_grids[q.name][state] = build_zeta_grid(
+                getattr(drachma, ZETA_FIELD[state]), node.parameters.zeta_step_hz, num_points
             )
-            node.log(message)
-            print(message)
-        if factor < 1:
-            # The stored pulse stays in the config next to the copies and can itself exceed full scale
-            # (the QM config validates every operation), so it is swapped for a scaled copy until
-            # remove_temporary_operations puts the original back.
-            original_pulses[q.name] = drachma
-            operations[drachma_operation] = type(drachma)(
-                **scale_pulse_kwargs(original_kwargs, factor, compensate_kerr=True)
+        # Lockstep: point i is one pulse copy with BOTH zetas at their i-th grid value, so every point
+        # measures the ground and the excited state with the same pulse.
+        for i in range(num_points):
+            op_name = f"{drachma_operation}_zeta_{i}"
+            operations[op_name] = type(drachma)(
+                **{**pulse_kwargs, **{ZETA_FIELD[s]: float(zeta_grids[q.name][s][i]) for s in STATES}}
             )
-        for name, kwargs in point_kwargs.items():
-            operations[name] = type(drachma)(**scale_pulse_kwargs(kwargs, factor, compensate_kerr=True))
-            state = "ground" if "_zeta_ground_" in name else "excited"
-            zeta_ops[q.name][state].append(name)
+            zeta_ops[q.name].append(op_name)
 
     batch_groups = build_batch_groups(kept_qubits, node.parameters)
     node.log(
@@ -230,11 +196,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         "point": xr.DataArray(np.arange(num_points), dims="point", attrs={"long_name": "zeta scan point"}),
     }
     # Per-qubit zeta of every point, stored as coords of the raw dataset.
+    drachma_by_name = {q.name: q.resonator.operations[drachma_operation] for q in kept_qubits}
     node.namespace["zeta_coords"] = {
         ZETA_FIELD[state]: (
             ("qubit", "point"),
             np.stack([zeta_grids[name][state] for name in qubits.get_names()]),
             {"long_name": f"{state} zeta", "units": "Hz"},
+        )
+        for state in STATES
+    } | {
+        f"current_zeta_{state}_hz": (
+            "qubit",
+            np.array([getattr(drachma_by_name[n], ZETA_FIELD[state]) for n in qubits.get_names()]),
+            {"long_name": f"current {state} zeta", "units": "Hz"},
         )
         for state in STATES
     }
@@ -285,7 +259,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                 qubit.xy.play("x180")
                                 qubit.align()
                             reset_if_phase(rr.name)
-                            rr.measure(zeta_ops[qubit.name][state][point], qua_vars=(I_dummy, Q_dummy))
+                            rr.measure(zeta_ops[qubit.name][point], qua_vars=(I_dummy, Q_dummy))
                             reset_if_phase(rr.name)
                             rr.measure(PROBE_OPERATION, qua_vars=(I[i], Q[i]))
                             save(I[i], I_st[state][i])
@@ -384,39 +358,31 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
-    """Plot the residual probe power vs zeta and the test-vs-no-operation z-test p-value, one subplot per qubit."""
+    """Plot the residual probe power vs zeta, the test-vs-no-operation -log10(p-value) and the combined objective
+    (one subplot per qubit)."""
     fig_power = plot_power_vs_zeta(node.results["ds_fit"], node.namespace["qubits"], node.results["fit_results"])
     fig_pvalue = plot_noop_pvalue_vs_point(node.results["ds_fit"], node.namespace["qubits"], node.parameters.alpha)
-    node.results["figures"] = {"power_vs_zeta": fig_power, "noop_pvalue": fig_pvalue}
+    fig_objective = plot_combined_objective_vs_point(
+        node.results["ds_fit"], node.namespace["qubits"], node.results["fit_results"], "zeta"
+    )
+    node.results["figures"] = {"power_vs_zeta": fig_power, "noop_pvalue": fig_pvalue, "objective": fig_objective}
     plt.show()
 
 
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Write the power-minimising zeta_ground_hz / zeta_excited_hz to the DRACHMA pulse."""
+    """Write the chosen zeta_ground_hz / zeta_excited_hz to the DRACHMA pulse; a state that kept its current
+    value (flat scan) is left untouched."""
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
             fit = node.results["fit_results"][q.name]
             drachma = q.resonator.operations[node.parameters.drachma_operation]
-            updates = {"zeta_ground_hz": fit["zeta_ground_hz"], "zeta_excited_hz": fit["zeta_excited_hz"]}
-            # The scan ran on scaled pulses, but the stored pulse plays at its own amplitude: never persist
-            # values that push it past full scale (the QM config would reject it in every later node).
-            pulse_kwargs = {k: v for k, v in drachma.to_dict().items() if k != "__class__"}
-            peak = waveform_peak(type(drachma), {**pulse_kwargs, **updates})
-            if peak > 1:
-                message = (
-                    f"{q.name}: NOT updating zeta_ground_hz / zeta_excited_hz: the pulse would peak at {peak:.4f} > 1 at its "
-                    f"stored amplitude {drachma.amplitude:.4g}. Lower the {node.parameters.drachma_operation} "
-                    "amplitude and rerun."
-                )
-                node.log(message)
-                print(message)
-                continue
-            for field, value in updates.items():
-                setattr(drachma, field, value)
+            for state in STATES:
+                if fit[f"changed_{state}"]:
+                    setattr(drachma, ZETA_FIELD[state], fit[ZETA_FIELD[state]])
 
 
 # %% {Save_results}

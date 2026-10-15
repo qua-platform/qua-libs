@@ -73,6 +73,17 @@ def process_raw_dataset(ds: xr.Dataset, probe_length: int, num_shots: int) -> xr
     var_I_noop = (ds[f"I_sq_{NOOP_SUFFIX}"] - I_noop**2).clip(min=0)
     var_Q_noop = (ds[f"Q_sq_{NOOP_SUFFIX}"] - Q_noop**2).clip(min=0)
     chi2 = num_shots * ((I - I_noop) ** 2 / (var_I + var_I_noop) + (Q - Q_noop) ** 2 / (var_Q + var_Q_noop))
-    ds = ds.assign(p_value_noop=np.exp(-chi2 / 2))
+    # -log10(p) in closed form (df = 2): finite where the p-value itself underflows to 0.
+    ds = ds.assign(p_value_noop=np.exp(-chi2 / 2), neglog10_p_noop=chi2 / (2 * np.log(10)))
     ds.p_value_noop.attrs = {"long_name": "test-vs-no-operation z-test p-value", "units": ""}
+    ds.neglog10_p_noop.attrs = {"long_name": "test-vs-no-operation z-test -log10 p-value", "units": ""}
+
+    # Residual power of the no-operation reference itself, same estimator as `power`; the level the
+    # DRACHMA residual has to reach for the resonator to count as empty.
+    ds = ds.assign(
+        power_noop=I_noop**2 + Q_noop**2 - (var_I_noop + var_Q_noop) / num_shots,
+        power_noop_err=2 * np.sqrt((I_noop**2 * var_I_noop + Q_noop**2 * var_Q_noop) / num_shots),
+    )
+    ds.power_noop.attrs = {"long_name": "no-operation reference probe power", "units": "V^2"}
+    ds.power_noop_err.attrs = {"long_name": "no-operation reference probe power standard error", "units": "V^2"}
     return ds

@@ -1,4 +1,7 @@
 import numpy as np
+from scipy.stats import chi2 as chi2_dist
+
+from .traces import STATES
 
 
 def excess_power_cost(power: np.ndarray, err: np.ndarray) -> np.ndarray:
@@ -13,37 +16,54 @@ def excess_power_cost(power: np.ndarray, err: np.ndarray) -> np.ndarray:
     return np.maximum(z - 1.0, 0.0) ** 2
 
 
-def select_parameter_pair(
-    values_g: np.ndarray,
-    power_g: np.ndarray,
-    err_g: np.ndarray,
-    values_e: np.ndarray,
-    power_e: np.ndarray,
-    err_e: np.ndarray,
-    max_difference_hz: float | None,
-    geometric: bool = False,
-) -> tuple[int, int] | None:
-    """Scan-point indices (ground, excited) of the best parameter pair with |value_g - value_e| <= limit.
+def flatness_pvalue(power: np.ndarray, err: np.ndarray) -> float:
+    """p-value of the null hypothesis "the residual power is constant over the whole scan".
 
-    Minimises the summed excess-power cost of the two states; ties (e.g. a flat state) go to the smaller
-    difference, then to the pair closest to the current values (the centre of each grid: geometric for the
-    geometric kappa scan, arithmetic for the linear zeta scan). Returns None when no pair satisfies the limit."""
-    diff = np.abs(values_g[:, None] - values_e[None, :])
-    cost = excess_power_cost(power_g, err_g)[:, None] + excess_power_cost(power_e, err_e)[None, :]
-    feasible = np.ones_like(diff, dtype=bool) if max_difference_hz is None else diff <= max_difference_hz
-    if not feasible.any():
-        return None
-    if geometric:
-        from_current = (
-            np.abs(np.log(values_g / np.sqrt(values_g[0] * values_g[-1])))[:, None]
-            + np.abs(np.log(values_e / np.sqrt(values_e[0] * values_e[-1])))[None, :]
-        )
+    chi2 = sum_i (P_i - P_w)^2 / err_i^2 with P_w the inverse-variance weighted mean, df = N - 1. It uses every
+    point, so unlike a minimum-versus-rest threshold it is not biased by picking the lowest of N noisy points.
+    A small p means the scan responds to the parameter."""
+    err = np.maximum(np.nan_to_num(err, nan=0.0), np.finfo(float).tiny)
+    weight = 1.0 / err**2
+    mean = np.sum(weight * power) / np.sum(weight)
+    chi2_stat = np.sum(weight * (power - mean) ** 2)
+    return float(chi2_dist.sf(chi2_stat, df=len(power) - 1))
+
+
+def select_points(
+    values: dict[str, np.ndarray],
+    power: dict[str, np.ndarray],
+    err: dict[str, np.ndarray],
+    current: dict[str, float],
+    flatness_alpha: float,
+) -> dict:
+    """Scan-point index of the chosen parameter value per state, with a per-state flatness gate.
+
+    All dicts are keyed by state ("ground", "excited"); the two scans are lockstep (point i is measured with
+    both parameters at their i-th grid value).
+      - A state whose scan is flat (flatness p-value > flatness_alpha) keeps its current value: its index is the
+        point nearest the current value and it does not follow the other state.
+      - Only one state responds: that state takes its own lowest-excess-cost point; ties go to the point nearest
+        the current value.
+      - Both respond: a common index minimising the summed excess cost of the two states, so the written pair is
+        a pair that was measured together; ties go to the point nearest the current values.
+
+    Returns {"idx", "p_flat", "responsive", "changed"}, each a dict keyed by state. "changed" is False for a
+    state that keeps its current value (flat, or its best point is the one nearest the current value)."""
+    p_flat = {s: flatness_pvalue(power[s], err[s]) for s in STATES}
+    responsive = {s: p_flat[s] <= flatness_alpha for s in STATES}
+    distance = {s: np.abs(values[s] - current[s]) for s in STATES}
+    nearest = {s: int(np.argmin(distance[s])) for s in STATES}
+    cost = {s: excess_power_cost(power[s], err[s]) for s in STATES}
+
+    idx = dict(nearest)
+    if all(responsive.values()):
+        # lexsort: last key is primary.
+        order = np.lexsort((distance["ground"] + distance["excited"], cost["ground"] + cost["excited"]))[0]
+        idx = {s: int(order) for s in STATES}
     else:
-        from_current = (
-            np.abs(values_g - 0.5 * (values_g[0] + values_g[-1]))[:, None]
-            + np.abs(values_e - 0.5 * (values_e[0] + values_e[-1]))[None, :]
-        )
-    ig, ie = np.nonzero(feasible)
-    # lexsort: last key is primary.
-    order = np.lexsort((from_current[ig, ie], diff[ig, ie], cost[ig, ie]))[0]
-    return int(ig[order]), int(ie[order])
+        for s in STATES:
+            if responsive[s]:
+                idx[s] = int(np.lexsort((distance[s], cost[s]))[0])
+
+    changed = {s: responsive[s] and idx[s] != nearest[s] for s in STATES}
+    return {"idx": idx, "p_flat": p_flat, "responsive": responsive, "changed": changed}
