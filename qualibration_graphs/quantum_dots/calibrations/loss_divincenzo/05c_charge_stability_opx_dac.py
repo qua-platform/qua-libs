@@ -228,7 +228,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.load_data_id is not None or node.parameters.simulate)
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX, execute the QUA program, and fetch raw I/Q into ``ds_raw``."""
-    qmm = node.machine.connect()
+    qmm = node.machine.connect(skip_dacs=False)
     # Get the config from the machine
     config = node.machine.generate_config()
 
@@ -380,3 +380,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
 def save_results(node: QualibrationNode[Parameters, Quam]):
     """Persist the node results and any recorded state updates."""
     node.save()
+
+# %% {Close DAC connections}
+@node.run_action()
+def close_all_dacs(node: QualibrationNode[Parameters, Quam]): 
+    """Close all the dac connections, so that you can re-run DAC related nodes straight away."""
+    node.machine.disconnect_from_external_source()

@@ -158,7 +158,7 @@ def launch_video_mode(
         data_acquirer=data_acquirer,
         data_polling_interval_s=0.05,
         save_path=save_path,
-        shutdown_callback=stop_dashboard,
+        shutdown_callback=lambda: (machine.disconnect_from_external_source(), stop_dashboard(port)),
         voltage_control_tab=voltage_control_tab,
     )
 
