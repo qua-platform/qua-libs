@@ -8,7 +8,7 @@ Backs the `23f_readout_drachma_kappa_calibration` calibration node
 Fine-tunes `kappa_ground_hz` and `kappa_excited_hz` of the DRACHMA readout pulse (Jerger et al.,
 arXiv:2406.04891) by minimising the photon population left in the resonator right after the pulse. It is
 the same measurement as the zeta calibration (`23e_readout_drachma_zeta_calibration`, see its README),
-but the scanned knob is kappa. For every scan point:
+but the scanned knob is kappa. For every scan point (run for the ground and for the excited state):
 
 1. Reset the qubit; for the excited state also play x180.
 2. DRACHMA readout pulse built with that point's kappa (result discarded).
@@ -18,46 +18,53 @@ but the scanned knob is kappa. For every scan point:
 
 ## Kappa scan
 
-Per qubit and state, `kappa_num_points` points spaced by `kappa_step_hz`, ground and excited scanned in
-lockstep (point `i` uses `kappa_ground[i]` for the ground-state run and `kappa_excited[i]` for the
-excited-state run, the other kappa staying at its current value).
+`kappa_num_points` points spaced by `kappa_step_hz`. Ground and excited are scanned in lockstep: point `i`
+is one DRACHMA pulse with `kappa_ground[i]` and `kappa_excited[i]` set together, and both the ground and the
+excited state are measured with it.
 
-- Linear grid around the current kappa, which is on the grid (for an even number of points the extra
-  point is above it) (`analysis.build_kappa_grid`).
-- If the lower end would drop below `kappa_step_hz`, the whole grid is shifted so that `kappa_step_hz` is
-  its minimum (kappa must stay positive); the current kappa is then no longer on the grid.
+- Linear grid per state around its current kappa, which is on the grid (for an even number of points the
+  extra point is above it) (`analysis.build_kappa_grid`).
+- If the lower end would drop below `kappa_step_hz`, that grid is shifted so that `kappa_step_hz` is its
+  minimum (kappa must stay positive); the current kappa is then no longer on the grid.
 
 Every scan point is its own temporary operation on `qubit.resonator.operations` (a copy of the DRACHMA
-pulse with only the kappa changed), removed again in `save_results` — never persisted to QuAM state.
+pulse with the kappas changed), indexed by point, removed again in `save_results` — never persisted to
+QuAM state. The current kappas are stored in the raw dataset (`current_kappa_*_hz`) for the flatness rule.
 
-## Joint choice of the two kappas
+## Choosing the result
 
-The two kappas are chosen jointly, not independently: `|kappa_ground - kappa_excited|` must stay within
-`Parameters.max_kappa_difference_hz` (default 200 kHz, `None` = no limit). Among all (ground point,
-excited point) pairs inside the limit (`readout_drachma_common.select_parameter_pair`), the pair with the
-lowest noise-weighted excess residual power above each state's own minimum is taken. A state that barely
-reacts to kappa follows the other one at no cost; if both react but their minima are too far apart, the
-pair trades off by benefit. A minimum on the edge of the scan is still written to state, with a warning
-(consider rescanning); the fit fails only if no pair satisfies the limit.
+Each point measures **both** states with the same pulse (both kappas changed together), so the effect of one
+kappa on the other state's residual is visible. The result is chosen per state with
+`readout_drachma_common.select_points`:
 
-## Amplitude limit
+1. **Flatness gate.** A chi-square test of "the residual power is constant over the scan" (inverse-variance
+   weighted mean, `N - 1` degrees of freedom; `readout_drachma_common.flatness_pvalue`) is run for each
+   state. `p > Parameters.flatness_alpha` (default 0.01) means the state does not respond to kappa: it keeps
+   its current value and is not written to state.
+2. **Both states respond:** they share one scan point, the one minimising the sum of the two noise-weighted
+   excess costs. The excess cost of a point is `max(0, z - 1)^2` with
+   `z = (P - P_min) / sqrt(err^2 + err_min^2)`, so points within about 1 sigma of the state's own minimum
+   are free; ties go to the point nearest the current values (`readout_drachma_common.excess_power_cost`).
+3. **Only one state responds:** that state takes its own lowest-cost point; the flat state keeps its
+   current value.
 
-The DRACHMA waveform is normalised to a fixed area, so a larger kappa gives a peakier waveform. If any
-scan point would exceed full scale (`max_waveform_peak`), all scan pulses of that qubit get one common
-amplitude reduction (logged) so the points stay comparable with each other. The pulse amplitude
-written to the QuAM state is never changed; if the chosen pulse would peak above 1 at its stored
-amplitude, the state is not updated and a message asks for a lower amplitude.
+A changed value on the edge of the scan is still written to state, with a warning (consider rescanning).
 
 ## Extra depletion check
 
 Every shot also measures a single no-operation reference (reset, then the probe only, no DRACHMA pulse).
 A z-test (chi-squared on the I/Q mean difference, 2 degrees of freedom) of each (state, point) against it is
-computed (`readout_drachma_common.plot_noop_pvalue_vs_point`); `p > alpha` means the probe field is
-indistinguishable from the reference, i.e. the resonator is depleted. It is logged and plotted only.
+computed (`readout_drachma_common.plot_noop_pvalue_vs_point`); `p > alpha` (`Parameters.alpha`, default 0.01)
+means the probe field is indistinguishable from the reference, i.e. the resonator is depleted. It is logged
+and plotted as `-log10(p)` (`-log10 p = chi2 / (2 ln 10)`, so it cannot underflow) on a fixed 0-100 axis. A
+state that is never depleted at any scanned kappa gets a warning (a residual that stays far above the
+no-operation level over the whole scan usually points to another mis-set parameter, e.g. chi or the
+resonator frequency, rather than kappa), but the outcome is unchanged.
 
 ## State update
 
-`kappa_ground_hz` and `kappa_excited_hz` of the DRACHMA readout pulse (jointly chosen power minima).
+`kappa_ground_hz` and `kappa_excited_hz` of the DRACHMA readout pulse (power minima), only for a state whose
+scan is not flat (`changed_<state>`). Failed qubits are skipped.
 
 ## Prerequisites
 
@@ -68,9 +75,11 @@ indistinguishable from the reference, i.e. the resonator is depleted. It is logg
 
 ## Files
 
-- **`parameters.py`** — `Parameters` (`num_shots`, `kappa_num_points`, `kappa_step_hz`,
-  `max_kappa_difference_hz`, `max_waveform_peak`, `drachma_operation`, `probe_length`, `alpha`, ...).
-- **`analysis.py`** — `build_kappa_grid`, `fit_raw_data`, `log_fitted_results`.
-- **`plotting.py`** — `plot_power_vs_kappa`.
-- Shared pieces (traces, `process_raw_dataset`, pair selection, waveform helpers, batching) live in
-  `calibration_utils/readout_drachma_common/`.
+- **`parameters.py`** — `Parameters` (`num_shots`, `kappa_num_points`, `kappa_step_hz`, `drachma_operation`,
+  `probe_length`, `depletion_time`, `alpha`, `flatness_alpha`, ...).
+- **`analysis.py`** — `build_kappa_grid`, `fit_raw_data` (per-state flatness gate and point selection),
+  `log_fitted_results`.
+- **`plotting.py`** — `plot_power_vs_kappa`: residual probe power vs kappa, ground and excited overlaid, with the
+  no-operation level and the selected values labelled in the legend.
+- Shared pieces (traces, `process_raw_dataset`, `plot_noop_pvalue_vs_point`, `plot_combined_objective_vs_point`,
+  point selection, batching) live in `calibration_utils/readout_drachma_common/`.

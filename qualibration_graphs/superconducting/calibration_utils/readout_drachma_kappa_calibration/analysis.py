@@ -3,12 +3,12 @@ from dataclasses import dataclass
 import numpy as np
 import xarray as xr
 
-from calibration_utils.readout_drachma_common import STATES, select_parameter_pair
+from calibration_utils.readout_drachma_common import STATES, select_points
 
 
 @dataclass
 class FitParameters:
-    """Stores the chosen kappa pair of a single qubit."""
+    """Stores the chosen kappa values of a single qubit."""
 
     kappa_ground_hz: float
     kappa_excited_hz: float
@@ -17,9 +17,12 @@ class FitParameters:
     p_value_noop_ground: float
     p_value_noop_excited: float
     kappa_difference_hz: float
-    unconstrained_kappa_ground_hz: float
-    unconstrained_kappa_excited_hz: float
-    constrained: bool
+    p_flat_ground: float
+    p_flat_excited: float
+    changed_ground: bool
+    changed_excited: bool
+    depleted_any_ground: bool
+    depleted_any_excited: bool
     at_edge_ground: bool
     at_edge_excited: bool
     success: bool
@@ -34,34 +37,34 @@ def build_kappa_grid(current_hz: float, step_hz: float, num_points: int) -> np.n
 
 
 def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, dict[str, FitParameters]]:
-    """Pick, per qubit, the kappa pair (ground, excited) with the lowest residual power under the limit
-    node.parameters.max_kappa_difference_hz.
+    """Pick, per qubit, the kappa of each state from the lockstep scan (see select_points).
 
-    A pair on the edge of the scan is still returned (and written to state) but flagged; the fit fails only
-    when no pair satisfies the limit."""
-    limit = node.parameters.max_kappa_difference_hz
+    A state whose scan is flat (node.parameters.flatness_alpha) keeps its current kappa; a responsive state
+    takes its lowest-cost point, a common one when both respond. A changed state on the edge of the scan is
+    still returned (and would be written to state) but flagged."""
+    alpha = node.parameters.alpha
+    flatness_alpha = node.parameters.flatness_alpha
+    num_points = ds.sizes["point"]
     fits: dict[str, FitParameters] = {}
     best = {}
     for q in ds.qubit.values:
         kappa = {s: ds[f"kappa_{s}_hz"].sel(qubit=q).values for s in STATES}
         power = {s: ds["power"].sel(qubit=q, state=s).values for s in STATES}
         err = {s: ds["power_err"].sel(qubit=q, state=s).values for s in STATES}
-        free_idx = {s: int(np.argmin(power[s])) for s in STATES}
-        pair = select_parameter_pair(
-            kappa["ground"],
-            power["ground"],
-            err["ground"],
-            kappa["excited"],
-            power["excited"],
-            err["excited"],
-            limit,
-            geometric=True,
-        )
-        success = pair is not None
-        idx = dict(zip(STATES, pair)) if success else free_idx
-        num_points = ds.sizes["point"]
-        chosen_kappa = {s: float(kappa[s][idx[s]]) for s in STATES}
+        # Datasets recorded before the current values were stored fall back to the grid centre.
+        current = {
+            s: (
+                float(ds[f"current_kappa_{s}_hz"].sel(qubit=q))
+                if f"current_kappa_{s}_hz" in ds.coords
+                else float(kappa[s][(num_points - 1) // 2])
+            )
+            for s in STATES
+        }
+        selection = select_points(kappa, power, err, current, flatness_alpha)
+        idx, changed = selection["idx"], selection["changed"]
+        chosen_kappa = {s: float(kappa[s][idx[s]]) if changed[s] else current[s] for s in STATES}
         p_value = {s: float(ds["p_value_noop"].sel(qubit=q, state=s).isel(point=idx[s])) for s in STATES}
+        depleted_any = {s: bool((ds["p_value_noop"].sel(qubit=q, state=s) > alpha).any()) for s in STATES}
         fits[str(q)] = FitParameters(
             kappa_ground_hz=chosen_kappa["ground"],
             kappa_excited_hz=chosen_kappa["excited"],
@@ -70,12 +73,15 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, dict[str, FitParamet
             p_value_noop_ground=p_value["ground"],
             p_value_noop_excited=p_value["excited"],
             kappa_difference_hz=chosen_kappa["excited"] - chosen_kappa["ground"],
-            unconstrained_kappa_ground_hz=float(kappa["ground"][free_idx["ground"]]),
-            unconstrained_kappa_excited_hz=float(kappa["excited"][free_idx["excited"]]),
-            constrained=idx != free_idx,
-            at_edge_ground=idx["ground"] in (0, num_points - 1),
-            at_edge_excited=idx["excited"] in (0, num_points - 1),
-            success=success,
+            p_flat_ground=selection["p_flat"]["ground"],
+            p_flat_excited=selection["p_flat"]["excited"],
+            changed_ground=changed["ground"],
+            changed_excited=changed["excited"],
+            depleted_any_ground=depleted_any["ground"],
+            depleted_any_excited=depleted_any["excited"],
+            at_edge_ground=changed["ground"] and idx["ground"] in (0, num_points - 1),
+            at_edge_excited=changed["excited"] and idx["excited"] in (0, num_points - 1),
+            success=True,
         )
         best[str(q)] = idx
 
@@ -87,11 +93,12 @@ def fit_raw_data(ds: xr.Dataset, node) -> tuple[xr.Dataset, dict[str, FitParamet
 
 
 def log_fitted_results(fit_results: dict, alpha: float, log_callable=None):
-    """Log one line per qubit with the chosen kappas, their difference and the test-vs-no-operation z-test."""
+    """Log one line per qubit with the chosen kappas, their difference and the test-vs-no-operation z-test,
+    plus a note per state that kept its current kappa (flat scan) and a warning per state that is never depleted."""
     if log_callable is None:
         log_callable = print
     for q, fit in fit_results.items():
-        status = "SUCCESS!" if fit["success"] else "FAIL! (no kappa pair within max_kappa_difference_hz)"
+        status = "SUCCESS!" if fit["success"] else "FAIL!"
         verdicts = {s: "depleted" if fit[f"p_value_noop_{s}"] > alpha else "not depleted" for s in STATES}
         log_callable(
             f"Results for qubit {q}: kappa_ground = {fit['kappa_ground_hz'] * 1e-3:.2f} kHz, "
@@ -100,13 +107,17 @@ def log_fitted_results(fit_results: dict, alpha: float, log_callable=None):
             f"vs no-operation p: ground = {fit['p_value_noop_ground']:.3g} ({verdicts['ground']}), "
             f"excited = {fit['p_value_noop_excited']:.3g} ({verdicts['excited']}) | --> {status}"
         )
-        if fit["constrained"]:
-            log_callable(
-                f"  {q}: difference limit applied; independent minima were kappa_ground = "
-                f"{fit['unconstrained_kappa_ground_hz'] * 1e-3:.2f} kHz, kappa_excited = "
-                f"{fit['unconstrained_kappa_excited_hz'] * 1e-3:.2f} kHz."
-            )
         for state in STATES:
+            if not fit[f"changed_{state}"]:
+                log_callable(
+                    f"  {q}: {state} kappa kept at its current value "
+                    f"(flatness p = {fit[f'p_flat_{state}']:.3g}; flat scan or best point is the current one)."
+                )
+            if not fit[f"depleted_any_{state}"]:
+                log_callable(
+                    f"  WARNING {q}: {state} is not depleted at any scanned kappa (p <= alpha everywhere); "
+                    "another parameter (chi, resonator frequency) is probably mis-set rather than kappa."
+                )
             if fit[f"at_edge_{state}"]:
                 log_callable(
                     f"  WARNING {q}: {state} kappa is at the edge of the scan (still written to state); "
