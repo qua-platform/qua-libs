@@ -37,6 +37,7 @@ from calibration_utils.readout_depletion_validation import (
 from calibration_utils.readout_drachma_common import (
     assign_core_labels,
     build_batch_groups,
+    has_opx_pump,
 )
 from qualibrate import QualibrationNode
 
@@ -166,6 +167,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     for qubit, label in zip(kept_qubits, core_labels):
         qubit.xy.core = qubit.resonator.core = label
     for twpa in twpas:
+        if not has_opx_pump(twpa):
+            continue
         label = twpa_labels[twpa.name]
         twpa.pump.core = label
         if twpa.pump_ is not None:
@@ -468,6 +471,8 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
         qubit.resonator.core = None
         qubit.resonator.operations.pop(PROBE_OPERATION, None)
     for twpa in node.machine.twpas.values():
+        if not has_opx_pump(twpa):
+            continue
         twpa.pump.core = None
         if twpa.pump_ is not None:
             twpa.pump_.core = None

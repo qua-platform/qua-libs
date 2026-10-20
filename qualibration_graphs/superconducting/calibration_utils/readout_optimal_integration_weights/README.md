@@ -58,6 +58,12 @@ samples, which the cloud backend turns into an EMPTY result dict for the whole j
 data for job ..."). Hence the modest `num_shots` default and `max_qubits_per_fem`; see the
 `Parameters.num_shots` docstring for the sizing formula.
 
+## Saved dataset
+
+`ds_fit` has no complex variables, because NetCDF 3 (a fallback storage engine) cannot save them: `env_g`,
+`env_e`, `W`, `W_norm` and `W_chunked` are stored as `<name>_re` / `<name>_im` float pairs. Read them back
+with `complex_values(ds_fit, "W")`, which also accepts a dataset saved with the old complex variables.
+
 ## Real weight and the global angle
 
 A stock quam `ReadoutPulse` can only express a REAL per-sample weight rotated by one GLOBAL phase

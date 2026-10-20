@@ -26,6 +26,7 @@ from quam_config import Quam
 from calibration_utils.readout_drachma_common import (
     assign_core_labels,
     build_batch_groups,
+    has_opx_pump,
 )
 from calibration_utils.readout_optimal_integration_weights import (
     Parameters,
@@ -220,6 +221,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     for qubit, label in zip(all_qubits, core_labels):
         qubit.xy.core = qubit.resonator.core = label
     for twpa in twpas:
+        if not has_opx_pump(twpa):
+            continue
         label = twpa_labels[twpa.name]
         twpa.pump.core = label
         if twpa.pump_ is not None:
@@ -538,6 +541,8 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
         qubit.xy.core = None
         qubit.resonator.core = None
     for twpa in getattr(node.machine, "twpas", {}).values():
+        if not has_opx_pump(twpa):
+            continue
         twpa.pump.core = None
         if twpa.pump_ is not None:
             twpa.pump_.core = None

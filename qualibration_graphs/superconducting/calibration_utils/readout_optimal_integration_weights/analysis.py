@@ -575,10 +575,23 @@ def _demod_phase_offset(qd: xr.Dataset, q, env_g: np.ndarray, env_e: np.ndarray,
         return float("nan")
 
 
+def complex_values(ds: xr.Dataset, name: str) -> np.ndarray:
+    """The complex per-sample array `name` of `ds_fit` (env_g, env_e, W, W_norm, W_chunked).
+
+    ds_fit stores it as the float variables `<name>_re` / `<name>_im`, since NetCDF 3 (the
+    fallback storage engine) has no complex dtype; a dataset saved before that split still holds
+    the complex variable `<name>` itself.
+    """
+    if f"{name}_re" in ds:
+        return ds[f"{name}_re"].values + 1j * ds[f"{name}_im"].values
+    return ds[name].values
+
+
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, dict[str, OptimalWeightsFit]]:
     """Runs the matched-filter construction (weights.py) for every qubit and assembles the
     results into a fit dataset: the raw/processed data plus per-qubit derived arrays
-    (env_g/env_e/W/W_norm/W_chunked/hb) and scalar coords (norm, snr*, margins, success,
+    (env_g/env_e/W/W_norm/W_chunked as `_re`/`_im` float pairs, read back with `complex_values`;
+    hb) and scalar coords (norm, snr*, margins, success,
     iq_imbalance_*, if_*, ...). Each qubit's arrays are computed at its own (possibly shorter)
     native length and then NaN-padded onto the shared `readout_time`/`chunk_time` axes sized to
     the longest qubit.
@@ -610,14 +623,18 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> tuple[xr.Dataset, di
             out[i, : len(arr)] = arr
         return out
 
+    def assign_complex(key, dim, out_width):
+        z = pad_stack(key, out_width, complex)
+        return {f"{key}_re": (("qubit", dim), z.real), f"{key}_im": (("qubit", dim), z.imag)}
+
     ds_fit = ds.assign(
         {
-            "env_g": (("qubit", "readout_time"), pad_stack("env_g", width, complex)),
-            "env_e": (("qubit", "readout_time"), pad_stack("env_e", width, complex)),
-            "W": (("qubit", "readout_time"), pad_stack("W", width, complex)),
-            "W_norm": (("qubit", "readout_time"), pad_stack("W_norm", width, complex)),
+            **assign_complex("env_g", "readout_time", width),
+            **assign_complex("env_e", "readout_time", width),
+            **assign_complex("W", "readout_time", width),
+            **assign_complex("W_norm", "readout_time", width),
             "hb": (("qubit", "readout_time"), pad_stack("hb", width, float)),
-            "W_chunked": (("qubit", "chunk_time"), pad_stack("W_chunked", chunk_width, complex)),
+            **assign_complex("W_chunked", "chunk_time", chunk_width),
             "w_deployed": (("qubit", "readout_time"), pad_stack("w_deployed", width, float)),
             "w_deployed_chunked": (("qubit", "chunk_time"), pad_stack("w_deployed_chunked", chunk_width, float)),
         }

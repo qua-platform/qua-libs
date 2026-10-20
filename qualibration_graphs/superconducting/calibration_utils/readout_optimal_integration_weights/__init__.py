@@ -1,4 +1,5 @@
 from .analysis import (
+    complex_values,
     fit_raw_data,
     has_variance,
     log_fitted_results,
@@ -20,6 +21,7 @@ from .plotting import (
 
 __all__ = [
     "Parameters",
+    "complex_values",
     "fit_raw_data",
     "has_variance",
     "log_fitted_results",

@@ -5,7 +5,10 @@ from matplotlib.lines import Line2D
 from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
-from calibration_utils.readout_optimal_integration_weights.analysis import has_variance
+from calibration_utils.readout_optimal_integration_weights.analysis import (
+    complex_values,
+    has_variance,
+)
 from calibration_utils.readout_optimal_integration_weights.weights import TOLERANCE
 
 
@@ -77,8 +80,8 @@ def plot_envelopes(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
     for ax, qubit in grid_iter(grid):
         qd = ds_fit.sel(qubit=qubit["qubit"])
         t = qd.readout_time.values
-        env_g = qd.env_g.values
-        env_e = qd.env_e.values
+        env_g = complex_values(qd, "env_g")
+        env_e = complex_values(qd, "env_e")
         ax.plot(t, env_g.real * 1e3, label="I g", color="tab:blue")
         ax.plot(t, env_g.imag * 1e3, label="Q g", color="tab:blue", linestyle="--")
         ax.plot(t, env_e.real * 1e3, label="I e", color="tab:red")
@@ -107,7 +110,7 @@ def plot_demod_comparison(ds_fit: xr.Dataset, qubits: list[AnyTransmon], window_
         qd = ds_fit.sel(qubit=qubit["qubit"]).isel(readout_time=slice(0, window_ns))
         t = qd.readout_time.values
         for state, color in (("g", "tab:blue"), ("e", "tab:red")):
-            env = qd[f"env_{state}"].values
+            env = complex_values(qd, f"env_{state}")
             raw = [qd[f"a_i_{state}"].values, qd[f"a_q_{state}"].values]
             for comp, style, (pre, post) in zip(("I", "Q"), ("-", "--"), zip(raw, (env.real, env.imag))):
                 ax.plot(t, pre * 1e3, style, color=color, linewidth=0.8, alpha=0.35, label=f"{comp} {state} raw")
@@ -131,7 +134,7 @@ def plot_demod_spectrum(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
     grid = _grid(ds_fit, qubits, "Demodulation check in frequency: |FFT| before vs. after (|g>)")
     for ax, qubit in grid_iter(grid):
         qd = ds_fit.sel(qubit=qubit["qubit"])
-        env = qd.env_g.values
+        env = complex_values(qd, "env_g")
         z = (qd.a_i_g.values + 1j * qd.a_q_g.values)[: env.size]
         valid = np.isfinite(z) & np.isfinite(env)
         z, env = z[valid], env[valid]
@@ -165,7 +168,7 @@ def plot_weight_spectrum(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
     nyquist_mhz = 500.0
     for ax, qubit in grid_iter(grid):
         qd = ds_fit.sel(qubit=qubit["qubit"])
-        W = qd.W.values
+        W = complex_values(qd, "W")
         W = W[np.isfinite(W)]
         freq_mhz = np.fft.fftshift(np.fft.fftfreq(W.size, d=1e-9)) / 1e6
         spectrum = np.abs(np.fft.fftshift(np.fft.fft(W))) / max(W.size, 1)
@@ -200,7 +203,7 @@ def plot_iq_trajectory(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
     for ax, qubit in grid_iter(grid):
         qd = ds_fit.sel(qubit=qubit["qubit"])
         for state, cmap in (("g", "Blues"), ("e", "Reds")):
-            env = qd[f"env_{state}"].values
+            env = complex_values(qd, f"env_{state}")
             env = env[np.isfinite(env)] * 1e3
             if env.size < 2:
                 continue
@@ -255,7 +258,7 @@ def plot_weight(ds_fit: xr.Dataset, qubits: list[AnyTransmon]):
         ax.axhline(0, color="k", linewidth=0.5)
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("weight (normalized)", color="tab:purple")
-        W = qd.W.values
+        W = complex_values(qd, "W")
         mag = np.abs(W)
         valid = mag >= 0.1 * np.nanmax(mag)
         ax2 = ax.twinx()

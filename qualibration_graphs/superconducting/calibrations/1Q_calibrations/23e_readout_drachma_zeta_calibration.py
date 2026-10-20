@@ -29,6 +29,7 @@ from calibration_utils.readout_drachma_common import (
     assign_core_labels,
     build_batch_groups,
     fetch_round_traces,
+    has_opx_pump,
     plot_combined_objective_vs_point,
     plot_noop_pvalue_vs_point,
     process_raw_dataset,
@@ -182,6 +183,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     for qubit, label in zip(kept_qubits, core_labels):
         qubit.xy.core = qubit.resonator.core = label
     for twpa in twpas:
+        if not has_opx_pump(twpa):
+            continue
         label = twpa_labels[twpa.name]
         twpa.pump.core = label
         if twpa.pump_ is not None:
@@ -395,6 +398,8 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
         qubit.xy.core = None
         qubit.resonator.core = None
     for twpa in node.machine.twpas.values():
+        if not has_opx_pump(twpa):
+            continue
         twpa.pump.core = None
         if twpa.pump_ is not None:
             twpa.pump_.core = None

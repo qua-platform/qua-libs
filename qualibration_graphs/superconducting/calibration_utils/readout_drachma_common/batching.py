@@ -104,6 +104,15 @@ def build_batch_groups(
     return batch_groups
 
 
+def has_opx_pump(twpa: TWPA) -> bool:
+    """Whether the TWPA's pump is played from an OPX output, i.e. it occupies a FEM core.
+
+    A pump driven by an external source has no `opx_output`; it needs no core label, and its
+    `core` must be neither set nor cleared.
+    """
+    return getattr(getattr(twpa, "pump", None), "opx_output", None) is not None
+
+
 def assign_core_labels(
     qubits: Sequence[AnyTransmon],
     twpas: Sequence[TWPA] = (),
@@ -142,11 +151,13 @@ def assign_core_labels(
     also distinct from every qubit label on the same FEM: unlike a qubit, the pump runs
     continuously for the entire program, so it can never share a core with anything else on
     its FEM -- qubit label positions on that FEM start counting after the TWPA's reserved slot.
+    A TWPA whose pump is not an OPX output (see `has_opx_pump`) uses no FEM core, so it gets no
+    label and reserves no slot.
     Returns `(qubit_core_labels, twpa_core_labels)`, the latter keyed by `twpa.name`.
     """
     twpa_labels: dict[str, str] = {}
     fem_reserved: dict[tuple, int] = {}
-    for i, twpa in enumerate(twpas):
+    for i, twpa in enumerate(t for t in twpas if has_opx_pump(t)):
         opx_output = twpa.pump.opx_output
         fem_key = (opx_output.controller_id, opx_output.fem_id)
         twpa_labels[twpa.name] = f"twpa{i}"
