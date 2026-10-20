@@ -27,6 +27,7 @@ dependencies = [
     "qiskit<2.0",
     "uncertainties>=3.2.2",
     "scikit-learn>=1.5.0",
+    "pygsti>=0.9.11",
 ]
 
 [tool.black]
