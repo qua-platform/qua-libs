@@ -40,7 +40,7 @@ qm_log = logging.getLogger("qm")
 ##################
 # The time vector for the times between pi-pulse centers in clock cycles (4ns)
 # Each tau value must be a multiple of 2 clock cycles to ensure that tau_half is a multiple of a single clock cycle
-tau_vec = 2 * np.arange(12, 500, 20)
+tau_vec = 2 * np.arange(20, 500, 20)
 xy8_order = 4  # order n of the XY8-n measurement
 n_avg = 1_000_000
 
@@ -55,7 +55,9 @@ if x180_len_NV != x90_len_NV:
 # check that all lengths are at least 4 four clock cycles (16ns)
 for ii in reversed(range(len(tau_vec))):
     if tau_half_vec_spacing[ii] < 4:
-        qm_log.warning(f"Removed tau value {tau_vec[ii]}: interpulse spacing must be at least 4 clock cycles (16ns).")
+        qm_log.warning(
+            f"Removed tau value {tau_vec[ii]}: interpulse spacing must be at least {4} clock cycles (16 ns)."
+        )
         tau_half_vec_spacing = np.delete(tau_half_vec_spacing, ii)
         tau_vec_spacing = np.delete(tau_vec_spacing, ii)
         tau_vec = np.delete(tau_vec, ii)
@@ -78,12 +80,12 @@ save_data_dict = {
 ##########################
 def xy8_n(tau, order):
     """Performs the full xy8_n sequence.
-    The first block is outside the loop to avoid delays caused from either the
+    The last block is outside the loop to avoid delays caused from either the
     loop or from two consecutive wait commands."""
-    xy8_block(tau)
     with for_(i, 1, i <= order - 1, i + 1):
-        wait(tau, "NV")
         xy8_block(tau)
+        wait(tau, "NV")
+    xy8_block(tau)
 
 
 def xy8_block(tau):  # A single XY8 block
