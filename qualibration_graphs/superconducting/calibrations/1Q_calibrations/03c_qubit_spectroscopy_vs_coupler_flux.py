@@ -38,8 +38,9 @@ Prerequisites:
     - Having specified the desired flux point (qubit.z.flux_point).
 
 State update:
-    - Records the snapshot index in qubit extras under the key "{coupler_name}_dispersion_load_id"
-      for traceability. Avoided crossing positions are logged but not automatically applied to state.
+    - Records the snapshot index in qubit extras under
+      ``{coupler_name}_spectroscopy_vs_coupler_load_id`` (for 21a / 21c).
+      Avoided crossing positions are logged but not automatically applied to state.
 """
 
 
@@ -323,7 +324,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             measured_qubit_name = (
                 qp.qubit_control.name if node.parameters.measure_qubit == "control" else qp.qubit_target.name
             )
-            node.machine.qubits[measured_qubit_name].extras[f"{qp.coupler.name}_dispersion_load_id"] = node.snapshot_idx
+            extras = node.machine.qubits[measured_qubit_name].extras
+            extras[f"{qp.coupler.name}_spectroscopy_vs_coupler_load_id"] = node.snapshot_idx
             if node.outcomes[qp.name] == "failed":
                 continue
             # fit_results = node.results["fit_results"][measured_qubit_name]

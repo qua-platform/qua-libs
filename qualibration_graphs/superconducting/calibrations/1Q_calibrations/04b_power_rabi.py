@@ -27,11 +27,13 @@ from qualibration_libs.data import XarrayDataFetcher
 
 # %% {Description}
 description = """
-        POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
+
+        POWER RABI
+This sequence measures the resonator state as the qubit pulse amplitude (e.g., x180) is scanned, in order to find
+the amplitude that yields the desired qubit rotation. Optionally, POWER RABI WITH ERROR AMPLIFICATION is available
+by repeating the pulse 'N > 1' times per point. Amplitude inaccuracies are amplified over the repetitions, enabling
+a more precise measurement of the pi pulse amplitude at the cost of an additional sweep axis. The results are then
+analyzed to determine the qubit pulse amplitude suitable for the selected duration.
 
 Prerequisites:
     - Having calibrated the mixer or the Octave (nodes 01a or 01b).
@@ -142,9 +144,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for i, qubit in enumerate(qubits):
                 if operation == "x180":
                     if node.parameters.use_state_discrimination:
-                        state_st[i].buffer(len(amps)).buffer(
-                            np.ceil(node.parameters.max_number_pulses_per_sweep / 2)
-                        ).average().save(f"state{i + 1}")
+                        state_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"state{i + 1}")
                     else:
                         I_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"I{i + 1}")
                         Q_st[i].buffer(len(amps)).buffer(len(N_pi_vec)).average().save(f"Q{i + 1}")

@@ -25,6 +25,8 @@ dependencies = [
     "qiskit-experiments>=0.9.0",
     "tqdm>=4.67.1",
     "qiskit<2.0",
+    "uncertainties>=3.2.2",
+    "scikit-learn>=1.5.0",
 ]
 
 [tool.black]
