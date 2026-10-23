@@ -52,6 +52,14 @@ class NodeSpecificParameters(RunnableParameters):
     breakdown at QUA compile time."""
     reset_type: Literal["active", "thermal"] = "active"
     """Type of reset to perform. Default is active."""
+    measure_leakage: bool = False
+    """Read both qubits as g, e or f (``readout_GEF``) and fit leakage instead of survival.
+    Default is False. The RB sequences are unchanged. Needs a calibrated g/e/f readout
+    (15_iq_blobs_gef) and ``reset_type="thermal"``: the g/e active reset cannot clear |f>.
+    Writes only the leakage results to the state (``LeakageRB_reference`` from 37a,
+    ``LeakageRB`` from 37b), never the survival-based fidelities, since the g/e/f readout
+    is a different measurement. The g/e/f readout and the thermal reset make every shot
+    much longer, so lower ``num_shots`` or ``num_circuits_per_depth`` accordingly."""
     simulate: bool = False
     """Simulate the waveforms on the OPX instead of executing the program. Default is False."""
     fidelity_threshold: Optional[float] = None

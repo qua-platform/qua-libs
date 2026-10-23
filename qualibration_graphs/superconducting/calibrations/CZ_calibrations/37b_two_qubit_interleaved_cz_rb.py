@@ -34,6 +34,14 @@ from calibration_utils.two_qubit_rb import (
     summarize_transpiled_depth,
     try_load,
 )
+from calibration_utils.two_qubit_rb.leakage import (
+    INTERLEAVED_KEY,
+    analyse_leakage,
+    log_leakage_results,
+    plot_leakage,
+    state_entry,
+    validate_leakage_run,
+)
 
 # %% {Initialisation}
 description = """
@@ -53,6 +61,11 @@ fidelity.
 Key Features:
     - use_input_stream: When enabled, the circuit sequences are streamed to the OPX by using the
       input stream feature. This allows for dynamic circuit execution and reduces memory usage on the OPX.
+    - measure_leakage: When enabled, both qubits are read as g, e or f and the node fits the
+      population leaked out of the computational subspace against depth instead of the survival
+      probability (leakage RB, Wood & Gambetta 2018). Subtracting the reference leakage per 2Q
+      Clifford from a 37a run with measure_leakage gives the leakage per CZ, for the pair and for
+      each qubit. Needs a calibrated g/e/f readout (15_iq_blobs_gef) and reset_type="thermal".
 
 Prerequisites:
     - Having calibrated both qubits' single-qubit gates.
@@ -61,10 +74,14 @@ Prerequisites:
     - Having set the appropriate flux bias points for the qubit pair.
     - Having calibrated the qubit frequencies and coupling strength.
     - Having a recent reference Standard RB run (37_two_qubit_standard_rb) for the same operation.
+    - For measure_leakage: a 37a run with measure_leakage=True for the same operation (without it,
+      only the leakage per interleaved Clifford is reported), and a calibrated g/e/f readout.
 
 State update:
     - qp.macros[operation].fidelity["InterleavedRB"] (fitted CZ-gate fidelity).
     - qp.macros[operation].fidelity["InterleavedRB_alpha"] (fitted RB decay parameter).
+    - With measure_leakage, only qp.macros[operation].fidelity["LeakageRB"] (leakage L1 and seepage L2
+      per CZ and per interleaved Clifford, for the pair and for each qubit).
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -102,6 +119,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.log(f"Circuit depths: {circuit_depths}")
 
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
+    if node.parameters.measure_leakage:
+        validate_leakage_run(node, qubit_pairs)
 
     node.namespace["sweep_axes"] = build_sweep_axes(
         qubit_pairs,
@@ -226,6 +245,14 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
 def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse raw data, fit, log results, set outcomes and store structured fit results."""
     node.results["ds_proc"] = process_raw_dataset(node.results["ds_raw"], node)
+    if node.parameters.measure_leakage:
+        node.results["ds_leakage"], leakage_results = analyse_leakage(node.results["ds_proc"], node, interleaved=True)
+        node.results["leakage_results"] = leakage_results
+        log_leakage_results(leakage_results, interleaved=True, log_callable=node.log)
+        node.outcomes = {
+            qp_name: ("successful" if result["success"] else "failed") for qp_name, result in leakage_results.items()
+        }
+        return
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.INTERLEAVED)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_irb_results(fit_results, log_callable=node.log)
@@ -251,7 +278,15 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
-    figures = plot_raw_data_with_fit(node, title_prefix="2Q Interleaved CZ Randomized Benchmarking")
+    if node.parameters.measure_leakage:
+        figures = plot_leakage(
+            node,
+            node.results["ds_leakage"],
+            node.results["leakage_results"],
+            title="2Q Interleaved CZ Leakage Randomized Benchmarking",
+        )
+    else:
+        figures = plot_raw_data_with_fit(node, title_prefix="2Q Interleaved CZ Randomized Benchmarking")
     for fig in figures.values():
         plt.show()
     node.results["figures"] = figures
@@ -261,6 +296,11 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 with node.record_state_updates():
     for qp in node.namespace["qubit_pairs"]:
         if node.outcomes[qp.name] == "failed":
+            continue
+        if node.parameters.measure_leakage:
+            node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity[INTERLEAVED_KEY] = (
+                state_entry(node.results["leakage_results"][qp.name], node.snapshot_idx, interleaved=True)
+            )
             continue
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB"] = node.results[
             "fit_results"
