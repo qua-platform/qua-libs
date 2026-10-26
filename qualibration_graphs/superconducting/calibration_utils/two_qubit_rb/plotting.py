@@ -320,6 +320,9 @@ def plot_leakage(
     grid = QubitPairGrid(grid_names, pair_names)
     depths = ds_leak.circuit_depth.values
     interleaved = "interleaved" in node.name.lower()
+    log_x = node.parameters.rb_plot_log_x
+    # Depth 0 (readout floor) cannot be drawn on a log axis.
+    shown = depths > 0 if log_x else np.ones(depths.shape, dtype=bool)
 
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
@@ -331,10 +334,12 @@ def plot_leakage(
         labels = leakage_series_labels(result["control_qubit"], result["target_qubit"])
         fr = ds_leak.sel(qubit_pair=qp_name)
         for series, stored in result["per_clifford"].items():
+            leaked = fr.leaked.sel(leakage_series=series).values
+            err = np.nan_to_num(fr.leaked_stderr.sel(leakage_series=series).values)
             line = ax.errorbar(
-                depths,
-                fr.leaked.sel(leakage_series=series).values,
-                yerr=np.nan_to_num(fr.leaked_stderr.sel(leakage_series=series).values),
+                depths[shown],
+                leaked[shown],
+                yerr=err[shown],
                 fmt="o",
                 ms=4,
                 capsize=2,
@@ -342,7 +347,8 @@ def plot_leakage(
             )
             fit = LeakageFit(**stored)
             if fit.success:
-                dense = np.linspace(depths.min(), depths.max(), 200)
+                lo = depths[shown].min()
+                dense = np.geomspace(lo, depths.max(), 200) if log_x else np.linspace(lo, depths.max(), 200)
                 ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1)
         subtitle = ""
         if result["failure"]:
@@ -353,6 +359,8 @@ def plot_leakage(
         ax.set_title(f"{qp_name}{subtitle}", fontsize=9)
         ax.set_xlabel("Circuit depth (Cliffords)")
         ax.set_ylabel("Leaked population")
+        if log_x:
+            ax.set_xscale("log")
         ax.legend(fontsize=7)
 
     grid.fig.suptitle(f"{title}\n({node.parameters.reset_type} reset, g/e/f readout)")

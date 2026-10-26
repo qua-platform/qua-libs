@@ -58,7 +58,8 @@ class NodeSpecificParameters(RunnableParameters):
     """``error_bars``: depth mean with its SEM. ``per_sequence``: one point per random
     sequence plus the depth mean, no error bars. Default is error_bars."""
     rb_plot_log_x: bool = False
-    """Use a logarithmic circuit-depth axis in ``plot_data`` (depth 0 is omitted). Default is False."""
+    """Use a logarithmic circuit-depth axis in ``plot_data`` (depth 0 is omitted). Also applies to
+    the leakage plot. Default is False."""
 
 class Parameters(
     NodeParameters,

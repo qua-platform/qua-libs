@@ -51,6 +51,7 @@ Prerequisites:
 
 State update:
     - The gef centers positions: qubit.resonator.gef_centers
+    - The g/e/f confusion matrix (rows prepared): qubit.resonator.gef_confusion_matrix
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -270,6 +271,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                 node.results["ds_fit"].sel(qubit=q.name).center_matrix.data,
                 q.resonator.operations["readout"].length,
             )
+            q.resonator.gef_confusion_matrix = node.results["ds_fit"].sel(qubit=q.name).confusion_matrix.values.tolist()
 
 
 # %% {Save_results}
