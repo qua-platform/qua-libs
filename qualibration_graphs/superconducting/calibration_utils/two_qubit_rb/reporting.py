@@ -53,6 +53,57 @@ class IRBFitResult(BaseFitResult):
     standard_rb_alpha_stderr: float | None = None
 
 
+@dataclass
+class LeakageFit:
+    """Leakage RB fit (``measure_leakage=True``): leakage ``l1`` and seepage ``l2`` per Clifford.
+
+    ``method`` is ``exponential`` (full model) or ``linear`` (slope only, ``l2`` unknown). Like the
+    survival fits, ``fit_issues`` says why a fit was rejected and ``fit_warnings`` holds soft
+    warnings that do not fail it.
+    """
+
+    l1: float | None = float("nan")
+    l1_stderr: float | None = float("nan")
+    l2: float | None = float("nan")
+    l2_stderr: float | None = float("nan")
+    p_inf: float | None = float("nan")
+    lam: float | None = float("nan")
+    p0: float | None = float("nan")
+    method: str = ""
+    success: bool = False
+    fit_issues: tuple[str, ...] = field(default_factory=tuple)
+    fit_warnings: tuple[str, ...] = field(default_factory=tuple)
+
+    def curve(self, depths) -> np.ndarray:
+        """Fitted leaked population at ``depths``."""
+        m = np.asarray(depths, dtype=float)
+        if not self.success:
+            return np.full_like(m, np.nan)
+        if self.method == "linear":
+            return self.p0 + self.l1 * m
+        return self.p_inf + (self.p0 - self.p_inf) * self.lam**m
+
+
+@dataclass
+class LeakagePairResult:
+    """Leakage RB result of one qubit pair: a :class:`LeakageFit` per series (pair, control, target).
+
+    ``failure`` is set when the g/e/f readout looks wrong (nothing is then written to the state).
+    The interleaved node (37b) adds ``per_cz`` (``l1``, ``l1_stderr``, ``l2``, ``l2_stderr`` per
+    series) and the 37a ``reference_load_id``, or ``per_cz_note`` when no reference was stored.
+    """
+
+    control_qubit: str
+    target_qubit: str
+    confusion_corrected: dict[str, bool]
+    per_clifford: dict[str, LeakageFit]
+    success: bool
+    failure: str = ""
+    per_cz: dict[str, dict[str, float | None]] | None = None
+    reference_load_id: int | None = None
+    per_cz_note: str = ""
+
+
 def format_fraction_pm(
     value: float | None,
     stderr: float | None = None,
@@ -196,3 +247,45 @@ def log_irb_results(fit_results: dict[str, IRBFitResult], log_callable=None) -> 
     log_callable = log_callable or logging.getLogger(__name__).info
     for qp_name, r in fit_results.items():
         log_callable(_format_irb_result(qp_name, r))
+
+
+# --- Leakage RB (measure_leakage=True) -------------------------------------------------------
+
+
+def format_leakage_rate(l1: float | None, l1_stderr: float | None = None) -> str:
+    """Format a leakage rate as ``value +/- stderr``, or ``n/a``."""
+    if l1 is None or not np.isfinite(l1):
+        return "n/a"
+    if l1_stderr is None or not np.isfinite(l1_stderr):
+        return f"{l1:.2e}"
+    return f"{l1:.2e} +/- {l1_stderr:.1e}"
+
+
+def leakage_series_labels(control_qubit: str, target_qubit: str) -> dict[str, str]:
+    """Display names of the leakage series: either qubit, then each qubit by name."""
+    return {"pair": "either qubit", "control": control_qubit, "target": target_qubit}
+
+
+def log_leakage_results(results: dict[str, LeakagePairResult], *, interleaved: bool, log_callable=print) -> None:
+    """Log L1 per pair: per Clifford, and per CZ for the interleaved node."""
+    for qp_name, result in results.items():
+        labels = leakage_series_labels(result.control_qubit, result.target_qubit)
+        unit = "interleaved Clifford" if interleaved else "2Q Clifford"
+        lines = [f"Qubit pair {qp_name} leakage L1 per {unit}:"]
+        if result.failure:
+            lines.append(f"  FAILED: {result.failure}")
+        for series, fit in result.per_clifford.items():
+            status = "" if fit.success else " FAILED"
+            lines.append(f"  {labels[series]}: {format_leakage_rate(fit.l1, fit.l1_stderr)}{status}")
+            lines += [f"\t- {issue}" for issue in fit.fit_issues]
+            lines += [f"\tWarning: {warning}" for warning in fit.fit_warnings]
+        if interleaved:
+            if result.per_cz is None:
+                lines.append(f"  per CZ: {result.per_cz_note}")
+            else:
+                rates = ", ".join(
+                    f"{labels[series]} {format_leakage_rate(rate['l1'], rate['l1_stderr'])}"
+                    for series, rate in result.per_cz.items()
+                )
+                lines.append(f"  per CZ: {rates}")
+        log_callable("\n".join(lines))

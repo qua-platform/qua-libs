@@ -11,22 +11,25 @@ from .circuit_utils import (
     log_depth_summary,
     summarize_transpiled_depth,
 )
-from .parameters import Parameters, build_sweep_axes
-from .plotting import plot_raw_data_with_fit
+from .parameters import Parameters, build_sweep_axes, validate_leakage_run
+from .plotting import plot_leakage, plot_raw_data_with_fit
 from .qua_utils import QuaProgramHandler
 from .rb_cache import cache_key, save, try_load
 from .rb_utils import InterleavedRB, StandardRB
-from .reporting import log_irb_results, log_srb_results
+from .reporting import log_irb_results, log_leakage_results, log_srb_results
 
 __all__ = [
     "Parameters",
     "build_sweep_axes",
+    "validate_leakage_run",
     "process_raw_dataset",
     "fit_raw_data",
     "log_srb_results",
     "log_irb_results",
+    "log_leakage_results",
     "RBMode",
     "plot_raw_data_with_fit",
+    "plot_leakage",
     "StandardRB",
     "InterleavedRB",
     "circuit_to_layer_ints",

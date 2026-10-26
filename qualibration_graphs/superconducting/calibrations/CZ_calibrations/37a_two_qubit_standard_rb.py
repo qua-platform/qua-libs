@@ -25,7 +25,9 @@ from calibration_utils.two_qubit_rb import (
     cache_key,
     circuit_to_layer_ints,
     fit_raw_data,
+    log_leakage_results,
     log_srb_results,
+    plot_leakage,
     plot_raw_data_with_fit,
     process_raw_dataset,
     RBMode,
@@ -33,13 +35,6 @@ from calibration_utils.two_qubit_rb import (
     log_depth_summary,
     summarize_transpiled_depth,
     try_load,
-)
-from calibration_utils.two_qubit_rb.leakage import (
-    REFERENCE_KEY,
-    analyse_leakage,
-    log_leakage_results,
-    plot_leakage,
-    state_entry,
     validate_leakage_run,
 )
 
@@ -61,7 +56,7 @@ Key Features:
     - use_input_stream: When enabled, the circuit sequences are streamed to the OPX by using the
       input stream feature. This allows for dynamic circuit execution and reduces memory usage on the OPX.
     - measure_leakage: When enabled, both qubits are read as g, e or f and the node fits the
-      population leaked out of the computational subspace against depth instead of the survival
+      population leaked out of the computational subspace against depth, as well as the survival
       probability (leakage RB, Wood & Gambetta 2018). This gives the leakage per 2Q Clifford, the
       reference 37b subtracts to get the leakage per CZ. Needs a calibrated g/e/f readout
       (15_iq_blobs_gef) and reset_type="thermal".
@@ -298,18 +293,20 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse raw data, fit, log results, set outcomes and store structured fit results."""
     node.results["ds_proc"] = process_raw_dataset(node.results["ds_raw"], node)
     if node.parameters.measure_leakage:
-        node.results["ds_leakage"], leakage_results = analyse_leakage(
-            node.results["ds_proc"], node, interleaved=False
+        node.results["ds_leakage"], leakage_results = fit_raw_data(
+            node.results["ds_proc"], node, mode=RBMode.STANDARD, leakage=True
         )
-        node.results["leakage_results"] = leakage_results
+        node.results["leakage_results"] = {k: asdict(v) for k, v in leakage_results.items()}
         log_leakage_results(leakage_results, interleaved=False, log_callable=node.log)
-        node.outcomes = {
-            qp_name: ("successful" if result["success"] else "failed") for qp_name, result in leakage_results.items()
-        }
-        return
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.STANDARD)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_srb_results(fit_results, log_callable=node.log)
+    if node.parameters.measure_leakage:
+        # A leakage run passes or fails on its leakage fit; the survival fit is stored with it.
+        node.outcomes = {
+            qp_name: ("successful" if result.success else "failed") for qp_name, result in leakage_results.items()
+        }
+        return
     node.outcomes = {
         qp_name: ("successful" if fit_result.success else "failed") for qp_name, fit_result in fit_results.items()
     }
@@ -319,15 +316,17 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in a specific figure whose shape is given by qubit pair grid locations."""
+    suffix = " (g/e/f readout)" if node.parameters.measure_leakage else ""
+    figures = plot_raw_data_with_fit(node, title_prefix="2Q Standard Randomized Benchmarking" + suffix)
     if node.parameters.measure_leakage:
-        figures = plot_leakage(
-            node,
-            node.results["ds_leakage"],
-            node.results["leakage_results"],
-            title="2Q Standard Leakage Randomized Benchmarking",
+        figures.update(
+            plot_leakage(
+                node,
+                node.results["ds_leakage"],
+                node.results["leakage_results"],
+                title="2Q Standard Leakage Randomized Benchmarking",
+            )
         )
-    else:
-        figures = plot_raw_data_with_fit(node, title_prefix="2Q Standard Randomized Benchmarking")
     for fig in figures.values():
         plt.show()
     node.results["figures"] = figures
@@ -339,9 +338,14 @@ with node.record_state_updates():
         if node.outcomes[qp.name] == "failed":
             continue
         if node.parameters.measure_leakage:
-            node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity[REFERENCE_KEY] = state_entry(
-                node.results["leakage_results"][qp.name], node.snapshot_idx, interleaved=False
-            )
+            survival = node.results["fit_results"][qp.name]
+            node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["LeakageRB_reference"] = {
+                **node.results["leakage_results"][qp.name],
+                "load_id": node.snapshot_idx,
+                "survival": (
+                    {"fidelity": survival["fidelity"], "alpha": survival["alpha"]} if survival["success"] else None
+                ),
+            }
             continue
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB"] = node.results[
             "fit_results"

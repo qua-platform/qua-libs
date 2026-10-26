@@ -8,7 +8,7 @@ lives in ``fidelity.py``. Result types and logging live in ``reporting.py``.
 from __future__ import annotations
 
 import enum
-from typing import Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
@@ -18,6 +18,8 @@ from calibration_utils.two_qubit_rb import fidelity, fit_utils
 from calibration_utils.two_qubit_rb.coherence_limit import try_coherence_limit_epg
 from calibration_utils.two_qubit_rb.reporting import (
     IRBFitResult,
+    LeakageFit,
+    LeakagePairResult,
     SRBFitResult,
 )
 
@@ -41,9 +43,21 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode | None = None) ->
 
 
 def fit_raw_data(
-    ds: xr.Dataset, node: QualibrationNode, *, mode: RBMode
-) -> Tuple[xr.Dataset, Dict[str, SRBFitResult] | Dict[str, IRBFitResult]]:
-    """Fit RB survival curves for each qubit pair and return an augmented dataset."""
+    ds: xr.Dataset, node: QualibrationNode, *, mode: RBMode, leakage: bool = False
+) -> Tuple[xr.Dataset, Dict[str, SRBFitResult] | Dict[str, IRBFitResult] | Dict[str, LeakagePairResult]]:
+    """Fit RB survival curves for each qubit pair and return an augmented dataset.
+
+    With ``leakage`` (``measure_leakage`` runs), fit the leaked population instead; ``mode`` then
+    says whether the CZ is interleaved (37b), which adds the leakage per CZ.
+    """
+    if leakage:
+        interleaved = mode is RBMode.INTERLEAVED
+        ds_fit = ds.groupby("qubit_pair").apply(
+            lambda da: fit_utils.fit_leakage_pair(
+                da, node, str(np.asarray(da.qubit_pair.values).item()), interleaved=interleaved
+            )
+        )
+        return _extract_leakage_results(ds_fit, interleaved=interleaved)
     if mode is RBMode.STANDARD:
         average_gates_per_clifford = node.namespace.get("average_gates_per_clifford")
         ds_fit = ds.groupby("qubit_pair").apply(lambda da: fit_utils.fit_srb_pair(da, average_gates_per_clifford))
@@ -59,7 +73,7 @@ def fit_raw_data(
 
 
 def _annotate_shared_attrs(ds_fit: xr.Dataset) -> None:
-    """Attach display attrs shared by both modes (mutates in place)."""
+    """Attach display attrs to the fit variables present, for every mode (mutates in place)."""
     attrs_by_var = {
         "survival_probability": {"long_name": "P(|00>)"},
         "survival_per_sequence": {"long_name": "P(|00>) per random sequence"},
@@ -68,6 +82,13 @@ def _annotate_shared_attrs(ds_fit: xr.Dataset) -> None:
         "epc": {"long_name": "error per Clifford"},
         "epg": {"long_name": "error per gate"},
         "fit_alpha": {"long_name": "RB decay constant alpha"},
+        "leaked": {"long_name": "leaked population"},
+        "leaked_stderr": {"long_name": "standard error of the leaked population"},
+        "leaked_fit": {"long_name": "leakage RB fit"},
+        "leakage_l1": {"long_name": "leakage L1 per Clifford"},
+        "leakage_l2": {"long_name": "seepage L2 per Clifford"},
+        "l1_per_cz": {"long_name": "leakage L1 per CZ"},
+        "l2_per_cz": {"long_name": "seepage L2 per CZ"},
     }
     for var, attrs in attrs_by_var.items():
         if var in ds_fit.data_vars:
@@ -223,7 +244,90 @@ def _extract_irb_results(ds_fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr
     return ds_fit, fit_results
 
 
+# --- Leakage RB (measure_leakage=True) -------------------------------------------------------
+#
+# Each shot's state is ``3 * control + target`` with each qubit read as g (0), e (1) or f (2).
+# Per qubit pair the leaked population (either qubit in f) and each qubit's own f population are
+# fitted against circuit depth (model and fit in ``fit_utils``). 37a fits the leakage per 2Q
+# Clifford and stores it as ``fidelity["LeakageRB_reference"]``; 37b (CZ interleaved after every
+# Clifford) subtracts that reference to give the leakage per CZ, stored as ``fidelity["LeakageRB"]``
+# (both in ``qubit_pair.macros[operation]``).
+
+
+def _extract_leakage_results(
+    ds_fit: xr.Dataset, *, interleaved: bool
+) -> Tuple[xr.Dataset, Dict[str, LeakagePairResult]]:
+    """Build ``LeakagePairResult`` per qubit pair, with the leakage per CZ for the interleaved node.
+
+    Non-finite numbers become ``None`` (a linear fit has no ``l2``): the results go to the state
+    as they are, and QUAM would write NaN, which is not valid JSON.
+    """
+    _annotate_shared_attrs(ds_fit)
+    results: Dict[str, LeakagePairResult] = {}
+    for qp_name in ds_fit.qubit_pair.values:
+        qp_data = ds_fit.sel(qubit_pair=qp_name)
+        series_names = [str(series) for series in qp_data.leakage_series.values]
+
+        per_clifford = {}
+        for series in series_names:
+            fr = qp_data.sel(leakage_series=series)
+            per_clifford[series] = LeakageFit(
+                l1=_float_or_none(fr.leakage_l1.values),
+                l1_stderr=_float_or_none(fr.leakage_l1_stderr.values),
+                l2=_float_or_none(fr.leakage_l2.values),
+                l2_stderr=_float_or_none(fr.leakage_l2_stderr.values),
+                p_inf=_float_or_none(fr.leakage_p_inf.values),
+                lam=_float_or_none(fr.leakage_lam.values),
+                p0=_float_or_none(fr.leakage_p0.values),
+                method=str(fr.leakage_method.values),
+                success=bool(fr.leakage_fit_success.values),
+                fit_issues=_split_lines(fr, "leakage_fit_issues"),
+                fit_warnings=_split_lines(fr, "leakage_fit_warnings"),
+            )
+
+        per_cz, reference_load_id, per_cz_note = None, None, ""
+        if interleaved:
+            per_cz_note = str(qp_data.per_cz_note.values)
+            if not per_cz_note:
+                variables = {
+                    "l1": "l1_per_cz",
+                    "l1_stderr": "l1_per_cz_stderr",
+                    "l2": "l2_per_cz",
+                    "l2_stderr": "l2_per_cz_stderr",
+                }
+                per_cz = {
+                    series: {
+                        key: _float_or_none(qp_data[var].sel(leakage_series=series).values)
+                        for key, var in variables.items()
+                    }
+                    for series in series_names
+                }
+                load_id = _float_or_none(qp_data.reference_load_id.values)
+                reference_load_id = None if load_id is None else int(load_id)
+
+        results[str(qp_name)] = LeakagePairResult(
+            control_qubit=str(qp_data.control_qubit.values),
+            target_qubit=str(qp_data.target_qubit.values),
+            confusion_corrected={
+                "control": bool(qp_data.confusion_corrected_control.values),
+                "target": bool(qp_data.confusion_corrected_target.values),
+            },
+            per_clifford=per_clifford,
+            success=bool(qp_data.success.values),
+            failure=str(qp_data.failure.values),
+            per_cz=per_cz,
+            reference_load_id=reference_load_id,
+            per_cz_note=per_cz_note,
+        )
+    return ds_fit, results
+
+
 def _split_lines(qp_data: xr.Dataset, var: str) -> tuple[str, ...]:
     if var not in qp_data:
         return ()
     return tuple(line for line in str(qp_data[var].values).split("\n") if line)
+
+
+def _float_or_none(value: Any) -> Optional[float]:
+    value = float(value)
+    return value if np.isfinite(value) else None

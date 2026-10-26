@@ -13,7 +13,12 @@ from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
 from calibration_utils.two_qubit_rb.fit_utils import rb_decay_curve
-from calibration_utils.two_qubit_rb.reporting import format_fraction_pm
+from calibration_utils.two_qubit_rb.reporting import (
+    LeakageFit,
+    format_fraction_pm,
+    format_leakage_rate,
+    leakage_series_labels,
+)
 
 RbPlotStyle = Literal["error_bars", "per_sequence"]
 
@@ -301,3 +306,55 @@ def plot_individual_data_with_fit(
     if log_x:
         ax.set_xscale("log")
     ax.legend(loc="upper right", framealpha=0.8, fontsize=8)
+
+
+def plot_leakage(
+    node: QualibrationNode, ds_leak: xr.Dataset, results: Dict[str, dict], *, title: str
+) -> Dict[str, Figure]:
+    """Plot leaked population against depth (``measure_leakage=True``), one panel per qubit pair.
+
+    ``results`` is ``node.results["leakage_results"]``: the ``asdict`` of each pair's
+    :class:`LeakagePairResult`.
+    """
+    grid_names, pair_names = grid_pair_names(node.namespace["qubit_pairs"])
+    grid = QubitPairGrid(grid_names, pair_names)
+    depths = ds_leak.circuit_depth.values
+    interleaved = "interleaved" in node.name.lower()
+
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        if qp_name not in results:
+            ax.text(0.5, 0.5, "No leakage data", ha="center", va="center", transform=ax.transAxes)
+            ax.set_title(f"Qubit pair: {qp_name}")
+            continue
+        result = results[qp_name]
+        labels = leakage_series_labels(result["control_qubit"], result["target_qubit"])
+        fr = ds_leak.sel(qubit_pair=qp_name)
+        for series, stored in result["per_clifford"].items():
+            line = ax.errorbar(
+                depths,
+                fr.leaked.sel(leakage_series=series).values,
+                yerr=np.nan_to_num(fr.leaked_stderr.sel(leakage_series=series).values),
+                fmt="o",
+                ms=4,
+                capsize=2,
+                label=f"{labels[series]}: L1 {format_leakage_rate(stored['l1'], stored['l1_stderr'])}",
+            )
+            fit = LeakageFit(**stored)
+            if fit.success:
+                dense = np.linspace(depths.min(), depths.max(), 200)
+                ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1)
+        subtitle = ""
+        if result["failure"]:
+            subtitle = "\nFAILED: g/e/f readout suspect (not saved)"
+        elif interleaved and result["per_cz"]:
+            per_cz = result["per_cz"]["pair"]
+            subtitle = f"\nper CZ: {format_leakage_rate(per_cz['l1'], per_cz['l1_stderr'])}"
+        ax.set_title(f"{qp_name}{subtitle}", fontsize=9)
+        ax.set_xlabel("Circuit depth (Cliffords)")
+        ax.set_ylabel("Leaked population")
+        ax.legend(fontsize=7)
+
+    grid.fig.suptitle(f"{title}\n({node.parameters.reset_type} reset, g/e/f readout)")
+    grid.fig.tight_layout()
+    return {"leakage": grid.fig}
