@@ -21,6 +21,11 @@ class NodeSpecificParameters(RunnableParameters):
     """Delta clifford (number of Clifford gates between the RB sequences). Default is 20."""
     seed: Optional[int] = None
     """Seed for the random number generator. Default is None."""
+    measure_leakage: bool = False
+    """Read the qubits as g/e/f and fit the leaked population P(f) against depth (leakage RB);
+    subtracting the 11a leakage reference gives the leakage of the interleaved gate. Needs
+    15_iq_blobs_gef, a thermal reset and state discrimination. Writes only
+    ``gate_fidelity["LeakageRB_<gate>"]`` to the state. Default is False."""
 
 
 class Parameters(

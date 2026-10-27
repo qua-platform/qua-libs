@@ -13,6 +13,7 @@ from calibration_utils.common_utils.leakage_rb import (
     LeakageFit,
     correct_populations,
     fit_leakage,
+    leakage_per_gate,
     mean_and_stderr_over_sequences,
     read_confusion_matrix,
 )
@@ -126,32 +127,46 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 #
 # ``pg``, ``pe`` and ``pf`` hold, per random sequence and depth, the fraction of shots read as g, e
 # and f. The leakage model, its fit and the population correction are shared with the two-qubit RB
-# (``calibration_utils.common_utils.leakage_rb``).
+# (``calibration_utils.common_utils.leakage_rb``). 11a fits the leakage per Clifford and stores it as
+# ``gate_fidelity["LeakageRB"]``; 11b (a gate interleaved after every Clifford) fits it per
+# Clifford + gate step and subtracts that reference to give the leakage of the gate.
+
+# Where 11a stores its leakage result, the reference 11b subtracts.
+LEAKAGE_REFERENCE_KEY = "LeakageRB"
 
 
 @dataclass
 class LeakageResult:
-    """Leakage RB result of one qubit: its leakage ``l1`` and seepage ``l2`` per Clifford.
+    """Leakage RB result of one qubit: its leakage ``l1`` and seepage ``l2`` per sequence step.
 
-    ``failure`` is set when the g/e/f readout looks wrong (nothing is then written to the state).
-    Non-finite numbers in ``per_clifford`` are ``None``: the result goes to the state as it is, and
-    QUAM would write NaN, which is not valid JSON.
+    A step is one Clifford (11a), or one Clifford plus the interleaved gate (11b), which also gets
+    ``per_gate`` (``l1``, ``l1_stderr``, ``l2``, ``l2_stderr`` of the gate) and the 11a
+    ``reference_load_id``, or ``per_gate_note`` when no reference was stored. ``failure`` is set
+    when the g/e/f readout looks wrong (nothing is then written to the state). Non-finite numbers
+    are ``None``: the result goes to the state as it is, and QUAM would write NaN, which is not
+    valid JSON.
     """
 
     confusion_corrected: bool
     per_clifford: LeakageFit
     success: bool
     failure: str = ""
+    per_gate: dict | None = None
+    reference_load_id: int | None = None
+    per_gate_note: str = ""
 
 
-def fit_leakage_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Dict[str, LeakageResult]]:
+def fit_leakage_data(
+    ds: xr.Dataset, node: QualibrationNode, *, interleaved_gate: str | None = None
+) -> Tuple[xr.Dataset, Dict[str, LeakageResult]]:
     """Fit the leaked population P(f) against circuit depth for each qubit.
 
     Each sequence's (P(g), P(e), P(f)) is corrected with the qubit's g/e/f confusion matrix when it
     has one, then P(f) is averaged over sequences and fitted. A qubit fails, so nothing is written
     to the state, if its leaked population at the shallowest depth is above
     ``SHALLOW_LEAKAGE_THRESHOLD``: so few gates cannot leak that much, so the g/e/f readout or
-    reset is failing.
+    reset is failing. With ``interleaved_gate`` (11b) the leakage of that gate is the fitted rate
+    minus the 11a reference in ``gate_fidelity["LeakageRB"]``.
     """
     qubits = node.namespace["qubits"]
     depths = ds.depths.values
@@ -180,6 +195,8 @@ def fit_leakage_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset
             success=fit.success and not failure,
             failure=failure,
         )
+        if interleaved_gate is not None:
+            _add_leakage_per_gate(results[qubit.name], fit, qubit, interleaved_gate)
 
     per_qubit = lambda values: ("qubit", np.asarray(values))  # noqa: E731
     ds_leakage = xr.Dataset(
@@ -193,13 +210,41 @@ def fit_leakage_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset
             "leakage_l2_stderr": per_qubit([fit.l2_stderr for fit in fits]),
             "leakage_method": per_qubit([fit.method for fit in fits]),
             "success": per_qubit([results[qubit.name].success for qubit in qubits]),
+            **(
+                {
+                    f"{key}_per_gate": per_qubit(
+                        [_nan_if_none((results[q.name].per_gate or {}).get(key)) for q in qubits]
+                    )
+                    for key in ("l1", "l1_stderr", "l2", "l2_stderr")
+                }
+                if interleaved_gate is not None
+                else {}
+            ),
         },
         coords={"qubit": [qubit.name for qubit in qubits], "depths": depths},
     )
     ds_leakage.leaked.attrs = {"long_name": "leaked population P(f)"}
-    ds_leakage.leakage_l1.attrs = {"long_name": "leakage L1 per Clifford"}
-    ds_leakage.leakage_l2.attrs = {"long_name": "seepage L2 per Clifford"}
+    step = "Clifford" if interleaved_gate is None else f"Clifford + {interleaved_gate}"
+    ds_leakage.leakage_l1.attrs = {"long_name": f"leakage L1 per {step}"}
+    ds_leakage.leakage_l2.attrs = {"long_name": f"seepage L2 per {step}"}
+    if interleaved_gate is not None:
+        ds_leakage.l1_per_gate.attrs = {"long_name": f"leakage L1 per {interleaved_gate}"}
+        ds_leakage.l2_per_gate.attrs = {"long_name": f"seepage L2 per {interleaved_gate}"}
     return ds_leakage, results
+
+
+def _add_leakage_per_gate(result: LeakageResult, fit: LeakageFit, qubit, interleaved_gate: str) -> None:
+    """Fill the leakage of the interleaved gate in ``result``: this run minus the 11a reference."""
+    reference = (getattr(qubit, "gate_fidelity", None) or {}).get(LEAKAGE_REFERENCE_KEY) or {}
+    if not reference.get("per_clifford"):
+        result.per_gate_note = (
+            f"No gate_fidelity[{LEAKAGE_REFERENCE_KEY!r}] for {qubit.name}: run 11a with measure_leakage=True "
+            f"first. Only the leakage per Clifford + {interleaved_gate} step is reported."
+        )
+        return
+    per_gate = leakage_per_gate([fit], [reference["per_clifford"]])
+    result.per_gate = {key: _none_if_nan(float(values[0])) for key, values in per_gate.items()}
+    result.reference_load_id = reference.get("load_id")
 
 
 def format_leakage_rate(rate: float | None, stderr: float | None = None) -> str:
@@ -211,17 +256,27 @@ def format_leakage_rate(rate: float | None, stderr: float | None = None) -> str:
     return f"{rate:.2e} +/- {stderr:.1e}"
 
 
-def log_leakage_results(leakage_results: Dict, log_callable=None):
-    """Log L1 (and L2 when the fit has it) per Clifford for each qubit, with fit issues and warnings."""
+def log_leakage_results(leakage_results: Dict, log_callable=None, *, interleaved_gate: str | None = None):
+    """Log L1 (and L2 when the fit has it) per sequence step for each qubit, and per gate for 11b."""
     if log_callable is None:
         log_callable = logging.getLogger(__name__).info
+    step = "Clifford" if interleaved_gate is None else f"Clifford + {interleaved_gate}"
     for q, result in leakage_results.items():
         fit = result["per_clifford"]
         status = "" if result["success"] else " FAILED"
         lines = [
-            f"Leakage for qubit {q}{status}: L1 per Clifford = {format_leakage_rate(fit['l1'], fit['l1_stderr'])}, "
+            f"Leakage for qubit {q}{status}: L1 per {step} = {format_leakage_rate(fit['l1'], fit['l1_stderr'])}, "
             f"L2 = {format_leakage_rate(fit['l2'], fit['l2_stderr'])} ({fit['method'] or 'no fit'})"
         ]
+        if interleaved_gate is not None:
+            if result["per_gate"] is None:
+                lines.append(f"\t{result['per_gate_note']}")
+            else:
+                per_gate = result["per_gate"]
+                lines.append(
+                    f"\tL1 per {interleaved_gate} = {format_leakage_rate(per_gate['l1'], per_gate['l1_stderr'])} "
+                    f"(minus the 11a reference, run {result['reference_load_id']})"
+                )
         if result["failure"]:
             lines.append(f"\t- {result['failure']}")
         lines += [f"\t- {issue}" for issue in fit["fit_issues"]]
@@ -233,3 +288,7 @@ def log_leakage_results(leakage_results: Dict, log_callable=None):
 
 def _none_if_nan(value):
     return None if isinstance(value, float) and not np.isfinite(value) else value
+
+
+def _nan_if_none(value):
+    return np.nan if value is None else value

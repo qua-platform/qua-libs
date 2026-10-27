@@ -114,12 +114,14 @@ def plot_leakage(
     *,
     log_x: bool = False,
     reset_type: str = "",
+    interleaved_gate: str | None = None,
 ) -> Figure:
     """Plot the leaked population P(f) against circuit depth with its fit, one panel per qubit.
 
     ``leakage_results`` is ``node.results["leakage_results"]``: the ``asdict`` of each qubit's
-    ``LeakageResult``.
+    ``LeakageResult``. With ``interleaved_gate`` (11b) each panel title also gives the gate's own L1.
     """
+    step = "Clifford" if interleaved_gate is None else f"Clifford + {interleaved_gate}"
     grid = QubitGrid(ds_leakage, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         name = qubit["qubit"]
@@ -134,12 +136,17 @@ def plot_leakage(
             fmt="o",
             ms=4,
             capsize=2,
-            label=f"L1 {format_leakage_rate(fit.l1, fit.l1_stderr)}",
+            label=f"L1 per {step}: {format_leakage_rate(fit.l1, fit.l1_stderr)}",
         )
         if fit.success:
             dense = (np.geomspace if log_x else np.linspace)(depths.min(), depths.max(), 200)
             ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1)
-        subtitle = "\nFAILED: g/e/f readout suspect (not saved)" if result["failure"] else ""
+        subtitle = ""
+        if result["failure"]:
+            subtitle = "\nFAILED: g/e/f readout suspect (not saved)"
+        elif interleaved_gate is not None and result["per_gate"]:
+            per_gate = result["per_gate"]
+            subtitle = f"\nL1 per {interleaved_gate}: {format_leakage_rate(per_gate['l1'], per_gate['l1_stderr'])}"
         ax.set_title(f"{name}{subtitle}", fontsize=9)
         ax.set_xlabel("Circuit depth (Cliffords)")
         ax.set_ylabel("Leaked population P(f)")
@@ -148,6 +155,7 @@ def plot_leakage(
         ax.legend(fontsize=7)
 
     reset = f"{reset_type} reset, " if reset_type else ""
-    grid.fig.suptitle(f"Single qubit leakage randomized benchmarking\n({reset}g/e/f readout)")
+    interleaved = f" interleaved with {interleaved_gate}" if interleaved_gate is not None else ""
+    grid.fig.suptitle(f"Single qubit leakage randomized benchmarking{interleaved}\n({reset}g/e/f readout)")
     grid.fig.tight_layout()
     return grid.fig
