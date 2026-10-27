@@ -51,15 +51,16 @@ def plot_individual_data_with_fit(ax: Axes, ds_fit: xr.Dataset, qp_name: str) ->
         ax.plot(sel.depth_fine.values, sel.quadratic_curve.values, ":", color=color, lw=1.2)
         status = "" if bool(sel.fit_success) else " (fit failed)"
         lines.append(
-            f"{variant.upper()}{status}: 1-F={1 - float(sel.fit_fidelity):.2e}\n"
-            f"  incoh={float(sel.fit_incoherent_error):.2e}, coh={float(sel.fit_coherent_error):.2e}"
+            f"{variant.upper()}{status}: F = {100 * float(sel.fit_fidelity):.2f} ± {100 * float(sel.fit_fidelity_error):.2f} %\n"
+            f"  incoh. limit = {100 * (1 - float(sel.fit_incoherent_error)):.2f} %\n"
+            f"  coh. limit   = {100 * (1 - float(sel.fit_coherent_error)):.2f} %"
         )
     ax.text(
         0.03,
         0.03,
         "\n".join(lines),
         transform=ax.transAxes,
-        fontsize=7,
+        fontsize=11,
         va="bottom",
         family="monospace",
         bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"},
@@ -67,7 +68,7 @@ def plot_individual_data_with_fit(ax: Axes, ds_fit: xr.Dataset, qp_name: str) ->
     ax.set_title(qp_name)
     ax.set_xlabel("Cycle repetitions n")
     ax.set_ylabel("Average gate fidelity")
-    ax.legend(loc="upper right", fontsize=8)
+    ax.legend(loc="upper right", fontsize=10)
 
 
 def plot_leakage(ds_fit: xr.Dataset, qubit_pairs: list, title_prefix: str = "CZ CAFE") -> Figure:

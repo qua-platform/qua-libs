@@ -363,7 +363,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
         fit_curve=xr.DataArray(curves, dims=dims, coords=coords),
         quadratic_curve=xr.DataArray(quad_curves, dims=dims, coords=coords),
     )
-    for key in ("fidelity", "incoherent_error", "coherent_error", "spam", "success"):
+    for key in ("fidelity", "fidelity_error", "incoherent_error", "coherent_error", "spam", "success"):
         values = [[getattr(fit_results[q][v], key) for v in variants] for q in qp_names]
         ds_fit = ds_fit.assign_coords({f"fit_{key}": (("qubit_pair", "variant"), np.array(values))})
     return ds_fit, fit_results
