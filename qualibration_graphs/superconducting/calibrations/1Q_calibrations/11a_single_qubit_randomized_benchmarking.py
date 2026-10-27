@@ -64,6 +64,7 @@ Prerequisites:
 
 State update:
     - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"] (also with measure_leakage).
+    - The RB decay per Clifford, the reference 11b compares against: qubit.gate_fidelity["averaged_alpha"].
     - With measure_leakage, also qubit.extras["leakage_per_clifford"] (leakage L1 and seepage L2 per
       Clifford), when the leakage fit succeeds.
 """
@@ -405,6 +406,8 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[q.name] == "failed":
                 continue
             q.gate_fidelity["averaged"] = float(1 - node.results["fit_results"][q.name]["error_per_gate"])
+            # The RB decay per Clifford: the reference 11b compares against (as StandardRB_alpha in 37a)
+            q.gate_fidelity["averaged_alpha"] = node.results["fit_results"][q.name]["alpha"]
             if node.parameters.measure_leakage and node.results["leakage_results"][q.name]["success"]:
                 q.extras["leakage_per_clifford"] = leakage_reference_entry(node.results["leakage_results"][q.name])
 

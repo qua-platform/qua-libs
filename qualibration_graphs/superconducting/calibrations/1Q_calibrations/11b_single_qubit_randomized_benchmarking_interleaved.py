@@ -21,6 +21,7 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
+    add_interleaved_gate_error,
     plot_raw_data_with_fit,
     validate_leakage_run,
     fit_leakage_data,
@@ -68,7 +69,8 @@ Prerequisites:
       Clifford + gate step is reported) and a calibrated g/e/f readout.
 
 State update:
-    - The averaged single qubit gate fidelity: qubit.gate_fidelity["interleaved_gate"] (also with measure_leakage).
+    - The fidelity of the interleaved gate alone (interleaved RB against the 11a gate_fidelity["averaged_alpha"]):
+      qubit.gate_fidelity["interleaved_gate"] (also with measure_leakage; not written without an 11a fidelity).
     - With measure_leakage, also qubit.extras["leakage_<interleaved_gate>"] (leakage L1 of the interleaved
       gate), when the leakage fit succeeds and an 11a reference exists.
 """
@@ -374,10 +376,14 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    # The interleaved gate alone, against the 11a reference fidelity
+    node.results["ds_fit"] = add_interleaved_gate_error(node.results["ds_fit"], fit_results, node.namespace["qubits"])
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    log_fitted_results(
+        node.results["fit_results"], log_callable=node.log, interleaved_gate=node.parameters.interleaved_gate_operation
+    )
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
@@ -426,7 +432,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[q.name] == "failed":
                 continue
             gate = node.parameters.interleaved_gate_operation
-            q.gate_fidelity[gate] = float(1 - node.results["fit_results"][q.name]["error_per_gate"])
+            gate_error = node.results["fit_results"][q.name]["gate_error"]
+            if gate_error is not None:
+                q.gate_fidelity[gate] = float(1 - gate_error)
             if node.parameters.measure_leakage and node.results["leakage_results"][q.name]["success"]:
                 entry = leakage_per_gate_entry(node.results["leakage_results"][q.name])
                 if entry is not None:

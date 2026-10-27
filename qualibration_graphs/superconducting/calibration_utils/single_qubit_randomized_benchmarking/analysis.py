@@ -22,16 +22,24 @@ from calibration_utils.common_utils.leakage_rb import (
 
 @dataclass
 class FitParameters:
-    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit"""
+    """Stores the relevant qubit spectroscopy experiment fit parameters for a single qubit
+
+    ``alpha`` is the fitted RB decay per Clifford. For 11b, ``gate_error`` is the error of the
+    interleaved gate alone (standard interleaved RB against the 11a ``alpha``), or None when no 11a
+    ``alpha`` is stored.
+    """
 
     error_per_clifford: float
     error_per_gate: float
     success: bool
+    alpha: float | None = None
     error_per_clifford_stderr: float | None = None
     error_per_gate_stderr: float | None = None
+    gate_error: float | None = None
+    gate_error_stderr: float | None = None
 
 
-def log_fitted_results(fit_results: Dict, log_callable=None):
+def log_fitted_results(fit_results: Dict, log_callable=None, *, interleaved_gate: str | None = None):
     """
     Logs the node-specific fitted results for all qubits from the fit results
 
@@ -47,9 +55,22 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         log_callable = logging.getLogger(__name__).info
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
-        s_fidelity = f"\tSingle qubit gate fidelity: {100 * (1 - fit_results[q]['error_per_gate']):.3f} %\n"
         epc, epc_stderr = fit_results[q]["error_per_clifford"], fit_results[q].get("error_per_clifford_stderr")
-        s_fidelity += f"\tError per Clifford: {epc:.2e}" + (f" +/- {epc_stderr:.1e}\n" if epc_stderr else "\n")
+        epc_text = f"{epc:.2e}" + (f" +/- {epc_stderr:.1e}\n" if epc_stderr else "\n")
+        if interleaved_gate is None:
+            s_fidelity = f"\tSingle qubit gate fidelity: {100 * (1 - fit_results[q]['error_per_gate']):.3f} %\n"
+            s_fidelity += f"\tError per Clifford: {epc_text}"
+        else:
+            s_fidelity = f"\tError per Clifford + {interleaved_gate} step: {epc_text}"
+            r, r_stderr = fit_results[q].get("gate_error"), fit_results[q].get("gate_error_stderr")
+            if r is None:
+                s_fidelity += (
+                    f"\t{interleaved_gate} error: n/a (no 11a gate_fidelity['averaged_alpha'] to compare with)\n"
+                )
+            else:
+                s_fidelity += f"\t{interleaved_gate} error (interleaved RB): {r:.2e}" + (
+                    f" +/- {r_stderr:.1e}\n" if r_stderr else "\n"
+                )
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
         else:
@@ -125,6 +146,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             error_per_clifford=float(fit.sel(qubit=q)["error_per_clifford"]),
             error_per_gate=float(fit.sel(qubit=q)["error_per_gate"]),
             success=bool(fit.sel(qubit=q).success),
+            alpha=_none_if_nan(float(alpha.sel(qubit=q))),
             error_per_clifford_stderr=_none_if_nan(float(fit.sel(qubit=q)["error_per_clifford_stderr"])),
             error_per_gate_stderr=_none_if_nan(float(fit.sel(qubit=q)["error_per_gate_stderr"])),
         )
@@ -133,6 +155,28 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     node.outcomes = {q: "successful" if fit_results[q].success else "fail" for q in fit.qubit.values}
 
     return fit, fit_results
+
+
+def add_interleaved_gate_error(ds_fit: xr.Dataset, fit_results: Dict[str, FitParameters], qubits) -> xr.Dataset:
+    """Error of the interleaved gate alone (11b), by standard interleaved RB against the 11a reference.
+
+    r = (1 - alpha_11b / alpha_11a) / 2 with alpha_11a = ``gate_fidelity["averaged_alpha"]`` (as 37b
+    against ``StandardRB_alpha``, with d = 2). The stderr covers the 11b fit only: 11a stores no
+    uncertainty. Fills ``gate_error`` in ``fit_results`` and in ``ds_fit``.
+    """
+    for qubit in qubits:
+        result = fit_results[qubit.name]
+        alpha_reference = (getattr(qubit, "gate_fidelity", None) or {}).get("averaged_alpha")
+        if alpha_reference is None or result.alpha is None or not result.success:
+            continue
+        result.gate_error = (1 - result.alpha / float(alpha_reference)) / 2
+        if result.error_per_clifford_stderr is not None:
+            result.gate_error_stderr = result.error_per_clifford_stderr / float(alpha_reference)
+    per_qubit = lambda key: (
+        "qubit",
+        [_nan_if_none(getattr(fit_results[str(q)], key)) for q in ds_fit.qubit.values],
+    )  # noqa: E731
+    return ds_fit.assign(gate_error=per_qubit("gate_error"), gate_error_stderr=per_qubit("gate_error_stderr"))
 
 
 # --- Leakage RB (measure_leakage=True) -------------------------------------------------------

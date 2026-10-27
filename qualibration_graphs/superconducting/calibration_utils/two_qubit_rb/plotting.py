@@ -347,14 +347,15 @@ def plot_leakage(
                 label=labels[series],
             )
             fit = LeakageFit(**stored)
-            if fit.success:
+            if fit.success and not result["failure"]:
                 lo = depths[shown].min()
                 dense = np.geomspace(lo, depths.max(), 200) if log_x else np.linspace(lo, depths.max(), 200)
                 ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1)
         lines = [f"Qubit pair: {qp_name}"]
         if result["failure"]:
+            # The fitted rates mean nothing when the readout is off.
             lines.append("FAILED: g/e/f readout suspect (not saved)")
-        if interleaved and result["per_cz"]:
+        elif interleaved and result["per_cz"]:
             # The interleaved run is about the CZ; its per-step rate is in the log.
             lines += _leakage_rate_lines("L1 per CZ", result["per_cz"], labels)
         else:

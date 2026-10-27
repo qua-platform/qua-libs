@@ -139,10 +139,18 @@ def plot_individual_data_with_fit(
             f"1Q Clifford Fidelity ($f_c$) = {_format_fraction(1 - epc, epc_stderr)}\n"
             f"Error Per Clifford (EPC) = $1 - f_c$ = {_format_fraction(epc, epc_stderr, as_error_rate=True)}"
         )
+    elif "gate_error" in fit and np.isfinite(float(fit.gate_error.values)):
+        r = float(fit.gate_error.values)
+        r_stderr = float(fit.gate_error_stderr.values)
+        r_stderr = r_stderr if np.isfinite(r_stderr) else None
+        stats = (
+            f"{interleaved_gate} fidelity = {_format_fraction(1 - r, r_stderr)}\n"
+            f"{interleaved_gate} error = {_format_fraction(r, r_stderr, as_error_rate=True)}"
+        )
     else:
         stats = (
             f"Clifford + {interleaved_gate} step fidelity = {_format_fraction(1 - epc, epc_stderr)}\n"
-            f"Error per step = {_format_fraction(epc, epc_stderr, as_error_rate=True)}"
+            f"(no 11a alpha stored: {interleaved_gate} alone not available)"
         )
     ax.set_title(f"Qubit: {qubit['qubit']}\n{stats}", fontsize=LABEL_FONTSIZE, linespacing=1.3)
     ax.set_xlabel("Circuit depth (Cliffords)", fontsize=LABEL_FONTSIZE)
@@ -183,13 +191,14 @@ def plot_leakage(
             capsize=2,
             label="Mean over sequences",
         )
-        if fit.success:
+        if fit.success and not result["failure"]:
             dense = (np.geomspace if log_x else np.linspace)(depths.min(), depths.max(), 200)
             ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1, label=f"Leakage fit ({fit.method})")
         lines = [f"Qubit: {name}"]
         if result["failure"]:
+            # The fitted rate means nothing when the readout is off.
             lines.append("FAILED: g/e/f readout suspect (not saved)")
-        if interleaved_gate is not None and result["per_gate"]:
+        elif interleaved_gate is not None and result["per_gate"]:
             # The interleaved run is about the gate; its per-step rate is in the log.
             per_gate = result["per_gate"]
             rate = format_leakage_rate(per_gate["l1"], per_gate["l1_stderr"], pm="±")
