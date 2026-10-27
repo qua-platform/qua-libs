@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from calibration_utils.common_utils.leakage_rb import LeakageFit
 from calibration_utils.two_qubit_rb.fidelity import ImpliedCZResult, compute_srb_fidelity
 
 
@@ -51,37 +52,6 @@ class IRBFitResult(BaseFitResult):
     epg_stderr: float | None = None
     standard_rb_alpha: float | None = None
     standard_rb_alpha_stderr: float | None = None
-
-
-@dataclass
-class LeakageFit:
-    """Leakage RB fit (``measure_leakage=True``): leakage ``l1`` and seepage ``l2`` per Clifford.
-
-    ``method`` is ``exponential`` (full model) or ``linear`` (slope only, ``l2`` unknown). Like the
-    survival fits, ``fit_issues`` says why a fit was rejected and ``fit_warnings`` holds soft
-    warnings that do not fail it.
-    """
-
-    l1: float | None = float("nan")
-    l1_stderr: float | None = float("nan")
-    l2: float | None = float("nan")
-    l2_stderr: float | None = float("nan")
-    p_inf: float | None = float("nan")
-    lam: float | None = float("nan")
-    p0: float | None = float("nan")
-    method: str = ""
-    success: bool = False
-    fit_issues: tuple[str, ...] = field(default_factory=tuple)
-    fit_warnings: tuple[str, ...] = field(default_factory=tuple)
-
-    def curve(self, depths) -> np.ndarray:
-        """Fitted leaked population at ``depths``."""
-        m = np.asarray(depths, dtype=float)
-        if not self.success:
-            return np.full_like(m, np.nan)
-        if self.method == "linear":
-            return self.p0 + self.l1 * m
-        return self.p_inf + (self.p0 - self.p_inf) * self.lam**m
 
 
 @dataclass

@@ -14,6 +14,8 @@ from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
 
+from calibration_utils.common_utils.leakage_rb import read_confusion_matrix
+
 
 class NodeSpecificParameters(RunnableParameters):
     """Node-specific parameters for two-qubit RB experiments."""
@@ -60,6 +62,7 @@ class NodeSpecificParameters(RunnableParameters):
     rb_plot_log_x: bool = False
     """Use a logarithmic circuit-depth axis in ``plot_data`` (depth 0 is omitted). Also applies to
     the leakage plot. Default is False."""
+
 
 class Parameters(
     NodeParameters,
@@ -116,17 +119,6 @@ def build_sweep_axes(
         "circuit_depth": xr.DataArray(np.array(circuit_depths)),
         "sequence": xr.DataArray(np.arange(num_circuits_per_depth)),
     }
-
-
-def read_confusion_matrix(qubit) -> Optional[np.ndarray]:
-    """The qubit's g/e/f confusion matrix (rows prepared), or ``None`` if missing or not a valid 3x3."""
-    matrix = getattr(qubit.resonator, "gef_confusion_matrix", None)
-    if matrix is None:
-        return None
-    matrix = np.asarray(matrix, dtype=float)
-    if matrix.shape != (3, 3) or not np.allclose(matrix.sum(axis=1), 1.0, atol=0.02):
-        return None
-    return matrix
 
 
 def validate_leakage_run(node, qubit_pairs) -> None:

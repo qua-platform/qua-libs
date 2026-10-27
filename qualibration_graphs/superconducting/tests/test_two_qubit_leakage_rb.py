@@ -17,10 +17,10 @@ from calibration_utils.two_qubit_rb import (  # noqa: E402
     fit_raw_data,
     validate_leakage_run,
 )
-from calibration_utils.two_qubit_rb.fit_utils import (  # noqa: E402
-    _fit_leakage,
-    _leaked_populations,
-    _mean_and_stderr_over_sequences,
+from calibration_utils.two_qubit_rb.fit_utils import _leaked_populations  # noqa: E402
+from calibration_utils.common_utils.leakage_rb import (  # noqa: E402
+    fit_leakage,
+    mean_and_stderr_over_sequences,
 )
 
 OPERATION = "cz_unipolar"
@@ -153,7 +153,7 @@ def _model(m, l1, l2, p0=0.0):
 
 def test_fit_recovers_leakage_and_seepage_when_saturated():
     depths = np.array([0, 5, 10, 20, 40, 80, 160, 320, 640])
-    fit = _fit_leakage(depths, _model(depths, 3e-3, 2e-2), np.full(depths.shape, 1e-4))
+    fit = fit_leakage(depths, _model(depths, 3e-3, 2e-2), np.full(depths.shape, 1e-4))
     assert fit.success and fit.method == "exponential"
     assert fit.l1 == pytest.approx(3e-3, rel=0.02)
     assert fit.l2 == pytest.approx(2e-2, rel=0.02)
@@ -163,13 +163,13 @@ def test_fit_gives_l1_from_the_slope_when_unsaturated():
     rng = np.random.default_rng(1)
     depths = np.array([0, 2, 4, 8, 16, 32, 64])
     leaked = _model(depths, 2e-4, 1e-2) + rng.normal(0.0, 5e-5, depths.size)
-    fit = _fit_leakage(depths, leaked, np.full(depths.shape, 5e-5))
+    fit = fit_leakage(depths, leaked, np.full(depths.shape, 5e-5))
     assert fit.success
     assert fit.l1 == pytest.approx(2e-4, rel=0.3)
 
 
 def test_fit_needs_three_depths():
-    fit = _fit_leakage([0, 1], [0.0, 0.1])
+    fit = fit_leakage([0, 1], [0.0, 0.1])
     assert not fit.success
     assert np.all(np.isnan(fit.curve([0, 1])))
 
@@ -181,9 +181,9 @@ def test_an_all_zero_depth_does_not_pin_the_fit():
     depths = np.array([0, 4, 8, 16, 32, 64])
     per_sequence = np.clip(5e-4 * depths[:, None] + rng.normal(0.0, 1e-3, (depths.size, 6)), 0.0, None)
     per_sequence[0] = 0.0
-    mean, stderr = _mean_and_stderr_over_sequences(per_sequence, shots_per_sequence=2000)
+    mean, stderr = mean_and_stderr_over_sequences(per_sequence, shots_per_sequence=2000)
     assert np.all(stderr > 0)
-    fit = _fit_leakage(depths, mean, stderr)
+    fit = fit_leakage(depths, mean, stderr)
     assert fit.success
     assert fit.l1 == pytest.approx(5e-4, rel=0.2)
 
@@ -211,14 +211,14 @@ def test_high_shallow_leakage_warns_about_readout():
     # Shaped like a real run where qA1's g was read as f: ~1 at depth 0, falling with depth.
     depths = np.array([0, 1, 3, 7, 15, 31, 64])
     leaked = np.array([0.99, 0.96, 0.91, 0.81, 0.62, 0.56, 0.64])
-    fit = _fit_leakage(depths, leaked, np.full(depths.shape, 0.02))
+    fit = fit_leakage(depths, leaked, np.full(depths.shape, 0.02))
     assert any("readout or reset" in w for w in fit.fit_warnings)
     assert any("not a leakage build-up" in w for w in fit.fit_warnings)
 
 
 def test_clean_leakage_has_no_soft_warnings():
     depths = np.array([0, 4, 8, 16, 32, 64])
-    fit = _fit_leakage(depths, 1e-3 + 5e-4 * depths, np.full(depths.shape, 2e-4))
+    fit = fit_leakage(depths, 1e-3 + 5e-4 * depths, np.full(depths.shape, 2e-4))
     assert fit.success
     assert not any("readout" in w for w in fit.fit_warnings)
 
@@ -226,14 +226,14 @@ def test_clean_leakage_has_no_soft_warnings():
 def test_a_curve_far_from_the_data_fails_the_residual_check():
     depths = np.array([0, 4, 8, 16, 32, 64])
     leaked = np.array([0.0, 0.05, 0.0, 0.05, 0.0, 0.05])  # zigzag no model can follow
-    fit = _fit_leakage(depths, leaked, np.full(depths.shape, 1e-3))
+    fit = fit_leakage(depths, leaked, np.full(depths.shape, 1e-3))
     assert not fit.success
     assert any("sigma" in issue for issue in fit.fit_issues)
 
 
 def test_a_rejected_exponential_is_a_warning_when_the_line_is_kept():
     depths = np.array([0, 2, 4, 8, 16, 32, 64])
-    fit = _fit_leakage(depths, 2e-4 * depths, np.full(depths.shape, 5e-5))
+    fit = fit_leakage(depths, 2e-4 * depths, np.full(depths.shape, 5e-5))
     assert fit.success
     assert fit.fit_issues == ()
 
