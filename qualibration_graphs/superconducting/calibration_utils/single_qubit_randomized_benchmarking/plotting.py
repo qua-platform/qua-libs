@@ -114,7 +114,14 @@ def plot_individual_data_with_fit(
         elinewidth=0.8,
         label="Mean over sequences",
     )
-    ax.plot(dense, fitted, "r--", label=f"Exponential fit (α = {alpha:.5f})")
+    fit_label = "Exponential fit" if interleaved_gate is None else "Interleaved fit"
+    ax.plot(dense, fitted, "r--", label=f"{fit_label} (α = {alpha:.5f})")
+    # 11b: the same A and B with the 11a reference alpha. The gate error comes only from the ratio of
+    # the two alphas, so the data should fall below this curve by the gate's own error.
+    if bool(fit.success.values) and "reference_alpha" in fit and np.isfinite(float(fit.reference_alpha.values)):
+        alpha_ref = float(fit.reference_alpha.values)
+        reference = rb_decay_curve(dense, float(fit.fit_amplitude.values), alpha_ref, float(fit.fit_offset.values))
+        ax.plot(dense, reference, ":", color="0.4", label=f"11a reference decay (α = {alpha_ref:.5f})")
     ax.grid(True, which="both", alpha=0.4)
     epc = float(fit.error_per_clifford.values)
     epc_stderr = float(fit.error_per_clifford_stderr.values) if "error_per_clifford_stderr" in fit else None

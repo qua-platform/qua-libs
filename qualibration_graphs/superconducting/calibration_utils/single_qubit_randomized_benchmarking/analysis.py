@@ -185,13 +185,16 @@ def add_interleaved_gate_error(ds_fit: xr.Dataset, fit_results: Dict[str, FitPar
 
     The shared interleaved-RB formula for one qubit (as 37b for two), against alpha_11a =
     ``gate_fidelity["averaged_alpha"]``. The stderr covers the 11b fit only: 11a stores no
-    uncertainty. Fills ``gate_error`` in ``fit_results`` and in ``ds_fit``.
+    uncertainty. Fills ``gate_error`` in ``fit_results`` and in ``ds_fit``, and ``reference_alpha``
+    (the 11a alpha used, for the plot) in ``ds_fit``.
     """
+    reference_alphas = {}
     for qubit in qubits:
         result = fit_results[qubit.name]
         alpha_reference = (getattr(qubit, "gate_fidelity", None) or {}).get("averaged_alpha")
         if alpha_reference is None or result.alpha is None or not result.success:
             continue
+        reference_alphas[qubit.name] = float(alpha_reference)
         alpha_stderr = None if result.error_per_clifford_stderr is None else 2 * result.error_per_clifford_stderr
         irb = compute_irb_fidelity(result.alpha, alpha_stderr, float(alpha_reference), n_qubits=1)
         result.gate_error, result.gate_error_stderr = irb.epg, irb.epg_stderr
@@ -199,7 +202,11 @@ def add_interleaved_gate_error(ds_fit: xr.Dataset, fit_results: Dict[str, FitPar
         "qubit",
         [_nan_if_none(getattr(fit_results[str(q)], key)) for q in ds_fit.qubit.values],
     )  # noqa: E731
-    return ds_fit.assign(gate_error=per_qubit("gate_error"), gate_error_stderr=per_qubit("gate_error_stderr"))
+    return ds_fit.assign(
+        gate_error=per_qubit("gate_error"),
+        gate_error_stderr=per_qubit("gate_error_stderr"),
+        reference_alpha=("qubit", [reference_alphas.get(str(q), np.nan) for q in ds_fit.qubit.values]),
+    )
 
 
 # --- Leakage RB (measure_leakage=True) -------------------------------------------------------
