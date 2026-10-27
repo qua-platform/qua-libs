@@ -23,7 +23,6 @@ from calibration_utils.iq_blobs_ef import (
 from qm.qua import *
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
-from qualang_tools.units import unit
 from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
@@ -82,8 +81,6 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """
     if node.parameters.reset_type == "active":
         raise ValueError("'active' reset is not GEF-aware; use 'thermal' or 'active_gef'")
-    # Class containing tools to help handle units and conversions.
-    u = unit(coerce_to_integer=True)
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
@@ -116,32 +113,32 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 save(n, n_st)
                 # Ground state iq blobs for all qubits
                 for i, qubit in multiplexed_qubits.items():
-                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate, u)
+                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate)
                 align()
                 # |g> state readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.resonator.measure(operation, qua_vars=(I_g[i], Q_g[i]))
-                    qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
+                    qubit.resonator.wait(qubit.resonator.depletion_time // 4)
                     save(I_g[i], I_g_st[i])
                     save(Q_g[i], Q_g_st[i])
                 align()
 
                 # Excited state iq blobs for all qubits
                 for i, qubit in multiplexed_qubits.items():
-                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate, u)
+                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate)
                 align()
                 # |e> state readout
                 for i, qubit in multiplexed_qubits.items():
                     qubit.xy.play("x180")
                     qubit.align()
                     qubit.resonator.measure(operation, qua_vars=(I_e[i], Q_e[i]))
-                    qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
+                    qubit.resonator.wait(qubit.resonator.depletion_time // 4)
                     save(I_e[i], I_e_st[i])
                     save(Q_e[i], Q_e_st[i])
 
                 # Second excited state iq blobs for all qubits
                 for i, qubit in multiplexed_qubits.items():
-                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate, u)
+                    reset_for_gef(qubit, node.parameters.reset_type, node.parameters.simulate)
                 align()
                 # |f> state readout
                 for i, qubit in multiplexed_qubits.items():
@@ -155,7 +152,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency, keep_phase=True)
                     qubit.align()
                     qubit.resonator.measure(operation, qua_vars=(I_f[i], Q_f[i]))
-                    qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
+                    qubit.resonator.wait(qubit.resonator.depletion_time // 4)
                     save(I_f[i], I_f_st[i])
                     save(Q_f[i], Q_f_st[i])
 

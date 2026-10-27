@@ -15,7 +15,7 @@ g/e/f blobs never separate and the fits fail for reasons that are invisible in t
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 # quam_builder's untouched default readout_GEF, reported whatever the readout amplitude is.
 _BUILDER_DEFAULT_LENGTH = 2000
@@ -111,7 +111,7 @@ def set_gef_readout_frequency(qubit, extra_detuning: float = 0.0) -> None:
     qubit.resonator.update_frequency(gef_readout_frequency(qubit, extra_detuning))
 
 
-def reset_for_gef(qubit, reset_type: str, simulate: bool, u: Any) -> None:
+def reset_for_gef(qubit, reset_type: str, simulate: bool) -> None:
     """Thermalize, or run ``active_gef`` and restore the GEF-detuned resonator IF.
 
     ``reset_qubit_active_gef``'s internal ``readout_state_gef`` leaves the resonator IF
@@ -119,7 +119,7 @@ def reset_for_gef(qubit, reset_type: str, simulate: bool, u: Any) -> None:
     has to be put back before the next ``measure``.
     """
     if reset_type == "thermal":
-        qubit.wait(2 * qubit.thermalization_time * u.ns)  # longer wait for |f> thermalization
+        qubit.wait(2 * qubit.thermalization_time // 4)  # twice the usual wait for |f>; wait counts 4 ns cycles
         return
     qubit.reset(reset_type, simulate)
     set_gef_readout_frequency(qubit)

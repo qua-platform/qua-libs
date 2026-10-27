@@ -71,9 +71,8 @@ def test_reset_for_gef_restores_frequency_after_active_gef():
             update_frequency=lambda f: calls.append(("freq", f)),
         ),
     )
-    u = SimpleNamespace(ns=1)
-    reset_for_gef(qubit, "thermal", False, u)
-    assert calls == [("wait", 200)]
+    reset_for_gef(qubit, "thermal", False)
+    assert calls == [("wait", 50)]
     calls.clear()
-    reset_for_gef(qubit, "active_gef", False, u)
+    reset_for_gef(qubit, "active_gef", False)
     assert calls == [("reset", "active_gef", False), ("freq", 52e6)]
