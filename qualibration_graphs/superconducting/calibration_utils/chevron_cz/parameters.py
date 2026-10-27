@@ -30,7 +30,7 @@ class NodeSpecificParameters(RunnableParameters):
         (written by node 30) instead of computing it from qubit frequencies.
         Use this for a fast re-run or when node 30 is not in the graph.
     operation : str
-        Pair macro to calibrate and update (e.g. ``"cz_unipolar"``).
+        Pair macro to calibrate and update (e.g. ``"cz_unipolar"`` or ``"cz_SNZ"``).
         Used when looking up the saved macro amplitude and in state update.
     """
 

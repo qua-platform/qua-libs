@@ -22,6 +22,7 @@ from qualibrate import QualibrationNode
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubit_pairs
 from qualibration_libs.runtime import simulate_and_plot
+from quam_builder.architecture.superconducting.components.pulses import SNZPulse
 from quam_config import Quam
 
 # %% {Node_parameters}
@@ -64,7 +65,9 @@ Outcomes:
 
 State update:
 - Updates the amplitude and duration of the flux pulse in ``macros[operation]``
-  to the fitted CZ values (duration rounded up to the next multiple of 4 ns).
+  to the fitted CZ values (duration rounded up to the next multiple of 4 ns). For an SNZ pulse
+  (``cz_SNZ``) the duration is written to ``flat_length`` instead, rounded up to an even value,
+  because the SNZ pulse length is inferred from it.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -411,11 +414,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[qp.name] == "failed":
                 node.log(f"Skipping state update for {qp.name}: fit flagged unsuccessful.")
                 continue
-            qp.macros[operation].flux_pulse_qubit.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
-            # Round up to the upper 4 ns to be compatible with the hardware time resolution
-            qp.macros[operation].flux_pulse_qubit.length = int(
-                np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4
-            )
+            flux_pulse = qp.macros[operation].flux_pulse_qubit
+            flux_pulse.amplitude = node.results["fit_results"][qp.name]["cz_amp"]
+            if isinstance(flux_pulse, SNZPulse):
+                # SNZ length is inferred from flat_length, which must be even to split into two lobes
+                flux_pulse.flat_length = int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 2) * 2)
+            else:
+                # Round up to the upper 4 ns to be compatible with the hardware time resolution
+                flux_pulse.length = int(np.ceil(node.results["fit_results"][qp.name]["cz_len"] / 4) * 4)
 
 
 # %% {Save_results}

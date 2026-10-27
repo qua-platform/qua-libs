@@ -41,8 +41,8 @@ class NodeSpecificParameters(RunnableParameters):
         Determines granularity of the qubit detuning scan.
 
     operation : str, default = "cz_unipolar"
-        Pair macro used for the flux sweep and state update (e.g. ``cz_unipolar`` or
-        ``iswap_unipolar``). Set this to the macro you are calibrating.
+        Pair macro used for the flux sweep and state update (e.g. ``cz_unipolar``, ``cz_SNZ``
+        or ``iswap_unipolar``). Set this to the macro you are calibrating.
 
     cz_or_iswap : Literal["cz", "iswap"], default = "cz"
         Specifies which entangling interaction is being characterized: controlled-Z ("cz")
@@ -85,7 +85,7 @@ class NodeSpecificParameters(RunnableParameters):
     qubit_flux_step: float = 0.001
     """Step size for the qubit flux detuning sweep. Default is 0.001."""
     operation: str = "cz_unipolar"
-    """Pair macro for sweep and state update (e.g. cz_unipolar or iswap_unipolar). Default is cz_unipolar."""
+    """Pair macro for sweep and state update (e.g. cz_unipolar, cz_SNZ or iswap_unipolar). Default is cz_unipolar."""
     cz_or_iswap: Literal["cz", "iswap"] = "cz"
     """Entangling interaction to characterise: 'cz' or 'iswap'. Default is 'cz'."""
     use_saved_detuning: bool = False
