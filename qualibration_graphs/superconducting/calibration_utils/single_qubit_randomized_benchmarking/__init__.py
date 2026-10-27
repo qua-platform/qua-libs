@@ -1,5 +1,13 @@
 from .parameters import Parameters, validate_leakage_run
-from .analysis import process_raw_dataset, fit_raw_data, log_fitted_results, fit_leakage_data, log_leakage_results
+from .analysis import (
+    process_raw_dataset,
+    fit_raw_data,
+    log_fitted_results,
+    fit_leakage_data,
+    log_leakage_results,
+    leakage_reference_entry,
+    leakage_per_gate_entry,
+)
 from .plotting import plot_raw_data_with_fit, plot_leakage
 
 __all__ = [
@@ -11,5 +19,7 @@ __all__ = [
     "validate_leakage_run",
     "fit_leakage_data",
     "log_leakage_results",
+    "leakage_reference_entry",
+    "leakage_per_gate_entry",
     "plot_leakage",
 ]

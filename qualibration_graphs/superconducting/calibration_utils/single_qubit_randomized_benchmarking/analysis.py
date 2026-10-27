@@ -26,6 +26,8 @@ class FitParameters:
     error_per_clifford: float
     error_per_gate: float
     success: bool
+    error_per_clifford_stderr: float | None = None
+    error_per_gate_stderr: float | None = None
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None):
@@ -45,6 +47,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
     for q in fit_results.keys():
         s_qubit = f"Results for qubit {q}: "
         s_fidelity = f"\tSingle qubit gate fidelity: {100 * (1 - fit_results[q]['error_per_gate']):.3f} %\n"
+        epc, epc_stderr = fit_results[q]["error_per_clifford"], fit_results[q].get("error_per_clifford_stderr")
+        s_fidelity += f"\tError per Clifford: {epc:.2e}" + (f" +/- {epc_stderr:.1e}\n" if epc_stderr else "\n")
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
         else:
@@ -103,6 +107,10 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
     # EPC from here: https://qiskit.org/textbook/ch-quantum-hardware/randomized-benchmarking.html#Step-5:-Fit-the-results
     fit["error_per_clifford"] = (1 - alpha) * (1 - 1 / 2)
     fit["error_per_gate"] = fit["error_per_clifford"] / average_gate_per_clifford
+    # Standard errors from the fit covariance: alpha = exp(decay), so stderr(alpha) = alpha * stderr(decay)
+    alpha_stderr = alpha * np.sqrt(fit.fit_data.sel(fit_vals="decay_decay").clip(min=0))
+    fit["error_per_clifford_stderr"] = alpha_stderr * (1 - 1 / 2)
+    fit["error_per_gate_stderr"] = fit["error_per_clifford_stderr"] / average_gate_per_clifford
     # Assess whether the fit was successful or not
     nan_success = np.isnan(fit.error_per_gate)
     rb_success = (0 < fit.error_per_gate) & (fit.error_per_gate < 1)
@@ -115,6 +123,8 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
             error_per_clifford=float(fit.sel(qubit=q)["error_per_clifford"]),
             error_per_gate=float(fit.sel(qubit=q)["error_per_gate"]),
             success=bool(fit.sel(qubit=q).success),
+            error_per_clifford_stderr=_none_if_nan(float(fit.sel(qubit=q)["error_per_clifford_stderr"])),
+            error_per_gate_stderr=_none_if_nan(float(fit.sel(qubit=q)["error_per_gate_stderr"])),
         )
         for q in fit.qubit.values
     }
@@ -128,11 +138,11 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 # ``pg``, ``pe`` and ``pf`` hold, per random sequence and depth, the fraction of shots read as g, e
 # and f. The leakage model, its fit and the population correction are shared with the two-qubit RB
 # (``calibration_utils.common_utils.leakage_rb``). 11a fits the leakage per Clifford and stores it as
-# ``gate_fidelity["LeakageRB"]``; 11b (a gate interleaved after every Clifford) fits it per
+# ``gate_fidelity["LeakageRB_reference"]``; 11b (a gate interleaved after every Clifford) fits it per
 # Clifford + gate step and subtracts that reference to give the leakage of the gate.
 
 # Where 11a stores its leakage result, the reference 11b subtracts.
-LEAKAGE_REFERENCE_KEY = "LeakageRB"
+LEAKAGE_REFERENCE_KEY = "LeakageRB_reference"
 
 
 @dataclass
@@ -140,8 +150,8 @@ class LeakageResult:
     """Leakage RB result of one qubit: its leakage ``l1`` and seepage ``l2`` per sequence step.
 
     A step is one Clifford (11a), or one Clifford plus the interleaved gate (11b), which also gets
-    ``per_gate`` (``l1``, ``l1_stderr``, ``l2``, ``l2_stderr`` of the gate) and the 11a
-    ``reference_load_id``, or ``per_gate_note`` when no reference was stored. ``failure`` is set
+    ``per_gate`` (``l1``, ``l1_stderr``, ``l2``, ``l2_stderr`` of the gate), or ``per_gate_note``
+    when no reference was stored. ``failure`` is set
     when the g/e/f readout looks wrong (nothing is then written to the state). Non-finite numbers
     are ``None``: the result goes to the state as it is, and QUAM would write NaN, which is not
     valid JSON.
@@ -152,7 +162,6 @@ class LeakageResult:
     success: bool
     failure: str = ""
     per_gate: dict | None = None
-    reference_load_id: int | None = None
     per_gate_note: str = ""
 
 
@@ -166,7 +175,7 @@ def fit_leakage_data(
     to the state, if its leaked population at the shallowest depth is above
     ``SHALLOW_LEAKAGE_THRESHOLD``: so few gates cannot leak that much, so the g/e/f readout or
     reset is failing. With ``interleaved_gate`` (11b) the leakage of that gate is the fitted rate
-    minus the 11a reference in ``gate_fidelity["LeakageRB"]``.
+    minus the 11a reference in ``gate_fidelity["LeakageRB_reference"]``.
     """
     qubits = node.namespace["qubits"]
     depths = ds.depths.values
@@ -236,24 +245,49 @@ def fit_leakage_data(
 def _add_leakage_per_gate(result: LeakageResult, fit: LeakageFit, qubit, interleaved_gate: str) -> None:
     """Fill the leakage of the interleaved gate in ``result``: this run minus the 11a reference."""
     reference = (getattr(qubit, "gate_fidelity", None) or {}).get(LEAKAGE_REFERENCE_KEY) or {}
-    if not reference.get("per_clifford"):
+    if reference.get("l1") is None:
         result.per_gate_note = (
             f"No gate_fidelity[{LEAKAGE_REFERENCE_KEY!r}] for {qubit.name}: run 11a with measure_leakage=True "
             f"first. Only the leakage per Clifford + {interleaved_gate} step is reported."
         )
         return
-    per_gate = leakage_per_gate([fit], [reference["per_clifford"]])
+    per_gate = leakage_per_gate([fit], [reference])
     result.per_gate = {key: _none_if_nan(float(values[0])) for key, values in per_gate.items()}
-    result.reference_load_id = reference.get("load_id")
 
 
-def format_leakage_rate(rate: float | None, stderr: float | None = None) -> str:
-    """Format a leakage rate as ``value +/- stderr``, or ``n/a``."""
+def leakage_reference_entry(leakage_result: dict, survival: dict) -> dict:
+    """11a's ``gate_fidelity["LeakageRB_reference"]``: L1 and L2 per Clifford and the survival decay ``alpha``.
+
+    ``leakage_result`` and ``survival`` are this qubit's ``node.results`` entries; the fit details
+    stay in the run's saved results.
+    """
+    rates = leakage_result["per_clifford"]
+    alpha = 1 - 2 * survival["error_per_clifford"] if survival["success"] else None
+    return {**{key: rates[key] for key in ("l1", "l1_stderr", "l2", "l2_stderr")}, "alpha": alpha}
+
+
+def leakage_per_gate_entry(leakage_result: dict) -> dict | None:
+    """11b's ``gate_fidelity["LeakageRB_<gate>"]``: L1 of the interleaved gate, or None without a reference."""
+    per_gate = leakage_result["per_gate"]
+    return None if per_gate is None else {"l1": per_gate["l1"], "l1_stderr": per_gate["l1_stderr"]}
+
+
+def format_leakage_rate(rate: float | None, stderr: float | None = None, *, pm: str = "+/-") -> str:
+    """Format a leakage rate as ``(value +/- stderr)e-07``, both on one exponent so a rate consistent with
+    zero reads as such, or ``n/a``; plots pass ``pm="±"`` and get ``(value ± stderr) × 10⁻⁷``."""
     if rate is None or not np.isfinite(rate):
         return "n/a"
     if stderr is None or not np.isfinite(stderr):
         return f"{rate:.2e}"
-    return f"{rate:.2e} +/- {stderr:.1e}"
+    scale = max(abs(rate), stderr)
+    exponent = int(np.floor(np.log10(scale))) if scale > 0 else 0
+    mantissa = f"({rate / 10**exponent:.2f} {pm} {stderr / 10**exponent:.2f})"
+    if pm == "±":
+        return f"{mantissa} × 10{str(exponent).translate(_SUPERSCRIPT)}"
+    return f"{mantissa}e{exponent:+03d}"
+
+
+_SUPERSCRIPT = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
 
 
 def log_leakage_results(leakage_results: Dict, log_callable=None, *, interleaved_gate: str | None = None):
@@ -275,7 +309,7 @@ def log_leakage_results(leakage_results: Dict, log_callable=None, *, interleaved
                 per_gate = result["per_gate"]
                 lines.append(
                     f"\tL1 per {interleaved_gate} = {format_leakage_rate(per_gate['l1'], per_gate['l1_stderr'])} "
-                    f"(minus the 11a reference, run {result['reference_load_id']})"
+                    "(minus the 11a reference)"
                 )
         if result["failure"]:
             lines.append(f"\t- {result['failure']}")

@@ -14,8 +14,21 @@ from calibration_utils.single_qubit_randomized_benchmarking.analysis import form
 
 u = unit(coerce_to_integer=True)
 
+# Shared by the survival and leakage figures so both scale the same way with the number of qubits.
+PANEL_SIZE = 5  # inches per qubit panel
+TITLE_FONTSIZE = 11
+LABEL_FONTSIZE = 10
+LEGEND_FONTSIZE = 9
 
-def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.Dataset):
+
+def plot_raw_data_with_fit(
+    ds: xr.Dataset,
+    qubits: List[AnyTransmon],
+    fits: xr.Dataset,
+    *,
+    log_x: bool = False,
+    interleaved_gate: str | None = None,
+):
     """
     Plots the resonator spectroscopy amplitude IQ_abs with fitted curves for the given qubits.
 
@@ -27,6 +40,10 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
         A list of qubits to plot.
     fits : xr.Dataset
         The dataset containing the fit parameters.
+    log_x : bool, optional
+        Use a logarithmic circuit-depth axis (for log-spaced depths).
+    interleaved_gate : str, optional
+        The gate interleaved after every Clifford (11b): the fitted error is then per Clifford + gate step.
 
     Returns
     -------
@@ -38,17 +55,27 @@ def plot_raw_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon], fits: xr.D
     - The function creates a grid of subplots, one for each qubit.
     - Each subplot contains the raw data and the fitted curve.
     """
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds, [q.grid_location for q in qubits], size=PANEL_SIZE)
     for ax, qubit in grid_iter(grid):
-        plot_individual_data_with_fit(ax, ds, qubit, fits.sel(qubit=qubit["qubit"]))
+        plot_individual_data_with_fit(
+            ax, ds, qubit, fits.sel(qubit=qubit["qubit"]), log_x=log_x, interleaved_gate=interleaved_gate
+        )
 
-    grid.fig.suptitle("Single qubit randomized benchmarking")
-    grid.fig.set_size_inches(15, 9)
+    interleaved = f"\n(interleaved with {interleaved_gate})" if interleaved_gate is not None else ""
+    grid.fig.suptitle(f"Single qubit randomized benchmarking{interleaved}", fontsize=TITLE_FONTSIZE + 1)
     grid.fig.tight_layout()
     return grid.fig
 
 
-def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str], fit: xr.Dataset = None):
+def plot_individual_data_with_fit(
+    ax: Axes,
+    ds: xr.Dataset,
+    qubit: dict[str, str],
+    fit: xr.Dataset = None,
+    *,
+    log_x: bool = False,
+    interleaved_gate: str | None = None,
+):
     """
     Plots individual qubit data on a given axis with optional fit.
 
@@ -67,19 +94,21 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
     -----
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
-    # Fitted decay
+    # Fitted decay, drawn on a dense depth grid so the curve is smooth between the measured depths
+    depths = fit.depths.values
+    dense = (np.geomspace if log_x else np.linspace)(depths.min(), depths.max(), 200)
     fitted = decay_exp(
-        fit.depths,
-        fit.fit_data.sel(fit_vals="a"),
-        fit.fit_data.sel(fit_vals="offset"),
-        fit.fit_data.sel(fit_vals="decay"),
+        dense,
+        float(fit.fit_data.sel(fit_vals="a")),
+        float(fit.fit_data.sel(fit_vals="offset")),
+        float(fit.fit_data.sel(fit_vals="decay")),
     )
     if hasattr(fit, "pg"):  # measure_leakage: g/e/f readout
         data = fit.pg
-        label = "P(g) (survival)"
+        label = r"Probability to recover to $|0\rangle$"
     elif hasattr(fit, "state"):
         data = fit.state
-        label = "P(g) (survival)"
+        label = r"Probability to recover to $|0\rangle$"
     elif hasattr(fit, "I"):
         data = fit.I
         label = "I quadrature [mV]"
@@ -87,24 +116,40 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
     data_std = data.std(dim="nb_of_sequences") / np.sqrt(ds.nb_of_sequences.size)
     ax.errorbar(
-        fit.depths,
+        depths,
         fit.averaged_data,
         yerr=data_std,
-        fmt=".",
+        fmt="o",
+        ms=4,
         capsize=2,
-        elinewidth=0.5,
+        elinewidth=0.8,
+        label="Mean over sequences",
     )
-    ax.grid("all")
-    ax.set_title(qubit["qubit"], pad=22)
-    ax.set_xlabel("Circuit depth")
-    ax.set_ylabel(label)
-    ax.plot(fit.depths, fitted, "r--", label="fit")
-    ax.text(
-        0.15,
-        0.9,
-        f"1Q RB fidelity = {100*(1 - float(fit.error_per_gate.values)):.3f}%",
-        transform=ax.transAxes,
-    )
+    alpha = float(np.exp(fit.fit_data.sel(fit_vals="decay")))
+    ax.plot(dense, fitted, "r--", label=f"Exponential fit (α = {alpha:.5f})")
+    ax.grid(True, which="both", alpha=0.4)
+    epc = float(fit.error_per_clifford.values)
+    epc_stderr = float(fit.error_per_clifford_stderr.values) if "error_per_clifford_stderr" in fit else None
+    epg = float(fit.error_per_gate.values)
+    # Same success criterion as the analysis (ds_fit does not carry it)
+    if not (np.isfinite(epg) and 0 < epg < 1):
+        stats = "Fit failed"
+    elif interleaved_gate is None:
+        stats = (
+            f"1Q Clifford Fidelity ($f_c$) = {_format_fraction(1 - epc, epc_stderr)}\n"
+            f"Error Per Clifford (EPC) = $1 - f_c$ = {_format_fraction(epc, epc_stderr, as_error_rate=True)}"
+        )
+    else:
+        stats = (
+            f"Clifford + {interleaved_gate} step fidelity = {_format_fraction(1 - epc, epc_stderr)}\n"
+            f"Error per step = {_format_fraction(epc, epc_stderr, as_error_rate=True)}"
+        )
+    ax.set_title(f"Qubit: {qubit['qubit']}\n{stats}", fontsize=LABEL_FONTSIZE, linespacing=1.3)
+    ax.set_xlabel("Circuit depth (Cliffords)", fontsize=LABEL_FONTSIZE)
+    ax.set_ylabel(label, fontsize=LABEL_FONTSIZE)
+    if log_x:
+        ax.set_xscale("log")
+    ax.legend(fontsize=LEGEND_FONTSIZE)
 
 
 def plot_leakage(
@@ -122,7 +167,7 @@ def plot_leakage(
     ``LeakageResult``. With ``interleaved_gate`` (11b) each panel title also gives the gate's own L1.
     """
     step = "Clifford" if interleaved_gate is None else f"Clifford + {interleaved_gate}"
-    grid = QubitGrid(ds_leakage, [q.grid_location for q in qubits])
+    grid = QubitGrid(ds_leakage, [q.grid_location for q in qubits], size=PANEL_SIZE)
     for ax, qubit in grid_iter(grid):
         name = qubit["qubit"]
         result = leakage_results[name]
@@ -136,26 +181,44 @@ def plot_leakage(
             fmt="o",
             ms=4,
             capsize=2,
-            label=f"L1 per {step}: {format_leakage_rate(fit.l1, fit.l1_stderr)}",
+            label="Mean over sequences",
         )
         if fit.success:
             dense = (np.geomspace if log_x else np.linspace)(depths.min(), depths.max(), 200)
-            ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1)
-        subtitle = ""
+            ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1, label=f"Leakage fit ({fit.method})")
+        lines = [f"Qubit: {name}"]
         if result["failure"]:
-            subtitle = "\nFAILED: g/e/f readout suspect (not saved)"
-        elif interleaved_gate is not None and result["per_gate"]:
+            lines.append("FAILED: g/e/f readout suspect (not saved)")
+        if interleaved_gate is not None and result["per_gate"]:
+            # The interleaved run is about the gate; its per-step rate is in the log.
             per_gate = result["per_gate"]
-            subtitle = f"\nL1 per {interleaved_gate}: {format_leakage_rate(per_gate['l1'], per_gate['l1_stderr'])}"
-        ax.set_title(f"{name}{subtitle}", fontsize=9)
-        ax.set_xlabel("Circuit depth (Cliffords)")
-        ax.set_ylabel("Leaked population P(f)")
+            rate = format_leakage_rate(per_gate["l1"], per_gate["l1_stderr"], pm="±")
+            lines.append(f"L1 per {interleaved_gate} = {rate}")
+        else:
+            lines.append(f"L1 per {step} = {format_leakage_rate(fit.l1, fit.l1_stderr, pm='±')}")
+        ax.grid(True, which="both", alpha=0.4)
+        ax.set_title("\n".join(lines), fontsize=LABEL_FONTSIZE, linespacing=1.3)
+        ax.set_xlabel("Circuit depth (Cliffords)", fontsize=LABEL_FONTSIZE)
+        ax.set_ylabel("Leaked population", fontsize=LABEL_FONTSIZE)
         if log_x:
             ax.set_xscale("log")
-        ax.legend(fontsize=7)
+        ax.legend(fontsize=LEGEND_FONTSIZE)
 
     reset = f"{reset_type} reset, " if reset_type else ""
-    interleaved = f" interleaved with {interleaved_gate}" if interleaved_gate is not None else ""
-    grid.fig.suptitle(f"Single qubit leakage randomized benchmarking{interleaved}\n({reset}g/e/f readout)")
+    interleaved = f"interleaved with {interleaved_gate}, " if interleaved_gate is not None else ""
+    grid.fig.suptitle(
+        f"Single qubit leakage randomized benchmarking\n({interleaved}{reset}g/e/f readout)",
+        fontsize=TITLE_FONTSIZE + 1,
+    )
     grid.fig.tight_layout()
     return grid.fig
+
+
+def _format_fraction(value: float, stderr: float | None = None, *, as_error_rate: bool = False) -> str:
+    """A fidelity as a percentage, or a small error rate in units of 10⁻³, with ±1σ when given (as the 2Q RB plots)."""
+    if value is None or not np.isfinite(value):
+        return "n/a"
+    has_err = stderr is not None and np.isfinite(stderr) and stderr > 0
+    if as_error_rate and value < 0.01:
+        return f"{value * 1e3:.2f} ± {stderr * 1e3:.2f} × 10⁻³" if has_err else f"{value * 1e3:.2f} × 10⁻³"
+    return f"{100 * value:.3f} ± {100 * stderr:.3f}%" if has_err else f"{100 * value:.3f}%"

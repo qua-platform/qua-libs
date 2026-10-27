@@ -24,6 +24,7 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
     fit_leakage_data,
     log_leakage_results,
     plot_leakage,
+    leakage_reference_entry,
 )
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -62,8 +63,8 @@ Prerequisites:
 
 State update:
     - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"].
-    - With measure_leakage, only qubit.gate_fidelity["LeakageRB"] (leakage L1 and seepage L2 per
-      Clifford, with the survival fidelity from the same g/e/f readout).
+    - With measure_leakage, only qubit.gate_fidelity["LeakageRB_reference"] (leakage L1 and seepage L2 per
+      Clifford, with the survival decay alpha from the same g/e/f readout).
 """
 
 
@@ -379,7 +380,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"], log_x=node.parameters.log_scale
+    )
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
@@ -405,16 +408,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
             if node.outcomes[q.name] == "failed":
                 continue
             if node.parameters.measure_leakage:
-                survival = node.results["fit_results"][q.name]
-                q.gate_fidelity["LeakageRB"] = {
-                    **node.results["leakage_results"][q.name],
-                    "load_id": node.snapshot_idx,
-                    "survival": (
-                        {"fidelity": 1 - survival["error_per_gate"], "error_per_gate": survival["error_per_gate"]}
-                        if survival["success"]
-                        else None
-                    ),
-                }
+                q.gate_fidelity["LeakageRB_reference"] = leakage_reference_entry(
+                    node.results["leakage_results"][q.name], node.results["fit_results"][q.name]
+                )
                 continue
             q.gate_fidelity["averaged"] = float(1 - node.results["fit_results"][q.name]["error_per_gate"])
 

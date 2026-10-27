@@ -27,7 +27,7 @@ class NodeSpecificParameters(RunnableParameters):
     measure_leakage: bool = False
     """Read the qubits as g/e/f and fit the leaked population P(f) against depth (leakage RB);
     needs 15_iq_blobs_gef, a thermal reset and state discrimination. Writes only
-    ``gate_fidelity["LeakageRB"]`` to the state. Default is False."""
+    ``gate_fidelity["LeakageRB_reference"]`` to the state. Default is False."""
 
 
 class Parameters(
