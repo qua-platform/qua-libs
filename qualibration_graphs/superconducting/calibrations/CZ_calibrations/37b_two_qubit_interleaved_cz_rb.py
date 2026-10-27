@@ -61,7 +61,7 @@ Key Features:
       population leaked out of the computational subspace against depth, as well as the survival
       probability (leakage RB, Wood & Gambetta 2018). Subtracting the reference leakage per 2Q
       Clifford from a 37a run with measure_leakage gives the leakage per CZ, for the pair and for
-      each qubit. Needs a calibrated g/e/f readout (15_iq_blobs_gef) and reset_type="thermal".
+      each qubit. Needs a calibrated g/e/f readout (15_iq_blobs_gef) and reset_type="thermal" or "active_gef".
 
 Prerequisites:
     - Having calibrated both qubits' single-qubit gates.

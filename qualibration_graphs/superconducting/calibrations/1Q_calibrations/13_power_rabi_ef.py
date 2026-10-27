@@ -22,6 +22,7 @@ from qualibrate import QualibrationNode
 from qualibration_libs import data
 from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
+from calibration_utils.common_utils.gef_readout_pulse import reset_with_gef_readout
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
@@ -123,10 +124,20 @@ def create_qua_program(node: QualibrationNode[EfParameters, Quam]):
                 with for_(*from_array(a, amps)):
                     # Qubit initialization
                     for i, qubit in multiplexed_qubits.items():  # Reset the qubit to ground state
-                        qubit.reset(reset_type=node.parameters.reset_type, simulate=node.parameters.simulate)
+                        reset_with_gef_readout(qubit, node.parameters.reset_type, node.parameters.simulate)
                         # Wait twice the regular thermal time for proper |f> state reset
                         if node.parameters.reset_type == "thermal":
                             qubit.wait(qubit.thermalization_time * u.ns)
+                        elif node.parameters.reset_type == "active_gef":
+                            # The reset's g/e/f readout puts the resonator back on its base IF
+                            qubit.resonator.update_frequency(
+                                qubit.resonator.intermediate_frequency
+                                + (
+                                    qubit.resonator.GEF_frequency_shift
+                                    if node.parameters.use_state_discrimination
+                                    else qubit.chi
+                                )
+                            )
                     align()
                     for i, qubit in multiplexed_qubits.items():
                         # Set the XY channel to the |g> -> |e> transition (GE) intermediate frequency

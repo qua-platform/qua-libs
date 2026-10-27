@@ -46,10 +46,10 @@ class NodeSpecificParameters(RunnableParameters):
     verbose_memory_log: bool = False
     """Also log the circuit memory summary and per-depth chunk breakdown at compile time.
     Per-depth transpile stats are always logged. Default is False."""
-    reset_type: Literal["active", "thermal"] = "active"
+    reset_type: Literal["active", "thermal", "active_gef"] = "active"
     """Type of reset to perform. Default is active."""
     measure_leakage: bool = False
-    """Read both qubits as g/e/f and fit leakage; needs 15_iq_blobs_gef and a thermal reset.
+    """Read both qubits as g/e/f and fit leakage; needs 15_iq_blobs_gef and a thermal or active_gef reset.
     Writes ``macros[operation].extras["leakage_per_2q_clifford"]`` (37a) / ``["leakage_per_cz"]`` (37b)
     to the state, next to the usual RB fidelity. Default is False."""
     simulate: bool = False
@@ -126,13 +126,14 @@ def validate_leakage_run(node, qubit_pairs) -> None:
     """Check a ``measure_leakage`` run can start, and log qubits read without confusion correction.
 
     Raises:
-        ValueError: If the reset is not thermal, or a qubit has no ``readout_GEF`` operation or no
+        ValueError: If the reset is neither thermal nor active_gef, or a qubit has no ``readout_GEF`` or
+            (for active_gef) ``EF_x180`` operation, or no
             three calibrated ``gef_centers`` (node 15_iq_blobs_gef).
     """
-    if node.parameters.reset_type != "thermal":
+    if node.parameters.reset_type not in ("thermal", "active_gef"):
         raise ValueError(
-            "measure_leakage needs reset_type='thermal': the g/e active reset cannot return |f> "
-            "to |g>, so leaked population would carry over into the next shot."
+            "measure_leakage needs reset_type='thermal' or 'active_gef': the g/e active reset cannot "
+            "return |f> to |g>, so leaked population would carry over into the next shot."
         )
     qubits = {qubit.name: qubit for qp in qubit_pairs for qubit in (qp.qubit_control, qp.qubit_target)}
     problems = []
@@ -142,6 +143,8 @@ def validate_leakage_run(node, qubit_pairs) -> None:
         centers = getattr(qubit.resonator, "gef_centers", None) or []
         if len(centers) != 3 or any(len(center) != 2 for center in centers):
             problems.append(f"{name}: no three calibrated gef_centers")
+        if node.parameters.reset_type == "active_gef" and "EF_x180" not in qubit.xy.operations:
+            problems.append(f"{name}: no 'EF_x180' operation (the active_gef reset plays it)")
     if problems:
         raise ValueError(
             "measure_leakage needs a calibrated g/e/f readout (run 15_iq_blobs_gef first): " + "; ".join(problems)

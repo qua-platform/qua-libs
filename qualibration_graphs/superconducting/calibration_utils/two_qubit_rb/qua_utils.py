@@ -14,6 +14,8 @@ from qualang_tools.units import unit
 from qualibrate import NodeParameters, QualibrationNode
 from quam_config import Quam
 
+from calibration_utils.common_utils.gef_readout_pulse import reset_with_gef_readout
+
 # Padding value used to fill input-stream chunks to the declared array size.
 # 37 maps to case_(37) -> idle_2q (wait(4) on both qubits in play_gate). It is
 # defensive only: play_sequence is bounded by the actual chunk length so these
@@ -269,7 +271,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     state_control: QuaVariable,
     state_target: QuaVariable,
     state_st: "_ResultSource",
-    reset_type: Literal["thermal", "active"],
+    reset_type: Literal["thermal", "active", "active_gef"],
     cz_operation: str = "cz_unipolar",
     simulate: bool = False,
     measure_leakage: bool = False,
@@ -284,7 +286,7 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         state_control: Variable to store the control qubit state.
         state_target: Variable to store the target qubit state.
         state_st: Stream to save the state measurement.
-        reset_type: Type of reset to use ("thermal" or "active").
+        reset_type: Type of reset to use ("thermal", "active" or "active_gef").
         cz_operation: Name of the CZ operation macro to use.
         simulate: Whether resets run in simulation mode.
         measure_leakage: Read each qubit as g, e or f and save ``3 * control + target``
@@ -490,8 +492,8 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
 
             # Reset the qubits and reset the frame to avoid accumulation of rotations
             for qp in qubit_pair.values():
-                qp.qubit_control.reset(reset_type, simulate)
-                qp.qubit_target.reset(reset_type, simulate)
+                reset_with_gef_readout(qp.qubit_control, reset_type, simulate)
+                reset_with_gef_readout(qp.qubit_target, reset_type, simulate)
                 reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
             align()
 
@@ -504,7 +506,7 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
     state_control: QuaVariable,
     state_target: QuaVariable,
     state_st,
-    reset_type: Literal["thermal", "active"],
+    reset_type: Literal["thermal", "active", "active_gef"],
     cz_operation: str = "cz_unipolar",
     simulate: bool = False,
     measure_leakage: bool = False,
@@ -520,7 +522,7 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
         state_control: Variable to store the control qubit state.
         state_target: Variable to store the target qubit state.
         state_st: Stream to save the state measurement.
-        reset_type: Type of reset to use ("thermal" or "active").
+        reset_type: Type of reset to use ("thermal", "active" or "active_gef").
         cz_operation: Name of the CZ operation macro to use.
         simulate: Whether resets run in simulation mode.
         measure_leakage: Read g/e/f instead of g/e, see :func:`play_gate`.
@@ -638,13 +640,11 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 align()
 
                 for qp in multiplexed_qubit_pairs.values():
-                    qp.qubit_control.reset(
-                        reset_type=self.node.parameters.reset_type,
-                        simulate=self.node.parameters.simulate,
+                    reset_with_gef_readout(
+                        qp.qubit_control, self.node.parameters.reset_type, self.node.parameters.simulate
                     )
-                    qp.qubit_target.reset(
-                        reset_type=self.node.parameters.reset_type,
-                        simulate=self.node.parameters.simulate,
+                    reset_with_gef_readout(
+                        qp.qubit_target, self.node.parameters.reset_type, self.node.parameters.simulate
                     )
                 align()
 
@@ -744,13 +744,11 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
                     # Reset the qubits
                     for qp in multiplexed_qubit_pairs.values():
-                        qp.qubit_control.reset(
-                            self.node.parameters.reset_type,
-                            self.node.parameters.simulate,
+                        reset_with_gef_readout(
+                            qp.qubit_control, self.node.parameters.reset_type, self.node.parameters.simulate
                         )
-                        qp.qubit_target.reset(
-                            self.node.parameters.reset_type,
-                            self.node.parameters.simulate,
+                        reset_with_gef_readout(
+                            qp.qubit_target, self.node.parameters.reset_type, self.node.parameters.simulate
                         )
                     align()
 

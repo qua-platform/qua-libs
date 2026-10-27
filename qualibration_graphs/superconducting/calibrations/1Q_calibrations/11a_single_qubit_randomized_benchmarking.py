@@ -26,6 +26,7 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
     plot_leakage,
     leakage_reference_entry,
 )
+from calibration_utils.common_utils.gef_readout_pulse import reset_with_gef_readout
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -51,7 +52,7 @@ gate.
 With measure_leakage, each qubit is read as g, e or f and the node also fits the leaked
 population P(f) against depth (leakage RB, Wood & Gambetta 2018), giving the leakage L1 and
 seepage L2 per Clifford. The survival is then P(g). Needs a calibrated g/e/f readout
-(15_iq_blobs_gef) and reset_type="thermal"; it reads g/e/f states whatever
+(15_iq_blobs_gef) and reset_type="thermal" or "active_gef"; it reads g/e/f states whatever
 use_state_discrimination says.
 
 Prerequisites:
@@ -246,7 +247,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     with for_(n, 0, n < n_avg, n + 1):
                         # Initialize the qubits
                         for i, qubit in multiplexed_qubits.items():
-                            qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                            reset_with_gef_readout(qubit, node.parameters.reset_type, node.parameters.simulate)
                         # Align the two elements to play the sequence after qubit initialization
                         align()
 

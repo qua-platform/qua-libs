@@ -24,7 +24,7 @@ class NodeSpecificParameters(RunnableParameters):
     measure_leakage: bool = False
     """Read the qubits as g/e/f and fit the leaked population P(f) against depth (leakage RB);
     subtracting the 11a leakage reference gives the leakage of the interleaved gate. Needs
-    15_iq_blobs_gef and a thermal reset, and reads g/e/f states whatever use_state_discrimination
+    15_iq_blobs_gef and a thermal or active_gef reset, and reads g/e/f states whatever use_state_discrimination
     says. Writes only
     ``qubit.extras["leakage_<gate>"]`` to the state, next to the gate fidelity. Default is False."""
 
