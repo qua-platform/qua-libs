@@ -25,8 +25,12 @@ def correct_populations(measured, confusion_matrices: Sequence[Optional[np.ndarr
     ``np.kron`` of the per-qubit matrices: the first qubit is the most significant digit, e.g.
     ``3 * control + target``. Each matrix has rows prepared and columns measured; ``None`` stands
     for an uncorrected qubit (identity). ``true = measured @ inv(C)`` with ``C`` the Kronecker
-    product, negative shot-noise values clipped and each distribution renormalized. Returned
-    unchanged when no qubit has a matrix.
+    product. Returned unchanged when no qubit has a matrix.
+
+    The correction is kept linear: a distribution from few shots can come out slightly negative,
+    and is left so. Clipping it to zero per random sequence would bias the mean over sequences
+    upward, turning readout misassignment into apparent leakage. Each distribution still sums to
+    1, since every row of ``C`` does.
     """
     measured = np.asarray(measured, dtype=float)
     if all(matrix is None for matrix in confusion_matrices):
@@ -34,9 +38,7 @@ def correct_populations(measured, confusion_matrices: Sequence[Optional[np.ndarr
     confusion = np.ones((1, 1))
     for matrix in confusion_matrices:
         confusion = np.kron(confusion, np.eye(3) if matrix is None else matrix)
-    corrected = np.clip(measured @ np.linalg.inv(confusion), 0.0, None)
-    total = corrected.sum(axis=-1, keepdims=True)
-    return np.divide(corrected, total, out=np.zeros_like(corrected), where=total > 0)
+    return measured @ np.linalg.inv(confusion)
 
 
 def mean_and_stderr_over_sequences(
