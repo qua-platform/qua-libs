@@ -250,7 +250,7 @@ def _extract_irb_results(ds_fit: xr.Dataset, node: QualibrationNode) -> Tuple[xr
 # Per qubit pair the leaked population (either qubit in f) and each qubit's own f population are
 # fitted against circuit depth (model and fit in ``fit_utils``). 37a fits the leakage per 2Q
 # Clifford and stores it as ``fidelity["LeakageRB_reference"]``; 37b (CZ interleaved after every
-# Clifford) subtracts that reference to give the leakage per CZ, stored as ``fidelity["LeakageRB"]``
+# Clifford) subtracts that reference to give the leakage per CZ, stored as ``fidelity["LeakageRB_CZ"]``
 # (both in ``qubit_pair.macros[operation]``).
 
 
@@ -285,7 +285,7 @@ def _extract_leakage_results(
                 fit_warnings=_split_lines(fr, "leakage_fit_warnings"),
             )
 
-        per_cz, reference_load_id, per_cz_note = None, None, ""
+        per_cz, per_cz_note = None, ""
         if interleaved:
             per_cz_note = str(qp_data.per_cz_note.values)
             if not per_cz_note:
@@ -302,8 +302,6 @@ def _extract_leakage_results(
                     }
                     for series in series_names
                 }
-                load_id = _float_or_none(qp_data.reference_load_id.values)
-                reference_load_id = None if load_id is None else int(load_id)
 
         results[str(qp_name)] = LeakagePairResult(
             control_qubit=str(qp_data.control_qubit.values),
@@ -316,7 +314,6 @@ def _extract_leakage_results(
             success=bool(qp_data.success.values),
             failure=str(qp_data.failure.values),
             per_cz=per_cz,
-            reference_load_id=reference_load_id,
             per_cz_note=per_cz_note,
         )
     return ds_fit, results

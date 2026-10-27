@@ -15,6 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from calibration_utils.two_qubit_rb import (  # noqa: E402
     RBMode,
     fit_raw_data,
+    leakage_per_cz_entry,
+    leakage_reference_entry,
     validate_leakage_run,
 )
 from calibration_utils.two_qubit_rb.fit_utils import _leaked_populations  # noqa: E402
@@ -86,14 +88,21 @@ def test_interleaved_run_subtracts_the_stored_reference():
     _, reference = fit_raw_data(
         _dataset(1e-3, 1e-4, np.random.default_rng(4)), reference_node, mode=RBMode.STANDARD, leakage=True
     )
-    fidelity = {"LeakageRB_reference": {**asdict(reference["qA2-qA1"]), "load_id": 7}}
-    node, _ = _node(fidelity)
+    entry = leakage_reference_entry(asdict(reference["qA2-qA1"]), {"success": True, "fidelity": 0.98, "alpha": 0.97})
+    assert set(entry) == {"pair", "control", "target", "fidelity", "alpha"}
+    assert set(entry["control"]) == {"l1", "l1_stderr", "l2", "l2_stderr"}
+    node, _ = _node({"LeakageRB_reference": entry})
     _, results = fit_raw_data(
         _dataset(3e-3, 1e-4, np.random.default_rng(5)), node, mode=RBMode.INTERLEAVED, leakage=True
     )
     result = results["qA2-qA1"]
-    assert result.reference_load_id == 7
     assert result.per_cz["control"]["l1"] == pytest.approx(2e-3, rel=0.35)
+    per_cz_entry = leakage_per_cz_entry(asdict(result))
+    assert per_cz_entry["control"] == {
+        "l1": result.per_cz["control"]["l1"],
+        "l1_stderr": result.per_cz["control"]["l1_stderr"],
+    }
+    json.dumps([entry, per_cz_entry], allow_nan=False)
 
 
 def test_interleaved_run_without_a_reference_reports_per_clifford_only():
@@ -103,6 +112,7 @@ def test_interleaved_run_without_a_reference_reports_per_clifford_only():
     )
     assert results["qA2-qA1"].per_cz is None
     assert "37a" in results["qA2-qA1"].per_cz_note
+    assert leakage_per_cz_entry(asdict(results["qA2-qA1"])) is None
 
 
 def test_validation_needs_a_thermal_reset():
@@ -126,7 +136,7 @@ def test_interleaved_survival_uses_the_leakage_reference():
     fidelity = {
         "StandardRB_alpha": 0.5,  # from a normal 37a: different readout, must be ignored
         "StandardRB": 0.6,
-        "LeakageRB_reference": {"load_id": None, "survival": {"alpha": 0.97, "fidelity": 0.977}},
+        "LeakageRB_reference": {"alpha": 0.97, "fidelity": 0.977},
     }
     node, _ = _node(fidelity)
     node.parameters.measure_leakage = True
@@ -135,7 +145,7 @@ def test_interleaved_survival_uses_the_leakage_reference():
     ds_fit, _ = analysis.fit_raw_data(ds, node, mode=RBMode.INTERLEAVED)
     assert float(ds_fit.standard_rb_alpha.sel(qubit_pair="qA2-qA1")) == pytest.approx(0.97)
 
-    del fidelity["LeakageRB_reference"]["survival"]
+    fidelity["LeakageRB_reference"] = {"alpha": None, "fidelity": None}  # 37a survival fit failed
     node, _ = _node(fidelity)
     node.parameters.measure_leakage = True
     with pytest.raises(KeyError, match="LeakageRB_reference"):

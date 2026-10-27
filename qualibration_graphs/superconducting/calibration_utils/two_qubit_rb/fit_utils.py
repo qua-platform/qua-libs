@@ -265,18 +265,18 @@ def _fitted_curve_dataarray(circuit_depths, fit_params) -> xr.DataArray:
 def _standard_rb_reference(node: QualibrationNode, qp_name: str) -> dict:
     """The 37a Standard RB reference 37b compares against: ``alpha``, ``fidelity``, ``load_id`` and ``source``.
 
-    A ``measure_leakage`` run uses the survival fit of the leakage 37a (``LeakageRB_reference["survival"]``),
-    taken with the same g/e/f readout and thermal reset; a normal run uses ``StandardRB*``.
+    A ``measure_leakage`` run uses the survival fit of the leakage 37a (``LeakageRB_reference``), taken
+    with the same g/e/f readout and thermal reset, and has no ``load_id`` (so no reference overlay);
+    a normal run uses ``StandardRB*``.
     """
     fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
     if getattr(node.parameters, "measure_leakage", False):
         entry = fidelity_dict.get("LeakageRB_reference") or {}
-        survival = entry.get("survival") or {}
         return {
-            "alpha": survival.get("alpha"),
-            "fidelity": survival.get("fidelity"),
-            "load_id": entry.get("load_id") if survival else None,
-            "source": 'LeakageRB_reference["survival"] (run 37a with measure_leakage=True first)',
+            "alpha": entry.get("alpha"),
+            "fidelity": entry.get("fidelity"),
+            "load_id": None,
+            "source": 'LeakageRB_reference["alpha"] (run 37a with measure_leakage=True first)',
         }
     return {
         "alpha": fidelity_dict.get("StandardRB_alpha"),
@@ -674,15 +674,11 @@ def fit_leakage_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str, *, in
     }
     if interleaved:
         reference = _resolve_leakage_reference(node, qp_name)
-        per_clifford = reference.get("per_clifford") or {}
-        per_cz = leakage_per_gate(fits, [per_clifford.get(series) for series in _LEAKAGE_SERIES])
+        per_cz = leakage_per_gate(fits, [reference.get(series) for series in _LEAKAGE_SERIES])
         assign_kwargs.update({_PER_CZ_VARIABLES[key]: per_series(values) for key, values in per_cz.items()})
-        assign_kwargs["reference_load_id"] = (
-            float(reference["load_id"]) if reference.get("load_id") is not None else np.nan
-        )
         assign_kwargs["per_cz_note"] = (
             ""
-            if reference
+            if reference.get("pair")
             else f"No LeakageRB_reference for {qp_name}: run 37a_two_qubit_standard_rb with "
             "measure_leakage=True first. Only the leakage per interleaved Clifford is reported."
         )

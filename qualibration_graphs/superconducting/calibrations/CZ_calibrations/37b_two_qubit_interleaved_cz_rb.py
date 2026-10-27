@@ -36,6 +36,7 @@ from calibration_utils.two_qubit_rb import (
     summarize_transpiled_depth,
     try_load,
     validate_leakage_run,
+    leakage_per_cz_entry,
 )
 
 # %% {Initialisation}
@@ -76,8 +77,8 @@ Prerequisites:
 State update:
     - qp.macros[operation].fidelity["InterleavedRB"] (fitted CZ-gate fidelity).
     - qp.macros[operation].fidelity["InterleavedRB_alpha"] (fitted RB decay parameter).
-    - With measure_leakage, only qp.macros[operation].fidelity["LeakageRB"] (leakage L1 and seepage L2
-      per CZ and per interleaved Clifford, for the pair and for each qubit).
+    - With measure_leakage, only qp.macros[operation].fidelity["LeakageRB_CZ"] (leakage L1 per CZ,
+      for the pair and for each qubit; needs the 37a reference).
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -300,14 +301,9 @@ with node.record_state_updates():
         if node.outcomes[qp.name] == "failed":
             continue
         if node.parameters.measure_leakage:
-            survival = node.results["fit_results"][qp.name]
-            node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["LeakageRB"] = {
-                **node.results["leakage_results"][qp.name],
-                "load_id": node.snapshot_idx,
-                "survival": (
-                    {"fidelity": survival["fidelity"], "alpha": survival["alpha"]} if survival["success"] else None
-                ),
-            }
+            entry = leakage_per_cz_entry(node.results["leakage_results"][qp.name])
+            if entry is not None:
+                node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["LeakageRB_CZ"] = entry
             continue
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB"] = node.results[
             "fit_results"

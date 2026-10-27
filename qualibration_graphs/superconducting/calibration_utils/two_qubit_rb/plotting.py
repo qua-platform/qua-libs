@@ -21,6 +21,7 @@ from calibration_utils.two_qubit_rb.reporting import (
 )
 
 RbPlotStyle = Literal["error_bars", "per_sequence"]
+PANEL_SIZE = 5  # inches per qubit-pair panel, as the single-qubit RB figures
 
 
 def _plot_per_sequence_scatter(
@@ -113,7 +114,7 @@ def plot_raw_data_with_fit(
     log_x = node.parameters.rb_plot_log_x
 
     grid_names, pair_names = grid_pair_names(qubit_pairs)
-    grid = QubitPairGrid(grid_names, pair_names)
+    grid = QubitPairGrid(grid_names, pair_names, size=PANEL_SIZE)
 
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
@@ -317,7 +318,7 @@ def plot_leakage(
     :class:`LeakagePairResult`.
     """
     grid_names, pair_names = grid_pair_names(node.namespace["qubit_pairs"])
-    grid = QubitPairGrid(grid_names, pair_names)
+    grid = QubitPairGrid(grid_names, pair_names, size=PANEL_SIZE)
     depths = ds_leak.circuit_depth.values
     interleaved = "interleaved" in node.name.lower()
     log_x = node.parameters.rb_plot_log_x
@@ -343,20 +344,23 @@ def plot_leakage(
                 fmt="o",
                 ms=4,
                 capsize=2,
-                label=f"{labels[series]}: L1 {format_leakage_rate(stored['l1'], stored['l1_stderr'])}",
+                label=labels[series],
             )
             fit = LeakageFit(**stored)
             if fit.success:
                 lo = depths[shown].min()
                 dense = np.geomspace(lo, depths.max(), 200) if log_x else np.linspace(lo, depths.max(), 200)
                 ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1)
-        subtitle = ""
+        lines = [f"Qubit pair: {qp_name}"]
         if result["failure"]:
-            subtitle = "\nFAILED: g/e/f readout suspect (not saved)"
-        elif interleaved and result["per_cz"]:
-            per_cz = result["per_cz"]["pair"]
-            subtitle = f"\nper CZ: {format_leakage_rate(per_cz['l1'], per_cz['l1_stderr'])}"
-        ax.set_title(f"{qp_name}{subtitle}", fontsize=9)
+            lines.append("FAILED: g/e/f readout suspect (not saved)")
+        if interleaved and result["per_cz"]:
+            # The interleaved run is about the CZ; its per-step rate is in the log.
+            lines += _leakage_rate_lines("L1 per CZ", result["per_cz"], labels)
+        else:
+            step = "interleaved Clifford" if interleaved else "2Q Clifford"
+            lines += _leakage_rate_lines(f"L1 per {step}", result["per_clifford"], labels)
+        ax.set_title("\n".join(lines), fontsize=9, linespacing=1.3)
         ax.set_xlabel("Circuit depth (Cliffords)")
         ax.set_ylabel("Leaked population")
         if log_x:
@@ -366,3 +370,15 @@ def plot_leakage(
     grid.fig.suptitle(f"{title}\n({node.parameters.reset_type} reset, g/e/f readout)")
     grid.fig.tight_layout()
     return {"leakage": grid.fig}
+
+
+def _leakage_rate_lines(heading: str, rates: Dict[str, dict], labels: Dict[str, str]) -> list[str]:
+    """Title lines of one set of leakage rates: the pair (either qubit), then each qubit."""
+    pair = rates["pair"]
+    return [
+        f"{heading}: {labels['pair']} {format_leakage_rate(pair['l1'], pair['l1_stderr'], pm='±')}",
+        ",  ".join(
+            f"{labels[series]} {format_leakage_rate(rates[series]['l1'], rates[series]['l1_stderr'], pm='±')}"
+            for series in ("control", "target")
+        ),
+    ]

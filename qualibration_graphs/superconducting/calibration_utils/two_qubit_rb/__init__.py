@@ -16,7 +16,13 @@ from .plotting import plot_leakage, plot_raw_data_with_fit
 from .qua_utils import QuaProgramHandler
 from .rb_cache import cache_key, save, try_load
 from .rb_utils import InterleavedRB, StandardRB
-from .reporting import log_irb_results, log_leakage_results, log_srb_results
+from .reporting import (
+    leakage_per_cz_entry,
+    leakage_reference_entry,
+    log_irb_results,
+    log_leakage_results,
+    log_srb_results,
+)
 
 __all__ = [
     "Parameters",
@@ -27,6 +33,8 @@ __all__ = [
     "log_srb_results",
     "log_irb_results",
     "log_leakage_results",
+    "leakage_reference_entry",
+    "leakage_per_cz_entry",
     "RBMode",
     "plot_raw_data_with_fit",
     "plot_leakage",

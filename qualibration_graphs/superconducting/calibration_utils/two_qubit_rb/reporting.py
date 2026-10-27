@@ -60,7 +60,7 @@ class LeakagePairResult:
 
     ``failure`` is set when the g/e/f readout looks wrong (nothing is then written to the state).
     The interleaved node (37b) adds ``per_cz`` (``l1``, ``l1_stderr``, ``l2``, ``l2_stderr`` per
-    series) and the 37a ``reference_load_id``, or ``per_cz_note`` when no reference was stored.
+    series), or ``per_cz_note`` when no reference was stored.
     """
 
     control_qubit: str
@@ -70,8 +70,31 @@ class LeakagePairResult:
     success: bool
     failure: str = ""
     per_cz: dict[str, dict[str, float | None]] | None = None
-    reference_load_id: int | None = None
     per_cz_note: str = ""
+
+
+def leakage_reference_entry(leakage_result: dict, survival: dict) -> dict:
+    """37a's ``fidelity["LeakageRB_reference"]``: L1 and L2 per 2Q Clifford for each series, with the
+    survival ``fidelity`` and ``alpha`` 37b compares against.
+
+    ``leakage_result`` and ``survival`` are this pair's ``node.results`` entries; the fit details
+    stay in the run's saved results.
+    """
+    entry = {
+        series: {key: rates[key] for key in ("l1", "l1_stderr", "l2", "l2_stderr")}
+        for series, rates in leakage_result["per_clifford"].items()
+    }
+    entry["fidelity"] = survival["fidelity"] if survival["success"] else None
+    entry["alpha"] = survival["alpha"] if survival["success"] else None
+    return entry
+
+
+def leakage_per_cz_entry(leakage_result: dict) -> dict | None:
+    """37b's ``fidelity["LeakageRB_CZ"]``: L1 per CZ for each series, or None without a 37a reference."""
+    per_cz = leakage_result["per_cz"]
+    if per_cz is None:
+        return None
+    return {series: {"l1": rates["l1"], "l1_stderr": rates["l1_stderr"]} for series, rates in per_cz.items()}
 
 
 def format_fraction_pm(
@@ -222,13 +245,22 @@ def log_irb_results(fit_results: dict[str, IRBFitResult], log_callable=None) -> 
 # --- Leakage RB (measure_leakage=True) -------------------------------------------------------
 
 
-def format_leakage_rate(l1: float | None, l1_stderr: float | None = None) -> str:
-    """Format a leakage rate as ``value +/- stderr``, or ``n/a``."""
+def format_leakage_rate(l1: float | None, l1_stderr: float | None = None, *, pm: str = "+/-") -> str:
+    """Format a leakage rate as ``(value +/- stderr)e-07``, both on one exponent so a rate consistent with
+    zero reads as such, or ``n/a``; plots pass ``pm="±"`` and get ``(value ± stderr) × 10⁻⁷``."""
     if l1 is None or not np.isfinite(l1):
         return "n/a"
     if l1_stderr is None or not np.isfinite(l1_stderr):
         return f"{l1:.2e}"
-    return f"{l1:.2e} +/- {l1_stderr:.1e}"
+    scale = max(abs(l1), l1_stderr)
+    exponent = int(np.floor(np.log10(scale))) if scale > 0 else 0
+    mantissa = f"({l1 / 10**exponent:.2f} {pm} {l1_stderr / 10**exponent:.2f})"
+    if pm == "±":
+        return f"{mantissa} × 10{str(exponent).translate(_SUPERSCRIPT)}"
+    return f"{mantissa}e{exponent:+03d}"
+
+
+_SUPERSCRIPT = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
 
 
 def leakage_series_labels(control_qubit: str, target_qubit: str) -> dict[str, str]:
