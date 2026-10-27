@@ -265,19 +265,10 @@ def _fitted_curve_dataarray(circuit_depths, fit_params) -> xr.DataArray:
 def _standard_rb_reference(node: QualibrationNode, qp_name: str) -> dict:
     """The 37a Standard RB reference 37b compares against: ``alpha``, ``fidelity``, ``load_id`` and ``source``.
 
-    A ``measure_leakage`` run uses the survival fit of the leakage 37a (``LeakageRB_reference``), taken
-    with the same g/e/f readout and thermal reset, and has no ``load_id`` (so no reference overlay);
-    a normal run uses ``StandardRB*``.
+    A leakage run (any readout or reset) writes the same ``StandardRB*`` as a normal one: the RB decay
+    does not depend on the readout.
     """
     fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
-    if getattr(node.parameters, "measure_leakage", False):
-        entry = fidelity_dict.get("LeakageRB_reference") or {}
-        return {
-            "alpha": entry.get("alpha"),
-            "fidelity": entry.get("fidelity"),
-            "load_id": None,
-            "source": 'LeakageRB_reference["alpha"] (run 37a with measure_leakage=True first)',
-        }
     return {
         "alpha": fidelity_dict.get("StandardRB_alpha"),
         "fidelity": fidelity_dict.get("StandardRB"),
@@ -588,9 +579,10 @@ def _leaked_populations(states, confusion_control=None, confusion_target=None) -
 
 
 def _resolve_leakage_reference(node: QualibrationNode, qp_name: str) -> dict:
-    """The 37a leakage reference (``fidelity["LeakageRB_reference"]``) for this pair, or ``{}``."""
+    """The 37a leakage reference (``macros[operation].extras["leakage_per_2q_clifford"]``) for this pair, or ``{}``."""
     fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
-    return fidelity_dict.get("LeakageRB_reference") or {}
+    extras = getattr(node.machine.qubit_pairs[qp_name].macros[node.parameters.operation], "extras", None) or {}
+    return extras.get("leakage_per_2q_clifford") or {}
 
 
 # Names of the per-CZ variables in ``ds_leakage`` for each key of ``leakage_per_gate``.
@@ -610,7 +602,7 @@ def fit_leakage_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str, *, in
     fails, so nothing is written to the state, if either qubit's leaked population at the
     shallowest depth is above ``SHALLOW_LEAKAGE_THRESHOLD``: there the qubits are only reset and
     read, so that is the g/e/f readout or reset failing, not leakage. For the interleaved node the
-    per-CZ leakage is taken against ``fidelity["LeakageRB_reference"]`` from 37a.
+    per-CZ leakage is taken against ``macros[operation].extras["leakage_per_2q_clifford"]`` from 37a.
     """
     qp = next(qp for qp in node.namespace["qubit_pairs"] if qp.name == qp_name)
     state = da.state.squeeze("qubit_pair", drop=True) if "qubit_pair" in da.state.dims else da.state
@@ -676,10 +668,11 @@ def fit_leakage_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str, *, in
         reference = _resolve_leakage_reference(node, qp_name)
         per_cz = leakage_per_gate(fits, [reference.get(series) for series in _LEAKAGE_SERIES])
         assign_kwargs.update({_PER_CZ_VARIABLES[key]: per_series(values) for key, values in per_cz.items()})
+        assign_kwargs["reference_updated_at"] = str(reference.get("updated_at") or "")
         assign_kwargs["per_cz_note"] = (
             ""
             if reference.get("pair")
-            else f"No LeakageRB_reference for {qp_name}: run 37a_two_qubit_standard_rb with "
+            else f"No extras['leakage_per_2q_clifford'] for {qp_name}: run 37a_two_qubit_standard_rb with "
             "measure_leakage=True first. Only the leakage per interleaved Clifford is reported."
         )
     return da.drop_vars("state").assign(**assign_kwargs)

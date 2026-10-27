@@ -26,8 +26,9 @@ class NodeSpecificParameters(RunnableParameters):
     """Seed for the random number generator. Default is None."""
     measure_leakage: bool = False
     """Read the qubits as g/e/f and fit the leaked population P(f) against depth (leakage RB);
-    needs 15_iq_blobs_gef, a thermal reset and state discrimination. Writes only
-    ``gate_fidelity["LeakageRB_reference"]`` to the state. Default is False."""
+    needs 15_iq_blobs_gef and a thermal reset, and reads g/e/f states whatever use_state_discrimination
+    says. Writes only
+    ``qubit.extras["leakage_per_clifford"]`` to the state, next to the gate fidelity. Default is False."""
 
 
 class Parameters(
@@ -90,11 +91,9 @@ def validate_leakage_run(node, qubits) -> None:
     """Check a ``measure_leakage`` run can start, and log qubits read without confusion correction.
 
     Raises:
-        ValueError: If state discrimination is off, the reset is not thermal, or a qubit has no
+        ValueError: If the reset is not thermal, or a qubit has no
             ``readout_GEF`` operation or no three calibrated ``gef_centers`` (node 15_iq_blobs_gef).
     """
-    if not node.parameters.use_state_discrimination:
-        raise ValueError("measure_leakage reads g/e/f states: it needs use_state_discrimination=True.")
     if node.parameters.reset_type != "thermal":
         raise ValueError(
             "measure_leakage needs reset_type='thermal': the g/e active reset cannot return |f> "

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import numpy as np
 
@@ -60,7 +61,8 @@ class LeakagePairResult:
 
     ``failure`` is set when the g/e/f readout looks wrong (nothing is then written to the state).
     The interleaved node (37b) adds ``per_cz`` (``l1``, ``l1_stderr``, ``l2``, ``l2_stderr`` per
-    series), or ``per_cz_note`` when no reference was stored.
+    series) and the time the 37a reference was stored (``reference_updated_at``), or ``per_cz_note``
+    when no reference was stored.
     """
 
     control_qubit: str
@@ -70,31 +72,38 @@ class LeakagePairResult:
     success: bool
     failure: str = ""
     per_cz: dict[str, dict[str, float | None]] | None = None
+    reference_updated_at: str = ""
     per_cz_note: str = ""
 
 
-def leakage_reference_entry(leakage_result: dict, survival: dict) -> dict:
-    """37a's ``fidelity["LeakageRB_reference"]``: L1 and L2 per 2Q Clifford for each series, with the
-    survival ``fidelity`` and ``alpha`` 37b compares against.
+def leakage_reference_entry(leakage_result: dict) -> dict:
+    """37a's ``macros[operation].extras["leakage_per_2q_clifford"]``: L1 and L2 per 2Q Clifford for each
+    series, and when they were stored (``updated_at``, so 37b can tell how old its reference is).
 
-    ``leakage_result`` and ``survival`` are this pair's ``node.results`` entries; the fit details
-    stay in the run's saved results.
+    ``leakage_result`` is this pair's ``node.results["leakage_results"]`` entry; the fit details stay
+    in the run's saved results.
     """
     entry = {
         series: {key: rates[key] for key in ("l1", "l1_stderr", "l2", "l2_stderr")}
         for series, rates in leakage_result["per_clifford"].items()
     }
-    entry["fidelity"] = survival["fidelity"] if survival["success"] else None
-    entry["alpha"] = survival["alpha"] if survival["success"] else None
+    entry["updated_at"] = _now()
     return entry
 
 
 def leakage_per_cz_entry(leakage_result: dict) -> dict | None:
-    """37b's ``fidelity["LeakageRB_CZ"]``: L1 per CZ for each series, or None without a 37a reference."""
+    """37b's ``macros[operation].extras["leakage_per_cz"]``: L1 per CZ for each series, or None without a
+    37a reference."""
     per_cz = leakage_result["per_cz"]
     if per_cz is None:
         return None
-    return {series: {"l1": rates["l1"], "l1_stderr": rates["l1_stderr"]} for series, rates in per_cz.items()}
+    entry = {series: {"l1": rates["l1"], "l1_stderr": rates["l1_stderr"]} for series, rates in per_cz.items()}
+    entry["updated_at"] = _now()
+    return entry
+
+
+def _now() -> str:
+    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def format_fraction_pm(
@@ -290,4 +299,7 @@ def log_leakage_results(results: dict[str, LeakagePairResult], *, interleaved: b
                     for series, rate in result.per_cz.items()
                 )
                 lines.append(f"  per CZ: {rates}")
+                lines.append(
+                    f"  (minus the 37a reference stored {result.reference_updated_at or 'at an unknown time'})"
+                )
         log_callable("\n".join(lines))

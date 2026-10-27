@@ -50,7 +50,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Type of reset to perform. Default is active."""
     measure_leakage: bool = False
     """Read both qubits as g/e/f and fit leakage; needs 15_iq_blobs_gef and a thermal reset.
-    Writes only ``LeakageRB_reference`` (37a) / ``LeakageRB_CZ`` (37b) to the state. Default is False."""
+    Writes ``macros[operation].extras["leakage_per_2q_clifford"]`` (37a) / ``["leakage_per_cz"]`` (37b)
+    to the state, next to the usual RB fidelity. Default is False."""
     simulate: bool = False
     """Simulate the waveforms on the OPX instead of executing the program. Default is False."""
     fidelity_threshold: Optional[float] = None

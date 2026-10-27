@@ -74,8 +74,8 @@ State update:
     - qp.macros[operation].fidelity["StandardRB"] (fitted average Clifford fidelity).
     - qp.macros[operation].fidelity["StandardRB_alpha"] (fitted RB decay parameter).
     - qp.macros[operation].fidelity["StandardRB_load_id"] (snapshot index of this run).
-    - With measure_leakage, only qp.macros[operation].fidelity["LeakageRB_reference"] (leakage L1 and
-      seepage L2 per 2Q Clifford, for the pair and for each qubit, with the survival fidelity and alpha).
+    - With measure_leakage, also qp.macros[operation].extras["leakage_per_2q_clifford"] (leakage L1 and
+      seepage L2 per 2Q Clifford, for the pair and for each qubit), when the leakage fit succeeds.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -302,12 +302,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.STANDARD)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_srb_results(fit_results, log_callable=node.log)
-    if node.parameters.measure_leakage:
-        # A leakage run passes or fails on its leakage fit; the survival fit is stored with it.
-        node.outcomes = {
-            qp_name: ("successful" if result.success else "failed") for qp_name, result in leakage_results.items()
-        }
-        return
     node.outcomes = {
         qp_name: ("successful" if fit_result.success else "failed") for qp_name, fit_result in fit_results.items()
     }
@@ -338,11 +332,6 @@ with node.record_state_updates():
     for qp in node.namespace["qubit_pairs"]:
         if node.outcomes[qp.name] == "failed":
             continue
-        if node.parameters.measure_leakage:
-            node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["LeakageRB_reference"] = (
-                leakage_reference_entry(node.results["leakage_results"][qp.name], node.results["fit_results"][qp.name])
-            )
-            continue
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["StandardRB"] = node.results[
             "fit_results"
         ][qp.name]["fidelity"]
@@ -352,6 +341,10 @@ with node.record_state_updates():
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity[
             "StandardRB_load_id"
         ] = node.snapshot_idx
+        if node.parameters.measure_leakage and node.results["leakage_results"][qp.name]["success"]:
+            node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].extras["leakage_per_2q_clifford"] = (
+                leakage_reference_entry(node.results["leakage_results"][qp.name])
+            )
 
 
 # %% {Save_results}

@@ -37,9 +37,9 @@ def _qubit(name, confusion=None, centers=3):
     return SimpleNamespace(name=name, resonator=resonator, T1=None, T2echo=None)
 
 
-def _node(fidelity=None, reset_type="thermal"):
+def _node(fidelity=None, reset_type="thermal", extras=None):
     control, target = _qubit("qA2"), _qubit("qA1")
-    macros = {OPERATION: SimpleNamespace(fidelity=fidelity or {})}
+    macros = {OPERATION: SimpleNamespace(fidelity=fidelity or {}, extras=extras or {})}
     pair = SimpleNamespace(name="qA2-qA1", qubit_control=control, qubit_target=target, macros=macros)
     machine = SimpleNamespace(qubit_pairs={"qA2-qA1": SimpleNamespace(macros=macros)})
     logs = []
@@ -88,15 +88,16 @@ def test_interleaved_run_subtracts_the_stored_reference():
     _, reference = fit_raw_data(
         _dataset(1e-3, 1e-4, np.random.default_rng(4)), reference_node, mode=RBMode.STANDARD, leakage=True
     )
-    entry = leakage_reference_entry(asdict(reference["qA2-qA1"]), {"success": True, "fidelity": 0.98, "alpha": 0.97})
-    assert set(entry) == {"pair", "control", "target", "fidelity", "alpha"}
+    entry = leakage_reference_entry(asdict(reference["qA2-qA1"]))
+    assert set(entry) == {"pair", "control", "target", "updated_at"}
     assert set(entry["control"]) == {"l1", "l1_stderr", "l2", "l2_stderr"}
-    node, _ = _node({"LeakageRB_reference": entry})
+    node, _ = _node(extras={"leakage_per_2q_clifford": entry})
     _, results = fit_raw_data(
         _dataset(3e-3, 1e-4, np.random.default_rng(5)), node, mode=RBMode.INTERLEAVED, leakage=True
     )
     result = results["qA2-qA1"]
     assert result.per_cz["control"]["l1"] == pytest.approx(2e-3, rel=0.35)
+    assert result.reference_updated_at == entry["updated_at"]
     per_cz_entry = leakage_per_cz_entry(asdict(result))
     assert per_cz_entry["control"] == {
         "l1": result.per_cz["control"]["l1"],
@@ -130,14 +131,11 @@ def test_validation_needs_gef_centers_and_warns_without_confusion():
         validate_leakage_run(node, node.namespace["qubit_pairs"])
 
 
-def test_interleaved_survival_uses_the_leakage_reference():
+def test_interleaved_survival_of_a_leakage_run_uses_standard_rb():
     from calibration_utils.two_qubit_rb import RBMode, analysis
 
-    fidelity = {
-        "StandardRB_alpha": 0.5,  # from a normal 37a: different readout, must be ignored
-        "StandardRB": 0.6,
-        "LeakageRB_reference": {"alpha": 0.97, "fidelity": 0.977},
-    }
+    # The RB decay does not depend on readout or reset: a leakage 37b compares against StandardRB_alpha.
+    fidelity = {"StandardRB_alpha": 0.97, "StandardRB": 0.977}
     node, _ = _node(fidelity)
     node.parameters.measure_leakage = True
     node.parameters.use_input_stream = False
@@ -145,10 +143,9 @@ def test_interleaved_survival_uses_the_leakage_reference():
     ds_fit, _ = analysis.fit_raw_data(ds, node, mode=RBMode.INTERLEAVED)
     assert float(ds_fit.standard_rb_alpha.sel(qubit_pair="qA2-qA1")) == pytest.approx(0.97)
 
-    fidelity["LeakageRB_reference"] = {"alpha": None, "fidelity": None}  # 37a survival fit failed
-    node, _ = _node(fidelity)
+    node, _ = _node({})
     node.parameters.measure_leakage = True
-    with pytest.raises(KeyError, match="LeakageRB_reference"):
+    with pytest.raises(KeyError, match="StandardRB_alpha"):
         analysis.fit_raw_data(ds, node, mode=RBMode.INTERLEAVED)
 
 

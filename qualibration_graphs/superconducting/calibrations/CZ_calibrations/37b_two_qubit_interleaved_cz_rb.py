@@ -77,8 +77,8 @@ Prerequisites:
 State update:
     - qp.macros[operation].fidelity["InterleavedRB"] (fitted CZ-gate fidelity).
     - qp.macros[operation].fidelity["InterleavedRB_alpha"] (fitted RB decay parameter).
-    - With measure_leakage, only qp.macros[operation].fidelity["LeakageRB_CZ"] (leakage L1 per CZ,
-      for the pair and for each qubit; needs the 37a reference).
+    - With measure_leakage, also qp.macros[operation].extras["leakage_per_cz"] (leakage L1 per CZ, for
+      the pair and for each qubit), when the leakage fit succeeds and a 37a reference exists.
 """
 
 # Be sure to include [Parameters, Quam] so the node has proper type hinting
@@ -251,13 +251,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.INTERLEAVED)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_irb_results(fit_results, log_callable=node.log)
-    if node.parameters.measure_leakage:
-        # A leakage run passes or fails on its leakage fit; the survival fit is stored with it.
-        node.outcomes = {
-            qp_name: ("successful" if result.success else "failed") for qp_name, result in leakage_results.items()
-        }
-        return
-
     threshold = node.parameters.fidelity_threshold
     outcomes: dict[str, str] = {}
     for qp_name, fit_result in fit_results.items():
@@ -300,17 +293,16 @@ with node.record_state_updates():
     for qp in node.namespace["qubit_pairs"]:
         if node.outcomes[qp.name] == "failed":
             continue
-        if node.parameters.measure_leakage:
-            entry = leakage_per_cz_entry(node.results["leakage_results"][qp.name])
-            if entry is not None:
-                node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["LeakageRB_CZ"] = entry
-            continue
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB"] = node.results[
             "fit_results"
         ][qp.name]["fidelity"]
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity["InterleavedRB_alpha"] = (
             node.results["fit_results"][qp.name]["alpha"]
         )
+        if node.parameters.measure_leakage and node.results["leakage_results"][qp.name]["success"]:
+            entry = leakage_per_cz_entry(node.results["leakage_results"][qp.name])
+            if entry is not None:
+                node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].extras["leakage_per_cz"] = entry
 
 
 # %% {Save_results}

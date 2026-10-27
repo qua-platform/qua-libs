@@ -1,5 +1,6 @@
 import logging
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from typing import Tuple, Dict
 import numpy as np
 import xarray as xr
@@ -58,7 +59,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
-    if not node.parameters.use_state_discrimination:
+    # A leakage run always reads g/e/f states, whatever use_state_discrimination says.
+    if not node.parameters.use_state_discrimination and not getattr(node.parameters, "measure_leakage", False):
         ds = convert_IQ_to_V(ds, node.namespace["qubits"])
     return ds
 
@@ -137,12 +139,13 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
 #
 # ``pg``, ``pe`` and ``pf`` hold, per random sequence and depth, the fraction of shots read as g, e
 # and f. The leakage model, its fit and the population correction are shared with the two-qubit RB
-# (``calibration_utils.common_utils.leakage_rb``). 11a fits the leakage per Clifford and stores it as
-# ``gate_fidelity["LeakageRB_reference"]``; 11b (a gate interleaved after every Clifford) fits it per
-# Clifford + gate step and subtracts that reference to give the leakage of the gate.
+# (``calibration_utils.common_utils.leakage_rb``). 11a fits the leakage per Clifford and stores it in
+# ``qubit.extras["leakage_per_clifford"]``; 11b (a gate interleaved after every Clifford) fits it per
+# Clifford + gate step and subtracts that reference to give the leakage of the gate, stored in
+# ``qubit.extras["leakage_<gate>"]``. The gate fidelity is written as in a normal run.
 
 # Where 11a stores its leakage result, the reference 11b subtracts.
-LEAKAGE_REFERENCE_KEY = "LeakageRB_reference"
+LEAKAGE_REFERENCE_KEY = "leakage_per_clifford"
 
 
 @dataclass
@@ -150,8 +153,8 @@ class LeakageResult:
     """Leakage RB result of one qubit: its leakage ``l1`` and seepage ``l2`` per sequence step.
 
     A step is one Clifford (11a), or one Clifford plus the interleaved gate (11b), which also gets
-    ``per_gate`` (``l1``, ``l1_stderr``, ``l2``, ``l2_stderr`` of the gate), or ``per_gate_note``
-    when no reference was stored. ``failure`` is set
+    ``per_gate`` (``l1``, ``l1_stderr``, ``l2``, ``l2_stderr`` of the gate) and the time the 11a
+    reference was stored (``reference_updated_at``), or ``per_gate_note`` when no reference was stored. ``failure`` is set
     when the g/e/f readout looks wrong (nothing is then written to the state). Non-finite numbers
     are ``None``: the result goes to the state as it is, and QUAM would write NaN, which is not
     valid JSON.
@@ -162,6 +165,7 @@ class LeakageResult:
     success: bool
     failure: str = ""
     per_gate: dict | None = None
+    reference_updated_at: str = ""
     per_gate_note: str = ""
 
 
@@ -175,7 +179,7 @@ def fit_leakage_data(
     to the state, if its leaked population at the shallowest depth is above
     ``SHALLOW_LEAKAGE_THRESHOLD``: so few gates cannot leak that much, so the g/e/f readout or
     reset is failing. With ``interleaved_gate`` (11b) the leakage of that gate is the fitted rate
-    minus the 11a reference in ``gate_fidelity["LeakageRB_reference"]``.
+    minus the 11a reference in ``qubit.extras["leakage_per_clifford"]``.
     """
     qubits = node.namespace["qubits"]
     depths = ds.depths.values
@@ -244,32 +248,39 @@ def fit_leakage_data(
 
 def _add_leakage_per_gate(result: LeakageResult, fit: LeakageFit, qubit, interleaved_gate: str) -> None:
     """Fill the leakage of the interleaved gate in ``result``: this run minus the 11a reference."""
-    reference = (getattr(qubit, "gate_fidelity", None) or {}).get(LEAKAGE_REFERENCE_KEY) or {}
+    reference = (getattr(qubit, "extras", None) or {}).get(LEAKAGE_REFERENCE_KEY) or {}
     if reference.get("l1") is None:
         result.per_gate_note = (
-            f"No gate_fidelity[{LEAKAGE_REFERENCE_KEY!r}] for {qubit.name}: run 11a with measure_leakage=True "
+            f"No extras[{LEAKAGE_REFERENCE_KEY!r}] for {qubit.name}: run 11a with measure_leakage=True "
             f"first. Only the leakage per Clifford + {interleaved_gate} step is reported."
         )
         return
     per_gate = leakage_per_gate([fit], [reference])
     result.per_gate = {key: _none_if_nan(float(values[0])) for key, values in per_gate.items()}
+    result.reference_updated_at = reference.get("updated_at") or ""
 
 
-def leakage_reference_entry(leakage_result: dict, survival: dict) -> dict:
-    """11a's ``gate_fidelity["LeakageRB_reference"]``: L1 and L2 per Clifford and the survival decay ``alpha``.
+def leakage_reference_entry(leakage_result: dict) -> dict:
+    """11a's ``qubit.extras["leakage_per_clifford"]``: L1 and L2 per Clifford and when they were stored
+    (``updated_at``, so 11b can tell how old its reference is).
 
-    ``leakage_result`` and ``survival`` are this qubit's ``node.results`` entries; the fit details
+    ``leakage_result`` is this qubit's ``node.results["leakage_results"]`` entry; the fit details
     stay in the run's saved results.
     """
     rates = leakage_result["per_clifford"]
-    alpha = 1 - 2 * survival["error_per_clifford"] if survival["success"] else None
-    return {**{key: rates[key] for key in ("l1", "l1_stderr", "l2", "l2_stderr")}, "alpha": alpha}
+    return {**{key: rates[key] for key in ("l1", "l1_stderr", "l2", "l2_stderr")}, "updated_at": _now()}
 
 
 def leakage_per_gate_entry(leakage_result: dict) -> dict | None:
-    """11b's ``gate_fidelity["LeakageRB_<gate>"]``: L1 of the interleaved gate, or None without a reference."""
+    """11b's ``qubit.extras["leakage_<gate>"]``: L1 of the interleaved gate, or None without a reference."""
     per_gate = leakage_result["per_gate"]
-    return None if per_gate is None else {"l1": per_gate["l1"], "l1_stderr": per_gate["l1_stderr"]}
+    if per_gate is None:
+        return None
+    return {"l1": per_gate["l1"], "l1_stderr": per_gate["l1_stderr"], "updated_at": _now()}
+
+
+def _now() -> str:
+    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def format_leakage_rate(rate: float | None, stderr: float | None = None, *, pm: str = "+/-") -> str:
@@ -309,7 +320,7 @@ def log_leakage_results(leakage_results: Dict, log_callable=None, *, interleaved
                 per_gate = result["per_gate"]
                 lines.append(
                     f"\tL1 per {interleaved_gate} = {format_leakage_rate(per_gate['l1'], per_gate['l1_stderr'])} "
-                    "(minus the 11a reference)"
+                    f"(minus the 11a reference stored {result['reference_updated_at'] or 'at an unknown time'})"
                 )
         if result["failure"]:
             lines.append(f"\t- {result['failure']}")

@@ -51,7 +51,8 @@ gate.
 With measure_leakage, each qubit is read as g, e or f and the node also fits the leaked
 population P(f) against depth (leakage RB, Wood & Gambetta 2018), giving the leakage L1 and
 seepage L2 per Clifford. The survival is then P(g). Needs a calibrated g/e/f readout
-(15_iq_blobs_gef), reset_type="thermal" and use_state_discrimination=True.
+(15_iq_blobs_gef) and reset_type="thermal"; it reads g/e/f states whatever
+use_state_discrimination says.
 
 Prerequisites:
     - Having calibrated the mixer or the Octave (nodes 01a or 01b).
@@ -62,9 +63,9 @@ Prerequisites:
     - For measure_leakage: a calibrated g/e/f readout; a gef_confusion_matrix to correct with is optional.
 
 State update:
-    - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"].
-    - With measure_leakage, only qubit.gate_fidelity["LeakageRB_reference"] (leakage L1 and seepage L2 per
-      Clifford, with the survival decay alpha from the same g/e/f readout).
+    - The averaged single qubit gate fidelity: qubit.gate_fidelity["averaged"] (also with measure_leakage).
+    - With measure_leakage, also qubit.extras["leakage_per_clifford"] (leakage L1 and seepage L2 per
+      Clifford), when the leakage fit succeeds.
 """
 
 
@@ -370,10 +371,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         node.results["ds_leakage"], leakage_results = fit_leakage_data(node.results["ds_raw"], node)
         node.results["leakage_results"] = {k: asdict(v) for k, v in leakage_results.items()}
         log_leakage_results(node.results["leakage_results"], log_callable=node.log)
-        # A leakage run passes or fails on its leakage fit; the survival fit is stored with it.
-        node.outcomes = {
-            qubit_name: ("successful" if result.success else "failed") for qubit_name, result in leakage_results.items()
-        }
 
 
 # %% {Plot_data}
@@ -407,12 +404,9 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            if node.parameters.measure_leakage:
-                q.gate_fidelity["LeakageRB_reference"] = leakage_reference_entry(
-                    node.results["leakage_results"][q.name], node.results["fit_results"][q.name]
-                )
-                continue
             q.gate_fidelity["averaged"] = float(1 - node.results["fit_results"][q.name]["error_per_gate"])
+            if node.parameters.measure_leakage and node.results["leakage_results"][q.name]["success"]:
+                q.extras["leakage_per_clifford"] = leakage_reference_entry(node.results["leakage_results"][q.name])
 
 
 # %% {Save_results}

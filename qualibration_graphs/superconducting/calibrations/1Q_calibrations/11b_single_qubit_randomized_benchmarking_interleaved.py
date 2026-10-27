@@ -55,8 +55,8 @@ gate.
 With measure_leakage, each qubit is read as g, e or f and the node also fits the leaked
 population P(f) against depth (leakage RB, Wood & Gambetta 2018), per Clifford + interleaved gate
 step. Subtracting the leakage per Clifford of an 11a run with measure_leakage gives the leakage of
-the interleaved gate. Needs a calibrated g/e/f readout (15_iq_blobs_gef), reset_type="thermal" and
-use_state_discrimination=True.
+the interleaved gate. Needs a calibrated g/e/f readout (15_iq_blobs_gef) and reset_type="thermal"; it
+reads g/e/f states whatever use_state_discrimination says.
 
 Prerequisites:
     - Having calibrated the mixer or the Octave (nodes 01a or 01b).
@@ -68,9 +68,9 @@ Prerequisites:
       Clifford + gate step is reported) and a calibrated g/e/f readout.
 
 State update:
-    - The averaged single qubit gate fidelity: qubit.gate_fidelity["interleaved_gate"].
-    - With measure_leakage, only qubit.gate_fidelity["LeakageRB_<interleaved_gate>"] (leakage L1 of
-      the interleaved gate; needs the 11a reference).
+    - The averaged single qubit gate fidelity: qubit.gate_fidelity["interleaved_gate"] (also with measure_leakage).
+    - With measure_leakage, also qubit.extras["leakage_<interleaved_gate>"] (leakage L1 of the interleaved
+      gate), when the leakage fit succeeds and an 11a reference exists.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -389,10 +389,6 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         )
         node.results["leakage_results"] = {k: asdict(v) for k, v in leakage_results.items()}
         log_leakage_results(node.results["leakage_results"], log_callable=node.log, interleaved_gate=gate)
-        # A leakage run passes or fails on its leakage fit; the survival fit is stored with it.
-        node.outcomes = {
-            qubit_name: ("successful" if result.success else "failed") for qubit_name, result in leakage_results.items()
-        }
 
 
 # %% {Plot_data}
@@ -429,14 +425,12 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            if node.parameters.measure_leakage:
+            gate = node.parameters.interleaved_gate_operation
+            q.gate_fidelity[gate] = float(1 - node.results["fit_results"][q.name]["error_per_gate"])
+            if node.parameters.measure_leakage and node.results["leakage_results"][q.name]["success"]:
                 entry = leakage_per_gate_entry(node.results["leakage_results"][q.name])
                 if entry is not None:
-                    q.gate_fidelity[f"LeakageRB_{node.parameters.interleaved_gate_operation}"] = entry
-                continue
-            q.gate_fidelity[node.parameters.interleaved_gate_operation] = float(
-                1 - node.results["fit_results"][q.name]["error_per_gate"]
-            )
+                    q.extras[f"leakage_{gate}"] = entry
 
 
 # %% {Save_results}
