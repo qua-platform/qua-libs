@@ -4,6 +4,8 @@ from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
 
+from calibration_utils.common_utils.leakage_rb import read_confusion_matrix
+
 
 class NodeSpecificParameters(RunnableParameters):
     use_state_discrimination: bool = True
@@ -22,6 +24,10 @@ class NodeSpecificParameters(RunnableParameters):
     """If True, use log scale depths: 1,2,4,8,16,32... up to max_circuit_depth. Default is True."""
     seed: Optional[int] = None
     """Seed for the random number generator. Default is None."""
+    measure_leakage: bool = False
+    """Read the qubits as g/e/f and fit the leaked population P(f) against depth (leakage RB);
+    needs 15_iq_blobs_gef, a thermal reset and state discrimination. Writes only
+    ``gate_fidelity["LeakageRB"]`` to the state. Default is False."""
 
 
 class Parameters(
@@ -78,3 +84,38 @@ class Parameters(
             depths = np.arange(0, self.max_circuit_depth + 0.1, self.delta_clifford, dtype=int)
             depths[0] = 1  # Ensure we start with depth 1
         return depths
+
+
+def validate_leakage_run(node, qubits) -> None:
+    """Check a ``measure_leakage`` run can start, and log qubits read without confusion correction.
+
+    Raises:
+        ValueError: If state discrimination is off, the reset is not thermal, or a qubit has no
+            ``readout_GEF`` operation or no three calibrated ``gef_centers`` (node 15_iq_blobs_gef).
+    """
+    if not node.parameters.use_state_discrimination:
+        raise ValueError("measure_leakage reads g/e/f states: it needs use_state_discrimination=True.")
+    if node.parameters.reset_type != "thermal":
+        raise ValueError(
+            "measure_leakage needs reset_type='thermal': the g/e active reset cannot return |f> "
+            "to |g>, so leaked population would carry over into the next shot."
+        )
+    problems = []
+    for qubit in qubits:
+        if "readout_GEF" not in qubit.resonator.operations:
+            problems.append(f"{qubit.name}: no 'readout_GEF' operation")
+        centers = getattr(qubit.resonator, "gef_centers", None) or []
+        if len(centers) != 3 or any(len(center) != 2 for center in centers):
+            problems.append(f"{qubit.name}: no three calibrated gef_centers")
+    if problems:
+        raise ValueError(
+            "measure_leakage needs a calibrated g/e/f readout (run 15_iq_blobs_gef first): " + "; ".join(problems)
+        )
+    uncorrected = sorted(qubit.name for qubit in qubits if read_confusion_matrix(qubit) is None)
+    if uncorrected:
+        node.log(
+            f"No valid gef_confusion_matrix for {', '.join(uncorrected)}: their populations are not "
+            "corrected for readout misassignment. The fitted L1 is a slope, so a constant "
+            "misassignment mostly cancels, but treat these with care.",
+            level="warning",
+        )

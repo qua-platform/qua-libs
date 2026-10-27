@@ -1,6 +1,6 @@
-from .parameters import Parameters
-from .analysis import process_raw_dataset, fit_raw_data, log_fitted_results
-from .plotting import plot_raw_data_with_fit
+from .parameters import Parameters, validate_leakage_run
+from .analysis import process_raw_dataset, fit_raw_data, log_fitted_results, fit_leakage_data, log_leakage_results
+from .plotting import plot_raw_data_with_fit, plot_leakage
 
 __all__ = [
     "Parameters",
@@ -8,4 +8,8 @@ __all__ = [
     "fit_raw_data",
     "log_fitted_results",
     "plot_raw_data_with_fit",
+    "validate_leakage_run",
+    "fit_leakage_data",
+    "log_leakage_results",
+    "plot_leakage",
 ]

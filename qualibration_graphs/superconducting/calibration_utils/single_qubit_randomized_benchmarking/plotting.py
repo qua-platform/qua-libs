@@ -9,6 +9,9 @@ from qualibration_libs.plotting import QubitGrid, grid_iter
 from qualibration_libs.analysis import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
+from calibration_utils.common_utils.leakage_rb import LeakageFit
+from calibration_utils.single_qubit_randomized_benchmarking.analysis import format_leakage_rate
+
 u = unit(coerce_to_integer=True)
 
 
@@ -71,9 +74,12 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
         fit.fit_data.sel(fit_vals="offset"),
         fit.fit_data.sel(fit_vals="decay"),
     )
-    if hasattr(fit, "state"):
+    if hasattr(fit, "pg"):  # measure_leakage: g/e/f readout
+        data = fit.pg
+        label = "P(g) (survival)"
+    elif hasattr(fit, "state"):
         data = fit.state
-        label = "qubit state"
+        label = "P(g) (survival)"
     elif hasattr(fit, "I"):
         data = fit.I
         label = "I quadrature [mV]"
@@ -99,3 +105,49 @@ def plot_individual_data_with_fit(ax: Axes, ds: xr.Dataset, qubit: dict[str, str
         f"1Q RB fidelity = {100*(1 - float(fit.error_per_gate.values)):.3f}%",
         transform=ax.transAxes,
     )
+
+
+def plot_leakage(
+    ds_leakage: xr.Dataset,
+    qubits: List[AnyTransmon],
+    leakage_results: dict,
+    *,
+    log_x: bool = False,
+    reset_type: str = "",
+) -> Figure:
+    """Plot the leaked population P(f) against circuit depth with its fit, one panel per qubit.
+
+    ``leakage_results`` is ``node.results["leakage_results"]``: the ``asdict`` of each qubit's
+    ``LeakageResult``.
+    """
+    grid = QubitGrid(ds_leakage, [q.grid_location for q in qubits])
+    for ax, qubit in grid_iter(grid):
+        name = qubit["qubit"]
+        result = leakage_results[name]
+        fit = LeakageFit(**result["per_clifford"])
+        fr = ds_leakage.sel(qubit=name)
+        depths = fr.depths.values
+        line = ax.errorbar(
+            depths,
+            fr.leaked.values,
+            yerr=np.nan_to_num(fr.leaked_stderr.values),
+            fmt="o",
+            ms=4,
+            capsize=2,
+            label=f"L1 {format_leakage_rate(fit.l1, fit.l1_stderr)}",
+        )
+        if fit.success:
+            dense = (np.geomspace if log_x else np.linspace)(depths.min(), depths.max(), 200)
+            ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1)
+        subtitle = "\nFAILED: g/e/f readout suspect (not saved)" if result["failure"] else ""
+        ax.set_title(f"{name}{subtitle}", fontsize=9)
+        ax.set_xlabel("Circuit depth (Cliffords)")
+        ax.set_ylabel("Leaked population P(f)")
+        if log_x:
+            ax.set_xscale("log")
+        ax.legend(fontsize=7)
+
+    reset = f"{reset_type} reset, " if reset_type else ""
+    grid.fig.suptitle(f"Single qubit leakage randomized benchmarking\n({reset}g/e/f readout)")
+    grid.fig.tight_layout()
+    return grid.fig
