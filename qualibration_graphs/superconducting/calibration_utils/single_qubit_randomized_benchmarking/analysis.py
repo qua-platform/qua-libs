@@ -7,17 +7,24 @@ import xarray as xr
 
 from qualibrate import QualibrationNode
 from qualibration_libs.data import convert_IQ_to_V
-from qualibration_libs.analysis import fit_decay_exp
 
-from calibration_utils.common_utils.leakage_rb import (
+from calibration_utils.common_utils.rb import (
     SHALLOW_LEAKAGE_THRESHOLD,
     LeakageFit,
+    compute_irb_fidelity,
+    compute_srb_fidelity,
     correct_populations,
     fit_leakage,
+    fit_survival,
     leakage_per_gate,
     mean_and_stderr_over_sequences,
     read_confusion_matrix,
+    validate_fit_parameters,
+    validate_residuals,
 )
+
+# average_gate_per_clifford = 45/24 = 1.875
+AVERAGE_GATES_PER_CLIFFORD = (1 * 3 + 9 * 2 + 1 * 4 + 2 * 3 + 4 * 2 + 2 * 3) / 24
 
 
 @dataclass
@@ -37,6 +44,8 @@ class FitParameters:
     error_per_gate_stderr: float | None = None
     gate_error: float | None = None
     gate_error_stderr: float | None = None
+    fit_issues: tuple[str, ...] = ()
+    fit_warnings: tuple[str, ...] = ()
 
 
 def log_fitted_results(fit_results: Dict, log_callable=None, *, interleaved_gate: str | None = None):
@@ -71,6 +80,8 @@ def log_fitted_results(fit_results: Dict, log_callable=None, *, interleaved_gate
                 s_fidelity += f"\t{interleaved_gate} error (interleaved RB): {r:.2e}" + (
                     f" +/- {r_stderr:.1e}\n" if r_stderr else "\n"
                 )
+        s_fidelity += "".join(f"\t- {issue}\n" for issue in fit_results[q].get("fit_issues", ()))
+        s_fidelity += "".join(f"\tWarning: {warning}\n" for warning in fit_results[q].get("fit_warnings", ()))
         if fit_results[q]["success"]:
             s_qubit += " SUCCESS!\n"
         else:
@@ -87,81 +98,93 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode):
 
 
 def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, dict[str, FitParameters]]:
-    """
-    Fit the qubit frequency and FWHM for each qubit in the dataset.
+    """Fit the RB survival ``A * alpha**m + B`` against depth for each qubit.
 
-    Parameters:
-    -----------
-    ds : xr.Dataset
-        Dataset containing the raw data.
-    node_parameters : Parameters
-        Parameters related to the node, including whether state discrimination is used.
+    The survival per random sequence is averaged over sequences, with its standard error, and fitted
+    weighted by that error (``calibration_utils.common_utils.rb``, as the two-qubit RB). EPC and the
+    Clifford fidelity follow from alpha for one qubit; the error per gate is EPC / 1.875.
 
-    Returns:
-    --------
-    xr.Dataset
-        Dataset containing the fit results.
+    Returns ``ds`` with the averaged survival, its error, the fit and the derived numbers per
+    qubit, and a ``FitParameters`` per qubit.
     """
-    ds_fit = ds
+    probability = True
     if getattr(node.parameters, "measure_leakage", False):
         # g/e/f readout: the survival is P(g); 1 - P(e) would count leaked shots as survived.
-        ds_fit["averaged_data"] = ds.pg.mean(dim="nb_of_sequences")
+        per_sequence = ds.pg
     elif node.parameters.use_state_discrimination:
-        ds_fit["averaged_data"] = 1 - ds.state.mean(dim="nb_of_sequences")
+        per_sequence = 1 - ds.state
     else:
-        ds_fit["averaged_data"] = 1 - ds.I.mean(dim="nb_of_sequences")
-    # Fit the exponential decay
-    fit_data = fit_decay_exp(ds_fit["averaged_data"], "depths")
+        per_sequence = 1 - ds.I
+        probability = False
+    per_sequence = per_sequence.transpose("qubit", "depths", "nb_of_sequences")
+    depths = ds.depths.values.astype(float)
 
-    ds_fit = xr.merge([ds, fit_data.rename("fit_data")])
+    fit_results, rows = {}, []
+    for q in ds.qubit.values:
+        mean, stderr = mean_and_stderr_over_sequences(per_sequence.sel(qubit=q).values)
+        result, row = _fit_survival_for_qubit(depths, mean, stderr, probability=probability)
+        fit_results[str(q)] = result
+        rows.append({"averaged_data": mean, "survival_stderr": stderr, **row})
 
-    # Extract the relevant fitted parameters
-    fit_data, fit_results = _extract_relevant_fit_parameters(ds_fit, node)
-
+    curve = lambda key: (["qubit", "depths"], np.asarray([row[key] for row in rows]))  # noqa: E731
+    scalar = lambda key: ("qubit", np.asarray([row[key] for row in rows]))  # noqa: E731
+    ds_fit = ds.assign(
+        averaged_data=curve("averaged_data"),
+        survival_stderr=curve("survival_stderr"),
+        **{key: scalar(key) for key in rows[0] if key not in ("averaged_data", "survival_stderr")},
+    )
+    node.outcomes = {q: "successful" if r.success else "fail" for q, r in fit_results.items()}
     return ds_fit, fit_results
 
 
-def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
-    """Add metadata to the dataset and fit results."""
-    # Extract the decay rate
-    alpha = np.exp(fit.fit_data.sel(fit_vals="decay"))
-    # average_gate_per_clifford = 45/24 = 1.875
-    average_gate_per_clifford = (1 * 3 + 9 * 2 + 1 * 4 + 2 * 3 + 4 * 2 + 2 * 3) / 24
-    # EPC from here: https://qiskit.org/textbook/ch-quantum-hardware/randomized-benchmarking.html#Step-5:-Fit-the-results
-    fit["error_per_clifford"] = (1 - alpha) * (1 - 1 / 2)
-    fit["error_per_gate"] = fit["error_per_clifford"] / average_gate_per_clifford
-    # Standard errors from the fit covariance: alpha = exp(decay), so stderr(alpha) = alpha * stderr(decay)
-    alpha_stderr = alpha * np.sqrt(fit.fit_data.sel(fit_vals="decay_decay").clip(min=0))
-    fit["error_per_clifford_stderr"] = alpha_stderr * (1 - 1 / 2)
-    fit["error_per_gate_stderr"] = fit["error_per_clifford_stderr"] / average_gate_per_clifford
-    # Assess whether the fit was successful or not
-    nan_success = np.isnan(fit.error_per_gate)
-    rb_success = (0 < fit.error_per_gate) & (fit.error_per_gate < 1)
-    success_criteria = ~nan_success & rb_success
-    fit = fit.assign({"success": success_criteria})
-
-    # Save fitting results
-    fit_results = {
-        q: FitParameters(
-            error_per_clifford=float(fit.sel(qubit=q)["error_per_clifford"]),
-            error_per_gate=float(fit.sel(qubit=q)["error_per_gate"]),
-            success=bool(fit.sel(qubit=q).success),
-            alpha=_none_if_nan(float(alpha.sel(qubit=q))),
-            error_per_clifford_stderr=_none_if_nan(float(fit.sel(qubit=q)["error_per_clifford_stderr"])),
-            error_per_gate_stderr=_none_if_nan(float(fit.sel(qubit=q)["error_per_gate_stderr"])),
+def _fit_survival_for_qubit(depths, mean, stderr, *, probability: bool) -> tuple[FitParameters, dict]:
+    """Shared weighted fit and fidelity for one qubit; parameter checks fail it, the residual check only warns."""
+    fit = fit_survival(depths, mean, stderr)
+    if fit is None:
+        amplitude = alpha = offset = alpha_stderr = np.nan
+        issues: list[str] = ["Exponential fit did not converge."]
+    else:
+        amplitude, alpha, offset, alpha_stderr, amplitude_stderr, offset_stderr = fit
+        issues = validate_fit_parameters(
+            amplitude,
+            alpha,
+            offset,
+            probability=probability,
+            amplitude_stderr=amplitude_stderr,
+            offset_stderr=offset_stderr,
         )
-        for q in fit.qubit.values
+    srb = compute_srb_fidelity(alpha, alpha_stderr, AVERAGE_GATES_PER_CLIFFORD, n_qubits=1)
+    warnings = [] if issues else validate_residuals(depths, mean, stderr, amplitude, alpha, offset)
+    success = not issues and np.isfinite(srb.epg) and 0 < srb.epg < 1
+    result = FitParameters(
+        error_per_clifford=srb.epc,
+        error_per_gate=srb.epg,
+        success=bool(success),
+        alpha=_none_if_nan(alpha),
+        error_per_clifford_stderr=srb.epc_stderr,
+        error_per_gate_stderr=srb.epg_stderr,
+        fit_issues=tuple(issues),
+        fit_warnings=tuple(warnings),
+    )
+    row = {
+        "fit_amplitude": amplitude,
+        "fit_alpha": alpha,
+        "fit_offset": offset,
+        "alpha_stderr": alpha_stderr,
+        "error_per_clifford": srb.epc,
+        "error_per_clifford_stderr": _nan_if_none(srb.epc_stderr),
+        "error_per_gate": srb.epg,
+        "error_per_gate_stderr": _nan_if_none(srb.epg_stderr),
+        "success": bool(success),
     }
-    node.outcomes = {q: "successful" if fit_results[q].success else "fail" for q in fit.qubit.values}
-
-    return fit, fit_results
+    return result, row
 
 
 def add_interleaved_gate_error(ds_fit: xr.Dataset, fit_results: Dict[str, FitParameters], qubits) -> xr.Dataset:
     """Error of the interleaved gate alone (11b), by standard interleaved RB against the 11a reference.
 
-    r = (1 - alpha_11b / alpha_11a) / 2 with alpha_11a = ``gate_fidelity["averaged_alpha"]`` (as 37b
-    against ``StandardRB_alpha``, with d = 2). The stderr covers the 11b fit only: 11a stores no
+    The shared interleaved-RB formula for one qubit (as 37b for two), against alpha_11a =
+    ``gate_fidelity["averaged_alpha"]``. The stderr covers the 11b fit only: 11a stores no
     uncertainty. Fills ``gate_error`` in ``fit_results`` and in ``ds_fit``.
     """
     for qubit in qubits:
@@ -169,9 +192,9 @@ def add_interleaved_gate_error(ds_fit: xr.Dataset, fit_results: Dict[str, FitPar
         alpha_reference = (getattr(qubit, "gate_fidelity", None) or {}).get("averaged_alpha")
         if alpha_reference is None or result.alpha is None or not result.success:
             continue
-        result.gate_error = (1 - result.alpha / float(alpha_reference)) / 2
-        if result.error_per_clifford_stderr is not None:
-            result.gate_error_stderr = result.error_per_clifford_stderr / float(alpha_reference)
+        alpha_stderr = None if result.error_per_clifford_stderr is None else 2 * result.error_per_clifford_stderr
+        irb = compute_irb_fidelity(result.alpha, alpha_stderr, float(alpha_reference), n_qubits=1)
+        result.gate_error, result.gate_error_stderr = irb.epg, irb.epg_stderr
     per_qubit = lambda key: (
         "qubit",
         [_nan_if_none(getattr(fit_results[str(q)], key)) for q in ds_fit.qubit.values],
@@ -183,7 +206,7 @@ def add_interleaved_gate_error(ds_fit: xr.Dataset, fit_results: Dict[str, FitPar
 #
 # ``pg``, ``pe`` and ``pf`` hold, per random sequence and depth, the fraction of shots read as g, e
 # and f. The leakage model, its fit and the population correction are shared with the two-qubit RB
-# (``calibration_utils.common_utils.leakage_rb``). 11a fits the leakage per Clifford and stores it in
+# (``calibration_utils.common_utils.rb``). 11a fits the leakage per Clifford and stores it in
 # ``qubit.extras["leakage_per_clifford"]``; 11b (a gate interleaved after every Clifford) fits it per
 # Clifford + gate step and subtracts that reference to give the leakage of the gate, stored in
 # ``qubit.extras["leakage_<gate>"]``. The gate fidelity is written as in a normal run.

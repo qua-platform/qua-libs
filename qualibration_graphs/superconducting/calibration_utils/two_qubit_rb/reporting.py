@@ -8,7 +8,7 @@ from datetime import datetime
 
 import numpy as np
 
-from calibration_utils.common_utils.leakage_rb import LeakageFit
+from calibration_utils.common_utils.rb import LeakageFit
 from calibration_utils.two_qubit_rb.fidelity import ImpliedCZResult, compute_srb_fidelity
 
 
@@ -211,7 +211,7 @@ def _format_irb_result(qp_name: str, r: IRBFitResult) -> str:
             _coeff_pm(r.standard_rb_alpha, r.standard_rb_alpha_stderr) if r.standard_rb_alpha is not None else "n/a"
         )
         srb_ref = (
-            compute_srb_fidelity(r.standard_rb_alpha, r.standard_rb_alpha_stderr, None)
+            compute_srb_fidelity(r.standard_rb_alpha, r.standard_rb_alpha_stderr, None, n_qubits=2)
             if r.standard_rb_alpha is not None
             else None
         )

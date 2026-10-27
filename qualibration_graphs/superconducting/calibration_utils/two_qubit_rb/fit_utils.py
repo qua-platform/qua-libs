@@ -12,9 +12,12 @@ import logging
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-from scipy.optimize import curve_fit
 
-from calibration_utils.common_utils.leakage_rb import (
+from calibration_utils.common_utils.rb import (
+    fit_survival,
+    rb_decay_curve,
+    validate_fit_parameters,
+    validate_residuals,
     SHALLOW_LEAKAGE_THRESHOLD,
     LeakageFit,
     correct_populations,
@@ -26,18 +29,11 @@ from calibration_utils.common_utils.leakage_rb import (
 )
 from calibration_utils.two_qubit_rb import fidelity
 
-_RESIDUAL_SIGMA_LIMIT = 4.0
-_FLOAT_TOLERANCE = 1e-9
 # Empirical tolerances for soft (log-only) survival-curve sanity checks — not
 # derived from a model; chosen to flag clearly-off data without false-positiving
 # on ordinary shot noise.
 _MONOTONIC_DECAY_MIN_TOLERANCE = 0.03
 _SHALLOW_SURVIVAL_THRESHOLD = 0.35
-
-
-def rb_decay_curve(x, A, alpha, B):
-    """Exponential decay model for RB survival probability."""
-    return A * alpha**x + B
 
 
 def _survival_over_sequences(ds_qp: xr.Dataset) -> tuple[xr.DataArray, xr.DataArray]:
@@ -114,96 +110,6 @@ def _check_survival_soft_warnings(
     return warnings
 
 
-def _fit_survival(
-    circuit_depths: np.ndarray,
-    survival: np.ndarray,
-    stderr: np.ndarray | None = None,
-) -> tuple[float, float, float, float, float, float] | None:
-    """Fit ``A * alpha**m + B`` and return ``(A, alpha, B, alpha_stderr, A_stderr, B_stderr)``."""
-    sigma = None
-    if stderr is not None:
-        err = np.asarray(stderr, dtype=float)
-        if err.shape == np.asarray(survival).shape and np.all(np.isfinite(err)) and np.all(err > 0):
-            sigma = err
-
-    try:
-        popt, pcov = curve_fit(
-            rb_decay_curve,
-            circuit_depths,
-            survival,
-            p0=[0.75, 0.9, 0.25],
-            maxfev=10000,
-            sigma=sigma,
-            absolute_sigma=sigma is not None,
-        )
-    except (RuntimeError, ValueError, TypeError) as exc:
-        logging.getLogger(__name__).warning("RB exponential fit failed: %s", exc)
-        return None
-
-    alpha_stderr = amplitude_stderr = offset_stderr = np.nan
-    if pcov is not None and pcov.shape == (3, 3):
-        if np.isfinite(pcov[1, 1]) and pcov[1, 1] >= 0:
-            alpha_stderr = float(np.sqrt(pcov[1, 1]))
-        if np.isfinite(pcov[0, 0]) and pcov[0, 0] >= 0:
-            amplitude_stderr = float(np.sqrt(pcov[0, 0]))
-        if np.isfinite(pcov[2, 2]) and pcov[2, 2] >= 0:
-            offset_stderr = float(np.sqrt(pcov[2, 2]))
-
-    return (
-        float(popt[0]),
-        float(popt[1]),
-        float(popt[2]),
-        alpha_stderr,
-        amplitude_stderr,
-        offset_stderr,
-    )
-
-
-def _validate_fit_parameters(fit_amplitude: float, alpha: float, fit_offset: float) -> list[str]:
-    """Hard-fail checks on exponential-fit coefficients."""
-    issues: list[str] = []
-    if not all(np.isfinite(v) for v in (fit_amplitude, alpha, fit_offset)):
-        issues.append("Non-finite fit parameters (A, alpha, or B).")
-        return issues
-
-    if alpha <= _FLOAT_TOLERANCE or alpha > 1.0 + _FLOAT_TOLERANCE:
-        issues.append(f"RB decay alpha={alpha:.6f} outside physical range (0, 1].")
-
-    if fit_amplitude < -_FLOAT_TOLERANCE:
-        issues.append(f"Fit amplitude A={fit_amplitude:.6f} must be >= 0.")
-
-    if fit_offset < -_FLOAT_TOLERANCE:
-        issues.append(f"Fit offset B={fit_offset:.6f} must be >= 0.")
-
-    if fit_amplitude + fit_offset > 1.0 + _FLOAT_TOLERANCE:
-        issues.append(f"A + B = {fit_amplitude + fit_offset:.6f} exceeds 1 (invalid survival-probability model).")
-    return issues
-
-
-def _validate_residuals(
-    circuit_depths: np.ndarray,
-    survival: np.ndarray,
-    stderr: np.ndarray,
-    fit_amplitude: float,
-    alpha: float,
-    fit_offset: float,
-) -> list[str]:
-    """Hard-fail when the fitted curve deviates too far from the data."""
-    fitted_values = rb_decay_curve(circuit_depths, fit_amplitude, alpha, fit_offset)
-    safe_stderr = np.where(stderr > 0, stderr, np.nan)
-    normalized_residuals = np.abs(fitted_values - survival) / safe_stderr
-    if not np.isfinite(normalized_residuals).any():
-        return ["Cannot assess fit residuals (zero or missing standard errors)."]
-
-    max_deviation = float(np.nanmax(normalized_residuals))
-    if max_deviation > _RESIDUAL_SIGMA_LIMIT:
-        return [
-            f"Fitted curve deviates up to {max_deviation:.2f} sigma from experimental data "
-            f"(limit {_RESIDUAL_SIGMA_LIMIT:.0f} sigma)."
-        ]
-    return []
-
-
 def _validate_rb_fit(
     circuit_depths: np.ndarray,
     survival: np.ndarray,
@@ -219,13 +125,13 @@ def _validate_rb_fit(
 ) -> tuple[bool, tuple[str, ...]]:
     """Run all hard-fail RB fit validations."""
     issues: list[str] = []
-    issues.extend(_validate_fit_parameters(fit_amplitude, alpha, fit_offset))
+    issues.extend(validate_fit_parameters(fit_amplitude, alpha, fit_offset))
     issues.extend(fidelity.validate_fidelity_bounds(fit_fidelity, interleaved=interleaved))
     issues.extend(fidelity.validate_fidelity_uncertainty(fit_fidelity, fit_fidelity_stderr, interleaved=interleaved))
     if interleaved and standard_rb_alpha is not None:
         issues.extend(fidelity.validate_interleaved_alpha(alpha, standard_rb_alpha))
     if not issues:
-        issues.extend(_validate_residuals(circuit_depths, survival, stderr, fit_amplitude, alpha, fit_offset))
+        issues.extend(validate_residuals(circuit_depths, survival, stderr, fit_amplitude, alpha, fit_offset))
     return len(issues) == 0, tuple(issues)
 
 
@@ -239,7 +145,7 @@ def _fit_survival_for_pair(da: xr.Dataset) -> dict:
     stderr_vals = stderr.values
 
     fit_warnings = tuple(_check_survival_soft_warnings(circuit_depths, survival_vals, stderr_vals))
-    fit_params = _fit_survival(circuit_depths, survival_vals, stderr_vals)
+    fit_params = fit_survival(circuit_depths, survival_vals, stderr_vals)
 
     return {
         "survival": survival,
@@ -431,7 +337,7 @@ def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr
         success, fit_issues = False, ("Exponential fit did not converge.",)
     else:
         fit_amplitude, alpha, fit_offset, alpha_stderr, amplitude_stderr, offset_stderr = fit_params
-        srb = fidelity.compute_srb_fidelity(alpha, alpha_stderr, average_gates_per_clifford)
+        srb = fidelity.compute_srb_fidelity(alpha, alpha_stderr, average_gates_per_clifford, n_qubits=2)
         success, fit_issues = _validate_rb_fit(
             circuit_depths,
             survival_vals,
@@ -496,6 +402,7 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
             alpha,
             alpha_stderr,
             standard_rb_alpha,
+            n_qubits=2,
             standard_rb_alpha_stderr=standard_rb_alpha_stderr,
             epc_reference=epc_reference,
         )
@@ -554,7 +461,7 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
 # --- Leakage RB (measure_leakage=True) -------------------------------------------------------
 #
 # The leakage model, its fit and the per-gate subtraction are shared with the single-qubit RB
-# (``calibration_utils.common_utils.leakage_rb``); this section reads the two-qubit g/e/f states.
+# (``calibration_utils.common_utils.rb``); this section reads the two-qubit g/e/f states.
 
 
 _LEAKAGE_SERIES = ("pair", "control", "target")  # either qubit in f, control in f, target in f
@@ -565,7 +472,7 @@ def _leaked_populations(states, confusion_control=None, confusion_target=None) -
 
     The joint 9-outcome distribution is corrected with the Kronecker product of the two confusion
     matrices (rows prepared; identity for a missing one), see
-    :func:`~calibration_utils.common_utils.leakage_rb.correct_populations`.
+    :func:`~calibration_utils.common_utils.rb.correct_populations`.
 
     Returns:
         ``pair`` (either qubit in f), ``control`` and ``target`` (that qubit in f).

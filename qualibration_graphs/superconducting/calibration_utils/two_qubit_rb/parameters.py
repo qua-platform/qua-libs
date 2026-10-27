@@ -14,7 +14,7 @@ from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
 
-from calibration_utils.common_utils.leakage_rb import read_confusion_matrix
+from calibration_utils.common_utils.rb import validate_leakage_run as validate_common_leakage_run
 
 
 class NodeSpecificParameters(RunnableParameters):
@@ -123,37 +123,6 @@ def build_sweep_axes(
 
 
 def validate_leakage_run(node, qubit_pairs) -> None:
-    """Check a ``measure_leakage`` run can start, and log qubits read without confusion correction.
-
-    Raises:
-        ValueError: If the reset is neither thermal nor active_gef, or a qubit has no ``readout_GEF`` or
-            (for active_gef) ``EF_x180`` operation, or no
-            three calibrated ``gef_centers`` (node 15_iq_blobs_gef).
-    """
-    if node.parameters.reset_type not in ("thermal", "active_gef"):
-        raise ValueError(
-            "measure_leakage needs reset_type='thermal' or 'active_gef': the g/e active reset cannot "
-            "return |f> to |g>, so leaked population would carry over into the next shot."
-        )
+    """Run the shared leakage pre-run check on every control and target qubit, each once."""
     qubits = {qubit.name: qubit for qp in qubit_pairs for qubit in (qp.qubit_control, qp.qubit_target)}
-    problems = []
-    for name, qubit in qubits.items():
-        if "readout_GEF" not in qubit.resonator.operations:
-            problems.append(f"{name}: no 'readout_GEF' operation")
-        centers = getattr(qubit.resonator, "gef_centers", None) or []
-        if len(centers) != 3 or any(len(center) != 2 for center in centers):
-            problems.append(f"{name}: no three calibrated gef_centers")
-        if node.parameters.reset_type == "active_gef" and "EF_x180" not in qubit.xy.operations:
-            problems.append(f"{name}: no 'EF_x180' operation (the active_gef reset plays it)")
-    if problems:
-        raise ValueError(
-            "measure_leakage needs a calibrated g/e/f readout (run 15_iq_blobs_gef first): " + "; ".join(problems)
-        )
-    uncorrected = sorted(name for name, qubit in qubits.items() if read_confusion_matrix(qubit) is None)
-    if uncorrected:
-        node.log(
-            f"No valid gef_confusion_matrix for {', '.join(uncorrected)}: their populations are not "
-            "corrected for readout misassignment. The fitted L1 is a slope, so a constant "
-            "misassignment mostly cancels, but treat these with care.",
-            level="warning",
-        )
+    validate_common_leakage_run(node, list(qubits.values()))

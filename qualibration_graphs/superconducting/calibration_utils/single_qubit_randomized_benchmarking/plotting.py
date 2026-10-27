@@ -6,10 +6,9 @@ from matplotlib.figure import Figure
 
 from qualang_tools.units import unit
 from qualibration_libs.plotting import QubitGrid, grid_iter
-from qualibration_libs.analysis import decay_exp
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
-from calibration_utils.common_utils.leakage_rb import LeakageFit
+from calibration_utils.common_utils.rb import LeakageFit, rb_decay_curve
 from calibration_utils.single_qubit_randomized_benchmarking.analysis import format_leakage_rate
 
 u = unit(coerce_to_integer=True)
@@ -97,42 +96,29 @@ def plot_individual_data_with_fit(
     # Fitted decay, drawn on a dense depth grid so the curve is smooth between the measured depths
     depths = fit.depths.values
     dense = (np.geomspace if log_x else np.linspace)(depths.min(), depths.max(), 200)
-    fitted = decay_exp(
-        dense,
-        float(fit.fit_data.sel(fit_vals="a")),
-        float(fit.fit_data.sel(fit_vals="offset")),
-        float(fit.fit_data.sel(fit_vals="decay")),
-    )
-    if hasattr(fit, "pg"):  # measure_leakage: g/e/f readout
-        data = fit.pg
-        label = r"Probability to recover to $|0\rangle$"
-    elif hasattr(fit, "state"):
-        data = fit.state
+    alpha = float(fit.fit_alpha.values)
+    fitted = rb_decay_curve(dense, float(fit.fit_amplitude.values), alpha, float(fit.fit_offset.values))
+    if hasattr(fit, "pg") or hasattr(fit, "state"):  # g/e/f or g/e state discrimination
         label = r"Probability to recover to $|0\rangle$"
     elif hasattr(fit, "I"):
-        data = fit.I
         label = "I quadrature [mV]"
     else:
         raise RuntimeError("The dataset must contain either 'I' or 'state' for the plotting function to work.")
-    data_std = data.std(dim="nb_of_sequences") / np.sqrt(ds.nb_of_sequences.size)
     ax.errorbar(
         depths,
         fit.averaged_data,
-        yerr=data_std,
+        yerr=np.nan_to_num(fit.survival_stderr.values),
         fmt="o",
         ms=4,
         capsize=2,
         elinewidth=0.8,
         label="Mean over sequences",
     )
-    alpha = float(np.exp(fit.fit_data.sel(fit_vals="decay")))
     ax.plot(dense, fitted, "r--", label=f"Exponential fit (α = {alpha:.5f})")
     ax.grid(True, which="both", alpha=0.4)
     epc = float(fit.error_per_clifford.values)
     epc_stderr = float(fit.error_per_clifford_stderr.values) if "error_per_clifford_stderr" in fit else None
-    epg = float(fit.error_per_gate.values)
-    # Same success criterion as the analysis (ds_fit does not carry it)
-    if not (np.isfinite(epg) and 0 < epg < 1):
+    if not bool(fit.success.values):
         stats = "Fit failed"
     elif interleaved_gate is None:
         stats = (

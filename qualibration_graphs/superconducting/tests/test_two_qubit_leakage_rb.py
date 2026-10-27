@@ -20,7 +20,7 @@ from calibration_utils.two_qubit_rb import (  # noqa: E402
     validate_leakage_run,
 )
 from calibration_utils.two_qubit_rb.fit_utils import _leaked_populations  # noqa: E402
-from calibration_utils.common_utils.leakage_rb import (  # noqa: E402
+from calibration_utils.common_utils.rb import (  # noqa: E402
     fit_leakage,
     mean_and_stderr_over_sequences,
 )

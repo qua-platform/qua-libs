@@ -1,5 +1,7 @@
-"""Alpha -> fidelity conversion for two-qubit RB, for both Standard and
-Interleaved protocols
+"""Two-qubit RB fidelity checks and the implied-CZ cross-check.
+
+The alpha -> fidelity conversion itself is shared with the single-qubit RB
+(``calibration_utils.common_utils.rb``).
 """
 
 from __future__ import annotations
@@ -8,34 +10,18 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from uncertainties import ufloat
+
+from calibration_utils.common_utils.rb import (
+    IRBFidelity,
+    SRBFidelity,
+    as_ufloat,
+    clifford_fidelity_from_alpha,
+    compute_irb_fidelity,
+    compute_srb_fidelity,
+    unwrap,
+)
 
 _FLOAT_TOLERANCE = 1e-9
-
-
-@dataclass
-class SRBFidelity:
-    """Fidelity quantities derived from a Standard RB fit."""
-
-    fidelity: float
-    fidelity_stderr: float | None
-    epc: float
-    epc_stderr: float | None
-    epg: float | None
-    epg_stderr: float | None
-    average_gate_fidelity: float | None
-
-
-@dataclass
-class IRBFidelity:
-    """Fidelity quantities derived from an Interleaved RB fit."""
-
-    fidelity: float
-    fidelity_stderr: float | None
-    epc: float
-    epc_stderr: float | None
-    epg: float
-    epg_stderr: float | None
 
 
 @dataclass
@@ -49,100 +35,6 @@ class ImpliedCZResult:
     alpha_01_stderr: float | None
     epg_cz: float | None
     epg_cz_stderr: float | None
-
-
-def _as_ufloat(value: float, stderr: float | None) -> Any:
-    """Wrap ``value`` with ``stderr`` for automatic propagation, or return a plain float."""
-    if stderr is not None and np.isfinite(stderr) and stderr > 0 and np.isfinite(value):
-        return ufloat(value, stderr)
-    return value
-
-
-def _unwrap(value: Any) -> tuple[float, float | None]:
-    """Return ``(nominal, stderr)`` from a ``ufloat`` or plain float."""
-    if hasattr(value, "n"):
-        nominal = float(value.n)
-        if not hasattr(value, "s"):
-            return nominal, None
-        stderr = float(value.s)
-        if not np.isfinite(stderr) or stderr <= 0:
-            return nominal, None
-        return nominal, stderr
-    return float(value), None
-
-
-def clifford_fidelity_from_alpha(alpha: Any, n_qubits: int = 2) -> Any:
-    """Average Clifford fidelity from an RB decay constant (plain float or ufloat)."""
-    d = 2**n_qubits
-    r = 1 - alpha - (1 - alpha) / d
-    return 1 - r
-
-
-def interleaved_gate_fidelity_from_alpha(alpha: Any, standard_rb_alpha: Any, n_qubits: int = 2) -> Any:
-    """Interleaved gate fidelity using https://arxiv.org/pdf/1210.7011 (plain float or ufloat)."""
-    d = 2**n_qubits
-    return 1 - ((d - 1) * (1 - alpha / standard_rb_alpha) / d)
-
-
-def compute_srb_fidelity(
-    alpha: float,
-    alpha_stderr: float | None,
-    average_gates_per_clifford: float | None,
-) -> SRBFidelity:
-    """2Q Clifford fidelity, EPC, and per-gate EPG from a Standard RB fit."""
-    alpha_u = _as_ufloat(alpha, alpha_stderr)
-    fidelity_u = clifford_fidelity_from_alpha(alpha_u)
-    epc_u = 1 - fidelity_u
-
-    epg = None
-    epg_stderr = None
-    average_gate_fidelity = None
-    if average_gates_per_clifford is not None and average_gates_per_clifford > 0:
-        epg, epg_stderr = _unwrap(epc_u / average_gates_per_clifford)
-        average_gate_fidelity = 1 - epg
-
-    fidelity, fidelity_stderr = _unwrap(fidelity_u)
-    epc, epc_stderr = _unwrap(epc_u)
-    return SRBFidelity(
-        fidelity=fidelity,
-        fidelity_stderr=fidelity_stderr,
-        epc=epc,
-        epc_stderr=epc_stderr,
-        epg=epg,
-        epg_stderr=epg_stderr,
-        average_gate_fidelity=average_gate_fidelity,
-    )
-
-
-def compute_irb_fidelity(
-    alpha: float,
-    alpha_stderr: float | None,
-    standard_rb_alpha: float,
-    *,
-    standard_rb_alpha_stderr: float | None = None,
-    epc_reference: float | None = None,
-) -> IRBFidelity:
-    """Direct CZ gate fidelity from interleaved alpha vs. a reference Standard RB alpha."""
-    alpha_u = _as_ufloat(alpha, alpha_stderr)
-    standard_rb_alpha_u = _as_ufloat(standard_rb_alpha, standard_rb_alpha_stderr)
-    fidelity_u = interleaved_gate_fidelity_from_alpha(alpha_u, standard_rb_alpha_u)
-    epg_u = 1 - fidelity_u
-    if epc_reference is not None:
-        epc = epc_reference
-        epc_stderr = None
-    else:
-        epc, epc_stderr = _unwrap(1 - clifford_fidelity_from_alpha(standard_rb_alpha_u))
-
-    fidelity, fidelity_stderr = _unwrap(fidelity_u)
-    epg, epg_stderr = _unwrap(epg_u)
-    return IRBFidelity(
-        fidelity=fidelity,
-        fidelity_stderr=fidelity_stderr,
-        epc=epc,
-        epc_stderr=epc_stderr,
-        epg=epg,
-        epg_stderr=epg_stderr,
-    )
 
 
 def validate_fidelity_bounds(fidelity: float, *, interleaved: bool) -> list[str]:
@@ -245,7 +137,7 @@ def infer_alpha_01(
     alpha_01 = _alpha_01_from_inputs(alpha_2q, alpha_0, alpha_1, n_1, n_2)
     if alpha_01 is None:
         return alpha_0, alpha_1, None
-    return alpha_0, alpha_1, _unwrap(alpha_01)[0]
+    return alpha_0, alpha_1, unwrap(alpha_01)[0]
 
 
 def compute_implied_cz(
@@ -266,11 +158,11 @@ def compute_implied_cz(
     epg_cz = None
     epg_cz_stderr = None
     if alpha_01 is not None and alpha_0 is not None and alpha_1 is not None:
-        alpha_2q_u = _as_ufloat(alpha_2q, alpha_2q_stderr)
+        alpha_2q_u = as_ufloat(alpha_2q, alpha_2q_stderr)
         alpha_01_u = _alpha_01_from_inputs(alpha_2q_u, alpha_0, alpha_1, n_1, n_2)
         if alpha_01_u is not None:
-            _, alpha_01_stderr = _unwrap(alpha_01_u)
-            epg_cz, epg_cz_stderr = _unwrap(1 - clifford_fidelity_from_alpha(alpha_01_u, n_qubits=2))
+            _, alpha_01_stderr = unwrap(alpha_01_u)
+            epg_cz, epg_cz_stderr = unwrap(1 - clifford_fidelity_from_alpha(alpha_01_u, n_qubits=2))
 
     return ImpliedCZResult(
         alpha_0=alpha_0,
