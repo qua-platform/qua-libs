@@ -10,7 +10,6 @@ from .gef_readout_pulse import (
     ensure_gef_readout_pulse,
     gef_readout_frequency,
     reset_for_gef,
-    reset_with_gef_readout,
     set_gef_readout_frequency,
 )
 
@@ -23,6 +22,5 @@ __all__ = [
     "gef_readout_frequency",
     "preflight_accumulated_demod",
     "reset_for_gef",
-    "reset_with_gef_readout",
     "set_gef_readout_frequency",
 ]

@@ -14,8 +14,6 @@ from qualang_tools.units import unit
 from qualibrate import NodeParameters, QualibrationNode
 from quam_config import Quam
 
-from calibration_utils.common_utils.gef_readout_pulse import reset_with_gef_readout
-
 # Padding value used to fill input-stream chunks to the declared array size.
 # 37 maps to case_(37) -> idle_2q (wait(4) on both qubits in play_gate). It is
 # defensive only: play_sequence is bounded by the actual chunk length so these
@@ -492,8 +490,8 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
 
             # Reset the qubits and reset the frame to avoid accumulation of rotations
             for qp in qubit_pair.values():
-                reset_with_gef_readout(qp.qubit_control, reset_type, simulate)
-                reset_with_gef_readout(qp.qubit_target, reset_type, simulate)
+                qp.qubit_control.reset(reset_type, simulate)
+                qp.qubit_target.reset(reset_type, simulate)
                 reset_frame(qp.qubit_control.xy.name, qp.qubit_target.xy.name)
             align()
 
@@ -640,11 +638,13 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 align()
 
                 for qp in multiplexed_qubit_pairs.values():
-                    reset_with_gef_readout(
-                        qp.qubit_control, self.node.parameters.reset_type, self.node.parameters.simulate
+                    qp.qubit_control.reset(
+                        reset_type=self.node.parameters.reset_type,
+                        simulate=self.node.parameters.simulate,
                     )
-                    reset_with_gef_readout(
-                        qp.qubit_target, self.node.parameters.reset_type, self.node.parameters.simulate
+                    qp.qubit_target.reset(
+                        reset_type=self.node.parameters.reset_type,
+                        simulate=self.node.parameters.simulate,
                     )
                 align()
 
@@ -744,11 +744,13 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                 with for_(n, 0, n < self.node.parameters.num_shots, n + 1):
                     # Reset the qubits
                     for qp in multiplexed_qubit_pairs.values():
-                        reset_with_gef_readout(
-                            qp.qubit_control, self.node.parameters.reset_type, self.node.parameters.simulate
+                        qp.qubit_control.reset(
+                            self.node.parameters.reset_type,
+                            self.node.parameters.simulate,
                         )
-                        reset_with_gef_readout(
-                            qp.qubit_target, self.node.parameters.reset_type, self.node.parameters.simulate
+                        qp.qubit_target.reset(
+                            self.node.parameters.reset_type,
+                            self.node.parameters.simulate,
                         )
                     align()
 

@@ -121,17 +121,5 @@ def reset_for_gef(qubit, reset_type: str, simulate: bool, u: Any) -> None:
     if reset_type == "thermal":
         qubit.wait(2 * qubit.thermalization_time * u.ns)  # longer wait for |f> thermalization
         return
-    reset_with_gef_readout(qubit, reset_type, simulate)
+    qubit.reset(reset_type, simulate)
     set_gef_readout_frequency(qubit)
-
-
-def reset_with_gef_readout(qubit, reset_type: str, simulate: bool) -> None:
-    """``qubit.reset``, with the ``active_gef`` reset reading through ``readout_GEF``.
-
-    ``reset_qubit_active_gef`` reads with the g/e ``readout`` pulse by default, but ``gef_centers``
-    are in the units of a ``readout_GEF`` measurement, so that default misclassifies g, e and f.
-    """
-    if reset_type == "active_gef":
-        qubit.reset(reset_type, simulate, readout_pulse_name="readout_GEF")
-    else:
-        qubit.reset(reset_type, simulate)

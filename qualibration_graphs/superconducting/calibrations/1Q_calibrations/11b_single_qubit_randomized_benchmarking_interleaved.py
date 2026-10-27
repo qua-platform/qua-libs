@@ -28,7 +28,6 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
     plot_leakage,
     leakage_per_gate_entry,
 )
-from calibration_utils.common_utils.gef_readout_pulse import reset_with_gef_readout
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
@@ -262,7 +261,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         with for_(n, 0, n < n_avg, n + 1):
                             # Initialize the qubits
                             for i, qubit in multiplexed_qubits.items():
-                                reset_with_gef_readout(qubit, node.parameters.reset_type, node.parameters.simulate)
+                                qubit.reset(node.parameters.reset_type, node.parameters.simulate)
                                 # Align the two elements to play the sequence after qubit initialization
                             align()
                             # Manipulate the qubits
