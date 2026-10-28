@@ -15,8 +15,12 @@ from qualibrate import QualibrationNode
 
 from calibration_utils.common_utils.rb import (
     fit_survival,
+    load_saved_ds_fit,
     rb_decay_curve,
+    validate_fidelity_bounds,
+    validate_fidelity_uncertainty,
     validate_fit_parameters,
+    validate_interleaved_alpha,
     validate_residuals,
     SHALLOW_LEAKAGE_THRESHOLD,
     LeakageFit,
@@ -126,10 +130,13 @@ def _validate_rb_fit(
     """Run all hard-fail RB fit validations."""
     issues: list[str] = []
     issues.extend(validate_fit_parameters(fit_amplitude, alpha, fit_offset))
-    issues.extend(fidelity.validate_fidelity_bounds(fit_fidelity, interleaved=interleaved))
-    issues.extend(fidelity.validate_fidelity_uncertainty(fit_fidelity, fit_fidelity_stderr, interleaved=interleaved))
+    label = "CZ gate fidelity" if interleaved else "2Q Clifford fidelity"
+    issues.extend(validate_fidelity_bounds(fit_fidelity, label=label))
+    issues.extend(validate_fidelity_uncertainty(fit_fidelity, fit_fidelity_stderr, label=label))
     if interleaved and standard_rb_alpha is not None:
-        issues.extend(fidelity.validate_interleaved_alpha(alpha, standard_rb_alpha))
+        issues.extend(
+            validate_interleaved_alpha(alpha, standard_rb_alpha, reference_label="StandardRB_alpha", gate_label="CZ")
+        )
     if not issues:
         issues.extend(validate_residuals(circuit_depths, survival, stderr, fit_amplitude, alpha, fit_offset))
     return len(issues) == 0, tuple(issues)
@@ -189,22 +196,12 @@ def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict 
     if standard_rb_load_id is None:
         return None
 
-    from qualibrate.core.utils.node.content import read_node_data
-    from qualibrate.core.utils.node.path_solver import get_node_dir_path
-    from qualibrate_config.resolvers import get_qualibrate_config, get_qualibrate_config_path
-
     try:
-        base_path = get_qualibrate_config(get_qualibrate_config_path()).storage.location
-        node_dir = get_node_dir_path(int(standard_rb_load_id), base_path)
-        std_rb_data = read_node_data(node_dir, int(standard_rb_load_id), base_path)
+        ds_fit = load_saved_ds_fit(standard_rb_load_id)
     except Exception as exc:
         node.log(f"Could not load StandardRB overlay for {qp_name}: failed to read saved node data ({exc}).")
         return None
 
-    if std_rb_data is None:
-        return None
-
-    ds_fit = std_rb_data.get("ds_fit")
     if ds_fit is None or qp_name not in ds_fit.qubit_pair.values:
         node.log(
             f"Could not load StandardRB overlay for {qp_name}: "
@@ -228,13 +225,20 @@ def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict 
     if "epc" in fr and np.isfinite(fr.epc.values):
         epc_reference = float(fr.epc.values)
 
-    survival_per_sequence = fr.survival_per_sequence if "survival_per_sequence" in fr else None
+    optional = lambda key: np.asarray(fr[key].values, dtype=float) if key in fr else None  # noqa: E731
 
     return {
         "circuit_depth": np.asarray(fr.circuit_depth.values, dtype=float),
         "survival": np.asarray(fr.survival_probability.values, dtype=float),
-        "survival_per_sequence": survival_per_sequence,
+        "survival_stderr": optional("survival_stderr"),
+        "survival_per_sequence": (
+            fr.survival_per_sequence.transpose("circuit_depth", "sequence").values
+            if "survival_per_sequence" in fr
+            else None
+        ),
         "fitted_curve": np.asarray(fr.fitted_curve.values, dtype=float),
+        "fit_amplitude": float(optional("fit_amplitude")) if "fit_amplitude" in fr else np.nan,
+        "fit_offset": float(optional("fit_offset")) if "fit_offset" in fr else np.nan,
         "alpha": float(fr.fit_alpha.values),
         "alpha_stderr": alpha_stderr,
         "epc_reference": epc_reference,
@@ -265,56 +269,30 @@ def _resolve_irb_reference(
     return float(reference["alpha"]), None, epc_reference
 
 
-def _assign_standard_rb_overlay(
-    da: xr.Dataset,
-    overlay: dict,
-    *,
-    node: QualibrationNode | None = None,
-    qp_name: str | None = None,
-) -> xr.Dataset:
-    """Align a Standard RB overlay onto the interleaved dataset circuit depths."""
-    circuit_depths = da.circuit_depth.values
-    survival_on_depths = np.full(len(circuit_depths), np.nan)
-    fitted_on_depths = np.full(len(circuit_depths), np.nan)
-    overlay_depths = overlay["circuit_depth"]
-    overlay_per_sequence = overlay.get("survival_per_sequence")
-    n_sequence = da.sizes.get("sequence")
-    per_sequence_on_depths = None
-    if overlay_per_sequence is not None and n_sequence is not None:
-        overlay_n_sequence = overlay_per_sequence.sizes.get("sequence")
-        if (
-            overlay_n_sequence == n_sequence
-        ):  # if the number of sequences is the same, then we can use the per-sequence data
-            per_sequence_on_depths = np.full((len(circuit_depths), n_sequence), np.nan)
-        elif node is not None:
-            node.log(
-                f"Standard RB overlay"
-                f"{f' for {qp_name}' if qp_name else ''}: skipping per-sequence points "
-                f"(saved 37a num_circuits_per_depth={overlay_n_sequence} != "
-                f"current num_circuits_per_depth={n_sequence}). Depth-mean overlay kept."
-            )
+def _assign_standard_rb_overlay(da: xr.Dataset, overlay: dict | None) -> xr.Dataset:
+    """Attach the saved 37a run for the plot, at its own depths.
 
-    for idx, depth in enumerate(circuit_depths):
-        match = np.where(overlay_depths == depth)[0]
-        if match.size:
-            survival_on_depths[idx] = overlay["survival"][match[0]]
-            fitted_on_depths[idx] = overlay["fitted_curve"][match[0]]
-            if per_sequence_on_depths is not None:
-                per_sequence_on_depths[idx, :] = overlay_per_sequence.isel(circuit_depth=match[0]).values
-
-    assign_kwargs = {
-        "standard_rb_overlay_survival": ("circuit_depth", survival_on_depths),
-        "standard_rb_overlay_fitted": ("circuit_depth", fitted_on_depths),
-        "standard_rb_fit_alpha": float(overlay["alpha"]),
-        "standard_rb_fit_alpha_stderr": float(overlay.get("alpha_stderr", np.nan)),
-    }
-    if per_sequence_on_depths is not None:
-        assign_kwargs["standard_rb_overlay_survival_per_sequence"] = (
-            ["circuit_depth", "sequence"],
-            per_sequence_on_depths,
-        )
-
-    return da.assign(**assign_kwargs)
+    37a and 37b need not share depths or sequence counts, so the overlay has its own
+    ``standard_rb_point`` (one per 37a depth) and ``standard_rb_sequence`` dimensions. Pairs are
+    combined by ``groupby``, which NaN-pads them to the longest. Without a saved run both are empty.
+    """
+    n_points = 0 if overlay is None else len(overlay["circuit_depth"])
+    missing = np.full(n_points, np.nan)
+    per_sequence = None if overlay is None else overlay.get("survival_per_sequence")
+    if per_sequence is None:
+        per_sequence = np.full((n_points, 0), np.nan)
+    stderr = None if overlay is None else overlay.get("survival_stderr")
+    return da.assign(
+        standard_rb_overlay_depth=("standard_rb_point", missing if overlay is None else overlay["circuit_depth"]),
+        standard_rb_overlay_survival=("standard_rb_point", missing if overlay is None else overlay["survival"]),
+        standard_rb_overlay_survival_stderr=("standard_rb_point", missing if stderr is None else stderr),
+        standard_rb_overlay_fitted=("standard_rb_point", missing if overlay is None else overlay["fitted_curve"]),
+        standard_rb_overlay_survival_per_sequence=(["standard_rb_point", "standard_rb_sequence"], per_sequence),
+        standard_rb_overlay_amplitude=np.nan if overlay is None else overlay["fit_amplitude"],
+        standard_rb_overlay_offset=np.nan if overlay is None else overlay["fit_offset"],
+        standard_rb_fit_alpha=np.nan if overlay is None else float(overlay["alpha"]),
+        standard_rb_fit_alpha_stderr=np.nan if overlay is None else float(overlay.get("alpha_stderr", np.nan)),
+    ).assign_coords(standard_rb_point=np.arange(n_points), standard_rb_sequence=np.arange(per_sequence.shape[1]))
 
 
 def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr.Dataset:
@@ -445,17 +423,7 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
         standard_rb_fit_alpha_stderr=standard_rb_alpha_stderr if standard_rb_alpha_stderr is not None else np.nan,
     )
 
-    if overlay is not None:
-        da = _assign_standard_rb_overlay(da, overlay, node=node, qp_name=qp_name)
-    else:
-        nan_overlay = np.full(len(circuit_depths), np.nan)
-        da = da.assign(
-            standard_rb_overlay_survival=("circuit_depth", nan_overlay),
-            standard_rb_overlay_fitted=("circuit_depth", nan_overlay.copy()),
-            standard_rb_fit_alpha=np.nan,
-            standard_rb_fit_alpha_stderr=np.nan,
-        )
-    return da
+    return _assign_standard_rb_overlay(da, overlay)
 
 
 # --- Leakage RB (measure_leakage=True) -------------------------------------------------------

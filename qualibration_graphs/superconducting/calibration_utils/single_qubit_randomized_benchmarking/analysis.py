@@ -17,9 +17,13 @@ from calibration_utils.common_utils.rb import (
     fit_leakage,
     fit_survival,
     leakage_per_gate,
+    load_saved_ds_fit,
     mean_and_stderr_over_sequences,
     read_confusion_matrix,
+    validate_fidelity_bounds,
+    validate_fidelity_uncertainty,
     validate_fit_parameters,
+    validate_interleaved_alpha,
     validate_residuals,
 )
 
@@ -133,7 +137,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, di
         survival_stderr=curve("survival_stderr"),
         **{key: scalar(key) for key in rows[0] if key not in ("averaged_data", "survival_stderr")},
     )
-    node.outcomes = {q: "successful" if r.success else "fail" for q, r in fit_results.items()}
     return ds_fit, fit_results
 
 
@@ -180,33 +183,124 @@ def _fit_survival_for_qubit(depths, mean, stderr, *, probability: bool) -> tuple
     return result, row
 
 
-def add_interleaved_gate_error(ds_fit: xr.Dataset, fit_results: Dict[str, FitParameters], qubits) -> xr.Dataset:
+# Where 11a stores its snapshot index, so 11b can read back the full reference run (as 37a's
+# StandardRB_load_id for 37b).
+REFERENCE_LOAD_ID_KEY = "averaged_load_id"
+
+
+def add_interleaved_gate_error(
+    ds_fit: xr.Dataset, fit_results: Dict[str, FitParameters], qubits, log=None, gate_label: str = "interleaved"
+) -> xr.Dataset:
     """Error of the interleaved gate alone (11b), by standard interleaved RB against the 11a reference.
 
-    The shared interleaved-RB formula for one qubit (as 37b for two), against alpha_11a =
-    ``gate_fidelity["averaged_alpha"]``. The stderr covers the 11b fit only: 11a stores no
-    uncertainty. Fills ``gate_error`` in ``fit_results`` and in ``ds_fit``, and ``reference_alpha``
-    (the 11a alpha used, for the plot) in ``ds_fit``.
+    The shared interleaved-RB formula for one qubit (as 37b for two). The reference is the saved 11a
+    run named by ``gate_fidelity["averaged_load_id"]``: its alpha with its error, and its survival and
+    fit for the plot. When that run cannot be read, it falls back to ``gate_fidelity["averaged_alpha"]``
+    (no error, nothing to overlay). ``log`` (typically ``node.log``) reports why a saved run was not used.
+
+    Fills ``gate_error`` in ``fit_results`` and in ``ds_fit``, and the ``reference_*`` variables (the
+    reference used, for the plot) in ``ds_fit``.
     """
-    reference_alphas = {}
+    log = log or logging.getLogger(__name__).info
+    references = {}
     for qubit in qubits:
         result = fit_results[qubit.name]
-        alpha_reference = (getattr(qubit, "gate_fidelity", None) or {}).get("averaged_alpha")
-        if alpha_reference is None or result.alpha is None or not result.success:
+        if result.alpha is None or not result.success:
             continue
-        reference_alphas[qubit.name] = float(alpha_reference)
+        reference = _saved_reference_run(qubit, log)
+        if reference is None:
+            alpha_reference = (getattr(qubit, "gate_fidelity", None) or {}).get("averaged_alpha")
+            if alpha_reference is None:
+                continue
+            reference = {"alpha": float(alpha_reference)}
+        references[qubit.name] = reference
         alpha_stderr = None if result.error_per_clifford_stderr is None else 2 * result.error_per_clifford_stderr
-        irb = compute_irb_fidelity(result.alpha, alpha_stderr, float(alpha_reference), n_qubits=1)
+        irb = compute_irb_fidelity(
+            result.alpha,
+            alpha_stderr,
+            reference["alpha"],
+            n_qubits=1,
+            standard_rb_alpha_stderr=reference.get("alpha_stderr"),
+        )
         result.gate_error, result.gate_error_stderr = irb.epg, irb.epg_stderr
-    per_qubit = lambda key: (
+        # As 37b: a gate fidelity outside [0, 1] (interleaved alpha above the reference) fails the qubit.
+        label = f"{gate_label} gate fidelity"
+        issues = [
+            *validate_fidelity_bounds(irb.fidelity, label=label),
+            *validate_fidelity_uncertainty(irb.fidelity, irb.fidelity_stderr, label=label),
+            *validate_interleaved_alpha(
+                result.alpha, reference["alpha"], reference_label="11a averaged_alpha", gate_label=gate_label
+            ),
+        ]
+        if issues:
+            result.success = False
+            result.fit_issues = (*result.fit_issues, *issues)
+
+    names = [str(q) for q in ds_fit.qubit.values]
+    per_qubit = lambda key: ("qubit", [_nan_if_none(getattr(fit_results[name], key)) for name in names])  # noqa: E731
+    reference_scalar = lambda key: (  # noqa: E731
         "qubit",
-        [_nan_if_none(getattr(fit_results[str(q)], key)) for q in ds_fit.qubit.values],
-    )  # noqa: E731
+        [_nan_if_none(references.get(name, {}).get(key)) for name in names],
+    )
+    # The saved runs' own depths, NaN-padded to the longest (11a and 11b need not share depths).
+    n_points = max([len(ref["depths"]) for ref in references.values() if "depths" in ref], default=0)
+
+    def reference_curve(key):
+        rows = np.full((len(names), n_points), np.nan)
+        for i, name in enumerate(names):
+            values = references.get(name, {}).get(key)
+            if values is not None:
+                rows[i, : len(values)] = values
+        return ["qubit", "reference_point"], rows
+
     return ds_fit.assign(
+        success=("qubit", [bool(fit_results[name].success) for name in names]),
         gate_error=per_qubit("gate_error"),
         gate_error_stderr=per_qubit("gate_error_stderr"),
-        reference_alpha=("qubit", [reference_alphas.get(str(q), np.nan) for q in ds_fit.qubit.values]),
+        reference_alpha=reference_scalar("alpha"),
+        reference_alpha_stderr=reference_scalar("alpha_stderr"),
+        reference_amplitude=reference_scalar("amplitude"),
+        reference_offset=reference_scalar("offset"),
+        reference_load_id=reference_scalar("load_id"),
+        reference_depths=reference_curve("depths"),
+        reference_survival=reference_curve("survival"),
+        reference_survival_stderr=reference_curve("survival_stderr"),
     )
+
+
+def _saved_reference_run(qubit, log) -> dict | None:
+    """The saved 11a run for ``qubit``: alpha with its error, fit, and survival at its own depths.
+
+    None, with the reason logged, when no run is named or it cannot be used.
+    """
+    load_id = (getattr(qubit, "gate_fidelity", None) or {}).get(REFERENCE_LOAD_ID_KEY)
+    if load_id is None:
+        return None
+    try:
+        saved = load_saved_ds_fit(load_id)
+    except Exception as exc:
+        log(f"{qubit.name}: could not read the 11a run {load_id} ({exc}); using the stored averaged_alpha.")
+        return None
+    needed = ("averaged_data", "survival_stderr", "fit_amplitude", "fit_alpha", "fit_offset", "success")
+    if saved is None or qubit.name not in saved.qubit.values or any(key not in saved for key in needed):
+        log(f"{qubit.name}: the 11a run {load_id} has no usable fit for it; using the stored averaged_alpha.")
+        return None
+    fr = saved.sel(qubit=qubit.name)
+    if not bool(fr.success.values):
+        log(f"{qubit.name}: the 11a run {load_id} fit failed; using the stored averaged_alpha.")
+        return None
+
+    alpha_stderr = float(fr.alpha_stderr.values) if "alpha_stderr" in fr else np.nan
+    return {
+        "load_id": int(load_id),
+        "alpha": float(fr.fit_alpha.values),
+        "alpha_stderr": alpha_stderr if np.isfinite(alpha_stderr) and alpha_stderr > 0 else None,
+        "amplitude": float(fr.fit_amplitude.values),
+        "offset": float(fr.fit_offset.values),
+        "depths": np.asarray(fr.depths.values, dtype=float),
+        "survival": np.asarray(fr.averaged_data.values, dtype=float),
+        "survival_stderr": np.asarray(fr.survival_stderr.values, dtype=float),
+    }
 
 
 # --- Leakage RB (measure_leakage=True) -------------------------------------------------------

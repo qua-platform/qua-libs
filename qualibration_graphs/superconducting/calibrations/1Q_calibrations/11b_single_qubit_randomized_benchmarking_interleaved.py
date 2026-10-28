@@ -69,7 +69,8 @@ Prerequisites:
       Clifford + gate step is reported) and a calibrated g/e/f readout.
 
 State update:
-    - The fidelity of the interleaved gate alone (interleaved RB against the 11a gate_fidelity["averaged_alpha"]):
+    - The fidelity of the interleaved gate alone (interleaved RB against the saved 11a run named by
+      gate_fidelity["averaged_load_id"], or else gate_fidelity["averaged_alpha"]):
       qubit.gate_fidelity["interleaved_gate"] (also with measure_leakage; not written without an 11a fidelity).
     - With measure_leakage, also qubit.extras["leakage_<interleaved_gate>"] (leakage L1 of the interleaved
       gate), when the leakage fit succeeds and an 11a reference exists.
@@ -377,7 +378,13 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
     # The interleaved gate alone, against the 11a reference fidelity
-    node.results["ds_fit"] = add_interleaved_gate_error(node.results["ds_fit"], fit_results, node.namespace["qubits"])
+    node.results["ds_fit"] = add_interleaved_gate_error(
+        node.results["ds_fit"],
+        fit_results,
+        node.namespace["qubits"],
+        log=node.log,
+        gate_label=node.parameters.interleaved_gate_operation,
+    )
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis

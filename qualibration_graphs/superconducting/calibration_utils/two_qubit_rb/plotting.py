@@ -162,56 +162,7 @@ def plot_individual_data_with_fit(
     marker = "^" if interleaved else "o"
 
     if "standard_rb_overlay_survival" in fr and np.isfinite(fr.standard_rb_overlay_survival.values).any():
-        overlay_survival = fr.standard_rb_overlay_survival.values
-        if plot_style == "per_sequence" and "standard_rb_overlay_survival_per_sequence" in fr:
-            _plot_per_sequence_scatter(
-                ax,
-                depths,
-                fr.standard_rb_overlay_survival_per_sequence.values,
-                color="C0",
-                zorder=1,
-            )
-            _plot_mean_marker(
-                ax,
-                depths,
-                overlay_survival,
-                color="C0",
-                marker="o",
-                label="StandardRB Mean",
-                zorder=3,
-            )
-        else:
-            _plot_mean_marker(
-                ax,
-                depths,
-                overlay_survival,
-                color="C0",
-                marker="o",
-                label="StandardRB Mean",
-                zorder=3,
-            )
-        overlay_fitted = fr.standard_rb_overlay_fitted.values
-        if success and np.isfinite(overlay_fitted).any():
-            overlay_alpha = float(fr.standard_rb_fit_alpha.values)
-            overlay_alpha_stderr = (
-                float(fr.standard_rb_fit_alpha_stderr.values)
-                if "standard_rb_fit_alpha_stderr" in fr and np.isfinite(fr.standard_rb_fit_alpha_stderr.values)
-                else None
-            )
-            ax.plot(
-                depths,
-                overlay_fitted,
-                color="C0",
-                linestyle="--",
-                zorder=4,
-                label=(
-                    f"StandardRB Fit (α = {overlay_alpha:.4f} ± {overlay_alpha_stderr:.4f})"
-                    if overlay_alpha_stderr is not None
-                    and np.isfinite(overlay_alpha_stderr)
-                    and overlay_alpha_stderr > 0
-                    else f"StandardRB Fit (α = {overlay_alpha:.4f})"
-                ),
-            )
+        _plot_standard_rb_overlay(ax, fr, depths, plot_style=plot_style, success=success)
 
     mean_label = "Interleaved Mean" if interleaved else "Mean"
     if plot_style == "per_sequence" and "survival_per_sequence" in fr:
@@ -268,6 +219,22 @@ def plot_individual_data_with_fit(
             ),
         )
 
+    # No saved 37a run to overlay: draw the reference decay from the stored StandardRB_alpha with this
+    # run's A and B. The CZ error comes only from the ratio of the two alphas.
+    has_overlay = "standard_rb_overlay_survival" in fr and np.isfinite(fr.standard_rb_overlay_survival.values).any()
+    if interleaved and success and not has_overlay and "standard_rb_alpha" in fr:
+        alpha_ref = float(fr.standard_rb_alpha.values)
+        if np.isfinite(alpha_ref):
+            smooth_depths = np.linspace(depths[0], depths[-1], 100)
+            ax.plot(
+                smooth_depths,
+                rb_decay_curve(smooth_depths, float(fr.fit_amplitude.values), alpha_ref, float(fr.fit_offset.values)),
+                color="0.4",
+                linestyle=":",
+                zorder=4,
+                label=f"37a reference decay (α = {alpha_ref:.4f}, no saved run)",
+            )
+
     if success:
         fidelity = float(fr.fidelity.values)
         fidelity_stderr = (
@@ -307,6 +274,74 @@ def plot_individual_data_with_fit(
     if log_x:
         ax.set_xscale("log")
     ax.legend(loc="upper right", framealpha=0.8, fontsize=8)
+
+
+def _plot_standard_rb_overlay(
+    ax: Axes, fr: xr.Dataset, depths: np.ndarray, *, plot_style: RbPlotStyle, success: bool
+) -> None:
+    """The saved 37a run at its own depths, within this run's depth range so the axis stays on 37b."""
+    overlay_depths = fr.standard_rb_overlay_depth.values
+    overlay_survival = fr.standard_rb_overlay_survival.values
+    shown = np.isfinite(overlay_survival) & (overlay_depths >= depths.min()) & (overlay_depths <= depths.max())
+    if plot_style == "per_sequence" and "standard_rb_overlay_survival_per_sequence" in fr:
+        _plot_per_sequence_scatter(
+            ax,
+            overlay_depths[shown],
+            fr.standard_rb_overlay_survival_per_sequence.values[shown],
+            color="C0",
+            zorder=1,
+        )
+    overlay_stderr = (
+        fr.standard_rb_overlay_survival_stderr.values if "standard_rb_overlay_survival_stderr" in fr else None
+    )
+    if plot_style != "per_sequence" and overlay_stderr is not None and np.isfinite(overlay_stderr[shown]).any():
+        _plot_mean_with_sem(
+            ax,
+            overlay_depths[shown],
+            overlay_survival[shown],
+            np.nan_to_num(overlay_stderr[shown]),
+            color="C0",
+            marker="o",
+            label="StandardRB Mean",
+            zorder=3,
+        )
+    else:
+        _plot_mean_marker(
+            ax,
+            overlay_depths[shown],
+            overlay_survival[shown],
+            color="C0",
+            marker="o",
+            label="StandardRB Mean",
+            zorder=3,
+        )
+
+    overlay_alpha = float(fr.standard_rb_fit_alpha.values)
+    if not success or not np.isfinite(overlay_alpha):
+        return
+    overlay_alpha_stderr = (
+        float(fr.standard_rb_fit_alpha_stderr.values) if "standard_rb_fit_alpha_stderr" in fr else np.nan
+    )
+    label = (
+        f"StandardRB Fit (α = {overlay_alpha:.4f} ± {overlay_alpha_stderr:.4f})"
+        if np.isfinite(overlay_alpha_stderr) and overlay_alpha_stderr > 0
+        else f"StandardRB Fit (α = {overlay_alpha:.4f})"
+    )
+    amplitude = float(fr.standard_rb_overlay_amplitude.values) if "standard_rb_overlay_amplitude" in fr else np.nan
+    offset = float(fr.standard_rb_overlay_offset.values) if "standard_rb_overlay_offset" in fr else np.nan
+    if np.isfinite(amplitude) and np.isfinite(offset):
+        smooth_depths = np.linspace(depths[0], depths[-1], 100)
+        ax.plot(
+            smooth_depths,
+            rb_decay_curve(smooth_depths, amplitude, overlay_alpha, offset),
+            color="C0",
+            linestyle="--",
+            zorder=4,
+            label=label,
+        )
+    else:  # saved run without A and B: its fitted curve at its own depths
+        fitted = fr.standard_rb_overlay_fitted.values
+        ax.plot(overlay_depths[shown], fitted[shown], color="C0", linestyle="--", zorder=4, label=label)
 
 
 def plot_leakage(

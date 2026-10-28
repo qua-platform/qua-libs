@@ -116,12 +116,8 @@ def plot_individual_data_with_fit(
     )
     fit_label = "Exponential fit" if interleaved_gate is None else "Interleaved fit"
     ax.plot(dense, fitted, "r--", label=f"{fit_label} (α = {alpha:.5f})")
-    # 11b: the same A and B with the 11a reference alpha. The gate error comes only from the ratio of
-    # the two alphas, so the data should fall below this curve by the gate's own error.
     if bool(fit.success.values) and "reference_alpha" in fit and np.isfinite(float(fit.reference_alpha.values)):
-        alpha_ref = float(fit.reference_alpha.values)
-        reference = rb_decay_curve(dense, float(fit.fit_amplitude.values), alpha_ref, float(fit.fit_offset.values))
-        ax.plot(dense, reference, ":", color="0.4", label=f"11a reference decay (α = {alpha_ref:.5f})")
+        _plot_reference(ax, fit, depths, dense)
     ax.grid(True, which="both", alpha=0.4)
     epc = float(fit.error_per_clifford.values)
     epc_stderr = float(fit.error_per_clifford_stderr.values) if "error_per_clifford_stderr" in fit else None
@@ -151,6 +147,44 @@ def plot_individual_data_with_fit(
     if log_x:
         ax.set_xscale("log")
     ax.legend(fontsize=LEGEND_FONTSIZE)
+
+
+def _plot_reference(ax: Axes, fit: xr.Dataset, depths: np.ndarray, dense: np.ndarray) -> None:
+    """11b: the 11a reference the gate error is measured against.
+
+    With the saved 11a run: its survival and fit. Without it: this run's A and B with the stored 11a
+    alpha. The gate error comes only from the ratio of the two alphas, so the interleaved data should
+    fall below the reference by the gate's own error.
+    """
+    alpha_ref = float(fit.reference_alpha.values)
+    amplitude, offset = float(fit.reference_amplitude.values), float(fit.reference_offset.values)
+    if np.isfinite(amplitude) and np.isfinite(offset):
+        run = f"11a #{int(fit.reference_load_id.values)}"
+        # The saved run's own depths, within this run's range so the axis stays on the 11b data.
+        reference_depths = fit.reference_depths.values
+        survival = fit.reference_survival.values
+        shown = np.isfinite(survival) & (reference_depths >= depths.min()) & (reference_depths <= depths.max())
+        ax.errorbar(
+            reference_depths[shown],
+            survival[shown],
+            yerr=np.nan_to_num(fit.reference_survival_stderr.values[shown]),
+            fmt="s",
+            ms=3,
+            capsize=2,
+            elinewidth=0.8,
+            color="0.4",
+            label=f"{run} mean over sequences",
+        )
+        ax.plot(
+            dense,
+            rb_decay_curve(dense, amplitude, alpha_ref, offset),
+            "--",
+            color="0.4",
+            label=f"{run} fit (α = {alpha_ref:.5f})",
+        )
+    else:
+        reference = rb_decay_curve(dense, float(fit.fit_amplitude.values), alpha_ref, float(fit.fit_offset.values))
+        ax.plot(dense, reference, ":", color="0.4", label=f"11a reference decay (α = {alpha_ref:.5f}, no saved run)")
 
 
 def plot_leakage(

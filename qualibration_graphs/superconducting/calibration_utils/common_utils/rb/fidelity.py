@@ -8,6 +8,8 @@ from typing import Any
 import numpy as np
 from uncertainties import ufloat
 
+_FLOAT_TOLERANCE = 1e-9
+
 
 @dataclass
 class SRBFidelity:
@@ -129,3 +131,50 @@ def compute_irb_fidelity(
         epg=epg,
         epg_stderr=epg_stderr,
     )
+
+
+def validate_fidelity_bounds(fidelity: float, *, label: str) -> list[str]:
+    """Hard-fail checks on an extracted gate or Clifford fidelity (``label`` names it in the message)."""
+    issues: list[str] = []
+    if not np.isfinite(fidelity):
+        issues.append(f"{label} is non-finite.")
+    elif fidelity < -_FLOAT_TOLERANCE or fidelity > 1.0 + _FLOAT_TOLERANCE:
+        issues.append(f"{label}={100 * fidelity:.4f}% outside physical range [0, 100%].")
+    return issues
+
+
+def validate_fidelity_uncertainty(fidelity: float, fidelity_stderr: float | None, *, label: str) -> list[str]:
+    """Hard-fail when the propagated fidelity uncertainty exceeds the point estimate."""
+    issues: list[str] = []
+    if fidelity_stderr is None or not np.isfinite(fidelity_stderr) or fidelity_stderr <= 0:
+        return issues
+    if fidelity_stderr > fidelity:
+        issues.append(
+            f"{label} uncertainty ({100 * fidelity_stderr:.3f}%) exceeds "
+            f"point estimate ({100 * fidelity:.3f}%); result is not statistically significant."
+        )
+    return issues
+
+
+def validate_interleaved_alpha(
+    alpha: float, standard_rb_alpha: float, *, reference_label: str, gate_label: str
+) -> list[str]:
+    """Hard-fail checks on the interleaved alpha against its Standard RB reference.
+
+    An interleaved alpha above the reference implies a gate fidelity above 100%: noise, or a stale
+    reference.
+    """
+    issues: list[str] = []
+    if not np.isfinite(standard_rb_alpha):
+        issues.append(f"Reference {reference_label} is non-finite.")
+        return issues
+
+    if standard_rb_alpha <= _FLOAT_TOLERANCE or standard_rb_alpha > 1.0 + _FLOAT_TOLERANCE:
+        issues.append(f"Reference {reference_label}={standard_rb_alpha:.6f} outside physical range (0, 1].")
+
+    if alpha > standard_rb_alpha + _FLOAT_TOLERANCE:
+        issues.append(
+            f"Interleaved alpha={alpha:.6f} exceeds reference {reference_label}="
+            f"{standard_rb_alpha:.6f} (implies {gate_label} fidelity > 100%)."
+        )
+    return issues
