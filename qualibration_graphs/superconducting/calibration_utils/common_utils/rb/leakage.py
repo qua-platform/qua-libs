@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 import numpy as np
+import xarray as xr
 from scipy.optimize import OptimizeWarning, curve_fit
 
 RESIDUAL_SIGMA_LIMIT = 4.0
@@ -232,3 +233,16 @@ def leakage_per_gate(fits: Sequence[LeakageFit], references: Sequence[Optional[d
         for key, value in zip(out, (l1, l1_err, l2, l2_err)):
             out[key].append(value)
     return out
+
+
+def merge_leakage(ds_fit: xr.Dataset, ds_leakage: xr.Dataset) -> xr.Dataset:
+    """``ds_fit`` with the leakage fit added, so a run saves one dataset.
+
+    Leakage variables are named ``leaked*`` / ``leakage_*``; a variable already in ``ds_fit`` (the
+    raw data both were built from) must hold the same values and is kept once.
+    """
+    shared = [name for name in ds_leakage.data_vars if name in ds_fit.data_vars]
+    clashes = [name for name in shared if not ds_leakage[name].equals(ds_fit[name])]
+    if clashes:
+        raise ValueError(f"Leakage and survival fits both define {clashes} with different values.")
+    return ds_fit.merge(ds_leakage.drop_vars(shared))

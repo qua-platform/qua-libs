@@ -390,10 +390,10 @@ def fit_leakage_data(
             "leakage_l2": per_qubit([fit.l2 for fit in fits]),
             "leakage_l2_stderr": per_qubit([fit.l2_stderr for fit in fits]),
             "leakage_method": per_qubit([fit.method for fit in fits]),
-            "success": per_qubit([results[qubit.name].success for qubit in qubits]),
+            "leakage_success": per_qubit([results[qubit.name].success for qubit in qubits]),
             **(
                 {
-                    f"{key}_per_gate": per_qubit(
+                    f"leakage_{key}_per_gate": per_qubit(
                         [_nan_if_none((results[q.name].per_gate or {}).get(key)) for q in qubits]
                     )
                     for key in ("l1", "l1_stderr", "l2", "l2_stderr")
@@ -409,8 +409,8 @@ def fit_leakage_data(
     ds_leakage.leakage_l1.attrs = {"long_name": f"leakage L1 per {step}"}
     ds_leakage.leakage_l2.attrs = {"long_name": f"seepage L2 per {step}"}
     if interleaved_gate is not None:
-        ds_leakage.l1_per_gate.attrs = {"long_name": f"leakage L1 per {interleaved_gate}"}
-        ds_leakage.l2_per_gate.attrs = {"long_name": f"seepage L2 per {interleaved_gate}"}
+        ds_leakage.leakage_l1_per_gate.attrs = {"long_name": f"leakage L1 per {interleaved_gate}"}
+        ds_leakage.leakage_l2_per_gate.attrs = {"long_name": f"seepage L2 per {interleaved_gate}"}
     return ds_leakage, results
 
 

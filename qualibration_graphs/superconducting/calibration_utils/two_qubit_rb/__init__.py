@@ -1,5 +1,6 @@
 """Two-qubit randomized benchmarking calibration utilities."""
 
+from calibration_utils.common_utils.rb import merge_leakage
 from .analysis import (
     RBMode,
     fit_raw_data,
@@ -25,6 +26,7 @@ from .reporting import (
 )
 
 __all__ = [
+    "merge_leakage",
     "Parameters",
     "build_sweep_axes",
     "validate_leakage_run",

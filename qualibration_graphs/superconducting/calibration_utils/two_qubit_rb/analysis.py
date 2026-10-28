@@ -87,8 +87,8 @@ def _annotate_shared_attrs(ds_fit: xr.Dataset) -> None:
         "leaked_fit": {"long_name": "leakage RB fit"},
         "leakage_l1": {"long_name": "leakage L1 per Clifford"},
         "leakage_l2": {"long_name": "seepage L2 per Clifford"},
-        "l1_per_cz": {"long_name": "leakage L1 per CZ"},
-        "l2_per_cz": {"long_name": "seepage L2 per CZ"},
+        "leakage_l1_per_cz": {"long_name": "leakage L1 per CZ"},
+        "leakage_l2_per_cz": {"long_name": "seepage L2 per CZ"},
     }
     for var, attrs in attrs_by_var.items():
         if var in ds_fit.data_vars:
@@ -287,13 +287,13 @@ def _extract_leakage_results(
 
         per_cz, reference_updated_at, per_cz_note = None, "", ""
         if interleaved:
-            per_cz_note = str(qp_data.per_cz_note.values)
+            per_cz_note = str(qp_data.leakage_per_cz_note.values)
             if not per_cz_note:
                 variables = {
-                    "l1": "l1_per_cz",
-                    "l1_stderr": "l1_per_cz_stderr",
-                    "l2": "l2_per_cz",
-                    "l2_stderr": "l2_per_cz_stderr",
+                    "l1": "leakage_l1_per_cz",
+                    "l1_stderr": "leakage_l1_per_cz_stderr",
+                    "l2": "leakage_l2_per_cz",
+                    "l2_stderr": "leakage_l2_per_cz_stderr",
                 }
                 per_cz = {
                     series: {
@@ -302,7 +302,7 @@ def _extract_leakage_results(
                     }
                     for series in series_names
                 }
-                reference_updated_at = str(qp_data.reference_updated_at.values)
+                reference_updated_at = str(qp_data.leakage_reference_updated_at.values)
 
         results[str(qp_name)] = LeakagePairResult(
             control_qubit=str(qp_data.control_qubit.values),
@@ -312,8 +312,8 @@ def _extract_leakage_results(
                 "target": bool(qp_data.confusion_corrected_target.values),
             },
             per_clifford=per_clifford,
-            success=bool(qp_data.success.values),
-            failure=str(qp_data.failure.values),
+            success=bool(qp_data.leakage_success.values),
+            failure=str(qp_data.leakage_failure.values),
             per_cz=per_cz,
             reference_updated_at=reference_updated_at,
             per_cz_note=per_cz_note,

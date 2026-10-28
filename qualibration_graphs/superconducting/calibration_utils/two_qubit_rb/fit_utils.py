@@ -460,12 +460,12 @@ def _resolve_leakage_reference(node: QualibrationNode, qp_name: str) -> dict:
     return extras.get("leakage_per_2q_clifford") or {}
 
 
-# Names of the per-CZ variables in ``ds_leakage`` for each key of ``leakage_per_gate``.
+# Names of the per-CZ leakage variables for each key of ``leakage_per_gate``.
 _PER_CZ_VARIABLES = {
-    "l1": "l1_per_cz",
-    "l1_stderr": "l1_per_cz_stderr",
-    "l2": "l2_per_cz",
-    "l2_stderr": "l2_per_cz_stderr",
+    "l1": "leakage_l1_per_cz",
+    "l1_stderr": "leakage_l1_per_cz_stderr",
+    "l2": "leakage_l2_per_cz",
+    "l2_stderr": "leakage_l2_per_cz_stderr",
 }
 
 
@@ -536,15 +536,15 @@ def fit_leakage_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str, *, in
         "target_qubit": names["target"],
         "confusion_corrected_control": confusion["control"] is not None,
         "confusion_corrected_target": confusion["target"] is not None,
-        "success": fits[0].success and not suspect,
-        "failure": failure,
+        "leakage_success": fits[0].success and not suspect,
+        "leakage_failure": failure,
     }
     if interleaved:
         reference = _resolve_leakage_reference(node, qp_name)
         per_cz = leakage_per_gate(fits, [reference.get(series) for series in _LEAKAGE_SERIES])
         assign_kwargs.update({_PER_CZ_VARIABLES[key]: per_series(values) for key, values in per_cz.items()})
-        assign_kwargs["reference_updated_at"] = str(reference.get("updated_at") or "")
-        assign_kwargs["per_cz_note"] = (
+        assign_kwargs["leakage_reference_updated_at"] = str(reference.get("updated_at") or "")
+        assign_kwargs["leakage_per_cz_note"] = (
             ""
             if reference.get("pair")
             else f"No extras['leakage_per_2q_clifford'] for {qp_name}: run 37a_two_qubit_standard_rb with "

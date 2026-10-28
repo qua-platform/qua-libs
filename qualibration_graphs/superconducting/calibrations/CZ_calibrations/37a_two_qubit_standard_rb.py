@@ -17,6 +17,7 @@ from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
 
 from calibration_utils.two_qubit_rb import (
+    merge_leakage,
     Parameters,
     QuaProgramHandler,
     StandardRB,
@@ -294,12 +295,12 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse raw data, fit, log results, set outcomes and store structured fit results."""
     node.results["ds_proc"] = process_raw_dataset(node.results["ds_raw"], node)
     if node.parameters.measure_leakage:
-        node.results["ds_leakage"], leakage_results = fit_raw_data(
-            node.results["ds_proc"], node, mode=RBMode.STANDARD, leakage=True
-        )
+        ds_leakage, leakage_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.STANDARD, leakage=True)
         node.results["leakage_results"] = {k: asdict(v) for k, v in leakage_results.items()}
         log_leakage_results(leakage_results, interleaved=False, log_callable=node.log)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.STANDARD)
+    if node.parameters.measure_leakage:
+        node.results["ds_fit"] = merge_leakage(node.results["ds_fit"], ds_leakage)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_srb_results(fit_results, log_callable=node.log)
     node.outcomes = {
@@ -317,7 +318,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         figures.update(
             plot_leakage(
                 node,
-                node.results["ds_leakage"],
+                node.results["ds_fit"],
                 node.results["leakage_results"],
                 title="2Q Standard Leakage Randomized Benchmarking",
             )

@@ -15,6 +15,7 @@ from qualang_tools.loops import from_array
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.single_qubit_randomized_benchmarking import (
+    merge_leakage,
     Parameters,
     process_raw_dataset,
     fit_raw_data,
@@ -370,7 +371,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
     if node.parameters.measure_leakage:
-        node.results["ds_leakage"], leakage_results = fit_leakage_data(node.results["ds_raw"], node)
+        ds_leakage, leakage_results = fit_leakage_data(node.results["ds_raw"], node)
+        node.results["ds_fit"] = merge_leakage(node.results["ds_fit"], ds_leakage)
         node.results["leakage_results"] = {k: asdict(v) for k, v in leakage_results.items()}
         log_leakage_results(node.results["leakage_results"], log_callable=node.log)
 
@@ -389,7 +391,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     }
     if node.parameters.measure_leakage:
         node.results["figures"]["leakage"] = plot_leakage(
-            node.results["ds_leakage"],
+            node.results["ds_fit"],
             node.namespace["qubits"],
             node.results["leakage_results"],
             log_x=node.parameters.log_scale,

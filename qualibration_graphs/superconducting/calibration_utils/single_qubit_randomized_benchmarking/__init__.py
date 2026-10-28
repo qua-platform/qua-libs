@@ -1,3 +1,4 @@
+from calibration_utils.common_utils.rb import merge_leakage
 from .parameters import Parameters, validate_leakage_run
 from .analysis import (
     process_raw_dataset,
@@ -12,6 +13,7 @@ from .analysis import (
 from .plotting import plot_raw_data_with_fit, plot_leakage
 
 __all__ = [
+    "merge_leakage",
     "Parameters",
     "process_raw_dataset",
     "fit_raw_data",

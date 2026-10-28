@@ -18,6 +18,7 @@ from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
     get_interleaved_gate_index,
 )
 from calibration_utils.single_qubit_randomized_benchmarking import (
+    merge_leakage,
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
@@ -397,9 +398,8 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     }
     if node.parameters.measure_leakage:
         gate = node.parameters.interleaved_gate_operation
-        node.results["ds_leakage"], leakage_results = fit_leakage_data(
-            node.results["ds_raw"], node, interleaved_gate=gate
-        )
+        ds_leakage, leakage_results = fit_leakage_data(node.results["ds_raw"], node, interleaved_gate=gate)
+        node.results["ds_fit"] = merge_leakage(node.results["ds_fit"], ds_leakage)
         node.results["leakage_results"] = {k: asdict(v) for k, v in leakage_results.items()}
         log_leakage_results(node.results["leakage_results"], log_callable=node.log, interleaved_gate=gate)
 
@@ -421,7 +421,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
     }
     if node.parameters.measure_leakage:
         node.results["figures"]["leakage"] = plot_leakage(
-            node.results["ds_leakage"],
+            node.results["ds_fit"],
             node.namespace["qubits"],
             node.results["leakage_results"],
             reset_type=node.parameters.reset_type,

@@ -27,6 +27,7 @@ from .leakage import (
     fit_leakage,
     leakage_decay_curve,
     leakage_per_gate,
+    merge_leakage,
 )
 from .reference import load_saved_ds_fit
 from .populations import correct_populations, mean_and_stderr_over_sequences, read_confusion_matrix
@@ -55,6 +56,7 @@ __all__ = [
     "fit_leakage",
     "leakage_decay_curve",
     "leakage_per_gate",
+    "merge_leakage",
     "correct_populations",
     "mean_and_stderr_over_sequences",
     "read_confusion_matrix",
