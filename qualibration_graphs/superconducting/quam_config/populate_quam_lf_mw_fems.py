@@ -21,7 +21,7 @@ from quam_builder.builder.superconducting.add_default_pulses import add_DragCosi
 from quam_config import Quam
 
 from quam.components.pulses import SquarePulse
-from quam_builder.architecture.superconducting.components.pulses import CosineBipolarPulse
+from quam_builder.architecture.superconducting.components.pulses import CosineBipolarPulse, SNZPulse
 from quam_builder.common.pulses import FlatTopGaussianPulse
 
 ########################################################################################################################
@@ -231,7 +231,7 @@ for k, q in enumerate(machine.qubits):
 #   - If it already exists on the machine, it is reused (nothing recreated).
 #   - If it is missing, it is created here.
 #   - qubit_control is set to the qubit with the higher f_01 (from the xy frequencies above). Useful for a CZ/iSWAP gate.
-#   - moving_qubit and CZ gate macros (cz_unipolar, cz_flattop, cz_bipolar) are added on the flux Z line.
+#   - moving_qubit and CZ gate macros (cz_unipolar, cz_flattop, cz_bipolar, cz_SNZ) are added on the flux Z line.
 #
 # Edit qubit_pairs if your chip has different neighbors than the default 1-2, 2-3, … chain.
 qubit_pairs = [("1", "2"), ("2", "3"), ("3", "4"), ("4", "5"), ("5", "6"), ("6", "7"), ("7", "8")]
@@ -333,6 +333,19 @@ for qp in qubit_pairs:
     moving_qubit.z.operations[pulse_name].amplitude = pulse_amp
     moving_qubit.z.operations[pulse_name].flat_length = flat_length
     moving_qubit.z.operations[pulse_name].length = pulse_length
+
+    print(f"Creating CZ SNZ gate macro for {pair.name}")
+    # SNZ length is inferred from flat_length, t_phi_eff and padding, so only those are referenced
+    cz_pulse = SNZPulse(amplitude=0.1, flat_length=cz_interaction_duration, t_phi_eff=0.0, id="cz_SNZ_pulse")
+    cz = CZGate(flux_pulse_qubit=cz_pulse, coupler_flux_pulse=None)
+    pair.macros["cz_SNZ"] = cz
+    macro_pulse = pair.macros["cz_SNZ"].flux_pulse_qubit.get_reference()
+    pulse_name = pair.macros["cz_SNZ"].flux_pulse_qubit_label
+    moving_qubit.z.operations[pulse_name] = SNZPulse(amplitude=0.1, flat_length=cz_interaction_duration)
+    moving_qubit.z.operations[pulse_name].amplitude = macro_pulse + "/amplitude"
+    moving_qubit.z.operations[pulse_name].flat_length = macro_pulse + "/flat_length"
+    moving_qubit.z.operations[pulse_name].t_phi_eff = macro_pulse + "/t_phi_eff"
+    moving_qubit.z.operations[pulse_name].padding = macro_pulse + "/padding"
 
 ########################################################################################################################
 # %%                                         Save the updated QUAM
