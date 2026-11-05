@@ -89,6 +89,12 @@ class Parameters(
     targets_name: ClassVar[str] = "qubit_pairs"
 
 
+# Named dimension order after fetch (must match QuaProgramHandler stream buffers).
+STREAMED_RAW_DIMS = ("qubit_pair", "circuit_depth", "sequence", "shots")
+DECLARED_RAW_DIMS = ("qubit_pair", "shots", "circuit_depth", "sequence")
+CANONICAL_ANALYSIS_DIMS = ("qubit_pair", "shots", "circuit_depth", "sequence")
+
+
 def build_sweep_axes(
     qubit_pairs,
     num_shots: int,
@@ -104,28 +110,25 @@ def build_sweep_axes(
     data to coordinates in insertion order; a mismatch raises incompatible-shape
     errors at fetch time.
 
-    **Without input stream** the QUA program loops shots on the outside and
-    plays the full flattened circuit list each shot. Stream buffers are
-    ``.buffer(sequence).buffer(circuit_depth).buffer(shots)``, so measurement
-    order is ``(shots, circuit_depth, sequence)`` and the axes are ordered
+    **Without input stream** the program loops multiplex → shot → circuit
+    (depth-major) → gate. Stream buffers are
+    ``.buffer(sequence).buffer(circuit_depth).buffer(shots)``, so raw axes are
     ``qubit_pair, shots, circuit_depth, sequence``.
 
-    **With input stream** the program advances one host-pushed sub-chunk at a
-    time and replays all shots on the OPX before the next advance (one push per
-    sub-chunk instead of per shot). That changes the save order to
-    ``(circuit_depth, shots, sequence)``, with buffers
-    ``.buffer(sequence).buffer(shots).buffer(circuit_depth)`` and axes
-    ``qubit_pair, circuit_depth, shots, sequence``.
+    **With input stream** the program loops multiplex → depth/chunk → circuit
+    → shot → gate, with buffers
+    ``.buffer(num_shots).buffer(num_circuits_per_depth).buffer(num_depths)``.
+    Raw axes are ``qubit_pair, circuit_depth, sequence, shots``.
 
-    Analysis still expects canonical ``(shots, circuit_depth, sequence)``
-    layout; ``process_raw_dataset`` transposes input-stream datasets after fetch.
+    ``process_raw_dataset`` transposes streamed data to the canonical named
+    layout ``qubit_pair, shots, circuit_depth, sequence``.
     """
     if use_input_stream:
         return {
             "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
             "circuit_depth": xr.DataArray(np.array(circuit_depths)),
-            "shots": xr.DataArray(np.arange(num_shots)),
             "sequence": xr.DataArray(np.arange(num_circuits_per_depth)),
+            "shots": xr.DataArray(np.arange(num_shots)),
         }
     return {
         "qubit_pair": xr.DataArray(qubit_pairs.get_names()),
@@ -133,3 +136,20 @@ def build_sweep_axes(
         "circuit_depth": xr.DataArray(np.array(circuit_depths)),
         "sequence": xr.DataArray(np.arange(num_circuits_per_depth)),
     }
+
+
+def rb_progress_total(
+    num_shots: int,
+    num_circuits_per_depth: int,
+    num_depths: int,
+    *,
+    use_input_stream: bool,
+) -> int:
+    """Denominator for ``progress_counter`` (completed circuit repetitions).
+
+    Streamed mode saves progress at every circuit×shot boundary. Declared-array
+    mode still saves once per outer shot.
+    """
+    if use_input_stream:
+        return num_shots * num_circuits_per_depth * num_depths
+    return num_shots

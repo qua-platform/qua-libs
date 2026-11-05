@@ -3,6 +3,12 @@
 Per-qubit-pair fitting lives in ``fit_utils.py``. Alpha -> fidelity conversion
 lives in ``fidelity.py``. Result types and logging live in ``reporting.py``.
 
+Standard / interleaved 37a/37b use analog-XY transpilation
+``{cz, sx, x, ry, y}`` (encoding v3). Error per Clifford (EPC) is the RB
+observable. Error per gate (EPG) divides by the physical-gate count, which
+grew when former virtual-Z layers became analog Y — do not compare EPG to a
+ZX-basis (``{rz, sx, x, cz}``) 37a run.
+
 """
 
 from __future__ import annotations
@@ -16,9 +22,30 @@ from qualibrate import QualibrationNode
 
 from calibration_utils.two_qubit_rb import fidelity, fit_utils
 from calibration_utils.two_qubit_rb.coherence_limit import try_coherence_limit_epg
+from calibration_utils.two_qubit_rb.packing import RB_ENCODING_VERSION
+from calibration_utils.two_qubit_rb.parameters import (
+    CANONICAL_ANALYSIS_DIMS,
+    DECLARED_RAW_DIMS,
+    STREAMED_RAW_DIMS,
+)
+from calibration_utils.two_qubit_rb.rb_cache import DEFAULT_RB_BASIS_GATES
 from calibration_utils.two_qubit_rb.reporting import (
     IRBFitResult,
     SRBFitResult,
+)
+
+# Dataset attr for new acquisitions. Bump together with :data:`RB_ENCODING_VERSION`
+# when the science-result layout or gate-only executor contract changes.
+RB_EXECUTION_FORMAT_VERSION = 2
+
+IRB_RERUN_37A_MESSAGE = (
+    "Interleaved CZ RB (37b) must use a Standard RB (37a) reference acquired with "
+    "the same analog-XY encoding (v3: basis {cz, sx, x, ry, y}, gate-only circuits, "
+    "readout outside the unsafe switch). Rerun 37a_two_qubit_standard_rb before "
+    "trusting CZ fidelity if the saved overlay is ZX-basis (virtual Z / encoding v2) "
+    "or otherwise predates this format. EPG is not comparable to a pre-XY 37a run "
+    "(former virtual Z now counts as a physical Y pulse); EPC remains the RB "
+    "observable."
 )
 
 
@@ -29,8 +56,25 @@ class RBMode(enum.Enum):
     INTERLEAVED = "interleaved"
 
 
+def stamp_execution_format(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
+    """Record encoding/execution version and raw acquisition order on a new dataset."""
+    use_input_stream = bool(node.parameters.use_input_stream)
+    ds.attrs["rb_execution_format_version"] = RB_EXECUTION_FORMAT_VERSION
+    ds.attrs["rb_encoding_version"] = RB_ENCODING_VERSION
+    ds.attrs["rb_basis_gates"] = list(DEFAULT_RB_BASIS_GATES)
+    ds.attrs["rb_raw_acquisition_order"] = list(STREAMED_RAW_DIMS if use_input_stream else DECLARED_RAW_DIMS)
+    ds.attrs["rb_canonical_order"] = list(CANONICAL_ANALYSIS_DIMS)
+    ds.attrs["rb_use_input_stream"] = use_input_stream
+    return ds
+
+
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode | None = None) -> xr.Dataset:
-    """Normalize raw RB dataset layout for downstream analysis."""
+    """Normalize raw RB dataset layout for downstream analysis.
+
+    Streamed fetches arrive as ``circuit_depth, sequence, shots``. Named
+    transposition yields canonical ``shots, circuit_depth, sequence`` for both
+    modes. Dimension names, not position, drive the transpose.
+    """
     if node is not None and node.parameters.use_input_stream:
         for name in ds.data_vars:
             dims = list(ds[name].dims)
@@ -44,6 +88,8 @@ def fit_raw_data(
     ds: xr.Dataset, node: QualibrationNode, *, mode: RBMode
 ) -> Tuple[xr.Dataset, Dict[str, SRBFitResult] | Dict[str, IRBFitResult]]:
     """Fit RB survival curves for each qubit pair and return an augmented dataset."""
+    if mode is RBMode.INTERLEAVED:
+        node.log(IRB_RERUN_37A_MESSAGE)
     if mode is RBMode.STANDARD:
         average_gates_per_clifford = node.namespace.get("average_gates_per_clifford")
         ds_fit = ds.groupby("qubit_pair").apply(lambda da: fit_utils.fit_srb_pair(da, average_gates_per_clifford))
@@ -66,7 +112,8 @@ def _annotate_shared_attrs(ds_fit: xr.Dataset) -> None:
         "fitted_curve": {"long_name": "exponential RB fit"},
         "fidelity": {"long_name": "RB fidelity"},
         "epc": {"long_name": "error per Clifford"},
-        "epg": {"long_name": "error per gate"},
+        # Analog-XY denominator; not comparable to ZX-basis (virtual-Z) 37a EPG.
+        "epg": {"long_name": "error per gate (analog XY basis)"},
         "fit_alpha": {"long_name": "RB decay constant alpha"},
     }
     for var, attrs in attrs_by_var.items():

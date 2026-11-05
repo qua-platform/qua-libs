@@ -1,60 +1,61 @@
 """Integer gate identifiers to human-readable labels for RB circuit debugging.
 
 Opcodes match :func:`~calibration_utils.two_qubit_rb.circuit_utils.get_layer_integer`
-and :func:`~calibration_utils.two_qubit_rb.qua_utils.play_gate` (0–38 encoding).
+and :func:`~calibration_utils.two_qubit_rb.qua_utils.play_gate` (0–37 encoding).
+Opcode 38 is not a gate; readout is not part of this table.
 
 Single-qubit layers use ``g_control * 6 + g_target`` with
-``g ∈ {0:sx/X90, 1:x/X180, 2:rz(π/2)/Z90, 3:rz(π)/Z180, 4:rz(3π/2)/Z270, 5:idle}``.
-Z rotations are virtual (``frame_rotation`` in QUA), not physical Y pulses.
+``g ∈ {0:sx/X90, 1:x/X180, 2:ry(π/2)/Y90, 3:y/Y180, 4:ry(3π/2)/-Y90, 5:idle}``.
+1Q Z is compiled into analog XY; these labels are physical envelopes, not
+``frame_rotation`` layers. CZ flux phase compensation stays inside CZ.
 """
 
 from __future__ import annotations
 
 from typing import Callable
 
-# Explicit opcode table (0–38). Prefer this over generating labels at runtime.
+# Explicit opcode table (0–37). Prefer this over generating labels at runtime.
 gate_mapping: dict[int, str] = {
     # Parallel single-qubit layers: g_control * 6 + g_target
     0: "X90(control) + X90(target)",
     1: "X90(control) + X180(target)",
-    2: "X90(control) + Z90(target)",
-    3: "X90(control) + Z180(target)",
-    4: "X90(control) + Z270(target)",
+    2: "X90(control) + Y90(target)",
+    3: "X90(control) + Y180(target)",
+    4: "X90(control) + -Y90(target)",
     5: "X90(control)",
     6: "X180(control) + X90(target)",
     7: "X180(control) + X180(target)",
-    8: "X180(control) + Z90(target)",
-    9: "X180(control) + Z180(target)",
-    10: "X180(control) + Z270(target)",
+    8: "X180(control) + Y90(target)",
+    9: "X180(control) + Y180(target)",
+    10: "X180(control) + -Y90(target)",
     11: "X180(control)",
-    12: "Z90(control) + X90(target)",
-    13: "Z90(control) + X180(target)",
-    14: "Z90(control) + Z90(target)",
-    15: "Z90(control) + Z180(target)",
-    16: "Z90(control) + Z270(target)",
-    17: "Z90(control)",
-    18: "Z180(control) + X90(target)",
-    19: "Z180(control) + X180(target)",
-    20: "Z180(control) + Z90(target)",
-    21: "Z180(control) + Z180(target)",
-    22: "Z180(control) + Z270(target)",
-    23: "Z180(control)",
-    24: "Z270(control) + X90(target)",
-    25: "Z270(control) + X180(target)",
-    26: "Z270(control) + Z90(target)",
-    27: "Z270(control) + Z180(target)",
-    28: "Z270(control) + Z270(target)",
-    29: "Z270(control)",
+    12: "Y90(control) + X90(target)",
+    13: "Y90(control) + X180(target)",
+    14: "Y90(control) + Y90(target)",
+    15: "Y90(control) + Y180(target)",
+    16: "Y90(control) + -Y90(target)",
+    17: "Y90(control)",
+    18: "Y180(control) + X90(target)",
+    19: "Y180(control) + X180(target)",
+    20: "Y180(control) + Y90(target)",
+    21: "Y180(control) + Y180(target)",
+    22: "Y180(control) + -Y90(target)",
+    23: "Y180(control)",
+    24: "-Y90(control) + X90(target)",
+    25: "-Y90(control) + X180(target)",
+    26: "-Y90(control) + Y90(target)",
+    27: "-Y90(control) + Y180(target)",
+    28: "-Y90(control) + -Y90(target)",
+    29: "-Y90(control)",
     30: "X90(target)",
     31: "X180(target)",
-    32: "Z90(target)",
-    33: "Z180(target)",
-    34: "Z270(target)",
+    32: "Y90(target)",
+    33: "Y180(target)",
+    34: "-Y90(target)",
     35: "Idle (both qubits)",
-    # Two-qubit / measurement markers
+    # Two-qubit layers (readout is not an opcode)
     36: "CZ gate",
     37: "Idle_2q (Wait(4) both qubits)",
-    38: "Readout and thermalization (both qubits)",
 }
 
 
