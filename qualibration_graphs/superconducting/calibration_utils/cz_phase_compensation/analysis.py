@@ -9,6 +9,8 @@ from qualibration_libs.analysis import fit_oscillation, oscillation
 from qualibration_libs.data import convert_IQ_to_V
 from scipy.optimize import curve_fit
 
+from calibration_utils.common_utils.phase import wrap_phase
+
 
 @dataclass
 class FitResults:
@@ -32,7 +34,7 @@ class FitResults:
 
 
 def fix_oscillation_phi_2pi(fit_data):
-    """Extract and normalise the oscillation phase to the [0, 1) range (representing 0 to 2π).
+    """Extract and normalise the oscillation phase to the [-0.5, 0.5) range (representing -π to π).
 
     Parameters:
     -----------
@@ -42,10 +44,10 @@ def fix_oscillation_phi_2pi(fit_data):
     Returns:
     --------
     xr.DataArray
-        Phase values normalised to [0, 1).
+        Phase values normalised to [-0.5, 0.5).
     """
     phase = fit_data.sel(fit_vals="phi")
-    phase = (phase / (2 * np.pi)) % 1
+    phase = wrap_phase(phase / (2 * np.pi))
     return phase
 
 
