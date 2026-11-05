@@ -4,6 +4,8 @@ from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import QubitsExperimentNodeParameters, CommonNodeParameters
 
+from calibration_utils.common_utils.rb import validate_leakage_run  # noqa: F401  (re-exported)
+
 
 class NodeSpecificParameters(RunnableParameters):
     use_state_discrimination: bool = True
@@ -22,6 +24,11 @@ class NodeSpecificParameters(RunnableParameters):
     """If True, use log scale depths: 1,2,4,8,16,32... up to max_circuit_depth. Default is True."""
     seed: Optional[int] = None
     """Seed for the random number generator. Default is None."""
+    measure_leakage: bool = False
+    """Read the qubits as g/e/f and fit the leaked population P(f) against depth (leakage RB);
+    needs 15_iq_blobs_gef and a thermal or active_gef reset, and reads g/e/f states whatever use_state_discrimination
+    says. Writes only
+    ``qubit.extras["leakage_per_clifford"]`` to the state, next to the gate fidelity. Default is False."""
 
 
 class Parameters(

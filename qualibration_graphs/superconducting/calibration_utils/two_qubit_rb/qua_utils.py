@@ -269,9 +269,10 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     state_control: QuaVariable,
     state_target: QuaVariable,
     state_st: "_ResultSource",
-    reset_type: Literal["thermal", "active"],
+    reset_type: Literal["thermal", "active", "active_gef"],
     cz_operation: str = "cz_unipolar",
     simulate: bool = False,
+    measure_leakage: bool = False,
 ):
     """
     Play a single gate from the gate mapping based on the gate integer value.
@@ -283,9 +284,11 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         state_control: Variable to store the control qubit state.
         state_target: Variable to store the target qubit state.
         state_st: Stream to save the state measurement.
-        reset_type: Type of reset to use ("thermal" or "active").
+        reset_type: Type of reset to use ("thermal", "active" or "active_gef").
         cz_operation: Name of the CZ operation macro to use.
         simulate: Whether resets run in simulation mode.
+        measure_leakage: Read each qubit as g, e or f and save ``3 * control + target``
+            (0-8) instead of the g/e ``2 * control + target`` (0-3).
     """
     with switch_(gate, unsafe=True):
 
@@ -474,9 +477,14 @@ def play_gate(  # pylint: disable=too-many-arguments,too-many-positional-argumen
             align()
             # Readout the qubits and save the state
             for i, qp in qubit_pair.items():
-                qp.qubit_control.readout_state(state_control)
-                qp.qubit_target.readout_state(state_target)
-                assign(state, state_control * 2 + state_target)
+                if measure_leakage:
+                    qp.qubit_control.readout_state_gef(state_control)
+                    qp.qubit_target.readout_state_gef(state_target)
+                    assign(state, state_control * 3 + state_target)
+                else:
+                    qp.qubit_control.readout_state(state_control)
+                    qp.qubit_target.readout_state(state_target)
+                    assign(state, state_control * 2 + state_target)
                 save(state, state_st[i])
             align()
 
@@ -496,9 +504,10 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
     state_control: QuaVariable,
     state_target: QuaVariable,
     state_st,
-    reset_type: Literal["thermal", "active"],
+    reset_type: Literal["thermal", "active", "active_gef"],
     cz_operation: str = "cz_unipolar",
     simulate: bool = False,
+    measure_leakage: bool = False,
 ):
     """
     Play a sequence of gates up to the specified depth.
@@ -511,9 +520,10 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
         state_control: Variable to store the control qubit state.
         state_target: Variable to store the target qubit state.
         state_st: Stream to save the state measurement.
-        reset_type: Type of reset to use ("thermal" or "active").
+        reset_type: Type of reset to use ("thermal", "active" or "active_gef").
         cz_operation: Name of the CZ operation macro to use.
         simulate: Whether resets run in simulation mode.
+        measure_leakage: Read g/e/f instead of g/e, see :func:`play_gate`.
     """
 
     i = declare(int)
@@ -528,6 +538,7 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
             reset_type,
             cz_operation,
             simulate,
+            measure_leakage,
         )
 
 
@@ -653,6 +664,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                                 self.node.parameters.reset_type,
                                 self.node.parameters.operation,
                                 self.node.parameters.simulate,
+                                self.node.parameters.measure_leakage,
                             )
                         with if_(j == n_sub_chunks - 1):
                             save(n, n_st)
@@ -754,6 +766,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                         self.node.parameters.reset_type,
                         self.node.parameters.operation,
                         self.node.parameters.simulate,
+                        self.node.parameters.measure_leakage,
                     )
 
                     save(n, n_st)

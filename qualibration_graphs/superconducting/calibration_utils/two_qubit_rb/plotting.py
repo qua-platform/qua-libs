@@ -12,10 +12,16 @@ from qualibrate import QualibrationNode
 from qualibration_libs.plotting import grid_iter
 
 from calibration_utils.pair_grid import QubitPairGrid, grid_pair_names
-from calibration_utils.two_qubit_rb.fit_utils import rb_decay_curve
-from calibration_utils.two_qubit_rb.reporting import format_fraction_pm
+from calibration_utils.common_utils.rb import rb_decay_curve
+from calibration_utils.two_qubit_rb.reporting import (
+    LeakageFit,
+    format_fraction_pm,
+    format_leakage_rate,
+    leakage_series_labels,
+)
 
 RbPlotStyle = Literal["error_bars", "per_sequence"]
+PANEL_SIZE = 5  # inches per qubit-pair panel, as the single-qubit RB figures
 
 
 def _plot_per_sequence_scatter(
@@ -108,7 +114,7 @@ def plot_raw_data_with_fit(
     log_x = node.parameters.rb_plot_log_x
 
     grid_names, pair_names = grid_pair_names(qubit_pairs)
-    grid = QubitPairGrid(grid_names, pair_names)
+    grid = QubitPairGrid(grid_names, pair_names, size=PANEL_SIZE)
 
     for ax, qubit in grid_iter(grid):
         qp_name = qubit["qubit"]
@@ -156,56 +162,7 @@ def plot_individual_data_with_fit(
     marker = "^" if interleaved else "o"
 
     if "standard_rb_overlay_survival" in fr and np.isfinite(fr.standard_rb_overlay_survival.values).any():
-        overlay_survival = fr.standard_rb_overlay_survival.values
-        if plot_style == "per_sequence" and "standard_rb_overlay_survival_per_sequence" in fr:
-            _plot_per_sequence_scatter(
-                ax,
-                depths,
-                fr.standard_rb_overlay_survival_per_sequence.values,
-                color="C0",
-                zorder=1,
-            )
-            _plot_mean_marker(
-                ax,
-                depths,
-                overlay_survival,
-                color="C0",
-                marker="o",
-                label="StandardRB Mean",
-                zorder=3,
-            )
-        else:
-            _plot_mean_marker(
-                ax,
-                depths,
-                overlay_survival,
-                color="C0",
-                marker="o",
-                label="StandardRB Mean",
-                zorder=3,
-            )
-        overlay_fitted = fr.standard_rb_overlay_fitted.values
-        if success and np.isfinite(overlay_fitted).any():
-            overlay_alpha = float(fr.standard_rb_fit_alpha.values)
-            overlay_alpha_stderr = (
-                float(fr.standard_rb_fit_alpha_stderr.values)
-                if "standard_rb_fit_alpha_stderr" in fr and np.isfinite(fr.standard_rb_fit_alpha_stderr.values)
-                else None
-            )
-            ax.plot(
-                depths,
-                overlay_fitted,
-                color="C0",
-                linestyle="--",
-                zorder=4,
-                label=(
-                    f"StandardRB Fit (α = {overlay_alpha:.4f} ± {overlay_alpha_stderr:.4f})"
-                    if overlay_alpha_stderr is not None
-                    and np.isfinite(overlay_alpha_stderr)
-                    and overlay_alpha_stderr > 0
-                    else f"StandardRB Fit (α = {overlay_alpha:.4f})"
-                ),
-            )
+        _plot_standard_rb_overlay(ax, fr, depths, plot_style=plot_style, success=success)
 
     mean_label = "Interleaved Mean" if interleaved else "Mean"
     if plot_style == "per_sequence" and "survival_per_sequence" in fr:
@@ -262,6 +219,22 @@ def plot_individual_data_with_fit(
             ),
         )
 
+    # No saved 37a run to overlay: draw the reference decay from the stored StandardRB_alpha with this
+    # run's A and B. The CZ error comes only from the ratio of the two alphas.
+    has_overlay = "standard_rb_overlay_survival" in fr and np.isfinite(fr.standard_rb_overlay_survival.values).any()
+    if interleaved and success and not has_overlay and "standard_rb_alpha" in fr:
+        alpha_ref = float(fr.standard_rb_alpha.values)
+        if np.isfinite(alpha_ref):
+            smooth_depths = np.linspace(depths[0], depths[-1], 100)
+            ax.plot(
+                smooth_depths,
+                rb_decay_curve(smooth_depths, float(fr.fit_amplitude.values), alpha_ref, float(fr.fit_offset.values)),
+                color="0.4",
+                linestyle=":",
+                zorder=4,
+                label=f"37a reference decay (α = {alpha_ref:.4f}, no saved run)",
+            )
+
     if success:
         fidelity = float(fr.fidelity.values)
         fidelity_stderr = (
@@ -301,3 +274,147 @@ def plot_individual_data_with_fit(
     if log_x:
         ax.set_xscale("log")
     ax.legend(loc="upper right", framealpha=0.8, fontsize=8)
+
+
+def _plot_standard_rb_overlay(
+    ax: Axes, fr: xr.Dataset, depths: np.ndarray, *, plot_style: RbPlotStyle, success: bool
+) -> None:
+    """The saved 37a run at its own depths, within this run's depth range so the axis stays on 37b."""
+    overlay_depths = fr.standard_rb_overlay_depth.values
+    overlay_survival = fr.standard_rb_overlay_survival.values
+    shown = np.isfinite(overlay_survival) & (overlay_depths >= depths.min()) & (overlay_depths <= depths.max())
+    if plot_style == "per_sequence" and "standard_rb_overlay_survival_per_sequence" in fr:
+        _plot_per_sequence_scatter(
+            ax,
+            overlay_depths[shown],
+            fr.standard_rb_overlay_survival_per_sequence.values[shown],
+            color="C0",
+            zorder=1,
+        )
+    overlay_stderr = (
+        fr.standard_rb_overlay_survival_stderr.values if "standard_rb_overlay_survival_stderr" in fr else None
+    )
+    if plot_style != "per_sequence" and overlay_stderr is not None and np.isfinite(overlay_stderr[shown]).any():
+        _plot_mean_with_sem(
+            ax,
+            overlay_depths[shown],
+            overlay_survival[shown],
+            np.nan_to_num(overlay_stderr[shown]),
+            color="C0",
+            marker="o",
+            label="StandardRB Mean",
+            zorder=3,
+        )
+    else:
+        _plot_mean_marker(
+            ax,
+            overlay_depths[shown],
+            overlay_survival[shown],
+            color="C0",
+            marker="o",
+            label="StandardRB Mean",
+            zorder=3,
+        )
+
+    overlay_alpha = float(fr.standard_rb_fit_alpha.values)
+    if not success or not np.isfinite(overlay_alpha):
+        return
+    overlay_alpha_stderr = (
+        float(fr.standard_rb_fit_alpha_stderr.values) if "standard_rb_fit_alpha_stderr" in fr else np.nan
+    )
+    label = (
+        f"StandardRB Fit (α = {overlay_alpha:.4f} ± {overlay_alpha_stderr:.4f})"
+        if np.isfinite(overlay_alpha_stderr) and overlay_alpha_stderr > 0
+        else f"StandardRB Fit (α = {overlay_alpha:.4f})"
+    )
+    amplitude = float(fr.standard_rb_overlay_amplitude.values) if "standard_rb_overlay_amplitude" in fr else np.nan
+    offset = float(fr.standard_rb_overlay_offset.values) if "standard_rb_overlay_offset" in fr else np.nan
+    if np.isfinite(amplitude) and np.isfinite(offset):
+        smooth_depths = np.linspace(depths[0], depths[-1], 100)
+        ax.plot(
+            smooth_depths,
+            rb_decay_curve(smooth_depths, amplitude, overlay_alpha, offset),
+            color="C0",
+            linestyle="--",
+            zorder=4,
+            label=label,
+        )
+    else:  # saved run without A and B: its fitted curve at its own depths
+        fitted = fr.standard_rb_overlay_fitted.values
+        ax.plot(overlay_depths[shown], fitted[shown], color="C0", linestyle="--", zorder=4, label=label)
+
+
+def plot_leakage(
+    node: QualibrationNode, ds_leak: xr.Dataset, results: Dict[str, dict], *, title: str
+) -> Dict[str, Figure]:
+    """Plot leaked population against depth (``measure_leakage=True``), one panel per qubit pair.
+
+    ``results`` is ``node.results["leakage_results"]``: the ``asdict`` of each pair's
+    :class:`LeakagePairResult`.
+    """
+    grid_names, pair_names = grid_pair_names(node.namespace["qubit_pairs"])
+    grid = QubitPairGrid(grid_names, pair_names, size=PANEL_SIZE)
+    depths = ds_leak.circuit_depth.values
+    interleaved = "interleaved" in node.name.lower()
+    log_x = node.parameters.rb_plot_log_x
+    # Depth 0 (readout floor) cannot be drawn on a log axis.
+    shown = depths > 0 if log_x else np.ones(depths.shape, dtype=bool)
+
+    for ax, qubit in grid_iter(grid):
+        qp_name = qubit["qubit"]
+        if qp_name not in results:
+            ax.text(0.5, 0.5, "No leakage data", ha="center", va="center", transform=ax.transAxes)
+            ax.set_title(f"Qubit pair: {qp_name}")
+            continue
+        result = results[qp_name]
+        labels = leakage_series_labels(result["control_qubit"], result["target_qubit"])
+        fr = ds_leak.sel(qubit_pair=qp_name)
+        for series, stored in result["per_clifford"].items():
+            leaked = fr.leaked.sel(leakage_series=series).values
+            err = np.nan_to_num(fr.leaked_stderr.sel(leakage_series=series).values)
+            line = ax.errorbar(
+                depths[shown],
+                leaked[shown],
+                yerr=err[shown],
+                fmt="o",
+                ms=4,
+                capsize=2,
+                label=labels[series],
+            )
+            fit = LeakageFit(**stored)
+            if fit.success and not result["failure"]:
+                lo = depths[shown].min()
+                dense = np.geomspace(lo, depths.max(), 200) if log_x else np.linspace(lo, depths.max(), 200)
+                ax.plot(dense, fit.curve(dense), "-", color=line[0].get_color(), lw=1)
+        lines = [f"Qubit pair: {qp_name}"]
+        if result["failure"]:
+            # The fitted rates mean nothing when the readout is off.
+            lines.append("FAILED: g/e/f readout suspect (not saved)")
+        elif interleaved and result["per_cz"]:
+            # The interleaved run is about the CZ; its per-step rate is in the log.
+            lines += _leakage_rate_lines("L1 per CZ", result["per_cz"], labels)
+        else:
+            step = "interleaved Clifford" if interleaved else "2Q Clifford"
+            lines += _leakage_rate_lines(f"L1 per {step}", result["per_clifford"], labels)
+        ax.set_title("\n".join(lines), fontsize=9, linespacing=1.3)
+        ax.set_xlabel("Circuit depth (Cliffords)")
+        ax.set_ylabel("Leaked population")
+        if log_x:
+            ax.set_xscale("log")
+        ax.legend(fontsize=7)
+
+    grid.fig.suptitle(f"{title}\n({node.parameters.reset_type} reset, g/e/f readout)")
+    grid.fig.tight_layout()
+    return {"leakage": grid.fig}
+
+
+def _leakage_rate_lines(heading: str, rates: Dict[str, dict], labels: Dict[str, str]) -> list[str]:
+    """Title lines of one set of leakage rates: the pair (either qubit), then each qubit."""
+    pair = rates["pair"]
+    return [
+        f"{heading}: {labels['pair']} {format_leakage_rate(pair['l1'], pair['l1_stderr'], pm='±')}",
+        ",  ".join(
+            f"{labels[series]} {format_leakage_rate(rates[series]['l1'], rates[series]['l1_stderr'], pm='±')}"
+            for series in ("control", "target")
+        ),
+    ]

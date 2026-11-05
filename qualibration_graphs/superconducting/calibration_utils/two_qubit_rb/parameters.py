@@ -14,6 +14,8 @@ from qualibrate import NodeParameters
 from qualibrate.core.parameters import RunnableParameters
 from qualibration_libs.parameters import CommonNodeParameters, QubitPairExperimentNodeParameters
 
+from calibration_utils.common_utils.rb import validate_leakage_run as validate_common_leakage_run
+
 
 class NodeSpecificParameters(RunnableParameters):
     """Node-specific parameters for two-qubit RB experiments."""
@@ -36,46 +38,31 @@ class NodeSpecificParameters(RunnableParameters):
     seed: int = 0
     """Random seed for circuit generation to ensure reproducibility. Default is 0."""
     use_input_stream: bool = False
-    """Whether to use input streams for circuit execution. Default is False.
-    When True, the gate sequences are streamed to the OPX chunk-by-chunk via the
-    QUA input-stream feature instead of being declared as a single large
-    `declare(int, value=...)` array. This bypasses the OPX's ~16000 QUA variable
-    budget cap on declared arrays, enabling longer circuit depths and/or more
-    circuits per depth than the without-input-stream path can support."""
+    """Stream the gate sequences to the OPX in chunks instead of one declared array.
+    Bypasses the ~16000 QUA variable cap, allowing deeper or more circuits. Default is False."""
     max_chunk_ints: int = 15000
-    """Maximum number of ints per input-stream chunk. Only used when
-    use_input_stream=True. Must be < 16000 (the OPX QUA variable budget cap),
-    with some headroom for the program's other declared variables. Default 15000."""
+    """Maximum ints per input-stream chunk (only with ``use_input_stream``).
+    Must stay below 16000 with headroom for other variables. Default is 15000."""
     verbose_memory_log: bool = False
-    """Always logs per-depth transpile stats during encoding. When True, also
-    logs RB circuit memory summary plus per-depth int and input-stream sub-chunk
-    breakdown at QUA compile time."""
-    reset_type: Literal["active", "thermal"] = "active"
+    """Also log the circuit memory summary and per-depth chunk breakdown at compile time.
+    Per-depth transpile stats are always logged. Default is False."""
+    reset_type: Literal["active", "thermal", "active_gef"] = "active"
     """Type of reset to perform. Default is active."""
+    measure_leakage: bool = False
+    """Read both qubits as g/e/f and fit leakage; needs 15_iq_blobs_gef and a thermal or active_gef reset.
+    Writes ``macros[operation].extras["leakage_per_2q_clifford"]`` (37a) / ``["leakage_per_cz"]`` (37b)
+    to the state, next to the usual RB fidelity. Default is False."""
     simulate: bool = False
     """Simulate the waveforms on the OPX instead of executing the program. Default is False."""
     fidelity_threshold: Optional[float] = None
-    """Optional gate-fidelity acceptance threshold in [0, 1]. If set, qubit pairs whose fitted
-    fidelity is below this value are additionally marked as failed in node.outcomes (in
-    addition to fits that fail outright). For the standard RB node this is the 2Q Clifford
-    fidelity; for the interleaved RB node it is the CZ gate fidelity. Used by higher-level
-    adaptive graphs to route low-fidelity pairs to a retune subgraph via
-    `connect_on_failure`. Default is None (no threshold check; only fit-failure marks a pair
-    as failed)."""
+    """Mark pairs below this fidelity as failed (2Q Clifford fidelity in 37a, CZ fidelity in 37b).
+    Lets adaptive graphs route them to a retune. Default is None (only fit failures)."""
     rb_plot_style: Literal["error_bars", "per_sequence"] = "error_bars"
-    """How to display RB survival data in ``plot_data``.
-    - ``error_bars`` (default): one point per circuit depth showing the mean
-      P(|00>) averaged over all shots and random sequences, with vertical
-      error bars giving the standard error of that mean (SEM).
-    - ``per_sequence``: at each depth, plot one point per random RB sequence
-      (shot-averaged P(|00>) for that circuit) as a light scatter cloud, plus
-      the depth mean on top. Shows circuit-to-circuit spread rather than
-      uncertainty on the averaged mean. No error bars in this mode.
-    """
+    """``error_bars``: depth mean with its SEM. ``per_sequence``: one point per random
+    sequence plus the depth mean, no error bars. Default is error_bars."""
     rb_plot_log_x: bool = False
-    """If True, use a logarithmic x-axis (circuit depth) in ``plot_data``.
-    Useful when depths span several orders of magnitude. Depth 0 (if present)
-    is omitted from the log scale."""
+    """Use a logarithmic circuit-depth axis in ``plot_data`` (depth 0 is omitted). Also applies to
+    the leakage plot. Default is False."""
 
 
 class Parameters(
@@ -133,3 +120,9 @@ def build_sweep_axes(
         "circuit_depth": xr.DataArray(np.array(circuit_depths)),
         "sequence": xr.DataArray(np.arange(num_circuits_per_depth)),
     }
+
+
+def validate_leakage_run(node, qubit_pairs) -> None:
+    """Run the shared leakage pre-run check on every control and target qubit, each once."""
+    qubits = {qubit.name: qubit for qp in qubit_pairs for qubit in (qp.qubit_control, qp.qubit_target)}
+    validate_common_leakage_run(node, list(qubits.values()))
