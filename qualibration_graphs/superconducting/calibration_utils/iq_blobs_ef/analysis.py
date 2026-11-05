@@ -182,7 +182,7 @@ def _extract_relevant_fit_parameters(fit: xr.Dataset, node: QualibrationNode):
         for q in fit.qubit.values
     }
 
-    fit = fit.groupby("qubit").apply(center_matrix)
+    fit = fit.groupby("qubit").apply(lambda da: confusion_matrix(center_matrix(da)))
 
     return fit, fit_results
 
@@ -197,6 +197,22 @@ def center_matrix(da: xr.DataArray) -> xr.DataArray:
         ]
     )
     return da.assign(center_matrix=(["I", "Q"], center))
+
+
+def confusion_matrix(da: xr.Dataset) -> xr.Dataset:
+    """Fraction of shots prepared in g, e, f (rows) that are assigned to g, e, f (columns).
+
+    Each shot goes to the center with the smallest ``|dI| + |dQ|``, the rule ``readout_state_gef``
+    uses on the OPX, so the matrix describes the labels that leakage RB later corrects.
+    """
+    centers = da.center_matrix.values
+    matrix = np.zeros((3, 3))
+    for p, state in enumerate("gef"):
+        i_shots = da[f"I{state}"].values.ravel()
+        q_shots = da[f"Q{state}"].values.ravel()
+        distance = np.abs(i_shots[:, None] - centers[:, 0]) + np.abs(q_shots[:, None] - centers[:, 1])
+        matrix[p] = np.bincount(distance.argmin(axis=1), minlength=3) / len(i_shots)
+    return da.assign(confusion_matrix=(["prepared", "measured"], matrix))
 
 
 def gef_centers_in_raw_adc(center_matrix_volts: np.ndarray, readout_length: float) -> list:

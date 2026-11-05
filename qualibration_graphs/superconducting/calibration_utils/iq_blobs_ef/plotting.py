@@ -174,17 +174,7 @@ def plot_individual_confusion_matrix(ax: Axes, ds: xr.Dataset, qubit: dict[str, 
     - If the fit dataset is provided, the fitted curve is plotted along with the raw data.
     """
 
-    # Derive the confusion matrix
-    confusion = np.zeros((3, 3))
-    for p, prep_state in enumerate(["g", "e", "f"]):
-        dist_g = np.sqrt((fit.I_g_center - fit[f"I{prep_state}"]) ** 2 + (fit.Q_g_center - fit[f"Q{prep_state}"]) ** 2)
-        dist_e = np.sqrt((fit.I_e_center - fit[f"I{prep_state}"]) ** 2 + (fit.Q_e_center - fit[f"Q{prep_state}"]) ** 2)
-        dist_f = np.sqrt((fit.I_f_center - fit[f"I{prep_state}"]) ** 2 + (fit.Q_f_center - fit[f"Q{prep_state}"]) ** 2)
-        dist = np.stack([dist_g, dist_e, dist_f], axis=0)
-        counts = np.argmin(dist, axis=0)
-        confusion[p][0] = np.sum(counts == 0) / len(counts)  # pylint: disable=C1805
-        confusion[p][1] = np.sum(counts == 1) / len(counts)
-        confusion[p][2] = np.sum(counts == 2) / len(counts)
+    confusion = fit.confusion_matrix.values
 
     ax.imshow(confusion)
     ax.set_xticks([0, 1, 2], labels=["|g>", "|e>", "|f>"])
