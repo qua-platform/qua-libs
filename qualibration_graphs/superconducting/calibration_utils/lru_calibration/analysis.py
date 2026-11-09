@@ -85,6 +85,24 @@ def assign_lru_coords(ds: xr.Dataset, qubits, operation: str) -> xr.Dataset:
     return ds
 
 
+def assign_flux_lru_coords(ds: xr.Dataset, qubits, amplitude_v: float, centres: np.ndarray) -> xr.Dataset:
+    """Add the flux-tone amplitude (V), the |f0> -> |e1> drive frequency (twice the flux tone) and the f0e1 tag."""
+    ds = ds.assign_coords(
+        amplitude=(
+            ("qubit", "amp_prefactor"),
+            np.tile(amplitude_v * ds.amp_prefactor.values, (len(qubits), 1)),
+            {"long_name": "LRU flux-tone amplitude", "units": "V"},
+        ),
+        frequency=(
+            ("qubit", "detuning"),
+            np.asarray(centres)[:, None] + ds.detuning.values[None, :],
+            {"long_name": "|f0> -> |e1> drive frequency (2 x flux tone)", "units": "Hz"},
+        ),
+    )
+    ds.attrs["lru_transition"] = "f0e1"
+    return ds
+
+
 def _ridge(detuning: np.ndarray, pf: np.ndarray, min_contrast: float) -> Tuple[np.ndarray, np.ndarray]:
     """Resonance detuning per amplitude from the P(f) minimum, and which amplitudes show a dip.
 
