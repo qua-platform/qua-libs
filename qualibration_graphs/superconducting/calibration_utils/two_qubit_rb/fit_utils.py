@@ -12,12 +12,27 @@ import logging
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-from scipy.optimize import curve_fit
 
+from calibration_utils.common_utils.rb import (
+    fit_survival,
+    load_saved_ds_fit,
+    rb_decay_curve,
+    validate_fidelity_bounds,
+    validate_fidelity_uncertainty,
+    validate_fit_parameters,
+    validate_interleaved_alpha,
+    validate_residuals,
+    SHALLOW_LEAKAGE_THRESHOLD,
+    LeakageFit,
+    correct_populations,
+    fit_leakage,
+    leakage_decay_curve,
+    leakage_per_gate,
+    mean_and_stderr_over_sequences,
+    read_confusion_matrix,
+)
 from calibration_utils.two_qubit_rb import fidelity
 
-_RESIDUAL_SIGMA_LIMIT = 4.0
-_FLOAT_TOLERANCE = 1e-9
 # Empirical tolerances for soft (log-only) survival-curve sanity checks — not
 # derived from a model; chosen to flag clearly-off data without false-positiving
 # on ordinary shot noise.
@@ -25,17 +40,17 @@ _MONOTONIC_DECAY_MIN_TOLERANCE = 0.03
 _SHALLOW_SURVIVAL_THRESHOLD = 0.35
 
 
-def rb_decay_curve(x, A, alpha, B):
-    """Exponential decay model for RB survival probability."""
-    return A * alpha**x + B
+def _survival_over_sequences(ds_qp: xr.Dataset) -> tuple[xr.DataArray, xr.DataArray]:
+    """Mean P(|00>) and its standard error vs circuit depth, from the per-sequence survival."""
+    per_sequence = _survival_per_sequence(ds_qp).transpose(..., "sequence")
+    mean, stderr = mean_and_stderr_over_sequences(per_sequence.values)
+    template = per_sequence.isel(sequence=0, drop=True)
+    return template.copy(data=mean), template.copy(data=stderr)
 
 
 def _survival_probability(ds_qp: xr.Dataset) -> xr.DataArray:
     """P(|00>) vs circuit depth, averaged over sequence and shots."""
-    survival = (ds_qp.state == 0).mean(dim=["sequence", "shots"])
-    if "qubit_pair" in survival.dims:
-        survival = survival.squeeze("qubit_pair", drop=True)
-    return survival
+    return _survival_over_sequences(ds_qp)[0]
 
 
 def _survival_per_sequence(ds_qp: xr.Dataset) -> xr.DataArray:
@@ -52,11 +67,7 @@ def _survival_stderr(ds_qp: xr.Dataset) -> xr.DataArray:
     Shot-averaged survival per random sequence, then SEM across sequences only
     (shots are repeats of the same circuit, not independent RB samples).
     """
-    per_sequence = (ds_qp.state == 0).mean(dim="shots")
-    stderr = per_sequence.std(dim="sequence") / np.sqrt(ds_qp.sizes["sequence"])
-    if "qubit_pair" in stderr.dims:
-        stderr = stderr.squeeze("qubit_pair", drop=True)
-    return stderr
+    return _survival_over_sequences(ds_qp)[1]
 
 
 def _check_survival_soft_warnings(
@@ -103,96 +114,6 @@ def _check_survival_soft_warnings(
     return warnings
 
 
-def _fit_survival(
-    circuit_depths: np.ndarray,
-    survival: np.ndarray,
-    stderr: np.ndarray | None = None,
-) -> tuple[float, float, float, float, float, float] | None:
-    """Fit ``A * alpha**m + B`` and return ``(A, alpha, B, alpha_stderr, A_stderr, B_stderr)``."""
-    sigma = None
-    if stderr is not None:
-        err = np.asarray(stderr, dtype=float)
-        if err.shape == np.asarray(survival).shape and np.all(np.isfinite(err)) and np.all(err > 0):
-            sigma = err
-
-    try:
-        popt, pcov = curve_fit(
-            rb_decay_curve,
-            circuit_depths,
-            survival,
-            p0=[0.75, 0.9, 0.25],
-            maxfev=10000,
-            sigma=sigma,
-            absolute_sigma=sigma is not None,
-        )
-    except (RuntimeError, ValueError, TypeError) as exc:
-        logging.getLogger(__name__).warning("RB exponential fit failed: %s", exc)
-        return None
-
-    alpha_stderr = amplitude_stderr = offset_stderr = np.nan
-    if pcov is not None and pcov.shape == (3, 3):
-        if np.isfinite(pcov[1, 1]) and pcov[1, 1] >= 0:
-            alpha_stderr = float(np.sqrt(pcov[1, 1]))
-        if np.isfinite(pcov[0, 0]) and pcov[0, 0] >= 0:
-            amplitude_stderr = float(np.sqrt(pcov[0, 0]))
-        if np.isfinite(pcov[2, 2]) and pcov[2, 2] >= 0:
-            offset_stderr = float(np.sqrt(pcov[2, 2]))
-
-    return (
-        float(popt[0]),
-        float(popt[1]),
-        float(popt[2]),
-        alpha_stderr,
-        amplitude_stderr,
-        offset_stderr,
-    )
-
-
-def _validate_fit_parameters(fit_amplitude: float, alpha: float, fit_offset: float) -> list[str]:
-    """Hard-fail checks on exponential-fit coefficients."""
-    issues: list[str] = []
-    if not all(np.isfinite(v) for v in (fit_amplitude, alpha, fit_offset)):
-        issues.append("Non-finite fit parameters (A, alpha, or B).")
-        return issues
-
-    if alpha <= _FLOAT_TOLERANCE or alpha > 1.0 + _FLOAT_TOLERANCE:
-        issues.append(f"RB decay alpha={alpha:.6f} outside physical range (0, 1].")
-
-    if fit_amplitude < -_FLOAT_TOLERANCE:
-        issues.append(f"Fit amplitude A={fit_amplitude:.6f} must be >= 0.")
-
-    if fit_offset < -_FLOAT_TOLERANCE:
-        issues.append(f"Fit offset B={fit_offset:.6f} must be >= 0.")
-
-    if fit_amplitude + fit_offset > 1.0 + _FLOAT_TOLERANCE:
-        issues.append(f"A + B = {fit_amplitude + fit_offset:.6f} exceeds 1 (invalid survival-probability model).")
-    return issues
-
-
-def _validate_residuals(
-    circuit_depths: np.ndarray,
-    survival: np.ndarray,
-    stderr: np.ndarray,
-    fit_amplitude: float,
-    alpha: float,
-    fit_offset: float,
-) -> list[str]:
-    """Hard-fail when the fitted curve deviates too far from the data."""
-    fitted_values = rb_decay_curve(circuit_depths, fit_amplitude, alpha, fit_offset)
-    safe_stderr = np.where(stderr > 0, stderr, np.nan)
-    normalized_residuals = np.abs(fitted_values - survival) / safe_stderr
-    if not np.isfinite(normalized_residuals).any():
-        return ["Cannot assess fit residuals (zero or missing standard errors)."]
-
-    max_deviation = float(np.nanmax(normalized_residuals))
-    if max_deviation > _RESIDUAL_SIGMA_LIMIT:
-        return [
-            f"Fitted curve deviates up to {max_deviation:.2f} sigma from experimental data "
-            f"(limit {_RESIDUAL_SIGMA_LIMIT:.0f} sigma)."
-        ]
-    return []
-
-
 def _validate_rb_fit(
     circuit_depths: np.ndarray,
     survival: np.ndarray,
@@ -208,13 +129,16 @@ def _validate_rb_fit(
 ) -> tuple[bool, tuple[str, ...]]:
     """Run all hard-fail RB fit validations."""
     issues: list[str] = []
-    issues.extend(_validate_fit_parameters(fit_amplitude, alpha, fit_offset))
-    issues.extend(fidelity.validate_fidelity_bounds(fit_fidelity, interleaved=interleaved))
-    issues.extend(fidelity.validate_fidelity_uncertainty(fit_fidelity, fit_fidelity_stderr, interleaved=interleaved))
+    issues.extend(validate_fit_parameters(fit_amplitude, alpha, fit_offset))
+    label = "CZ gate fidelity" if interleaved else "2Q Clifford fidelity"
+    issues.extend(validate_fidelity_bounds(fit_fidelity, label=label))
+    issues.extend(validate_fidelity_uncertainty(fit_fidelity, fit_fidelity_stderr, label=label))
     if interleaved and standard_rb_alpha is not None:
-        issues.extend(fidelity.validate_interleaved_alpha(alpha, standard_rb_alpha))
+        issues.extend(
+            validate_interleaved_alpha(alpha, standard_rb_alpha, reference_label="StandardRB_alpha", gate_label="CZ")
+        )
     if not issues:
-        issues.extend(_validate_residuals(circuit_depths, survival, stderr, fit_amplitude, alpha, fit_offset))
+        issues.extend(validate_residuals(circuit_depths, survival, stderr, fit_amplitude, alpha, fit_offset))
     return len(issues) == 0, tuple(issues)
 
 
@@ -228,7 +152,7 @@ def _fit_survival_for_pair(da: xr.Dataset) -> dict:
     stderr_vals = stderr.values
 
     fit_warnings = tuple(_check_survival_soft_warnings(circuit_depths, survival_vals, stderr_vals))
-    fit_params = _fit_survival(circuit_depths, survival_vals, stderr_vals)
+    fit_params = fit_survival(circuit_depths, survival_vals, stderr_vals)
 
     return {
         "survival": survival,
@@ -251,30 +175,33 @@ def _fitted_curve_dataarray(circuit_depths, fit_params) -> xr.DataArray:
     return xr.DataArray(fitted_curve, dims=["circuit_depth"], coords={"circuit_depth": circuit_depths})
 
 
+def _standard_rb_reference(node: QualibrationNode, qp_name: str) -> dict:
+    """The 37a Standard RB reference 37b compares against: ``alpha``, ``fidelity``, ``load_id`` and ``source``.
+
+    A leakage run (any readout or reset) writes the same ``StandardRB*`` as a normal one: the RB decay
+    does not depend on the readout.
+    """
+    fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
+    return {
+        "alpha": fidelity_dict.get("StandardRB_alpha"),
+        "fidelity": fidelity_dict.get("StandardRB"),
+        "load_id": fidelity_dict.get("StandardRB_load_id"),
+        "source": "StandardRB_alpha (run 37a_two_qubit_standard_rb first)",
+    }
+
+
 def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict | None:
     """Load saved 37a ``ds_fit`` for interleaved overlay plots (no refit)."""
-    standard_rb_load_id = (
-        node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity.get("StandardRB_load_id")
-    )
+    standard_rb_load_id = _standard_rb_reference(node, qp_name)["load_id"]
     if standard_rb_load_id is None:
         return None
 
-    from qualibrate.core.utils.node.content import read_node_data
-    from qualibrate.core.utils.node.path_solver import get_node_dir_path
-    from qualibrate_config.resolvers import get_qualibrate_config, get_qualibrate_config_path
-
     try:
-        base_path = get_qualibrate_config(get_qualibrate_config_path()).storage.location
-        node_dir = get_node_dir_path(int(standard_rb_load_id), base_path)
-        std_rb_data = read_node_data(node_dir, int(standard_rb_load_id), base_path)
+        ds_fit = load_saved_ds_fit(standard_rb_load_id)
     except Exception as exc:
         node.log(f"Could not load StandardRB overlay for {qp_name}: failed to read saved node data ({exc}).")
         return None
 
-    if std_rb_data is None:
-        return None
-
-    ds_fit = std_rb_data.get("ds_fit")
     if ds_fit is None or qp_name not in ds_fit.qubit_pair.values:
         node.log(
             f"Could not load StandardRB overlay for {qp_name}: "
@@ -298,13 +225,20 @@ def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict 
     if "epc" in fr and np.isfinite(fr.epc.values):
         epc_reference = float(fr.epc.values)
 
-    survival_per_sequence = fr.survival_per_sequence if "survival_per_sequence" in fr else None
+    optional = lambda key: np.asarray(fr[key].values, dtype=float) if key in fr else None  # noqa: E731
 
     return {
         "circuit_depth": np.asarray(fr.circuit_depth.values, dtype=float),
         "survival": np.asarray(fr.survival_probability.values, dtype=float),
-        "survival_per_sequence": survival_per_sequence,
+        "survival_stderr": optional("survival_stderr"),
+        "survival_per_sequence": (
+            fr.survival_per_sequence.transpose("circuit_depth", "sequence").values
+            if "survival_per_sequence" in fr
+            else None
+        ),
         "fitted_curve": np.asarray(fr.fitted_curve.values, dtype=float),
+        "fit_amplitude": float(optional("fit_amplitude")) if "fit_amplitude" in fr else np.nan,
+        "fit_offset": float(optional("fit_offset")) if "fit_offset" in fr else np.nan,
         "alpha": float(fr.fit_alpha.values),
         "alpha_stderr": alpha_stderr,
         "epc_reference": epc_reference,
@@ -316,7 +250,7 @@ def _resolve_irb_reference(
 ) -> tuple[float, float | None, float | None]:
     """Resolve reference Standard RB alpha and EPC for interleaved analysis.
 
-    Prefer saved 37a ``ds_fit`` overlay; fall back to QUAM.
+    Prefer saved 37a ``ds_fit`` overlay; fall back to QUAM (see :func:`_standard_rb_reference`).
     """
     if overlay is not None:
         alpha_stderr = overlay.get("alpha_stderr")
@@ -325,68 +259,40 @@ def _resolve_irb_reference(
         )
         return float(overlay["alpha"]), stderr, overlay.get("epc_reference")
 
-    fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
-    if "StandardRB_alpha" not in fidelity_dict:
+    reference = _standard_rb_reference(node, qp_name)
+    if reference["alpha"] is None:
         raise KeyError(
-            f"Qubit pair {qp_name}: missing StandardRB_alpha in "
-            f"macros[{node.parameters.operation!r}].fidelity. "
-            "Run 37a_two_qubit_standard_rb first for this operation."
+            f"Qubit pair {qp_name}: missing reference in macros[{node.parameters.operation!r}].fidelity: "
+            f"{reference['source']} for this operation."
         )
-    standard_rb_alpha = float(fidelity_dict["StandardRB_alpha"])
-    epc_reference = 1 - float(fidelity_dict["StandardRB"]) if "StandardRB" in fidelity_dict else None
-    return standard_rb_alpha, None, epc_reference
+    epc_reference = 1 - float(reference["fidelity"]) if reference["fidelity"] is not None else None
+    return float(reference["alpha"]), None, epc_reference
 
 
-def _assign_standard_rb_overlay(
-    da: xr.Dataset,
-    overlay: dict,
-    *,
-    node: QualibrationNode | None = None,
-    qp_name: str | None = None,
-) -> xr.Dataset:
-    """Align a Standard RB overlay onto the interleaved dataset circuit depths."""
-    circuit_depths = da.circuit_depth.values
-    survival_on_depths = np.full(len(circuit_depths), np.nan)
-    fitted_on_depths = np.full(len(circuit_depths), np.nan)
-    overlay_depths = overlay["circuit_depth"]
-    overlay_per_sequence = overlay.get("survival_per_sequence")
-    n_sequence = da.sizes.get("sequence")
-    per_sequence_on_depths = None
-    if overlay_per_sequence is not None and n_sequence is not None:
-        overlay_n_sequence = overlay_per_sequence.sizes.get("sequence")
-        if (
-            overlay_n_sequence == n_sequence
-        ):  # if the number of sequences is the same, then we can use the per-sequence data
-            per_sequence_on_depths = np.full((len(circuit_depths), n_sequence), np.nan)
-        elif node is not None:
-            node.log(
-                f"Standard RB overlay"
-                f"{f' for {qp_name}' if qp_name else ''}: skipping per-sequence points "
-                f"(saved 37a num_circuits_per_depth={overlay_n_sequence} != "
-                f"current num_circuits_per_depth={n_sequence}). Depth-mean overlay kept."
-            )
+def _assign_standard_rb_overlay(da: xr.Dataset, overlay: dict | None) -> xr.Dataset:
+    """Attach the saved 37a run for the plot, at its own depths.
 
-    for idx, depth in enumerate(circuit_depths):
-        match = np.where(overlay_depths == depth)[0]
-        if match.size:
-            survival_on_depths[idx] = overlay["survival"][match[0]]
-            fitted_on_depths[idx] = overlay["fitted_curve"][match[0]]
-            if per_sequence_on_depths is not None:
-                per_sequence_on_depths[idx, :] = overlay_per_sequence.isel(circuit_depth=match[0]).values
-
-    assign_kwargs = {
-        "standard_rb_overlay_survival": ("circuit_depth", survival_on_depths),
-        "standard_rb_overlay_fitted": ("circuit_depth", fitted_on_depths),
-        "standard_rb_fit_alpha": float(overlay["alpha"]),
-        "standard_rb_fit_alpha_stderr": float(overlay.get("alpha_stderr", np.nan)),
-    }
-    if per_sequence_on_depths is not None:
-        assign_kwargs["standard_rb_overlay_survival_per_sequence"] = (
-            ["circuit_depth", "sequence"],
-            per_sequence_on_depths,
-        )
-
-    return da.assign(**assign_kwargs)
+    37a and 37b need not share depths or sequence counts, so the overlay has its own
+    ``standard_rb_point`` (one per 37a depth) and ``standard_rb_sequence`` dimensions. Pairs are
+    combined by ``groupby``, which NaN-pads them to the longest. Without a saved run both are empty.
+    """
+    n_points = 0 if overlay is None else len(overlay["circuit_depth"])
+    missing = np.full(n_points, np.nan)
+    per_sequence = None if overlay is None else overlay.get("survival_per_sequence")
+    if per_sequence is None:
+        per_sequence = np.full((n_points, 0), np.nan)
+    stderr = None if overlay is None else overlay.get("survival_stderr")
+    return da.assign(
+        standard_rb_overlay_depth=("standard_rb_point", missing if overlay is None else overlay["circuit_depth"]),
+        standard_rb_overlay_survival=("standard_rb_point", missing if overlay is None else overlay["survival"]),
+        standard_rb_overlay_survival_stderr=("standard_rb_point", missing if stderr is None else stderr),
+        standard_rb_overlay_fitted=("standard_rb_point", missing if overlay is None else overlay["fitted_curve"]),
+        standard_rb_overlay_survival_per_sequence=(["standard_rb_point", "standard_rb_sequence"], per_sequence),
+        standard_rb_overlay_amplitude=np.nan if overlay is None else overlay["fit_amplitude"],
+        standard_rb_overlay_offset=np.nan if overlay is None else overlay["fit_offset"],
+        standard_rb_fit_alpha=np.nan if overlay is None else float(overlay["alpha"]),
+        standard_rb_fit_alpha_stderr=np.nan if overlay is None else float(overlay.get("alpha_stderr", np.nan)),
+    ).assign_coords(standard_rb_point=np.arange(n_points), standard_rb_sequence=np.arange(per_sequence.shape[1]))
 
 
 def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr.Dataset:
@@ -409,7 +315,7 @@ def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr
         success, fit_issues = False, ("Exponential fit did not converge.",)
     else:
         fit_amplitude, alpha, fit_offset, alpha_stderr, amplitude_stderr, offset_stderr = fit_params
-        srb = fidelity.compute_srb_fidelity(alpha, alpha_stderr, average_gates_per_clifford)
+        srb = fidelity.compute_srb_fidelity(alpha, alpha_stderr, average_gates_per_clifford, n_qubits=2)
         success, fit_issues = _validate_rb_fit(
             circuit_depths,
             survival_vals,
@@ -474,6 +380,7 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
             alpha,
             alpha_stderr,
             standard_rb_alpha,
+            n_qubits=2,
             standard_rb_alpha_stderr=standard_rb_alpha_stderr,
             epc_reference=epc_reference,
         )
@@ -516,17 +423,140 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
         standard_rb_fit_alpha_stderr=standard_rb_alpha_stderr if standard_rb_alpha_stderr is not None else np.nan,
     )
 
-    if overlay is not None:
-        da = _assign_standard_rb_overlay(da, overlay, node=node, qp_name=qp_name)
-    else:
-        nan_overlay = np.full(len(circuit_depths), np.nan)
-        da = da.assign(
-            standard_rb_overlay_survival=("circuit_depth", nan_overlay),
-            standard_rb_overlay_fitted=("circuit_depth", nan_overlay.copy()),
-            standard_rb_fit_alpha=np.nan,
-            standard_rb_fit_alpha_stderr=np.nan,
+    return _assign_standard_rb_overlay(da, overlay)
+
+
+# --- Leakage RB (measure_leakage=True) -------------------------------------------------------
+#
+# The leakage model, its fit and the per-gate subtraction are shared with the single-qubit RB
+# (``calibration_utils.common_utils.rb``); this section reads the two-qubit g/e/f states.
+
+
+_LEAKAGE_SERIES = ("pair", "control", "target")  # either qubit in f, control in f, target in f
+
+
+def _leaked_populations(states, confusion_control=None, confusion_target=None) -> dict[str, np.ndarray]:
+    """Leaked populations from per-shot states ``3 * control + target`` (shots on the last axis).
+
+    The joint 9-outcome distribution is corrected with the Kronecker product of the two confusion
+    matrices (rows prepared; identity for a missing one), see
+    :func:`~calibration_utils.common_utils.rb.correct_populations`.
+
+    Returns:
+        ``pair`` (either qubit in f), ``control`` and ``target`` (that qubit in f).
+    """
+    states = np.asarray(states)
+    measured = np.stack([(states == k).mean(axis=-1) for k in range(9)], axis=-1)
+    measured = correct_populations(measured, [confusion_control, confusion_target])
+    joint = measured.reshape(*measured.shape[:-1], 3, 3)
+    control, target = joint[..., 2, :].sum(axis=-1), joint[..., :, 2].sum(axis=-1)
+    return {"pair": control + target - joint[..., 2, 2], "control": control, "target": target}
+
+
+def _resolve_leakage_reference(node: QualibrationNode, qp_name: str) -> dict:
+    """The 37a leakage reference (``macros[operation].extras["leakage_per_2q_clifford"]``) for this pair, or ``{}``."""
+    fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
+    extras = getattr(node.machine.qubit_pairs[qp_name].macros[node.parameters.operation], "extras", None) or {}
+    return extras.get("leakage_per_2q_clifford") or {}
+
+
+# Names of the per-CZ leakage variables for each key of ``leakage_per_gate``.
+_PER_CZ_VARIABLES = {
+    "l1": "leakage_l1_per_cz",
+    "l1_stderr": "leakage_l1_per_cz_stderr",
+    "l2": "leakage_l2_per_cz",
+    "l2_stderr": "leakage_l2_per_cz_stderr",
+}
+
+
+def fit_leakage_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str, *, interleaved: bool) -> xr.Dataset:
+    """Fit leaked population vs circuit depth for one qubit pair (``measure_leakage=True``).
+
+    ``state`` holds ``3 * control + target`` per shot with each qubit read as g, e or f. Three
+    series are fitted (``leakage_series``: either qubit in f, control in f, target in f). The pair
+    fails, so nothing is written to the state, if either qubit's leaked population at the
+    shallowest depth is above ``SHALLOW_LEAKAGE_THRESHOLD``: there the qubits are only reset and
+    read, so that is the g/e/f readout or reset failing, not leakage. For the interleaved node the
+    per-CZ leakage is taken against ``macros[operation].extras["leakage_per_2q_clifford"]`` from 37a.
+    """
+    qp = next(qp for qp in node.namespace["qubit_pairs"] if qp.name == qp_name)
+    state = da.state.squeeze("qubit_pair", drop=True) if "qubit_pair" in da.state.dims else da.state
+    states = state.transpose("circuit_depth", "sequence", "shots").values
+    depths = np.asarray(state.circuit_depth.values, dtype=float)
+    names = {"control": qp.qubit_control.name, "target": qp.qubit_target.name}
+    confusion = {"control": read_confusion_matrix(qp.qubit_control), "target": read_confusion_matrix(qp.qubit_target)}
+    leaked = _leaked_populations(states, confusion["control"], confusion["target"])
+
+    means, stderrs, fits = [], [], []
+    for series in _LEAKAGE_SERIES:
+        mean, stderr = mean_and_stderr_over_sequences(leaked[series], shots_per_sequence=states.shape[-1])
+        means.append(mean)
+        stderrs.append(stderr)
+        fits.append(fit_leakage(depths, mean, stderr))
+
+    shallow = int(np.argmin(depths))
+    suspect = [
+        names[series]
+        for series in ("control", "target")
+        if means[_LEAKAGE_SERIES.index(series)][shallow] > SHALLOW_LEAKAGE_THRESHOLD
+    ]
+    failure = ""
+    if suspect:
+        failure = (
+            f"Leaked population at depth {depths[shallow]:g} is above {SHALLOW_LEAKAGE_THRESHOLD:g} "
+            f"for {', '.join(suspect)}: the g/e/f readout or reset is suspect, so nothing is written "
+            "to the state. Recalibrate the g/e/f readout (15_iq_blobs_gef) and rerun."
         )
-    return da
+
+    series_coords = {"leakage_series": list(_LEAKAGE_SERIES)}
+    curve_coords = {**series_coords, "circuit_depth": state.circuit_depth.values}
+
+    def per_series(values) -> xr.DataArray:
+        return xr.DataArray(np.asarray(values), dims=["leakage_series"], coords=series_coords)
+
+    def per_series_curve(values) -> xr.DataArray:
+        return xr.DataArray(np.asarray(values), dims=["leakage_series", "circuit_depth"], coords=curve_coords)
+
+    assign_kwargs = {
+        "leaked": per_series_curve(means),
+        "leaked_stderr": per_series_curve(stderrs),
+        "leaked_fit": per_series_curve([fit.curve(depths) for fit in fits]),
+        "leakage_l1": per_series([fit.l1 for fit in fits]),
+        "leakage_l1_stderr": per_series([fit.l1_stderr for fit in fits]),
+        "leakage_l2": per_series([fit.l2 for fit in fits]),
+        "leakage_l2_stderr": per_series([fit.l2_stderr for fit in fits]),
+        "leakage_p_inf": per_series([fit.p_inf for fit in fits]),
+        "leakage_lam": per_series([fit.lam for fit in fits]),
+        "leakage_p0": per_series([fit.p0 for fit in fits]),
+        "leakage_method": per_series([fit.method for fit in fits]),
+        "leakage_fit_success": per_series([fit.success for fit in fits]),
+        "leakage_fit_issues": per_series(["\n".join(fit.fit_issues) for fit in fits]),
+        "leakage_fit_warnings": per_series(["\n".join(fit.fit_warnings) for fit in fits]),
+        "control_qubit": names["control"],
+        "target_qubit": names["target"],
+        "confusion_corrected_control": confusion["control"] is not None,
+        "confusion_corrected_target": confusion["target"] is not None,
+        "leakage_success": fits[0].success and not suspect,
+        "leakage_failure": failure,
+    }
+    if interleaved:
+        reference = _resolve_leakage_reference(node, qp_name)
+        per_cz = leakage_per_gate(fits, [reference.get(series) for series in _LEAKAGE_SERIES])
+        assign_kwargs.update({_PER_CZ_VARIABLES[key]: per_series(values) for key, values in per_cz.items()})
+        assign_kwargs["leakage_reference_updated_at"] = str(reference.get("updated_at") or "")
+        assign_kwargs["leakage_per_cz_note"] = (
+            ""
+            if reference.get("pair")
+            else f"No extras['leakage_per_2q_clifford'] for {qp_name}: run 37a_two_qubit_standard_rb with "
+            "measure_leakage=True first. Only the leakage per interleaved Clifford is reported."
+        )
+    return da.drop_vars("state").assign(**assign_kwargs)
 
 
-__all__ = ["rb_decay_curve", "fit_srb_pair", "fit_irb_pair"]
+__all__ = [
+    "rb_decay_curve",
+    "fit_srb_pair",
+    "fit_irb_pair",
+    "leakage_decay_curve",
+    "fit_leakage_pair",
+]

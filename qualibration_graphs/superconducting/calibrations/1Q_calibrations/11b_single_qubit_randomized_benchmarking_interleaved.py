@@ -18,10 +18,17 @@ from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
     get_interleaved_gate_index,
 )
 from calibration_utils.single_qubit_randomized_benchmarking import (
+    merge_leakage,
     process_raw_dataset,
     fit_raw_data,
     log_fitted_results,
+    add_interleaved_gate_error,
     plot_raw_data_with_fit,
+    validate_leakage_run,
+    fit_leakage_data,
+    log_leakage_results,
+    plot_leakage,
+    leakage_per_gate_entry,
 )
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
@@ -47,15 +54,27 @@ performed by playing different random sequences.
 The data is then post-processed to extract the single-qubit gate fidelity and error per
 gate.
 
+With measure_leakage, each qubit is read as g, e or f and the node also fits the leaked
+population P(f) against depth (leakage RB, Wood & Gambetta 2018), per Clifford + interleaved gate
+step. Subtracting the leakage per Clifford of an 11a run with measure_leakage gives the leakage of
+the interleaved gate. Needs a calibrated g/e/f readout (15_iq_blobs_gef) and reset_type="thermal"
+or "active_gef"; it reads g/e/f states whatever use_state_discrimination says.
+
 Prerequisites:
     - Having calibrated the mixer or the Octave (nodes 01a or 01b).
     - Having calibrated the qubit parameters precisely (nodes 04b_power_rabi.py and 06a_ramsey.py).
     - (optional) Having optimized the readout parameters (nodes 08a, 08b and 08c).
     - (optional) Having calibrated the DRAG parameters (nodes 10a and 10b or 10c).
     - Having specified the desired flux point if relevant (qubit.z.flux_point).
+    - For measure_leakage: an 11a run with measure_leakage=True (without it, only the leakage per
+      Clifford + gate step is reported) and a calibrated g/e/f readout.
 
 State update:
-    - The averaged single qubit gate fidelity: qubit.gate_fidelity["interleaved_gate"].
+    - The fidelity of the interleaved gate alone (interleaved RB against the saved 11a run named by
+      gate_fidelity["averaged_load_id"], or else gate_fidelity["averaged_alpha"]):
+      qubit.gate_fidelity["interleaved_gate"] (also with measure_leakage; not written without an 11a fidelity).
+    - With measure_leakage, also qubit.extras["leakage_<interleaved_gate>"] (leakage L1 of the interleaved
+      gate), when the leakage fit succeeds and an 11a reference exists.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -84,6 +103,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Get the active qubits from the node and organize them by batches
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
+    measure_leakage = node.parameters.measure_leakage
+    if measure_leakage:
+        validate_leakage_run(node, qubits)
     num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
     # Number of averaging loops for each random sequence
     strict_timing = node.parameters.use_strict_timing
@@ -206,6 +228,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         I, I_st, Q, Q_st, n, n_st = node.machine.declare_qua_variables()
         state = [declare(int) for _ in range(num_qubits)]
         state_st = [declare_stream() for _ in range(num_qubits)]
+        if measure_leakage:
+            # 1 when the qubit is read in g, e or f; averaged over shots into P(g), P(e) and P(f)
+            in_level = [declare(int) for _ in range(3)]
+            level_st = [[declare_stream() for _ in range(3)] for _ in range(num_qubits)]
         depth = declare(int)  # QUA variable for the varying depth
         # QUA variable for the current depth (changes in steps of delta_clifford)
         depth_target = declare(int)
@@ -254,7 +280,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             align()
                             # Readout the qubits
                             for i, qubit in multiplexed_qubits.items():
-                                if node.parameters.use_state_discrimination:
+                                if measure_leakage:
+                                    qubit.readout_state_gef(state[i])
+                                    for level in range(3):
+                                        assign(in_level[level], Cast.to_int(state[i] == level))
+                                        save(in_level[level], level_st[i][level])
+                                elif node.parameters.use_state_discrimination:
                                     qubit.readout_state(state[i])
                                     save(state[i], state_st[i])
                                 else:
@@ -271,7 +302,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             m_st.save("n")
             for i in range(num_qubits):
-                if node.parameters.use_state_discrimination:
+                if measure_leakage:
+                    for level, name in enumerate(("pg", "pe", "pf")):
+                        level_st[i][level].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(
+                            num_of_sequences
+                        ).save(f"{name}{i + 1}")
+                elif node.parameters.use_state_discrimination:
                     state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
                         f"state{i + 1}"
                     )
@@ -342,29 +378,56 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     """Analyse the raw data and store the fitted data in another xarray dataset "ds_fit" and the fitted results in the "fit_results" dictionary."""
     node.results["ds_raw"] = process_raw_dataset(node.results["ds_raw"], node)
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_raw"], node)
+    # The interleaved gate alone, against the 11a reference fidelity
+    node.results["ds_fit"] = add_interleaved_gate_error(
+        node.results["ds_fit"],
+        fit_results,
+        node.namespace["qubits"],
+        log=node.log,
+        gate_label=node.parameters.interleaved_gate_operation,
+    )
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
 
     # Log the relevant information extracted from the data analysis
-    log_fitted_results(node.results["fit_results"], log_callable=node.log)
+    log_fitted_results(
+        node.results["fit_results"], log_callable=node.log, interleaved_gate=node.parameters.interleaved_gate_operation
+    )
     node.outcomes = {
         qubit_name: ("successful" if fit_result["success"] else "failed")
         for qubit_name, fit_result in node.results["fit_results"].items()
     }
+    if node.parameters.measure_leakage:
+        gate = node.parameters.interleaved_gate_operation
+        ds_leakage, leakage_results = fit_leakage_data(node.results["ds_raw"], node, interleaved_gate=gate)
+        node.results["ds_fit"] = merge_leakage(node.results["ds_fit"], ds_leakage)
+        node.results["leakage_results"] = {k: asdict(v) for k, v in leakage_results.items()}
+        log_leakage_results(node.results["leakage_results"], log_callable=node.log, interleaved_gate=gate)
 
 
 # %% {Plot_data}
 @node.run_action(skip_if=node.parameters.simulate)
 def plot_data(node: QualibrationNode[Parameters, Quam]):
     """Plot the raw and fitted data in specific figures whose shape is given by qubit.grid_location."""
-    fig_raw_fit = plot_raw_data_with_fit(node.results["ds_raw"], node.namespace["qubits"], node.results["ds_fit"])
-    fig_raw_fit.suptitle(
-        f"Single qubit randomized benchmarking interleaved with {node.parameters.interleaved_gate_operation}"
+    fig_raw_fit = plot_raw_data_with_fit(
+        node.results["ds_raw"],
+        node.namespace["qubits"],
+        node.results["ds_fit"],
+        interleaved_gate=node.parameters.interleaved_gate_operation,
     )
     plt.show()
     # Store the generated figures
     node.results["figures"] = {
         "amplitude": fig_raw_fit,
     }
+    if node.parameters.measure_leakage:
+        node.results["figures"]["leakage"] = plot_leakage(
+            node.results["ds_fit"],
+            node.namespace["qubits"],
+            node.results["leakage_results"],
+            reset_type=node.parameters.reset_type,
+            interleaved_gate=node.parameters.interleaved_gate_operation,
+        )
+        plt.show()
 
 
 # %% {Update_state}
@@ -375,9 +438,14 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed":
                 continue
-            q.gate_fidelity[node.parameters.interleaved_gate_operation] = float(
-                1 - node.results["fit_results"][q.name]["error_per_gate"]
-            )
+            gate = node.parameters.interleaved_gate_operation
+            gate_error = node.results["fit_results"][q.name]["gate_error"]
+            if gate_error is not None:
+                q.gate_fidelity[gate] = float(1 - gate_error)
+            if node.parameters.measure_leakage and node.results["leakage_results"][q.name]["success"]:
+                entry = leakage_per_gate_entry(node.results["leakage_results"][q.name])
+                if entry is not None:
+                    q.extras[f"leakage_{gate}"] = entry
 
 
 # %% {Save_results}
