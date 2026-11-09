@@ -45,8 +45,8 @@ tau = 2 * 50
 order_vec = np.arange(1, 21, 1, dtype=int)  # order vector for varying the order n of the XY8-n measurement
 n_avg = 1_000_000
 
-tau_spacing = tau - x180_len_NV  # interpulse spacing, i.e. from end of pulse to beginning of next pulse
-tau_half_spacing = tau // 2 - x90_len_NV  # interpulse spacing for tau_half
+tau_spacing = tau - x180_len_NV // 4  # interpulse spacing, i.e. from end of pulse to beginning of next pulse
+tau_half_spacing = tau // 2 - x90_len_NV // 4  # interpulse spacing for tau_half
 if x180_len_NV != x90_len_NV:
     qm_log.warning(
         f"pi-pulse and pi/2-pulse do not have the same length ({x180_len_NV}, {x90_len_NV}). "
