@@ -1,16 +1,17 @@
 # %% {Imports}
 import numpy as np
+import sys
 import xarray as xr
 
 from qm.qua import *
-
+sys.path.append(r"C:\Users\UriIsraeli\iqcc-cloud\qua-libs\qualibration_graphs\superconducting")
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.results import progress_counter
 from qualang_tools.units import unit
 
 from qualibrate import QualibrationNode
-from quam_config import Quam
+from quam_builder.architecture.superconducting.qpu import FluxTunableQuam as Quam
 from calibration_utils.hello_qua import Parameters
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
