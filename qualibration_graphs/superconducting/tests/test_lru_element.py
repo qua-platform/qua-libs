@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -21,6 +22,7 @@ from quam_builder.architecture.superconducting.qpu import FixedFrequencyQuam, Fl
 from quam_builder.builder.qop_connectivity import build_quam_wiring  # noqa: E402
 from quam_builder.builder.superconducting import build_quam  # noqa: E402
 
+from calibration_utils.common_utils.flux_distortions import plan_lo_shift_for_frequency_window  # noqa: E402
 from calibration_utils.lru_calibration.element import (  # noqa: E402
     LRU_NOMINAL_IF,
     MW_FEM_BANDS,
@@ -223,3 +225,52 @@ def test_prediction_outside_window():
     assert prediction_outside_window(qubit, 2.9765e9, 3.1765e9) is None
     message = prediction_outside_window(qubit, 1.397e9, 1.597e9)
     assert "remove qubit.lru" in message
+
+
+#: Detunings that push the XY IF past the 500 MHz reach, so the LO shift moves the XY upconverter.
+FAR_DETUNINGS = np.arange(1.0e9, 1.2e9, 10e6).astype(int)
+
+
+def _port_config(machine, qubit):
+    port = qubit.xy.opx_output
+    return machine.generate_config()["controllers"]["con1"]["fems"][port.fem_id]["analog_outputs"][port.port_id]
+
+
+def test_lo_shift_moves_only_the_xy_upconverter_of_an_lru_port(built):
+    machine = built.machine
+    qubit = machine.qubits["q1"]
+    add_lru_element(qubit)
+    xy_lo, lru_lo, lru_rf = qubit.xy.LO_frequency, qubit.lru.LO_frequency, qubit.lru.RF_frequency
+    before = _snapshot(machine)
+
+    plan = plan_lo_shift_for_frequency_window([qubit], FAR_DETUNINGS)
+
+    shift = plan.if_update[0]
+    assert shift != 0
+    assert qubit.xy.LO_frequency == pytest.approx(xy_lo + shift)
+    assert qubit.lru.LO_frequency == pytest.approx(lru_lo)
+    assert qubit.lru.RF_frequency == pytest.approx(lru_rf)
+    port_config = _port_config(machine, qubit)
+    assert "upconverter_frequency" not in port_config
+    assert port_config["upconverters"][1]["frequency"] == pytest.approx(xy_lo + shift)
+    assert port_config["upconverters"][LRU_UPCONVERTER]["frequency"] == pytest.approx(lru_lo)
+
+    for tracked in plan.tracked_qubits:
+        tracked.revert_changes()
+    assert _snapshot(machine) == before
+
+
+def test_lo_shift_of_a_single_upconverter_port_is_unchanged(built):
+    machine = built.machine
+    qubit = machine.qubits["q1"]
+    xy_lo = qubit.xy.LO_frequency
+    before = _snapshot(machine)
+
+    plan = plan_lo_shift_for_frequency_window([qubit], FAR_DETUNINGS)
+
+    assert plan.if_update[0] != 0
+    assert qubit.xy.opx_output.upconverter_frequency == pytest.approx(xy_lo + plan.if_update[0])
+    assert qubit.xy.opx_output.upconverters is None
+    for tracked in plan.tracked_qubits:
+        tracked.revert_changes()
+    assert _snapshot(machine) == before
