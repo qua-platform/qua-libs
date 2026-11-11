@@ -81,10 +81,12 @@ Prerequisites:
       enter the pump prediction.
     - Calibrated g/e/f readout: readout_GEF, GEF_frequency_shift and gef_centers (nodes 14a/14b/15).
 
-State update (qubits with an LRU element in the state, or add_lru_to_state set):
-    - qubit.lru, with its upconverter on the XY port, when added by this run (add_lru_to_state).
+State update (successful qubits with an LRU element in the state, or add_lru_to_state set):
     - qubit.lru.RF_frequency: the Stark-shifted resonance at the selected amplitude.
     - qubit.lru.operations[operation].amplitude and .length: the selected amplitude and duration.
+    An element added by this run (add_lru_to_state) is written with these values and its upconverter on
+    the XY port directly, not as proposals; a qubit from an older state also gets the LRU-capable class.
+    The stored frequency is absolute: re-run this node after recalibrating f_01, the anharmonicity or f_r.
 """
 
 
@@ -377,16 +379,27 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Keep_or_remove_LRU_elements}
+def _write_lru_values(qubit, fit_result: dict, operation: str) -> None:
+    """Set the calibrated LRU frequency, amplitude and duration on ``qubit.lru``."""
+    qubit.lru.RF_frequency = fit_result["frequency"]
+    qubit.lru.operations[operation].amplitude = fit_result["amplitude"]
+    qubit.lru.operations[operation].length = int(fit_result["duration_ns"])
+
+
 @node.run_action()
 def keep_or_remove_lru_elements(node: QualibrationNode[Parameters, Quam]):
     """Remove the LRU elements added for this run, except for successful qubits when add_lru_to_state is set.
 
     node.save() writes the machine as it is in memory, and a new element is not a simple value that
-    record_state_updates could offer as a proposal, so this choice is made here, before saving.
+    record_state_updates could offer as a proposal, so this choice is made here, before saving. A kept
+    element gets its calibrated values right away, so the state never holds one with placeholder values,
+    even when the proposals of update_state are rejected.
     """
     for name, addition in node.namespace.get("lru_additions", {}).items():
         if node.parameters.add_lru_to_state and node.outcomes.get(name) == "successful":
-            node.log(f"{name}: keeping the lru element in the QUAM state (add_lru_to_state).")
+            _write_lru_values(addition.qubit, node.results["fit_results"][name], node.parameters.operation)
+            node.log(f"{name}: keeping the calibrated lru element in the QUAM state (add_lru_to_state).")
+            warn_if_reach(node, addition.qubit.lru, f"{name}.lru")
         else:
             addition.remove()
 
@@ -394,10 +407,12 @@ def keep_or_remove_lru_elements(node: QualibrationNode[Parameters, Quam]):
 # %% {Update_state}
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[Parameters, Quam]):
-    """Propose the selected LRU frequency, amplitude and duration for every successful qubit with an LRU element."""
+    """Propose the selected LRU frequency, amplitude and duration for every successful qubit whose LRU element
+    existed before this run (elements kept from this run already hold them)."""
+    added = node.namespace.get("lru_additions", {})
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
+            if node.outcomes[q.name] == "failed" or q.name in added:
                 continue
             if getattr(q, "lru", None) is None:
                 node.log(
@@ -405,10 +420,7 @@ def update_state(node: QualibrationNode[Parameters, Quam]):
                     "Re-run with add_lru_to_state=True to keep it."
                 )
                 continue
-            fit_result = node.results["fit_results"][q.name]
-            q.lru.RF_frequency = fit_result["frequency"]
-            q.lru.operations[node.parameters.operation].amplitude = fit_result["amplitude"]
-            q.lru.operations[node.parameters.operation].length = int(fit_result["duration_ns"])
+            _write_lru_values(q, node.results["fit_results"][q.name], node.parameters.operation)
             warn_if_reach(node, q.lru, f"{q.name}.lru")
 
 

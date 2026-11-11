@@ -21,6 +21,17 @@ Two transitions are used, one per drive type:
   so a charge drive cannot couple them, but a flux drive, which keeps parity, can. Node 26b (flux
   tone at half the transition frequency) drives it; the qubit ends in |e0>.
 
+Each qubit has one slot per technique, so both can be calibrated on the same qubit:
+
+* ``qubit.lru`` (node 26a): an MW channel playing the f0-g1 pump, in every generated config.
+* ``qubit.flux_lru`` (node 26b): a ``FluxLru`` record of the f0-e1 flux tone. It is not a channel: the
+  tone needs the flux port at 2 GS/s, so only a program that asks for it gets the element, through
+  ``Quam.generate_config(flux_lru_qubits=...)`` (``quam_config.flux_lru_config``).
+
+New states are built with the LRU-capable classes (``Quam.qubit_type``). A state saved earlier names
+``FluxTunableTransmon`` or ``FixedFrequencyTransmon``, and QUAM keeps the class a state names, so
+nodes 26a and 26b call ``upgrade_to_lru_class`` before storing an LRU on such a qubit.
+
 The microwave pump sits at about 3 to 4 GHz for f0-g1 on a typical device, 0.5 to 1.5 GHz below
 the qubit drive, on upconverter 2 in the same band. Both tones share the qubit's MW-FEM output port,
 each on its own digital upconverter: upconverter 1 for the qubit XY drive, upconverter 2
@@ -28,16 +39,19 @@ each on its own digital upconverter: upconverter 1 for the qubit XY drive, upcon
 (``calibration_utils.lru_calibration.element``).
 """
 
+import dataclasses
 import logging
 from dataclasses import dataclass
-from typing import Dict, Literal, NamedTuple
+from typing import Dict, Literal, NamedTuple, Optional
 
 from quam.components.channels import MWChannel
-from quam.core import quam_dataclass
+from quam.core import QuamComponent, quam_dataclass
 from quam_builder.architecture.superconducting.components.xy_drive import XYDriveMW
 from quam_builder.architecture.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 
 __all__ = [
+    "FLUX_LRU_OPERATION",
+    "FluxLru",
     "LEGACY_LRU_TRANSITION",
     "LRU_OPERATION",
     "LRU_TRANSITIONS",
@@ -51,6 +65,7 @@ __all__ = [
     "f0e1_frequency",
     "f0g1_frequency",
     "lru_reference_frequencies",
+    "upgrade_to_lru_class",
 ]
 
 logger = logging.getLogger(__name__)
@@ -60,6 +75,9 @@ LRU_UPCONVERTER = 2
 
 #: Name of the LRU pulse on ``qubit.lru``.
 LRU_OPERATION = "lru"
+
+#: Name of the flux-LRU tone's operation, on the element ``Quam.generate_config(flux_lru_qubits=...)`` adds.
+FLUX_LRU_OPERATION = "flux_lru"
 
 #: Transition an f-LRU drives: |f0> -> |g1> (charge drive, node 26a) or |f0> -> |e1> (flux drive, node 26b).
 LruTransition = Literal["f0g1", "f0e1"]
@@ -99,10 +117,49 @@ class MultiUpconverterXYDriveMW(XYDriveMW):
 
 
 @quam_dataclass
+class FluxLru(QuamComponent):
+    """Calibrated flux-activated f-LRU (node 26b): a constant flux tone at half the |f0> -> |e1> frequency.
+
+    Only the values are stored. The element that plays them exists only in a config generated with
+    ``Quam.generate_config(flux_lru_qubits=[...])``, which switches the qubit's flux port to 2 GS/s.
+    """
+
+    transition_frequency: float
+    """|f0> -> |e1> drive frequency in Hz, Stark-shifted at ``amplitude_v``; the tone plays at half of it."""
+    amplitude_v: float
+    """Tone amplitude at the flux port, in V, on top of the joint flux offset."""
+    duration_ns: int
+    """Tone duration in ns."""
+
+    @property
+    def tone_frequency(self) -> float:
+        """Frequency of the flux tone in Hz: half the |f0> -> |e1> frequency."""
+        return self.transition_frequency / 2
+
+    @property
+    def element_name(self) -> str:
+        """Name of the flux-LRU element in a config generated with this qubit in ``flux_lru_qubits``."""
+        return f"{self.parent.name}.flux_lru"
+
+    def play(self, amplitude_scale=None, duration=None) -> None:
+        """Play the flux tone; the program's config must come from ``generate_config(flux_lru_qubits=...)``.
+
+        Args:
+            amplitude_scale: Optional QUA ``amp()`` factor on ``amplitude_v``.
+            duration: Optional duration in clock cycles (4 ns), replacing ``duration_ns``.
+        """
+        from qm.qua import amp, play
+
+        pulse = FLUX_LRU_OPERATION if amplitude_scale is None else FLUX_LRU_OPERATION * amp(amplitude_scale)
+        play(pulse, self.element_name, duration=duration)
+
+
+@quam_dataclass
 class LruFluxTunableTransmon(FluxTunableTransmon):
-    """Flux-tunable transmon with an f-LRU pump drive on its XY port's second upconverter."""
+    """Flux-tunable transmon with an f-LRU pump on its XY port's second upconverter and a flux-LRU tone."""
 
     lru: MultiUpconverterXYDriveMW = None
+    flux_lru: Optional[FluxLru] = None
 
 
 @quam_dataclass
@@ -110,6 +167,26 @@ class LruFixedFrequencyTransmon(FixedFrequencyTransmon):
     """Fixed-frequency transmon with an f-LRU pump drive on its XY port's second upconverter."""
 
     lru: MultiUpconverterXYDriveMW = None
+
+
+def upgrade_to_lru_class(qubit) -> type:
+    """Give ``qubit`` the LRU-capable class of its kind, in memory, and return the class it had.
+
+    A qubit that already has an ``lru`` field is left alone. Assigning the class back undoes the change.
+
+    Raises:
+        TypeError: for a qubit class with no LRU-capable counterpart.
+    """
+    original = type(qubit)
+    if "lru" in {f.name for f in dataclasses.fields(qubit)}:
+        return original
+    if original is FluxTunableTransmon:
+        qubit.__class__ = LruFluxTunableTransmon
+    elif original is FixedFrequencyTransmon:
+        qubit.__class__ = LruFixedFrequencyTransmon
+    else:
+        raise TypeError(f"{qubit.name}: no LRU support for qubit class {original.__name__}.")
+    return original
 
 
 class LruReferenceFrequencies(NamedTuple):

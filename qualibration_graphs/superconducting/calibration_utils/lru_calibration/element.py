@@ -8,29 +8,27 @@ proposal, since it only records simple values:
   keeps the qubit drive LO, upconverter 2 is set ``LRU_NOMINAL_IF`` below the expected pump, or at
   the nearest edge of the port's band when that falls outside it (``lru_upconverter_frequency``);
 * ``qubit.xy`` becomes ``MultiUpconverterXYDriveMW``, so it keeps reading upconverter 1;
-* the qubit becomes ``LruFluxTunableTransmon`` or ``LruFixedFrequencyTransmon``, which have the
-  ``lru`` field (a qubit class that already has it is kept).
+* a qubit loaded from a state saved before the LRU classes became the default becomes
+  ``LruFluxTunableTransmon`` or ``LruFixedFrequencyTransmon``, which have the ``lru`` field
+  (``upgrade_to_lru_class``).
 
 ``node.save()`` writes whatever is in memory, so the node undoes these changes with
 ``LruAddition.remove`` unless the user asked to keep the element.
 """
 
-import dataclasses
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple
 
 from quam.components.pulses import SquarePulse
 from quam_builder.architecture.superconducting.components.xy_drive import XYDriveMW
-from quam_builder.architecture.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 from calibration_utils.common_utils.if_limits import IF_MAX_HZ
 from quam_config.lru_components import (
     LRU_OPERATION,
     LRU_UPCONVERTER,
-    LruFixedFrequencyTransmon,
-    LruFluxTunableTransmon,
     MultiUpconverterXYDriveMW,
     f0g1_frequency,
     lru_reference_frequencies,
+    upgrade_to_lru_class,
 )
 
 #: LRU intermediate frequency at the expected pump frequency; keeps the default 200 MHz span around it
@@ -97,14 +95,6 @@ def add_lru_element(qubit, operation: str = LRU_OPERATION) -> Optional[LruAdditi
     """
     if getattr(qubit, "lru", None) is not None:
         return None
-    if "lru" in {f.name for f in dataclasses.fields(qubit)}:
-        lru_class = type(qubit)
-    elif type(qubit) is FluxTunableTransmon:
-        lru_class = LruFluxTunableTransmon
-    elif type(qubit) is FixedFrequencyTransmon:
-        lru_class = LruFixedFrequencyTransmon
-    else:
-        raise TypeError(f"{qubit.name}: no LRU support for qubit class {type(qubit).__name__}.")
     if type(qubit.xy) not in (XYDriveMW, MultiUpconverterXYDriveMW):
         raise TypeError(f"{qubit.name}: the LRU element needs an MW-FEM XY drive, got {type(qubit.xy).__name__}.")
 
@@ -119,12 +109,14 @@ def add_lru_element(qubit, operation: str = LRU_OPERATION) -> Optional[LruAdditi
             f"band {band} ({low / 1e9:.1f}-{high / 1e9:.1f} GHz); the nearest upconverter frequency leaves an IF of "
             f"{(f_lru - lo_lru) / 1e6:+.0f} MHz, past the {IF_MAX_HZ / 1e6:.0f} MHz usable reach."
         )
+    # Raises TypeError for an unsupported qubit class before anything is changed
+    qubit_class = upgrade_to_lru_class(qubit)
     addition = LruAddition(
         qubit=qubit,
         upconverter_frequency=port.upconverter_frequency,
         upconverters=None if port.upconverters is None else {k: dict(v) for k, v in port.upconverters.items()},
         xy_class=type(qubit.xy),
-        qubit_class=type(qubit),
+        qubit_class=qubit_class,
     )
 
     upconverters = dict(addition.upconverters or {})
@@ -142,7 +134,6 @@ def add_lru_element(qubit, operation: str = LRU_OPERATION) -> Optional[LruAdditi
     port.upconverters = upconverters
 
     qubit.xy.__class__ = MultiUpconverterXYDriveMW
-    qubit.__class__ = lru_class
     qubit.lru = MultiUpconverterXYDriveMW(
         opx_output=qubit.xy.get_raw_value("opx_output"),
         upconverter=LRU_UPCONVERTER,

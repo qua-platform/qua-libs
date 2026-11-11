@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 from calibration_utils.common_utils import ensure_gef_readout_pulse, reset_for_gef
 from calibration_utils.lru_calibration import (
+    FLUX_LRU_MAX_TONE_HZ,
     FLUX_LRU_OPERATION,
     FluxParameters,
     add_flux_lru_elements,
@@ -32,7 +33,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
-from quam_config.lru_components import f0e1_frequency
+from quam_config.lru_components import FluxLru, f0e1_frequency, upgrade_to_lru_class
 
 # %% {Description}
 description = """
@@ -44,8 +45,9 @@ quadratic in flux, so a flux tone at f_m modulates the transmon at 2 * f_m, and 
 when 2 * f_m = f_r - f_12 (about 1.5 GHz, so f_m is about 750 MHz).
 
 The tone is played by a flux-LRU element added to this run's config on the qubit's flux port, which
-is switched to 2 GS/s for the run. The qubit's own flux pulses are left out of the run (they are
-sampled at 1 GS/s); only its static flux offset is used. The QUAM state is not modified.
+is switched to 2 GS/s for the run (quam_config.flux_lru_config), exactly as in any later program that
+plays qubit.flux_lru: the flux pulses of that port are upsampled to 2 GS/s, and the QUAM state keeps
+the port at 1 GS/s.
 
 Sequence, for each duration, amplitude and frequency:
     1. Prepare |f> (x180, then EF_x180 at the e-f frequency).
@@ -65,9 +67,12 @@ Prerequisites:
     - Calibrated g/e/f readout: readout_GEF, GEF_frequency_shift and gef_centers (nodes 14a/14b/15).
     - The qubit near its flux sweet spot (quadratic flux dependence).
 
-State update:
-    - qubit.extras: flux_lru_frequency (Hz, the f0-e1 drive frequency; the flux tone is at half of it),
-      flux_lru_amplitude_v (V at the port) and flux_lru_duration_ns.
+State update (successful qubits):
+    - qubit.flux_lru.transition_frequency (Hz, the f0-e1 drive frequency; the flux tone is at half of
+      it), .amplitude_v (V at the port) and .duration_ns. A qubit without flux_lru gets one written
+      with these values directly, not as proposals, and a qubit from an older state also gets the
+      LRU-capable class; flux_lru_* keys left in qubit.extras by earlier versions of this node are removed.
+    The stored frequency is absolute: re-run this node after recalibrating f_01, the anharmonicity or f_r.
 """
 
 
@@ -91,10 +96,22 @@ def custom_param(node: QualibrationNode[FluxParameters, Quam]):
 
 
 def _flux_lru_config(node: QualibrationNode[FluxParameters, Quam]):
-    """Config of this run: the QUAM config plus a flux-LRU element per qubit, flux ports at 2 GS/s."""
-    return add_flux_lru_elements(
-        node.machine.generate_config(), node.namespace["qubits"], node.parameters.flux_amplitude_v
-    )
+    """Config of this run: the QUAM config plus a flux-LRU element per qubit, flux ports at 2 GS/s.
+
+    Each element starts at the qubit's sweep centre; the program retunes it with update_frequency. The
+    largest swept amplitude is checked against the flux offset in create_qua_program.
+    """
+    config = node.machine.generate_config()
+    for qubit, centre in zip(node.namespace["qubits"], node.namespace["centres"]):
+        add_flux_lru_elements(
+            config,
+            [qubit],
+            amplitude_v=node.parameters.flux_amplitude_v,
+            tone_frequency=float(centre) / 2,
+            length_ns=100,
+            check_headroom=False,
+        )
+    return config
 
 
 # %% {Create_QUA_program}
@@ -127,7 +144,7 @@ def create_qua_program(node: QualibrationNode[FluxParameters, Quam]):
                 "lower flux_amplitude_v or max_amp_factor."
             )
         top = (centre + detunings.max()) / 2
-        if top >= 0.95e9:
+        if top >= FLUX_LRU_MAX_TONE_HZ:
             raise ValueError(
                 f"{qubit.name}: the flux tone reaches {top / 1e6:.0f} MHz, too close to the 1 GHz Nyquist limit."
             )
@@ -290,17 +307,43 @@ def plot_data(node: QualibrationNode[FluxParameters, Quam]):
 
 
 # %% {Update_state}
+#: qubit.extras keys written by earlier versions of this node, replaced by qubit.flux_lru.
+LEGACY_EXTRAS_KEYS = ("flux_lru_frequency", "flux_lru_amplitude_v", "flux_lru_duration_ns")
+
+
 @node.run_action(skip_if=node.parameters.simulate)
 def update_state(node: QualibrationNode[FluxParameters, Quam]):
-    """Record the calibrated flux-LRU frequency, amplitude and duration of every successful qubit."""
+    """Store the calibrated flux-LRU frequency, amplitude and duration of every successful qubit in qubit.flux_lru.
+
+    A new flux_lru component is not a simple value that record_state_updates could offer as a proposal, so a
+    qubit without one gets it written directly; an existing one gets its values proposed.
+    """
+    successful = [q for q in node.namespace["qubits"] if node.outcomes[q.name] == "successful"]
+    added = set()
+    for q in successful:
+        for key in LEGACY_EXTRAS_KEYS:
+            if key in q.extras:
+                del q.extras[key]
+        if getattr(q, "flux_lru", None) is not None:
+            continue
+        upgrade_to_lru_class(q)
+        fit_result = node.results["fit_results"][q.name]
+        q.flux_lru = FluxLru(
+            transition_frequency=float(fit_result["frequency"]),
+            amplitude_v=float(fit_result["amplitude"]),
+            duration_ns=int(fit_result["duration_ns"]),
+        )
+        node.log(f"{q.name}: added qubit.flux_lru to the QUAM state with the calibrated values.")
+        added.add(q.name)
+
     with node.record_state_updates():
-        for q in node.namespace["qubits"]:
-            if node.outcomes[q.name] == "failed":
+        for q in successful:
+            if q.name in added:
                 continue
             fit_result = node.results["fit_results"][q.name]
-            q.extras["flux_lru_frequency"] = float(fit_result["frequency"])
-            q.extras["flux_lru_amplitude_v"] = float(fit_result["amplitude"])
-            q.extras["flux_lru_duration_ns"] = int(fit_result["duration_ns"])
+            q.flux_lru.transition_frequency = float(fit_result["frequency"])
+            q.flux_lru.amplitude_v = float(fit_result["amplitude"])
+            q.flux_lru.duration_ns = int(fit_result["duration_ns"])
 
 
 # %% {Save_results}

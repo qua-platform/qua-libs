@@ -15,7 +15,13 @@ from .analysis import (
     process_raw_dataset,
 )
 from .element import LruAddition, add_lru_element, prediction_outside_window, spurious_lines
-from .flux_element import FLUX_LRU_OPERATION, add_flux_lru_elements, flux_lru_element, flux_tone_headroom_v
+from quam_config.flux_lru_config import (
+    FLUX_LRU_MAX_TONE_HZ,
+    FLUX_LRU_OPERATION,
+    add_flux_lru_elements,
+    flux_lru_element,
+    flux_tone_headroom_v,
+)
 from .plotting import plot_iq_blobs, plot_lru_maps, plot_pf_along_line
 
 __all__ = [
@@ -40,6 +46,7 @@ __all__ = [
     "add_lru_element",
     "prediction_outside_window",
     "spurious_lines",
+    "FLUX_LRU_MAX_TONE_HZ",
     "FLUX_LRU_OPERATION",
     "add_flux_lru_elements",
     "flux_lru_element",
