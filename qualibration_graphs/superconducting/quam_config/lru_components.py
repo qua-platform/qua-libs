@@ -23,7 +23,9 @@ Two transitions are used, one per drive type:
 
 Each qubit has one slot per technique, so both can be calibrated on the same qubit:
 
-* ``qubit.lru`` (node 26a): an MW channel playing the f0-g1 pump, in every generated config.
+* ``qubit.lru`` (node 26a): an MW channel playing the f0-g1 pump, in every generated config. The pump
+  shifts the qubit frequency while it plays, so the qubit picks up a phase; ``qubit.macros["lru"]``
+  (``LruMacro``, node 26c) plays the pump and then cancels that phase with a virtual Z on the qubit drive.
 * ``qubit.flux_lru`` (node 26b): a ``FluxLru`` record of the f0-e1 flux tone. It is not a channel: the
   tone needs the flux port at 2 GS/s, so only a program that asks for it gets the element, through
   ``Quam.generate_config(flux_lru_qubits=...)`` (``quam_config.flux_lru_config``).
@@ -45,6 +47,7 @@ from dataclasses import dataclass
 from typing import Dict, Literal, NamedTuple, Optional
 
 from quam.components.channels import MWChannel
+from quam.components.macro import QubitMacro
 from quam.core import QuamComponent, quam_dataclass
 from quam_builder.architecture.superconducting.components.xy_drive import XYDriveMW
 from quam_builder.architecture.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
@@ -58,6 +61,7 @@ __all__ = [
     "LRU_UPCONVERTER",
     "LruFixedFrequencyTransmon",
     "LruFluxTunableTransmon",
+    "LruMacro",
     "LruReferenceFrequencies",
     "LruTransition",
     "LruTransitionInfo",
@@ -65,7 +69,9 @@ __all__ = [
     "f0e1_frequency",
     "f0g1_frequency",
     "lru_reference_frequencies",
+    "play_lru",
     "upgrade_to_lru_class",
+    "validate_lru_qubits",
 ]
 
 logger = logging.getLogger(__name__)
@@ -154,6 +160,52 @@ class FluxLru(QuamComponent):
         play(pulse, self.element_name, duration=duration)
 
 
+def play_lru(qubit, operation: str = LRU_OPERATION, phase_shift=None) -> None:
+    """Play the microwave f-LRU pump of ``qubit``, then rotate the qubit drive frame by ``phase_shift``.
+
+    The pump is its own element, so it is aligned with the qubit drive before and after the pulse;
+    pulses on ``qubit.xy`` then never overlap it.
+
+    Args:
+        qubit: A qubit with an ``lru`` channel.
+        operation: The pump pulse on ``qubit.lru``.
+        phase_shift: Virtual Z on ``qubit.xy`` after the pump, in units of 2 pi; a float or a QUA
+            expression. None or 0 plays no frame rotation.
+    """
+    from qm.qua import align
+
+    align(qubit.xy.name, qubit.lru.name)
+    qubit.lru.play(operation)
+    align(qubit.xy.name, qubit.lru.name)
+    if phase_shift is not None and not (isinstance(phase_shift, (int, float)) and abs(phase_shift) < 1e-6):
+        qubit.xy.frame_rotation_2pi(phase_shift)
+
+
+@quam_dataclass
+class LruMacro(QubitMacro):
+    """The f-LRU as a gate: the microwave pump on ``qubit.lru`` followed by a virtual Z on ``qubit.xy``.
+
+    Stored as ``qubit.macros["lru"]``. Node 26c calibrates ``phase_shift`` the way node 34a calibrates
+    the CZ ``phase_shift_control``: a Ramsey sequence around the LRU with a swept frame rotation. Node 11b
+    plays this macro when it interleaves the LRU.
+    """
+
+    operation: str = LRU_OPERATION
+    """Pump pulse on ``qubit.lru``."""
+    phase_shift: float = 0.0
+    """Virtual Z applied to the qubit drive after the pump, in units of 2 pi; cancels the qubit phase the
+    pump leaves (mostly its AC Stark shift)."""
+
+    def apply(self, phase_shift=None, **kwargs) -> None:
+        """Play the pump, then the virtual Z: ``phase_shift`` if given (float or QUA expression), else the stored one."""
+        play_lru(self.qubit, self.operation, self.phase_shift if phase_shift is None else phase_shift)
+
+    @property
+    def inferred_duration(self) -> float:
+        """Pump duration in seconds."""
+        return self.qubit.lru.operations[self.operation].length * 1e-9
+
+
 @quam_dataclass
 class LruFluxTunableTransmon(FluxTunableTransmon):
     """Flux-tunable transmon with an f-LRU pump on its XY port's second upconverter and a flux-LRU tone."""
@@ -187,6 +239,24 @@ def upgrade_to_lru_class(qubit) -> type:
     else:
         raise TypeError(f"{qubit.name}: no LRU support for qubit class {original.__name__}.")
     return original
+
+
+def validate_lru_qubits(qubits) -> None:
+    """Raise if a qubit has no stored microwave LRU to interleave.
+
+    Raises:
+        ValueError: for a qubit with no ``lru`` channel or no ``"lru"`` operation on it.
+    """
+    missing = [
+        q.name
+        for q in qubits
+        if getattr(q, "lru", None) is None or LRU_OPERATION not in q.lru.operations
+    ]
+    if missing:
+        raise ValueError(
+            f"No microwave LRU stored for {', '.join(missing)}: run 26a_lru_calibration on "
+            f"{'it' if len(missing) == 1 else 'them'} and keep the result before interleaving the LRU."
+        )
 
 
 class LruReferenceFrequencies(NamedTuple):

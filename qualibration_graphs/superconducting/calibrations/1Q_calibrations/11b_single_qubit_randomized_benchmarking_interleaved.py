@@ -14,8 +14,12 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
+    LRU_GATE,
+    LRU_SEQUENCE_CODE,
     Parameters,
     get_interleaved_gate_index,
+    get_interleaved_sequence_code,
+    validate_lru_qubits,
 )
 from calibration_utils.single_qubit_randomized_benchmarking import (
     merge_leakage,
@@ -31,6 +35,7 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
     leakage_per_gate_entry,
 )
 from qualibration_libs.parameters import get_qubits
+from quam_config.lru_components import play_lru
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -45,6 +50,13 @@ recovery gate, found at each step thanks to a preloaded lookup table (Cayley tab
 that will bring the qubit back to its ground state.
 In this version, a Clifford gate chosen by the user is interleaved between each random gate in the sequence. This allows
 to characterize the fidelity of a specific gate.
+
+With interleaved_gate_operation="lru", the interleaved gate is the qubit's microwave f-LRU (qubit.lru, stored by
+node 26a). It counts as the identity in the Clifford sequence, so the fidelity measures how much the LRU disturbs
+the qubit (decay and dephasing during the pulse, phase from the pump's Stark shift). It is played through
+qubit.macros["lru"] when the qubit has one, so the virtual Z calibrated by node 26c follows each pump; without the
+macro the pump plays with no correction. The pump plays on its own element, so it is aligned with the qubit drive
+before and after each LRU. With measure_leakage, the leaked population shows how well the LRU keeps the qubit out of f.
 
 If the readout has been calibrated and is good enough, then state discrimination can be
 applied to only return the state of the qubit. Otherwise, the 'I' and 'Q' quadratures
@@ -68,6 +80,8 @@ Prerequisites:
     - Having specified the desired flux point if relevant (qubit.z.flux_point).
     - For measure_leakage: an 11a run with measure_leakage=True (without it, only the leakage per
       Clifford + gate step is reported) and a calibrated g/e/f readout.
+    - For interleaved_gate_operation="lru": a microwave LRU stored on each qubit by 26a_lru_calibration, and
+      (recommended) its phase correction from 26c_lru_phase_compensation.
 
 State update:
     - The fidelity of the interleaved gate alone (interleaved RB against the saved 11a run named by
@@ -106,6 +120,19 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     measure_leakage = node.parameters.measure_leakage
     if measure_leakage:
         validate_leakage_run(node, qubits)
+    interleave_lru = node.parameters.interleaved_gate_operation == LRU_GATE
+    if interleave_lru:
+        validate_lru_qubits(qubits)
+        for qubit in qubits:
+            macro = qubit.macros.get(LRU_GATE)
+            if macro is None:
+                node.log(
+                    f"{qubit.name}: no LRU macro stored, so the LRU plays with no phase correction; "
+                    "run 26c_lru_phase_compensation to calibrate it.",
+                    level="warning",
+                )
+            else:
+                node.log(f"{qubit.name}: LRU phase correction {macro.phase_shift * 360:.2f} deg (macros['{LRU_GATE}']).")
     num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
     # Number of averaging loops for each random sequence
     strict_timing = node.parameters.use_strict_timing
@@ -115,11 +142,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
     num_depths = max_circuit_depth // delta_clifford
     seed = node.parameters.seed  # Pseudo-random number generator seed
+    # Clifford index of the interleaved gate (for the Cayley table) and the code that plays it
     interleaved_gate_index = get_interleaved_gate_index(node.parameters.interleaved_gate_operation)
+    interleaved_sequence_code = get_interleaved_sequence_code(node.parameters.interleaved_gate_operation)
     # List of recovery gates from the lookup table
     inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
-    def generate_sequence(interleaved_gate_index):
+    def generate_sequence(interleaved_gate_index, interleaved_sequence_code):
         cayley = declare(int, value=c1_table.flatten().tolist())
         inv_list = declare(int, value=inv_gates)
         current_state = declare(int)
@@ -138,7 +167,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # interleaved gate
             assign(step, interleaved_gate_index)
             assign(current_state, cayley[current_state * 24 + step])
-            assign(sequence[i + 1], step)
+            assign(sequence[i + 1], interleaved_sequence_code)
             assign(inv_gate[i + 1], inv_list[current_state])
 
         return sequence, inv_gate
@@ -216,6 +245,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.xy.play("-x90")
                     qubit.xy.play("y90")
                     qubit.xy.play("-x90")
+                if interleave_lru:
+                    with case_(LRU_SEQUENCE_CODE):  # f-LRU, the identity on the qubit
+                        if LRU_GATE in qubit.macros:
+                            qubit.macros[LRU_GATE].apply()  # pump, then the calibrated virtual Z
+                        else:
+                            play_lru(qubit)
 
     # Register the sweep axes to be added to the dataset when fetching data
     depths = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
@@ -252,7 +287,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Save the counter for the progress bar
                 save(m, m_st)
                 # Generate the random sequence of length max_circuit_depth
-                sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
+                sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index, interleaved_sequence_code)
                 assign(depth_target, 2)  # Initialize the current depth to 1
 
                 with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
@@ -266,6 +301,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Initialize the qubits
                             for i, qubit in multiplexed_qubits.items():
                                 qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                                if interleave_lru:
+                                    # The LRU's virtual Z accumulates in the drive frame; start each shot from zero
+                                    reset_frame(qubit.xy.name)
                                 # Align the two elements to play the sequence after qubit initialization
                             align()
                             # Manipulate the qubits

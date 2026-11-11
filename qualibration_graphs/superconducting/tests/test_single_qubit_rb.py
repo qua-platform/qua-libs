@@ -131,3 +131,26 @@ def test_merge_leakage_refuses_a_clashing_variable():
     ds_fit = xr.Dataset({"success": ("qubit", [True])}, coords={"qubit": ["qA3"]})
     with pytest.raises(ValueError, match="success"):
         merge_leakage(ds_fit, xr.Dataset({"success": ("qubit", [False])}, coords={"qubit": ["qA3"]}))
+
+
+def test_lru_is_the_identity_clifford_with_its_own_sequence_code():
+    from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
+        LRU_SEQUENCE_CODE,
+        get_interleaved_gate_index,
+        get_interleaved_sequence_code,
+    )
+
+    assert get_interleaved_gate_index("lru") == 0
+    assert get_interleaved_sequence_code("lru") == LRU_SEQUENCE_CODE == 24
+    assert get_interleaved_sequence_code("x180") == get_interleaved_gate_index("x180") == 1
+
+
+def test_validate_lru_qubits_names_qubits_without_a_stored_lru():
+    from calibration_utils.single_qubit_randomized_benchmarking_interleaved import validate_lru_qubits
+
+    with_lru = SimpleNamespace(name="q1", lru=SimpleNamespace(operations={"lru": object()}))
+    no_lru = SimpleNamespace(name="q2", lru=None)
+    no_operation = SimpleNamespace(name="q3", lru=SimpleNamespace(operations={}))
+    validate_lru_qubits([with_lru])
+    with pytest.raises(ValueError, match="q2, q3"):
+        validate_lru_qubits([with_lru, no_lru, no_operation])
