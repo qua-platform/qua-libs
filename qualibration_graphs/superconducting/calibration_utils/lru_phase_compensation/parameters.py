@@ -21,6 +21,10 @@ class NodeSpecificParameters(RunnableParameters):
     """LRUs between the two x90 pulses, each with the stored correction. More repetitions amplify a small
     residual phase, but the residual times this number must stay within half a turn, so start with 1 when
     no correction is stored. Default is 1."""
+    skip_lru_pulse: bool = False
+    """Control run: replace each LRU with an idle of the same length on the qubit drive, with no virtual Z.
+    The Ramsey contrast then shows the qubit's own decay over the same time, to compare with the pumped run;
+    nothing is written to the state. Default is False."""
 
 
 class Parameters(

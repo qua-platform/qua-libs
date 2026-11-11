@@ -35,6 +35,9 @@ theta cancels what remains; the fitted peak gives the residual phase, and the ne
 that residual. With num_lru_repetitions > 1, several LRUs are played between the x90 pulses to amplify a small
 residual.
 
+With skip_lru_pulse, each LRU is replaced by an idle of the same length (no pump, no virtual Z): a control
+run whose Ramsey contrast gives the qubit's own decay over the same time. It writes nothing to the state.
+
 A qubit with no LRU macro gets one for this run (no correction). It is kept in the state only when the fit succeeds,
 with the measured correction.
 
@@ -73,6 +76,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     operation = node.parameters.operation
     n_avg = node.parameters.num_shots
     repetitions = node.parameters.num_lru_repetitions
+    skip_lru = node.parameters.skip_lru_pulse
     frames = np.arange(node.parameters.num_frames) / node.parameters.num_frames
 
     # Qubits without an LRU macro get one for this run; update_state decides whether it stays
@@ -115,8 +119,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     for i, qubit in multiplexed_qubits.items():
                         qubit.xy.play("x90")
                         for _ in range(repetitions):
-                            # Pump, then the stored virtual Z
-                            qubit.macros[LRU_OPERATION].apply()
+                            if skip_lru:
+                                # Control: idle for the pump duration, no virtual Z
+                                qubit.xy.wait(qubit.lru.operations[operation].length // 4)
+                            else:
+                                # Pump, then the stored virtual Z
+                                qubit.macros[LRU_OPERATION].apply()
                         qubit.xy.frame_rotation_2pi(frame)
                         qubit.xy.play("x90")
                     align()
@@ -201,7 +209,7 @@ def keep_or_remove_lru_macros(node: QualibrationNode[Parameters, Quam]):
     """
     for name in node.namespace.get("added_macros", []):
         qubit = node.machine.qubits[name]
-        if node.outcomes.get(name) == "successful":
+        if node.outcomes.get(name) == "successful" and not node.parameters.skip_lru_pulse:
             qubit.macros[LRU_OPERATION].phase_shift = node.results["fit_results"][name]["phase_shift"]
             node.log(f"{name}: keeping the new LRU macro in the QUAM state.")
         else:
@@ -209,7 +217,7 @@ def keep_or_remove_lru_macros(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.skip_lru_pulse)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Propose the new correction for every successful qubit whose LRU macro existed before this run."""
     added = node.namespace.get("added_macros", [])

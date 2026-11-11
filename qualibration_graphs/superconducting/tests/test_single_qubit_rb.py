@@ -154,3 +154,15 @@ def test_validate_lru_qubits_names_qubits_without_a_stored_lru():
     validate_lru_qubits([with_lru])
     with pytest.raises(ValueError, match="q2, q3"):
         validate_lru_qubits([with_lru, no_lru, no_operation])
+
+
+def test_lru_idle_control_is_the_identity_with_its_own_code():
+    from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
+        LRU_IDLE_SEQUENCE_CODE,
+        get_interleaved_gate_index,
+        get_interleaved_sequence_code,
+    )
+
+    assert get_interleaved_gate_index("lru_idle") == 0
+    # The unsafe play switch is a jump table: the slot code must follow the 24 Cliffords directly
+    assert get_interleaved_sequence_code("lru_idle") == LRU_IDLE_SEQUENCE_CODE == 24

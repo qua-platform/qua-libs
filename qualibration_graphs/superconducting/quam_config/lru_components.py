@@ -160,7 +160,7 @@ class FluxLru(QuamComponent):
         play(pulse, self.element_name, duration=duration)
 
 
-def play_lru(qubit, operation: str = LRU_OPERATION, phase_shift=None) -> None:
+def play_lru(qubit, operation: str = LRU_OPERATION, phase_shift=None, amplitude_scale=None) -> None:
     """Play the microwave f-LRU pump of ``qubit``, then rotate the qubit drive frame by ``phase_shift``.
 
     The pump is its own element, so it is aligned with the qubit drive before and after the pulse;
@@ -171,11 +171,12 @@ def play_lru(qubit, operation: str = LRU_OPERATION, phase_shift=None) -> None:
         operation: The pump pulse on ``qubit.lru``.
         phase_shift: Virtual Z on ``qubit.xy`` after the pump, in units of 2 pi; a float or a QUA
             expression. None or 0 plays no frame rotation.
+        amplitude_scale: Optional factor on the pump amplitude; 0 plays the slot with no pump (a control).
     """
     from qm.qua import align
 
     align(qubit.xy.name, qubit.lru.name)
-    qubit.lru.play(operation)
+    qubit.lru.play(operation, amplitude_scale=amplitude_scale)
     align(qubit.xy.name, qubit.lru.name)
     if phase_shift is not None and not (isinstance(phase_shift, (int, float)) and abs(phase_shift) < 1e-6):
         qubit.xy.frame_rotation_2pi(phase_shift)

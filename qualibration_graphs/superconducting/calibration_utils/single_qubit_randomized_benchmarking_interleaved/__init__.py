@@ -1,5 +1,7 @@
 from .parameters import (
     LRU_GATE,
+    LRU_IDLE_GATE,
+    LRU_IDLE_SEQUENCE_CODE,
     LRU_SEQUENCE_CODE,
     Parameters,
     get_interleaved_gate_index,
@@ -10,6 +12,8 @@ from .parameters import (
 
 __all__ = [
     "LRU_GATE",
+    "LRU_IDLE_GATE",
+    "LRU_IDLE_SEQUENCE_CODE",
     "LRU_SEQUENCE_CODE",
     "Parameters",
     "get_interleaved_gate_name",

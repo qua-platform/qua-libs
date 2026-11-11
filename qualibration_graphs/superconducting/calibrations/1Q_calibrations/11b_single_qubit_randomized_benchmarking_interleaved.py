@@ -15,6 +15,8 @@ from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
     LRU_GATE,
+    LRU_IDLE_GATE,
+    LRU_IDLE_SEQUENCE_CODE,
     LRU_SEQUENCE_CODE,
     Parameters,
     get_interleaved_gate_index,
@@ -55,7 +57,8 @@ With interleaved_gate_operation="lru", the interleaved gate is the qubit's micro
 node 26a). It counts as the identity in the Clifford sequence, so the fidelity measures how much the LRU disturbs
 the qubit (decay and dephasing during the pulse, phase from the pump's Stark shift). It is played through
 qubit.macros["lru"] when the qubit has one, so the virtual Z calibrated by node 26c follows each pump; without the
-macro the pump plays with no correction. The pump plays on its own element, so it is aligned with the qubit drive
+macro the pump plays with no correction. interleaved_gate_operation="lru_idle" is a control: the same slot with the pump
+off, so its error is the cost of the time the LRU takes, and nothing is written to the state for it. The pump plays on its own element, so it is aligned with the qubit drive
 before and after each LRU. With measure_leakage, the leaked population shows how well the LRU keeps the qubit out of f.
 
 If the readout has been calibrated and is good enough, then state discrimination can be
@@ -121,8 +124,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     if measure_leakage:
         validate_leakage_run(node, qubits)
     interleave_lru = node.parameters.interleaved_gate_operation == LRU_GATE
-    if interleave_lru:
+    interleave_lru_idle = node.parameters.interleaved_gate_operation == LRU_IDLE_GATE
+    if interleave_lru or interleave_lru_idle:
         validate_lru_qubits(qubits)
+    if interleave_lru:
         for qubit in qubits:
             macro = qubit.macros.get(LRU_GATE)
             if macro is None:
@@ -245,12 +250,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                     qubit.xy.play("-x90")
                     qubit.xy.play("y90")
                     qubit.xy.play("-x90")
+                # The switch is unsafe (a jump table), so the LRU slot must take the next code, 24
                 if interleave_lru:
                     with case_(LRU_SEQUENCE_CODE):  # f-LRU, the identity on the qubit
                         if LRU_GATE in qubit.macros:
                             qubit.macros[LRU_GATE].apply()  # pump, then the calibrated virtual Z
                         else:
                             play_lru(qubit)
+                elif interleave_lru_idle:
+                    with case_(LRU_IDLE_SEQUENCE_CODE):  # control: the LRU slot with the pump off
+                        # The LRU pulse at zero amplitude: same code path and timing, no pump
+                        play_lru(qubit, LRU_GATE, amplitude_scale=0.0)
 
     # Register the sweep axes to be added to the dataset when fetching data
     depths = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
@@ -301,7 +311,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Initialize the qubits
                             for i, qubit in multiplexed_qubits.items():
                                 qubit.reset(node.parameters.reset_type, node.parameters.simulate)
-                                if interleave_lru:
+                                if interleave_lru or interleave_lru_idle:
                                     # The LRU's virtual Z accumulates in the drive frame; start each shot from zero
                                     reset_frame(qubit.xy.name)
                                 # Align the two elements to play the sequence after qubit initialization
@@ -469,7 +479,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.interleaved_gate_operation == LRU_IDLE_GATE)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
