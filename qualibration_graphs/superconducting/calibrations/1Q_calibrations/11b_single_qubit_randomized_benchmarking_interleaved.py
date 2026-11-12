@@ -14,8 +14,15 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualibrate import QualibrationNode
 from quam_config import Quam
 from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
+    LRU_CONTROL_GATES,
+    LRU_GATE,
+    LRU_GATES,
+    LRU_IDLE_GATE,
+    LRU_SEQUENCE_CODE,
     Parameters,
     get_interleaved_gate_index,
+    get_interleaved_sequence_code,
+    validate_lru_qubits,
 )
 from calibration_utils.single_qubit_randomized_benchmarking import (
     merge_leakage,
@@ -31,6 +38,7 @@ from calibration_utils.single_qubit_randomized_benchmarking import (
     leakage_per_gate_entry,
 )
 from qualibration_libs.parameters import get_qubits
+from quam_config.lru_components import play_lru
 from qualibration_libs.runtime import simulate_and_plot
 from qualibration_libs.data import XarrayDataFetcher
 
@@ -45,6 +53,15 @@ recovery gate, found at each step thanks to a preloaded lookup table (Cayley tab
 that will bring the qubit back to its ground state.
 In this version, a Clifford gate chosen by the user is interleaved between each random gate in the sequence. This allows
 to characterize the fidelity of a specific gate.
+
+With interleaved_gate_operation="lru", the interleaved gate is the qubit's microwave f-LRU (qubit.lru, stored by
+node 26a). It counts as the identity in the Clifford sequence, so the fidelity measures how much the LRU disturbs
+the qubit (decay and dephasing during the pulse, phase from the pump's Stark shift). It is played through
+qubit.macros["lru"] when the qubit has one, so the virtual Z calibrated by node 26c follows each pump; without the
+macro the pump plays with no correction. interleaved_gate_operation="lru_idle" is a control: the same slot with the
+pump off, so its error is the cost of the time the LRU takes, and nothing is written to the state for it. The pump
+plays on its own element, so it is aligned with the qubit drive before and after each LRU. With measure_leakage, the
+leaked population shows how well the LRU keeps the qubit out of f.
 
 If the readout has been calibrated and is good enough, then state discrimination can be
 applied to only return the state of the qubit. Otherwise, the 'I' and 'Q' quadratures
@@ -68,6 +85,8 @@ Prerequisites:
     - Having specified the desired flux point if relevant (qubit.z.flux_point).
     - For measure_leakage: an 11a run with measure_leakage=True (without it, only the leakage per
       Clifford + gate step is reported) and a calibrated g/e/f readout.
+    - For interleaved_gate_operation="lru": a microwave LRU stored on each qubit by 26a_lru_calibration, and
+      (recommended) its phase correction from 26c_lru_phase_compensation.
 
 State update:
     - The fidelity of the interleaved gate alone (interleaved RB against the saved 11a run named by
@@ -106,6 +125,21 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     measure_leakage = node.parameters.measure_leakage
     if measure_leakage:
         validate_leakage_run(node, qubits)
+    gate = node.parameters.interleaved_gate_operation
+    interleave_any_lru = gate in LRU_GATES
+    if interleave_any_lru:
+        validate_lru_qubits(qubits)
+    if gate == LRU_GATE:
+        for qubit in qubits:
+            macro = qubit.macros.get(gate)
+            if macro is None:
+                node.log(
+                    f"{qubit.name}: no macros['{gate}'] stored, so the LRU plays with no phase correction; "
+                    "run 26c_lru_phase_compensation to calibrate it.",
+                    level="warning",
+                )
+            else:
+                node.log(f"{qubit.name}: LRU phase correction {macro.phase_shift * 360:.2f} deg (macros['{gate}']).")
     num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
     # Number of averaging loops for each random sequence
     strict_timing = node.parameters.use_strict_timing
@@ -115,11 +149,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
     num_depths = max_circuit_depth // delta_clifford
     seed = node.parameters.seed  # Pseudo-random number generator seed
+    # Clifford index of the interleaved gate (for the Cayley table) and the code that plays it
     interleaved_gate_index = get_interleaved_gate_index(node.parameters.interleaved_gate_operation)
+    interleaved_sequence_code = get_interleaved_sequence_code(node.parameters.interleaved_gate_operation)
     # List of recovery gates from the lookup table
     inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
-    def generate_sequence(interleaved_gate_index):
+    def generate_sequence(interleaved_gate_index, interleaved_sequence_code):
         cayley = declare(int, value=c1_table.flatten().tolist())
         inv_list = declare(int, value=inv_gates)
         current_state = declare(int)
@@ -138,84 +174,110 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             # interleaved gate
             assign(step, interleaved_gate_index)
             assign(current_state, cayley[current_state * 24 + step])
-            assign(sequence[i + 1], step)
+            assign(sequence[i + 1], interleaved_sequence_code)
             assign(inv_gate[i + 1], inv_list[current_state])
 
         return sequence, inv_gate
 
+    def play_gate(code, qubit):
+        """Play the Clifford gate with sequence code ``code`` (0 to 23)."""
+        with switch_(code, unsafe=True):
+            with case_(0):
+                qubit.xy.wait(qubit.xy.operations["x180"].length // 4)
+            with case_(1):  # x180
+                qubit.xy.play("x180")
+            with case_(2):  # y180
+                qubit.xy.play("y180")
+            with case_(3):  # Z180
+                qubit.xy.play("y180")
+                qubit.xy.play("x180")
+            with case_(4):  # Z90 X180 Z-180
+                qubit.xy.play("x90")
+                qubit.xy.play("y90")
+            with case_(5):  # Z-90 Y-90 Z-90
+                qubit.xy.play("x90")
+                qubit.xy.play("-y90")
+            with case_(6):  # Z-90 X180 Z-180
+                qubit.xy.play("-x90")
+                qubit.xy.play("y90")
+            with case_(7):  # Z-90 Y90 Z-90
+                qubit.xy.play("-x90")
+                qubit.xy.play("-y90")
+            with case_(8):  # X90 Z90
+                qubit.xy.play("y90")
+                qubit.xy.play("x90")
+            with case_(9):  # X-90 Z-90
+                qubit.xy.play("y90")
+                qubit.xy.play("-x90")
+            with case_(10):  # z90 X90 Z90
+                qubit.xy.play("-y90")
+                qubit.xy.play("x90")
+            with case_(11):  # z90 X-90 Z90
+                qubit.xy.play("-y90")
+                qubit.xy.play("-x90")
+            with case_(12):  # x90
+                qubit.xy.play("x90")
+            with case_(13):  # -x90
+                qubit.xy.play("-x90")
+            with case_(14):  # y90
+                qubit.xy.play("y90")
+            with case_(15):  # -y90
+                qubit.xy.play("-y90")
+            with case_(16):  # Z90
+                qubit.xy.play("-x90")
+                qubit.xy.play("y90")
+                qubit.xy.play("x90")
+            with case_(17):  # -Z90
+                qubit.xy.play("-x90")
+                qubit.xy.play("-y90")
+                qubit.xy.play("x90")
+            with case_(18):  # Y-90 Z-90
+                qubit.xy.play("x180")
+                qubit.xy.play("y90")
+            with case_(19):  # Y90 Z90
+                qubit.xy.play("x180")
+                qubit.xy.play("-y90")
+            with case_(20):  # Y90 Z-90
+                qubit.xy.play("y180")
+                qubit.xy.play("x90")
+            with case_(21):  # Y-90 Z90
+                qubit.xy.play("y180")
+                qubit.xy.play("-x90")
+            with case_(22):  # x90 Z-90
+                qubit.xy.play("x90")
+                qubit.xy.play("y90")
+                qubit.xy.play("x90")
+            with case_(23):  # -x90 Z90
+                qubit.xy.play("-x90")
+                qubit.xy.play("y90")
+                qubit.xy.play("-x90")
+
+    def play_lru_slot(qubit):
+        """The interleaved f-LRU slot, or its pump-off control."""
+        if gate == LRU_GATE and gate in qubit.macros:
+            qubit.macros[gate].apply()  # LRU, then the calibrated virtual Z
+        elif gate == LRU_GATE:
+            play_lru(qubit)
+        elif gate == LRU_IDLE_GATE:
+            # The LRU pulse at zero amplitude: same code path and timing, no pump
+            play_lru(qubit, LRU_GATE, amplitude_scale=0.0)
+
     def play_sequence(sequence_list, depth, qubit):
         i = declare(int)
         with for_(i, 0, i <= depth, i + 1):
-            with switch_(sequence_list[i], unsafe=True):
-                with case_(0):
-                    qubit.xy.wait(qubit.xy.operations["x180"].length // 4)
-                with case_(1):  # x180
-                    qubit.xy.play("x180")
-                with case_(2):  # y180
-                    qubit.xy.play("y180")
-                with case_(3):  # Z180
-                    qubit.xy.play("y180")
-                    qubit.xy.play("x180")
-                with case_(4):  # Z90 X180 Z-180
-                    qubit.xy.play("x90")
-                    qubit.xy.play("y90")
-                with case_(5):  # Z-90 Y-90 Z-90
-                    qubit.xy.play("x90")
-                    qubit.xy.play("-y90")
-                with case_(6):  # Z-90 X180 Z-180
-                    qubit.xy.play("-x90")
-                    qubit.xy.play("y90")
-                with case_(7):  # Z-90 Y90 Z-90
-                    qubit.xy.play("-x90")
-                    qubit.xy.play("-y90")
-                with case_(8):  # X90 Z90
-                    qubit.xy.play("y90")
-                    qubit.xy.play("x90")
-                with case_(9):  # X-90 Z-90
-                    qubit.xy.play("y90")
-                    qubit.xy.play("-x90")
-                with case_(10):  # z90 X90 Z90
-                    qubit.xy.play("-y90")
-                    qubit.xy.play("x90")
-                with case_(11):  # z90 X-90 Z90
-                    qubit.xy.play("-y90")
-                    qubit.xy.play("-x90")
-                with case_(12):  # x90
-                    qubit.xy.play("x90")
-                with case_(13):  # -x90
-                    qubit.xy.play("-x90")
-                with case_(14):  # y90
-                    qubit.xy.play("y90")
-                with case_(15):  # -y90
-                    qubit.xy.play("-y90")
-                with case_(16):  # Z90
-                    qubit.xy.play("-x90")
-                    qubit.xy.play("y90")
-                    qubit.xy.play("x90")
-                with case_(17):  # -Z90
-                    qubit.xy.play("-x90")
-                    qubit.xy.play("-y90")
-                    qubit.xy.play("x90")
-                with case_(18):  # Y-90 Z-90
-                    qubit.xy.play("x180")
-                    qubit.xy.play("y90")
-                with case_(19):  # Y90 Z90
-                    qubit.xy.play("x180")
-                    qubit.xy.play("-y90")
-                with case_(20):  # Y90 Z-90
-                    qubit.xy.play("y180")
-                    qubit.xy.play("x90")
-                with case_(21):  # Y-90 Z90
-                    qubit.xy.play("y180")
-                    qubit.xy.play("-x90")
-                with case_(22):  # x90 Z-90
-                    qubit.xy.play("x90")
-                    qubit.xy.play("y90")
-                    qubit.xy.play("x90")
-                with case_(23):  # -x90 Z90
-                    qubit.xy.play("-x90")
-                    qubit.xy.play("y90")
-                    qubit.xy.play("-x90")
+            if interleave_any_lru:
+                # The LRU slot is branched out of the Clifford switch; do not move it back in as a case. Played as
+                # case 24 of the unsafe switch (a jump table), the pump-on runs showed about 2.2% of extra error per
+                # Clifford on the device that the pump does not cause: branched here, the pump costs about nothing
+                # (2.46% against 2.44% for the lru_idle control). A flux-driven LRU played in the switch also gave
+                # a survival curve that fell to 0.5 and rose back to 0.8. The cause is not understood. The Cayley
+                # lookup is not involved: the LRU uses Clifford index 0 there and code 24 only for playback.
+                with if_(sequence_list[i] == LRU_SEQUENCE_CODE):
+                    play_lru_slot(qubit)
+                with else_():
+                    play_gate(sequence_list[i], qubit)
+            else:
+                play_gate(sequence_list[i], qubit)
 
     # Register the sweep axes to be added to the dataset when fetching data
     depths = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
@@ -252,7 +314,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 # Save the counter for the progress bar
                 save(m, m_st)
                 # Generate the random sequence of length max_circuit_depth
-                sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
+                sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index, interleaved_sequence_code)
                 assign(depth_target, 2)  # Initialize the current depth to 1
 
                 with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
@@ -266,6 +328,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             # Initialize the qubits
                             for i, qubit in multiplexed_qubits.items():
                                 qubit.reset(node.parameters.reset_type, node.parameters.simulate)
+                                if interleave_any_lru:
+                                    # The LRU's virtual Z accumulates in the drive frame; start each shot from zero
+                                    reset_frame(qubit.xy.name)
                                 # Align the two elements to play the sequence after qubit initialization
                             align()
                             # Manipulate the qubits
@@ -431,7 +496,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Update_state}
-@node.run_action(skip_if=node.parameters.simulate)
+@node.run_action(skip_if=node.parameters.simulate or node.parameters.interleaved_gate_operation in LRU_CONTROL_GATES)
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Update the relevant parameters if the qubit data analysis was successful."""
     with node.record_state_updates():
