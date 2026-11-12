@@ -129,4 +129,3 @@ def get_interleaved_sequence_code(gate_operation) -> int:
     if gate_operation in LRU_GATES:
         return LRU_SEQUENCE_CODE
     return get_interleaved_gate_index(gate_operation)
-

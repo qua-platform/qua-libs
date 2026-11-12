@@ -320,11 +320,7 @@ def validate_lru_qubits(qubits) -> None:
     Raises:
         ValueError: for a qubit with no ``lru`` channel or no ``"lru"`` operation on it.
     """
-    missing = [
-        q.name
-        for q in qubits
-        if getattr(q, "lru", None) is None or LRU_OPERATION not in q.lru.operations
-    ]
+    missing = [q.name for q in qubits if getattr(q, "lru", None) is None or LRU_OPERATION not in q.lru.operations]
     if missing:
         raise ValueError(
             f"No microwave LRU stored for {', '.join(missing)}: run 26a_lru_calibration on "
