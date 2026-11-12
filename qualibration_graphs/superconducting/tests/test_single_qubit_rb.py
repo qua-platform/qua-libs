@@ -131,3 +131,59 @@ def test_merge_leakage_refuses_a_clashing_variable():
     ds_fit = xr.Dataset({"success": ("qubit", [True])}, coords={"qubit": ["qA3"]})
     with pytest.raises(ValueError, match="success"):
         merge_leakage(ds_fit, xr.Dataset({"success": ("qubit", [False])}, coords={"qubit": ["qA3"]}))
+
+
+def test_lru_is_the_identity_clifford_with_its_own_sequence_code():
+    from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
+        LRU_SEQUENCE_CODE,
+        get_interleaved_gate_index,
+        get_interleaved_sequence_code,
+    )
+
+    assert get_interleaved_gate_index("lru") == 0
+    assert get_interleaved_sequence_code("lru") == LRU_SEQUENCE_CODE == 24
+    assert get_interleaved_sequence_code("x180") == get_interleaved_gate_index("x180") == 1
+
+
+def test_validate_lru_qubits_names_qubits_without_a_stored_lru():
+    from calibration_utils.single_qubit_randomized_benchmarking_interleaved import validate_lru_qubits
+
+    with_lru = SimpleNamespace(name="q1", lru=SimpleNamespace(operations={"lru": object()}))
+    no_lru = SimpleNamespace(name="q2", lru=None)
+    no_operation = SimpleNamespace(name="q3", lru=SimpleNamespace(operations={}))
+    validate_lru_qubits([with_lru])
+    with pytest.raises(ValueError, match="q2, q3"):
+        validate_lru_qubits([with_lru, no_lru, no_operation])
+
+
+def test_lru_idle_control_is_the_identity_with_its_own_code():
+    from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
+        LRU_IDLE_SEQUENCE_CODE,
+        get_interleaved_gate_index,
+        get_interleaved_sequence_code,
+    )
+
+    assert get_interleaved_gate_index("lru_idle") == 0
+    # The unsafe play switch is a jump table: the slot code must follow the 24 Cliffords directly
+    assert get_interleaved_sequence_code("lru_idle") == LRU_IDLE_SEQUENCE_CODE == 24
+
+
+@pytest.mark.parametrize("gate", ["flux_lru", "flux_lru_idle"])
+def test_flux_lru_gates_are_the_identity_in_the_lru_slot(gate):
+    from calibration_utils.single_qubit_randomized_benchmarking_interleaved import (
+        LRU_SEQUENCE_CODE,
+        get_interleaved_gate_index,
+        get_interleaved_sequence_code,
+    )
+
+    assert get_interleaved_gate_index(gate) == 0
+    # A run interleaves one LRU gate, so it reuses the contiguous slot code after the 24 Cliffords
+    assert get_interleaved_sequence_code(gate) == LRU_SEQUENCE_CODE == 24
+
+
+def test_validate_flux_lru_qubits_names_qubits_without_a_stored_flux_lru():
+    from calibration_utils.single_qubit_randomized_benchmarking_interleaved import validate_flux_lru_qubits
+
+    validate_flux_lru_qubits([SimpleNamespace(name="q1", flux_lru=object())])
+    with pytest.raises(ValueError, match="q2, q3"):
+        validate_flux_lru_qubits([SimpleNamespace(name="q2", flux_lru=None), SimpleNamespace(name="q3")])
