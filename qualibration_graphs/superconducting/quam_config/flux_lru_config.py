@@ -40,6 +40,7 @@ __all__ = [
     "add_flux_lru_elements",
     "flux_lru_element",
     "flux_tone_headroom_v",
+    "generate_flux_lru_config",
     "upsample_linear",
 ]
 
@@ -189,4 +190,15 @@ def add_flux_lru_elements(
             "intermediate_frequency": float(frequency),
             "operations": {FLUX_LRU_OPERATION: f"{element}.pulse"},
         }
+    return config
+
+
+def generate_flux_lru_config(machine, qubits) -> Dict:
+    """The machine's QUA config with the flux-LRU elements of ``qubits`` (qubits or names) added.
+
+    Use this rather than ``Quam.generate_config(flux_lru_qubits=...)`` in nodes: QUAM loads a state as the root
+    class the state names, so a state saved from the stock ``FluxTunableQuam`` loads without that argument.
+    """
+    config = machine.generate_config()
+    add_flux_lru_elements(config, [machine.qubits[q] if isinstance(q, str) else q for q in qubits])
     return config

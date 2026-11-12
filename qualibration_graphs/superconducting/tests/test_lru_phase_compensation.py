@@ -99,3 +99,33 @@ def test_zero_phase_shift_plays_no_frame_rotation(tmp_path, monkeypatch):
     with program() as prog:
         qubit.macros[LRU_OPERATION].apply()
     assert "frame_rotation" not in generate_qua_script(prog)
+
+
+def test_flux_lru_macro_round_trips_and_plays_tone_then_virtual_z(tmp_path, monkeypatch):
+    from qm import generate_qua_script
+    from qm.qua import program
+
+    from quam_config.lru_components import FLUX_LRU_MACRO, FluxLru, FluxLruMacro
+
+    machine = build_machine(Quam, tmp_path, monkeypatch)
+    qubit = machine.qubits["q1"]
+    qubit.flux_lru = FluxLru(transition_frequency=1.49e9, amplitude_v=0.12, duration_ns=1000)
+    qubit.macros[FLUX_LRU_MACRO] = FluxLruMacro(phase_shift=0.25)
+    machine.save()
+
+    loaded = Quam.load()
+    macro = loaded.qubits["q1"].macros[FLUX_LRU_MACRO]
+    assert isinstance(macro, FluxLruMacro)
+    assert macro.phase_shift == 0.25
+    assert macro.inferred_duration == pytest.approx(1e-6)
+
+    with program() as prog:
+        macro.apply()
+        macro.apply(amplitude_scale=0.0, phase_shift=0.0)  # the control: no tone, no virtual Z
+    script = generate_qua_script(prog)
+    tone, rotation = script.index("play('flux_lru', 'q1.flux_lru')"), script.index("frame_rotation_2pi(0.25, 'q1.xy')")
+    assert tone < rotation
+    assert script.count("frame_rotation") == 1
+    assert "play('flux_lru', 'q1.flux_lru', amplitude_scale=0.0)" in script
+    # The tone is aligned with the drive and the flux line it shares the port with
+    assert "align('q1.xy', 'q1.z', 'q1.flux_lru')" in script

@@ -212,3 +212,22 @@ def test_qubit_from_an_older_state_is_upgraded_before_storing(tmp_path, monkeypa
     assert type(reloaded.qubits["q1"]) is LruFluxTunableTransmon
     assert reloaded.qubits["q1"].flux_lru.duration_ns == 500
     assert type(reloaded.qubits["q2"]).__name__ == "FluxTunableTransmon"
+
+
+def test_generate_flux_lru_config_works_with_a_stock_root_class(tmp_path, monkeypatch):
+    from quam_config.flux_lru_config import generate_flux_lru_config
+
+    old = build_machine(PlainFluxQuam, tmp_path / "state", monkeypatch)
+    old.save(tmp_path / "old")
+    machine = Quam.load(tmp_path / "old")
+    assert type(machine).__name__ == "PlainFluxQuam"  # QUAM keeps the root class the state names
+    qubit = machine.qubits["q1"]
+    upgrade_to_lru_class(qubit)
+    _calibrate(qubit)
+
+    config = generate_flux_lru_config(machine, ["q1"])
+    assert config["elements"][qubit.flux_lru.element_name]["intermediate_frequency"] == pytest.approx(745e6)
+    z_port = qubit.z.opx_output
+    assert config["controllers"]["con1"]["fems"][z_port.fem_id]["analog_outputs"][z_port.port_id]["sampling_rate"] == (
+        FLUX_LRU_SAMPLING_RATE
+    )

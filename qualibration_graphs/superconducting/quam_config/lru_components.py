@@ -28,7 +28,9 @@ Each qubit has one slot per technique, so both can be calibrated on the same qub
   (``LruMacro``, node 26c) plays the pump and then cancels that phase with a virtual Z on the qubit drive.
 * ``qubit.flux_lru`` (node 26b): a ``FluxLru`` record of the f0-e1 flux tone. It is not a channel: the
   tone needs the flux port at 2 GS/s, so only a program that asks for it gets the element, through
-  ``Quam.generate_config(flux_lru_qubits=...)`` (``quam_config.flux_lru_config``).
+  ``Quam.generate_config(flux_lru_qubits=...)`` (``quam_config.flux_lru_config``). The tone also moves
+  the qubit frequency while it plays, so ``qubit.macros["flux_lru"]`` (``FluxLruMacro``, node 26c with
+  ``lru_type="flux"``) plays it and then cancels that phase with a virtual Z, as ``LruMacro`` does.
 
 New states are built with the LRU-capable classes (``Quam.qubit_type``). A state saved earlier names
 ``FluxTunableTransmon`` or ``FixedFrequencyTransmon``, and QUAM keeps the class a state names, so
@@ -53,8 +55,10 @@ from quam_builder.architecture.superconducting.components.xy_drive import XYDriv
 from quam_builder.architecture.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 
 __all__ = [
+    "FLUX_LRU_MACRO",
     "FLUX_LRU_OPERATION",
     "FluxLru",
+    "FluxLruMacro",
     "LEGACY_LRU_TRANSITION",
     "LRU_OPERATION",
     "LRU_TRANSITIONS",
@@ -69,8 +73,10 @@ __all__ = [
     "f0e1_frequency",
     "f0g1_frequency",
     "lru_reference_frequencies",
+    "play_flux_lru",
     "play_lru",
     "upgrade_to_lru_class",
+    "validate_flux_lru_qubits",
     "validate_lru_qubits",
 ]
 
@@ -84,6 +90,9 @@ LRU_OPERATION = "lru"
 
 #: Name of the flux-LRU tone's operation, on the element ``Quam.generate_config(flux_lru_qubits=...)`` adds.
 FLUX_LRU_OPERATION = "flux_lru"
+
+#: Key of the flux-LRU gate (``FluxLruMacro``) in ``qubit.macros``; the microwave LRU gate uses ``LRU_OPERATION``.
+FLUX_LRU_MACRO = "flux_lru"
 
 #: Transition an f-LRU drives: |f0> -> |g1> (charge drive, node 26a) or |f0> -> |e1> (flux drive, node 26b).
 LruTransition = Literal["f0g1", "f0e1"]
@@ -178,6 +187,39 @@ def play_lru(qubit, operation: str = LRU_OPERATION, phase_shift=None, amplitude_
     align(qubit.xy.name, qubit.lru.name)
     qubit.lru.play(operation, amplitude_scale=amplitude_scale)
     align(qubit.xy.name, qubit.lru.name)
+    _virtual_z(qubit, phase_shift)
+
+
+def play_flux_lru(qubit, phase_shift=None, amplitude_scale=None, padding_ns: int = 0) -> None:
+    """Play the flux-LRU tone of ``qubit``, then rotate the qubit drive frame by ``phase_shift``.
+
+    The program's config must come from ``flux_lru_config.generate_flux_lru_config``. The tone shares
+    the flux port with ``qubit.z``, so it is aligned with the qubit drive and the flux line before and after.
+
+    Args:
+        qubit: A qubit with a calibrated ``flux_lru``.
+        phase_shift: Virtual Z on ``qubit.xy`` after the tone, in units of 2 pi; a float or a QUA
+            expression. None or 0 plays no frame rotation.
+        amplitude_scale: Optional factor on the tone amplitude; 0 plays the slot with no tone (a control).
+        padding_ns: Idle time on the flux-LRU element before and after the tone, in ns (multiple of 4, 0 or
+            >= 16), so a tone that reaches the qubit early or late does not overlap the drive pulses around it.
+    """
+    from qm.qua import align, wait
+
+    element = qubit.flux_lru.element_name
+    elements = (qubit.xy.name, qubit.z.name, element)
+    align(*elements)
+    if padding_ns:
+        wait(int(padding_ns) // 4, element)
+    qubit.flux_lru.play(amplitude_scale=amplitude_scale)
+    if padding_ns:
+        wait(int(padding_ns) // 4, element)
+    align(*elements)
+    _virtual_z(qubit, phase_shift)
+
+
+def _virtual_z(qubit, phase_shift) -> None:
+    """Rotate the frame of ``qubit.xy`` by ``phase_shift`` turns; None or 0 plays nothing."""
     if phase_shift is not None and not (isinstance(phase_shift, (int, float)) and abs(phase_shift) < 1e-6):
         qubit.xy.frame_rotation_2pi(phase_shift)
 
@@ -205,6 +247,36 @@ class LruMacro(QubitMacro):
     def inferred_duration(self) -> float:
         """Pump duration in seconds."""
         return self.qubit.lru.operations[self.operation].length * 1e-9
+
+
+@quam_dataclass
+class FluxLruMacro(QubitMacro):
+    """The flux-activated f-LRU as a gate: the flux tone of ``qubit.flux_lru``, then a virtual Z on ``qubit.xy``.
+
+    Stored as ``qubit.macros["flux_lru"]``. The tone modulates the qubit frequency, and since that frequency
+    is quadratic in flux near the sweet spot, the mean frequency drops while the tone plays; ``phase_shift``
+    cancels the phase this leaves. Node 26c (``lru_type="flux"``) calibrates it, and node 11b plays this macro
+    when it interleaves ``flux_lru``. Like the tone, it needs a config from
+    ``Quam.generate_config(flux_lru_qubits=[...])``.
+    """
+
+    phase_shift: float = 0.0
+    """Virtual Z applied to the qubit drive after the tone, in units of 2 pi."""
+    padding_ns: int = 0
+    """Idle time before and after the tone, in ns (multiple of 4, 0 or >= 16). The tone shifts the qubit by tens
+    of MHz, so a few ns of timing mismatch between the flux and drive ports (the flux port runs at 2 GS/s, its
+    delay is calibrated at 1 GS/s) would detune the neighbouring drive pulses; the padding keeps them apart."""
+
+    def apply(self, phase_shift=None, amplitude_scale=None, **kwargs) -> None:
+        """Play the tone, then the virtual Z: ``phase_shift`` if given (float or QUA expression), else the stored one."""
+        play_flux_lru(
+            self.qubit, self.phase_shift if phase_shift is None else phase_shift, amplitude_scale, self.padding_ns
+        )
+
+    @property
+    def inferred_duration(self) -> float:
+        """Duration of the gate in seconds: the tone and its padding."""
+        return (self.qubit.flux_lru.duration_ns + 2 * self.padding_ns) * 1e-9
 
 
 @quam_dataclass
@@ -257,6 +329,20 @@ def validate_lru_qubits(qubits) -> None:
         raise ValueError(
             f"No microwave LRU stored for {', '.join(missing)}: run 26a_lru_calibration on "
             f"{'it' if len(missing) == 1 else 'them'} and keep the result before interleaving the LRU."
+        )
+
+
+def validate_flux_lru_qubits(qubits) -> None:
+    """Raise if a qubit has no calibrated flux LRU (``qubit.flux_lru``, node 26b) to play.
+
+    Raises:
+        ValueError: for a qubit with no ``flux_lru``.
+    """
+    missing = [q.name for q in qubits if getattr(q, "flux_lru", None) is None]
+    if missing:
+        raise ValueError(
+            f"No flux LRU stored for {', '.join(missing)}: run 26b_flux_lru_calibration on "
+            f"{'it' if len(missing) == 1 else 'them'} and keep the result first."
         )
 
 

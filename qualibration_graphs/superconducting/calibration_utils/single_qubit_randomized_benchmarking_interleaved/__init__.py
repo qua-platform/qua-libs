@@ -1,5 +1,10 @@
 from .parameters import (
+    FLUX_LRU_GATE,
+    FLUX_LRU_GATES,
+    FLUX_LRU_IDLE_GATE,
+    LRU_CONTROL_GATES,
     LRU_GATE,
+    LRU_GATES,
     LRU_IDLE_GATE,
     LRU_IDLE_SEQUENCE_CODE,
     LRU_SEQUENCE_CODE,
@@ -7,11 +12,17 @@ from .parameters import (
     get_interleaved_gate_index,
     get_interleaved_gate_name,
     get_interleaved_sequence_code,
+    validate_flux_lru_qubits,
     validate_lru_qubits,
 )
 
 __all__ = [
+    "FLUX_LRU_GATE",
+    "FLUX_LRU_GATES",
+    "FLUX_LRU_IDLE_GATE",
+    "LRU_CONTROL_GATES",
     "LRU_GATE",
+    "LRU_GATES",
     "LRU_IDLE_GATE",
     "LRU_IDLE_SEQUENCE_CODE",
     "LRU_SEQUENCE_CODE",
@@ -19,5 +30,6 @@ __all__ = [
     "get_interleaved_gate_name",
     "get_interleaved_gate_index",
     "get_interleaved_sequence_code",
+    "validate_flux_lru_qubits",
     "validate_lru_qubits",
 ]

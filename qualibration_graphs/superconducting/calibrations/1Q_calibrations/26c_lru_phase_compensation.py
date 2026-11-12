@@ -20,17 +20,28 @@ from calibration_utils.lru_phase_compensation import (
     plot_raw_data_with_fit,
 )
 from quam_config import Quam
-from quam_config.lru_components import LRU_OPERATION, LruMacro, validate_lru_qubits
+from quam_config.flux_lru_config import generate_flux_lru_config
+from quam_config.lru_components import (
+    FLUX_LRU_MACRO,
+    LRU_OPERATION,
+    FluxLruMacro,
+    LruMacro,
+    validate_flux_lru_qubits,
+    validate_lru_qubits,
+)
 
 # %% {Node initialisation}
 description = """
         f-LRU PHASE COMPENSATION
-The microwave f-LRU pump (node 26a) shifts the qubit frequency while it plays (AC Stark shift), so a qubit in a
-superposition picks up a phase during each LRU. This node measures that phase and stores the virtual Z that cancels
-it, as node 34a does for the local phases of a CZ.
+Both f-LRUs shift the qubit frequency while they play, so a qubit in a superposition picks up a phase during each
+LRU: the microwave pump (node 26a) through its AC Stark shift, the flux tone (node 26b) because the qubit frequency is
+quadratic in flux, so its mean drops while the tone plays. This node measures that phase and stores the virtual Z
+that cancels it, as node 34a does for the local phases of a CZ. lru_type selects the LRU: "microwave" uses
+qubit.macros["lru"], "flux" uses qubit.macros["flux_lru"] and runs with the flux port at 2 GS/s, as every program
+playing the flux tone does.
 
 The sequence is a Ramsey around the LRU: x90 - LRU - virtual Z(theta) - x90, read as g/e. The LRU is played through
-qubit.macros["lru"], so it already carries the stored correction, and theta is swept over one turn. P(e) peaks where
+its macro, so it already carries the stored correction, and theta is swept over one turn. P(e) peaks where
 theta cancels what remains; the fitted peak gives the residual phase, and the new correction is the stored one minus
 that residual. With num_lru_repetitions > 1, several LRUs are played between the x90 pulses to amplify a small
 residual.
@@ -42,11 +53,13 @@ A qubit with no LRU macro gets one for this run (no correction). It is kept in t
 with the measured correction.
 
 Prerequisites:
-    - A microwave LRU stored on each qubit by 26a_lru_calibration (qubit.lru with the "lru" pulse).
+    - The LRU stored on each qubit: by 26a_lru_calibration (qubit.lru with the "lru" pulse) for "microwave", by
+      26b_flux_lru_calibration (qubit.flux_lru) for "flux". Rerun this node after either one changes the LRU.
     - Calibrated x90 pulse, qubit frequency (06a_ramsey) and g/e readout.
 
 State update:
-    - qubit.macros["lru"].phase_shift: virtual Z applied to qubit.xy after the LRU pump, in units of 2π.
+    - qubit.macros["lru"].phase_shift or qubit.macros["flux_lru"].phase_shift: virtual Z applied to qubit.xy after
+      the LRU, in units of 2π.
 """
 
 node = QualibrationNode[Parameters, Quam](
@@ -66,13 +79,30 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     pass
 
 
+def _macro_key(node: QualibrationNode[Parameters, Quam]) -> str:
+    """Key in qubit.macros of the LRU gate this run calibrates."""
+    return FLUX_LRU_MACRO if node.parameters.lru_type == "flux" else LRU_OPERATION
+
+
+def _config(node: QualibrationNode[Parameters, Quam]) -> dict:
+    """The QUA config; with the flux LRU, its elements are added and the qubits' flux ports run at 2 GS/s."""
+    if node.parameters.lru_type == "flux":
+        return generate_flux_lru_config(node.machine, node.namespace["qubits"])
+    return node.machine.generate_config()
+
+
 # %% {Create_QUA_program}
 @node.run_action(skip_if=node.parameters.load_data_id is not None)
 def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Create the sweep axes and generate the QUA program from the pulse sequence and the node parameters."""
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
-    validate_lru_qubits(qubits)
+    flux = node.parameters.lru_type == "flux"
+    if flux:
+        validate_flux_lru_qubits(qubits)
+    else:
+        validate_lru_qubits(qubits)
+    key = _macro_key(node)
     operation = node.parameters.operation
     n_avg = node.parameters.num_shots
     repetitions = node.parameters.num_lru_repetitions
@@ -82,16 +112,18 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     # Qubits without an LRU macro get one for this run; update_state decides whether it stays
     node.namespace["added_macros"] = []
     for qubit in qubits:
-        if LRU_OPERATION not in qubit.macros:
-            qubit.macros[LRU_OPERATION] = LruMacro(operation=operation)
+        if key not in qubit.macros:
+            qubit.macros[key] = FluxLruMacro() if flux else LruMacro(operation=operation)
             node.namespace["added_macros"].append(qubit.name)
-            node.log(f"{qubit.name}: no LRU macro stored; measuring with no phase correction.")
-        elif qubit.macros[LRU_OPERATION].operation != operation:
+            node.log(f"{qubit.name}: no macros['{key}'] stored; measuring with no phase correction.")
+        elif not flux and qubit.macros[key].operation != operation:
             raise ValueError(
-                f"{qubit.name}: macros['{LRU_OPERATION}'] plays '{qubit.macros[LRU_OPERATION].operation}', "
+                f"{qubit.name}: macros['{key}'] plays '{qubit.macros[key].operation}', "
                 f"not the requested '{operation}'."
             )
-    node.namespace["previous_phase_shifts"] = {q.name: float(q.macros[LRU_OPERATION].phase_shift) for q in qubits}
+    node.namespace["previous_phase_shifts"] = {q.name: float(q.macros[key].phase_shift) for q in qubits}
+    # Length of one LRU in clock cycles, for the skip_lru_pulse control
+    lru_cycles = {q.name: round(q.macros[key].inferred_duration * 1e9) // 4 for q in qubits}
 
     node.namespace["sweep_axes"] = {
         "qubit": xr.DataArray(qubits.get_names()),
@@ -121,10 +153,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         for _ in range(repetitions):
                             if skip_lru:
                                 # Control: idle for the pump duration, no virtual Z
-                                qubit.xy.wait(qubit.lru.operations[operation].length // 4)
+                                qubit.xy.wait(lru_cycles[qubit.name])
                             else:
-                                # Pump, then the stored virtual Z
-                                qubit.macros[LRU_OPERATION].apply()
+                                # LRU, then the stored virtual Z
+                                qubit.macros[key].apply()
                         qubit.xy.frame_rotation_2pi(frame)
                         qubit.xy.play("x90")
                     align()
@@ -144,7 +176,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP and simulate the QUA program"""
     qmm = node.machine.connect()
-    config = node.machine.generate_config()
+    config = _config(node)
     samples, fig, wf_report = simulate_and_plot(qmm, config, node.namespace["qua_program"], node.parameters)
     node.results["simulation"] = {"figure": fig, "wf_report": wf_report, "samples": samples}
 
@@ -154,7 +186,7 @@ def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
 def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the QOP, execute the QUA program and fetch the raw data into the xarray dataset "ds_raw"."""
     qmm = node.machine.connect()
-    config = node.machine.generate_config()
+    config = _config(node)
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         node.namespace["job"] = job = qm.execute(node.namespace["qua_program"])
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
@@ -173,8 +205,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
     node.parameters.load_data_id = load_data_id
     node.namespace["qubits"] = qubits = get_qubits(node)
     # The correction the loaded run was measured with
+    key = _macro_key(node)
     node.namespace["previous_phase_shifts"] = {
-        q.name: float(q.macros[LRU_OPERATION].phase_shift) if LRU_OPERATION in q.macros else 0.0 for q in qubits
+        q.name: float(q.macros[key].phase_shift) if key in q.macros else 0.0 for q in qubits
     }
 
 
@@ -207,13 +240,14 @@ def keep_or_remove_lru_macros(node: QualibrationNode[Parameters, Quam]):
     A new macro is not a simple value that record_state_updates could offer as a proposal, and node.save()
     writes the machine as it is in memory, so this choice is made here (as node 26a does for new LRU elements).
     """
+    key = _macro_key(node)
     for name in node.namespace.get("added_macros", []):
         qubit = node.machine.qubits[name]
         if node.outcomes.get(name) == "successful" and not node.parameters.skip_lru_pulse:
-            qubit.macros[LRU_OPERATION].phase_shift = node.results["fit_results"][name]["phase_shift"]
-            node.log(f"{name}: keeping the new LRU macro in the QUAM state.")
+            qubit.macros[key].phase_shift = node.results["fit_results"][name]["phase_shift"]
+            node.log(f"{name}: keeping the new macros['{key}'] in the QUAM state.")
         else:
-            del qubit.macros[LRU_OPERATION]
+            del qubit.macros[key]
 
 
 # %% {Update_state}
@@ -221,11 +255,12 @@ def keep_or_remove_lru_macros(node: QualibrationNode[Parameters, Quam]):
 def update_state(node: QualibrationNode[Parameters, Quam]):
     """Propose the new correction for every successful qubit whose LRU macro existed before this run."""
     added = node.namespace.get("added_macros", [])
+    key = _macro_key(node)
     with node.record_state_updates():
         for q in node.namespace["qubits"]:
             if node.outcomes[q.name] == "failed" or q.name in added:
                 continue
-            q.macros[LRU_OPERATION].phase_shift = node.results["fit_results"][q.name]["phase_shift"]
+            q.macros[key].phase_shift = node.results["fit_results"][q.name]["phase_shift"]
 
 
 # %% {Save_results}
