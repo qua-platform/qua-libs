@@ -8,6 +8,7 @@ from dataclasses import asdict
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from calibration_utils.common_utils import upconverter_frequency
 from calibration_utils.common_utils.flux_distortions import plan_lo_shift_for_frequency_window
 from calibration_utils.three_tone_coupler_spectroscopy_flux_pulse.parameters import (
     resolve_coupler_rf_centers_by_pair,
@@ -93,10 +94,12 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         log_callable=node.log,
     )
     node.namespace["coupler_rf_centers"] = coupler_rf_centers
-    coupler_ifs = {
-        qp.name: int(coupler_rf_centers[qp.name] - qp.qubit_control.xy.opx_output.upconverter_frequency)
-        for qp in qubit_pairs
-    }
+    # Read through the helper: an f-LRU pump on upconverter 2 leaves the port's single upconverter_frequency unset
+    drive_los = {qp.name: upconverter_frequency(qp.qubit_control.xy) for qp in qubit_pairs}
+    missing = [name for name, lo in drive_los.items() if lo is None]
+    if missing:
+        raise ValueError(f"Cannot resolve the XY upconverter frequency of the control qubit of {missing}.")
+    coupler_ifs = {qp.name: int(coupler_rf_centers[qp.name] - drive_los[qp.name]) for qp in qubit_pairs}
 
     control_qubits = [qp.qubit_control for qp in qubit_pairs]
     lo_plan = plan_lo_shift_for_frequency_window(
