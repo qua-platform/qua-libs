@@ -38,6 +38,9 @@ from calibration_utils.two_qubit_rb import fidelity
 # on ordinary shot noise.
 _MONOTONIC_DECAY_MIN_TOLERANCE = 0.03
 _SHALLOW_SURVIVAL_THRESHOLD = 0.35
+REFERENCE_BASIS_SKIPPED_ISSUE = (
+    "37a reference is in another single-qubit basis; interleaved fidelity not computed from it."
+)
 
 
 def _survival_over_sequences(ds_qp: xr.Dataset) -> tuple[xr.DataArray, xr.DataArray]:
@@ -176,16 +179,17 @@ def _fitted_curve_dataarray(circuit_depths, fit_params) -> xr.DataArray:
 
 
 def _standard_rb_reference(node: QualibrationNode, qp_name: str) -> dict:
-    """The 37a Standard RB reference 37b compares against: ``alpha``, ``fidelity``, ``load_id`` and ``source``.
+    """The 37a Standard RB reference 37b compares against: ``alpha``, ``fidelity``, ``load_id``, ``basis``.
 
     A leakage run (any readout or reset) writes the same ``StandardRB*`` as a normal one: the RB decay
-    does not depend on the readout.
+    does not depend on the readout. ``basis`` is ``None`` for a 37a run that predates the basis stamp.
     """
     fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
     return {
         "alpha": fidelity_dict.get("StandardRB_alpha"),
         "fidelity": fidelity_dict.get("StandardRB"),
         "load_id": fidelity_dict.get("StandardRB_load_id"),
+        "basis": fidelity_dict.get("StandardRB_single_qubit_basis"),
         "source": "StandardRB_alpha (run 37a_two_qubit_standard_rb first)",
     }
 
@@ -228,6 +232,7 @@ def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict 
     optional = lambda key: np.asarray(fr[key].values, dtype=float) if key in fr else None  # noqa: E731
 
     return {
+        "single_qubit_basis": ds_fit.attrs.get("rb_single_qubit_basis"),
         "circuit_depth": np.asarray(fr.circuit_depth.values, dtype=float),
         "survival": np.asarray(fr.survival_probability.values, dtype=float),
         "survival_stderr": optional("survival_stderr"),
@@ -359,10 +364,39 @@ def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr
     return da.assign(**assign_kwargs)
 
 
+def _standard_rb_basis_matches(node: QualibrationNode, qp_name: str, overlay: dict | None) -> bool:
+    """Whether the 37a reference was acquired in this run's single-qubit basis (XZ or XY).
+
+    The basis is read from the loaded 37a ``ds_fit`` when available, else from the state key. A missing
+    basis (a 37a run before the basis stamp) is logged as legacy and accepted. A different basis is
+    logged and rejected, so the reference is skipped.
+    """
+    mode = node.parameters.single_qubit_basis
+    reference_basis = (overlay or {}).get("single_qubit_basis") or _standard_rb_reference(node, qp_name)["basis"]
+    if reference_basis is None:
+        node.log(
+            f"Qubit pair {qp_name}: 37a reference has no single_qubit_basis (legacy or unknown); "
+            f"using it for this {mode} run without verifying the basis."
+        )
+        return True
+    if reference_basis != mode:
+        node.log(
+            f"Qubit pair {qp_name}: 37a reference is {reference_basis} but this run is {mode}; "
+            "skipping the reference, so no interleaved fidelity is computed. Rerun 37a in the same basis."
+        )
+        return False
+    return True
+
+
 def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dataset:
     """Fit Interleaved RB survival probability vs circuit depth for one qubit pair."""
     overlay = _try_load_standard_rb_overlay(node, qp_name)
-    standard_rb_alpha, standard_rb_alpha_stderr, epc_reference = _resolve_irb_reference(node, qp_name, overlay)
+    reference_usable = _standard_rb_basis_matches(node, qp_name, overlay)
+    if reference_usable:
+        standard_rb_alpha, standard_rb_alpha_stderr, epc_reference = _resolve_irb_reference(node, qp_name, overlay)
+    else:
+        overlay = None
+        standard_rb_alpha, standard_rb_alpha_stderr, epc_reference = np.nan, None, None
 
     stats = _fit_survival_for_pair(da)
     circuit_depths, survival_vals, stderr_vals = stats["circuit_depths"], stats["survival_vals"], stats["stderr_vals"]
@@ -376,26 +410,32 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
         success, fit_issues = False, ("Exponential fit did not converge.",)
     else:
         fit_amplitude, alpha, fit_offset, alpha_stderr, amplitude_stderr, offset_stderr = fit_params
-        irb = fidelity.compute_irb_fidelity(
-            alpha,
-            alpha_stderr,
-            standard_rb_alpha,
-            n_qubits=2,
-            standard_rb_alpha_stderr=standard_rb_alpha_stderr,
-            epc_reference=epc_reference,
-        )
-        success, fit_issues = _validate_rb_fit(
-            circuit_depths,
-            survival_vals,
-            stderr_vals,
-            fit_amplitude,
-            alpha,
-            fit_offset,
-            interleaved=True,
-            fit_fidelity=irb.fidelity,
-            fit_fidelity_stderr=irb.fidelity_stderr,
-            standard_rb_alpha=standard_rb_alpha,
-        )
+        if reference_usable:
+            irb = fidelity.compute_irb_fidelity(
+                alpha,
+                alpha_stderr,
+                standard_rb_alpha,
+                n_qubits=2,
+                standard_rb_alpha_stderr=standard_rb_alpha_stderr,
+                epc_reference=epc_reference,
+            )
+            success, fit_issues = _validate_rb_fit(
+                circuit_depths,
+                survival_vals,
+                stderr_vals,
+                fit_amplitude,
+                alpha,
+                fit_offset,
+                interleaved=True,
+                fit_fidelity=irb.fidelity,
+                fit_fidelity_stderr=irb.fidelity_stderr,
+                standard_rb_alpha=standard_rb_alpha,
+            )
+        else:
+            irb = fidelity.IRBFidelity(
+                fidelity=np.nan, fidelity_stderr=None, epc=np.nan, epc_stderr=None, epg=np.nan, epg_stderr=None
+            )
+            success, fit_issues = False, (REFERENCE_BASIS_SKIPPED_ISSUE,)
 
     fitted_curve_da = _fitted_curve_dataarray(circuit_depths, fit_params)
 

@@ -17,6 +17,7 @@ from qualibrate import QualibrationNode
 from quam_config import Quam
 
 from .packing import (
+    SingleQubitBasis,
     build_packed_depth_chunks,
     flatten_padded_chunks,
     pack_circuits,
@@ -59,15 +60,11 @@ def require_cz_align_elements(cz_macro, *, cz_operation: str, pair_label: str) -
     """Fail if ``apply`` would swallow ``align_elements=False`` via ``**kwargs``."""
     apply = getattr(cz_macro, "apply", None)
     if apply is None:
-        raise CzAlignElementsUnavailable(
-            f"CZ operation {cz_operation!r} on {pair_label} has no apply() method."
-        )
+        raise CzAlignElementsUnavailable(f"CZ operation {cz_operation!r} on {pair_label} has no apply() method.")
     try:
         params = inspect.signature(apply).parameters
     except (TypeError, ValueError) as exc:
-        raise CzAlignElementsUnavailable(
-            f"Cannot inspect {cz_operation!r}.apply on {pair_label}: {exc}."
-        ) from exc
+        raise CzAlignElementsUnavailable(f"Cannot inspect {cz_operation!r}.apply on {pair_label}: {exc}.") from exc
     if _ALIGN_ELEMENTS_KW not in params:
         raise CzAlignElementsUnavailable(
             f"CZ operation {cz_operation!r} on {pair_label} does not accept "
@@ -85,8 +82,7 @@ def preflight_cz_align_elements(qubit_pairs, cz_operation: str) -> None:
         macros = getattr(qp, "macros", None)
         if macros is None or cz_operation not in macros:
             raise CzAlignElementsUnavailable(
-                f"Qubit pair {pair_label} has no macro {cz_operation!r}; "
-                "cannot verify align_elements support."
+                f"Qubit pair {pair_label} has no macro {cz_operation!r}; " "cannot verify align_elements support."
             )
         require_cz_align_elements(macros[cz_operation], cz_operation=cz_operation, pair_label=pair_label)
 
@@ -260,153 +256,45 @@ def build_single_depth_chunks(
     )
 
 
+# 1Q slots 0-4 (slot 5 is idle). XY plays analog pulses; XZ plays x90 / x180 and virtual Z frames.
+_XY_PULSES = {0: "x90", 1: "x180", 2: "y90", 3: "y180", 4: "-y90"}
+_XZ_FRAME_ANGLES = {2: np.pi / 2, 3: np.pi, 4: 3 * np.pi / 2}
+IDLE_SLOT = 5
+
+
+def _play_slot(xy, slot: int, single_qubit_basis: SingleQubitBasis) -> None:
+    """Play one single-qubit slot on an XY element; the idle slot plays nothing."""
+    if slot == IDLE_SLOT:
+        return
+    if single_qubit_basis == "XZ" and slot in _XZ_FRAME_ANGLES:
+        xy.frame_rotation(_XZ_FRAME_ANGLES[slot])
+        return
+    xy.play(_XY_PULSES[slot])
+
+
 def play_gate(
     gate: QuaVariable,
     qubit_pair: Quam.qubit_pair_type,
+    single_qubit_basis: SingleQubitBasis,
     cz_operation: str = "cz_unipolar",
 ):
     """Play one coherent RB layer (opcodes 0–37) with no readout or explicit align.
 
-    1Q layers are analog XY only: ``x90``/``x180``/``y90``/``y180``/``-y90``.
-    CZ uses ``apply(align_elements=False)`` after :func:`preflight_cz_align_elements`,
-    then ``wait(4)`` on both XY so the compiler occupies those elements for
-    the flux case (frame-only compensation has no analog envelope).
-    Circuit-boundary align/readout/reset lives in :func:`readout_save_and_reset`.
+    Single-qubit slots 0–4 are ``x90`` / ``x180`` plus either analog Y pulses (``XY``) or
+    ``frame_rotation`` virtual Z (``XZ``). CZ uses ``apply(align_elements=False)`` after
+    :func:`preflight_cz_align_elements`, then ``wait(4)`` on both XY so the compiler occupies those
+    elements for the flux case; the CZ case never plays an XY pulse. Circuit-boundary
+    align/readout/reset lives in :func:`readout_save_and_reset`.
     """
     preflight_cz_align_elements(qubit_pair, cz_operation)
 
     with switch_(gate, unsafe=True):
-
-        with case_(0):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.play("x90")
-        with case_(1):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.play("x180")
-        with case_(2):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.play("y90")
-        with case_(3):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.play("y180")
-        with case_(4):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x90")
-                qp.qubit_target.xy.play("-y90")
-        with case_(5):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x90")
-        with case_(6):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.play("x90")
-        with case_(7):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.play("x180")
-        with case_(8):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.play("y90")
-        with case_(9):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.play("y180")
-        with case_(10):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x180")
-                qp.qubit_target.xy.play("-y90")
-        with case_(11):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("x180")
-        with case_(12):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y90")
-                qp.qubit_target.xy.play("x90")
-        with case_(13):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y90")
-                qp.qubit_target.xy.play("x180")
-        with case_(14):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y90")
-                qp.qubit_target.xy.play("y90")
-        with case_(15):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y90")
-                qp.qubit_target.xy.play("y180")
-        with case_(16):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y90")
-                qp.qubit_target.xy.play("-y90")
-        with case_(17):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y90")
-        with case_(18):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y180")
-                qp.qubit_target.xy.play("x90")
-        with case_(19):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y180")
-                qp.qubit_target.xy.play("x180")
-        with case_(20):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y180")
-                qp.qubit_target.xy.play("y90")
-        with case_(21):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y180")
-                qp.qubit_target.xy.play("y180")
-        with case_(22):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y180")
-                qp.qubit_target.xy.play("-y90")
-        with case_(23):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("y180")
-        with case_(24):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("-y90")
-                qp.qubit_target.xy.play("x90")
-        with case_(25):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("-y90")
-                qp.qubit_target.xy.play("x180")
-        with case_(26):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("-y90")
-                qp.qubit_target.xy.play("y90")
-        with case_(27):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("-y90")
-                qp.qubit_target.xy.play("y180")
-        with case_(28):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("-y90")
-                qp.qubit_target.xy.play("-y90")
-        with case_(29):
-            for qp in qubit_pair.values():
-                qp.qubit_control.xy.play("-y90")
-        with case_(30):
-            for qp in qubit_pair.values():
-                qp.qubit_target.xy.play("x90")
-        with case_(31):
-            for qp in qubit_pair.values():
-                qp.qubit_target.xy.play("x180")
-        with case_(32):
-            for qp in qubit_pair.values():
-                qp.qubit_target.xy.play("y90")
-        with case_(33):
-            for qp in qubit_pair.values():
-                qp.qubit_target.xy.play("y180")
-        with case_(34):
-            for qp in qubit_pair.values():
-                qp.qubit_target.xy.play("-y90")
+        for opcode in range(35):
+            with case_(opcode):
+                control_slot, target_slot = divmod(opcode, 6)
+                for qp in qubit_pair.values():
+                    _play_slot(qp.qubit_control.xy, control_slot, single_qubit_basis)
+                    _play_slot(qp.qubit_target.xy, target_slot, single_qubit_basis)
         with case_(35):  # idle gate
             for qp in qubit_pair.values():
                 qp.qubit_control.wait(4)
@@ -465,6 +353,7 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
     circuit_start,
     circuit_stop,
     qubit_pair: Quam.qubit_pair_type,
+    single_qubit_basis: SingleQubitBasis,
     state: QuaVariable,
     state_control: QuaVariable,
     state_target: QuaVariable,
@@ -482,7 +371,7 @@ def play_sequence(  # pylint: disable=too-many-arguments,too-many-positional-arg
     """
     gate_index = declare(int)
     with for_(gate_index, circuit_start, gate_index < circuit_stop, gate_index + 1):
-        play_gate(sequence[gate_index], qubit_pair, cz_operation)
+        play_gate(sequence[gate_index], qubit_pair, single_qubit_basis, cz_operation)
     readout_save_and_reset(
         qubit_pair,
         state,
@@ -535,9 +424,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
             circuit_depths=circuit_depths,
             num_circuits_per_depth=num_circuits_per_depth,
         )
-        memory_stats = compute_rb_circuit_memory_stats(
-            self.circuits_as_ints, circuit_depths, num_circuits_per_depth
-        )
+        memory_stats = compute_rb_circuit_memory_stats(self.circuits_as_ints, circuit_depths, num_circuits_per_depth)
 
         self.declared_size = None
         self.chunks_per_depth = None
@@ -631,6 +518,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                                 circuit_start,
                                 circuit_stop,
                                 multiplexed_qubit_pairs,
+                                self.node.parameters.single_qubit_basis,
                                 state,
                                 state_control,
                                 state_target,
@@ -740,6 +628,7 @@ class QuaProgramHandler:  # pylint: disable=too-few-public-methods,too-many-inst
                             circuit_start,
                             circuit_stop,
                             multiplexed_qubit_pairs,
+                            self.node.parameters.single_qubit_basis,
                             state,
                             state_control,
                             state_target,

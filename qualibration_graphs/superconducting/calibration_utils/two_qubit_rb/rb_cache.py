@@ -1,15 +1,15 @@
 """Lightweight file-system cache for pre-computed RB circuit sequences.
 
 The cache is keyed on the parameters that determine StandardRB / interleaved
-output plus the circuit encoding version. Each entry is a small JSON file
-stored under a configurable directory.
+output, the single-qubit basis, and the circuit encoding version. Each entry is
+a small JSON file stored under a configurable directory.
 
-``RB_ENCODING_VERSION = 3`` is analog-XY gate-only lists (opcodes 0–37) plus
-``basis_gates`` in the cache key. Packed packets are built after load so a
-later change in chunk capacity does not retranspile. Unversioned, v1
-(marker-terminated), and v2 ZX files are acquisition misses and are left on
-disk; they must not be fed to the analog-XY executor. Reanalysis may still
-read statistics via :func:`try_load_statistics`.
+Versioned payloads hold gate-only opcode lists (0–37) per basis: XY is version 3
+and XZ is version 4 (:data:`~calibration_utils.two_qubit_rb.packing.RB_ENCODING_VERSIONS`).
+Packed packets are built after load so a later change in chunk capacity does not
+retranspile. Unversioned, v1 (marker-terminated), and v2 ZX files are acquisition
+misses and are left on disk; they must not be fed to the executor. Reanalysis may
+still read statistics via :func:`try_load_statistics`.
 """
 
 from __future__ import annotations
@@ -18,13 +18,13 @@ import hashlib
 import json
 import os
 import tempfile
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 from .packing import (
-    RB_ENCODING_VERSION,
+    RB_ENCODING_VERSIONS,
     CircuitPackingError,
+    SingleQubitBasis,
     validate_circuit_list,
 )
 
@@ -35,9 +35,33 @@ _STATISTICS_KEYS = (
     "depth_summaries",
 )
 
-# Default analog-XY basis; included in versioned cache keys so ZX and XY
-# encodings cannot share an acquisition file.
-DEFAULT_RB_BASIS_GATES: tuple[str, ...] = ("cz", "sx", "x", "ry", "y")
+# Gate sets per single-qubit basis. XZ: ``rz`` is a virtual frame change, not a pulse.
+RB_BASIS_GATES: dict[str, tuple[str, ...]] = {
+    "XZ": ("cz", "rz", "sx", "x"),
+    "XY": ("cz", "sx", "x", "ry", "y"),
+}
+DEFAULT_RB_BASIS_GATES: tuple[str, ...] = RB_BASIS_GATES["XY"]
+
+
+def _key_blob(
+    seed: int,
+    circuit_depths: list[int],
+    num_circuits_per_depth: int,
+    target_gate: str | None,
+) -> dict[str, Any]:
+    blob_dict: dict[str, Any] = {
+        "seed": seed,
+        "circuit_depths": sorted(circuit_depths),
+        "num_circuits_per_depth": num_circuits_per_depth,
+    }
+    if target_gate is not None:
+        blob_dict["target_gate"] = target_gate
+    return blob_dict
+
+
+def _digest(blob_dict: dict[str, Any]) -> str:
+    blob = json.dumps(blob_dict, sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()
 
 
 def cache_key(
@@ -46,33 +70,30 @@ def cache_key(
     num_circuits_per_depth: int,
     *,
     target_gate: str | None = None,
-    encoding_version: int | None = RB_ENCODING_VERSION,
-    basis_gates: Sequence[str] | None = DEFAULT_RB_BASIS_GATES,
+    single_qubit_basis: SingleQubitBasis = "XY",
 ) -> str:
-    """Return a hex SHA-256 digest that uniquely identifies an RB config.
+    """Return a hex SHA-256 digest that uniquely identifies an RB config and single-qubit basis.
 
-    When *target_gate* is supplied the hash includes it, so standard and
-    interleaved caches never collide. *encoding_version* defaults to
-    :data:`RB_ENCODING_VERSION` so v3 analog-XY acquisition does not share
-    keys with v2 ZX or marker-terminated (unversioned) files. Versioned keys
-    also include *basis_gates* (default analog XY). Pass
-    ``encoding_version=None`` to reconstruct a legacy key for statistics-only
-    lookup (no version, no basis). Pass ``basis_gates=None`` with an explicit
-    old *encoding_version* to reconstruct a pre-basis versioned key.
+    When *target_gate* is supplied the hash includes it, so standard and interleaved caches never
+    collide. The basis, its encoding version, and its gate set are always hashed, so XZ and XY
+    acquisitions never share a key.
     """
-    blob_dict: dict[str, Any] = {
-        "seed": seed,
-        "circuit_depths": sorted(circuit_depths),
-        "num_circuits_per_depth": num_circuits_per_depth,
-    }
-    if target_gate is not None:
-        blob_dict["target_gate"] = target_gate
-    if encoding_version is not None:
-        blob_dict["encoding_version"] = encoding_version
-        if basis_gates is not None:
-            blob_dict["basis_gates"] = sorted(basis_gates)
-    blob = json.dumps(blob_dict, sort_keys=True)
-    return hashlib.sha256(blob.encode()).hexdigest()
+    blob_dict = _key_blob(seed, circuit_depths, num_circuits_per_depth, target_gate)
+    blob_dict["single_qubit_basis"] = single_qubit_basis
+    blob_dict["encoding_version"] = RB_ENCODING_VERSIONS[single_qubit_basis]
+    blob_dict["basis_gates"] = sorted(RB_BASIS_GATES[single_qubit_basis])
+    return _digest(blob_dict)
+
+
+def legacy_cache_key(
+    seed: int,
+    circuit_depths: list[int],
+    num_circuits_per_depth: int,
+    *,
+    target_gate: str | None = None,
+) -> str:
+    """Return the unversioned key (pre-v2 files) used for statistics-only lookup."""
+    return _digest(_key_blob(seed, circuit_depths, num_circuits_per_depth, target_gate))
 
 
 def _read_json(cache_dir: Path, key: str) -> dict[str, Any] | None:
@@ -98,17 +119,22 @@ def _payload_encoding_version(data: dict[str, Any]) -> int | None:
     return value
 
 
-def try_load(cache_dir: Path, key: str) -> dict[str, Any] | None:
-    """Return cached v3 analog-XY gate-only data, or *None* on a cache miss.
+def try_load(
+    cache_dir: Path,
+    key: str,
+    *,
+    single_qubit_basis: SingleQubitBasis = "XY",
+) -> dict[str, Any] | None:
+    """Return cached gate-only data for *single_qubit_basis*, or *None* on a cache miss.
 
-    Missing files, JSON errors, unversioned/v1/v2 ZX encodings, and malformed
-    v3 payloads are misses. Old files are not deleted and are not reinterpreted
-    as analog-XY sequences.
+    Missing files, JSON errors, payloads of another encoding version (including unversioned,
+    v1, and v2 ZX), and malformed payloads are misses. Old files are not deleted and are not
+    reinterpreted as gate sequences.
     """
     data = _read_json(cache_dir, key)
     if data is None:
         return None
-    if _payload_encoding_version(data) != RB_ENCODING_VERSION:
+    if _payload_encoding_version(data) != RB_ENCODING_VERSIONS[single_qubit_basis]:
         return None
     circuits = data.get("circuits_as_ints")
     if not isinstance(circuits, list):
@@ -125,7 +151,7 @@ def try_load_statistics(cache_dir: Path, key: str) -> dict[str, Any] | None:
 
     Intended for ``load_data`` / IRB overlay reanalysis of legacy cache files.
     The returned dict has no ``circuits_as_ints`` key so callers cannot feed
-    marker-terminated or ZX-v2 lists into the analog-XY executor.
+    marker-terminated or ZX-v2 lists into the executor.
     """
     data = _read_json(cache_dir, key)
     if data is None:
@@ -145,24 +171,25 @@ def try_load_legacy_statistics(
     target_gate: str | None = None,
 ) -> dict[str, Any] | None:
     """Statistics-only lookup using the unversioned cache key (pre-v2 files)."""
-    legacy_key = cache_key(
-        seed,
-        circuit_depths,
-        num_circuits_per_depth,
-        target_gate=target_gate,
-        encoding_version=None,
-    )
-    return try_load_statistics(cache_dir, legacy_key)
+    key = legacy_cache_key(seed, circuit_depths, num_circuits_per_depth, target_gate=target_gate)
+    return try_load_statistics(cache_dir, key)
 
 
-def save(cache_dir: Path, key: str, data: dict[str, Any]) -> None:
+def save(
+    cache_dir: Path,
+    key: str,
+    data: dict[str, Any],
+    *,
+    single_qubit_basis: SingleQubitBasis = "XY",
+) -> None:
     """Atomically write *data* as JSON (write to tmp then rename).
 
-    Ensures ``encoding_version`` is :data:`RB_ENCODING_VERSION`. Validates
+    Stamps ``encoding_version`` and ``single_qubit_basis`` for *single_qubit_basis*. Validates
     ``circuits_as_ints`` when present so the on-disk payload is gate-only.
     """
     payload = dict(data)
-    payload["encoding_version"] = RB_ENCODING_VERSION
+    payload["encoding_version"] = RB_ENCODING_VERSIONS[single_qubit_basis]
+    payload["single_qubit_basis"] = single_qubit_basis
     circuits = payload.get("circuits_as_ints")
     if circuits is not None:
         payload["circuits_as_ints"] = validate_circuit_list(circuits)

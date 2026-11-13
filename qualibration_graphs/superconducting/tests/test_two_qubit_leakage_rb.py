@@ -46,7 +46,7 @@ def _node(fidelity=None, reset_type="thermal", extras=None):
     node = SimpleNamespace(
         namespace={"qubit_pairs": [pair]},
         machine=machine,
-        parameters=SimpleNamespace(operation=OPERATION, reset_type=reset_type),
+        parameters=SimpleNamespace(operation=OPERATION, reset_type=reset_type, single_qubit_basis="XZ"),
         log=lambda message, **_: logs.append(message),
     )
     return node, logs

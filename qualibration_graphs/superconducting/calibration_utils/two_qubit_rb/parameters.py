@@ -24,6 +24,9 @@ class NodeSpecificParameters(RunnableParameters):
     """Number of averages to perform. Default is 100."""
     operation: Literal["cz_flattop", "cz_unipolar", "cz_bipolar", "cz_flattop_erf", "cz_SNZ"] = "cz_unipolar"
     """Type of CZ operation to perform."""
+    single_qubit_basis: Literal["XZ", "XY"] = "XZ"
+    """Single-qubit gate set. ``XZ``: virtual Z (``rz`` as frame rotation), basis {cz, rz, sx, x}, as on main.
+    ``XY``: analog Y (y90 / y180 / -y90 pulses), basis {cz, sx, x, ry, y}. Default is XZ."""
     use_state_discrimination: bool = True
     """Whether to use state discrimination for readout. Default is True."""
     max_circuit_depth: int = 64

@@ -16,13 +16,14 @@ Padding, if any, sits after the last parsed circuit and is not a pulse.
 from __future__ import annotations
 
 from numbers import Integral
-from typing import Iterable, Sequence
+from typing import Iterable, Literal, Sequence
 
-# Encoding written to the RB cache key and payload. v2 is ZX (virtual-Z) gate-only
-# lists; those files are an acquisition miss and must not be replayed as analog XY.
-# Unversioned / v1 marker-terminated files remain a miss. Keep statistics-only
-# lookup for old averages.
-RB_ENCODING_VERSION = 3
+# Encoding per single-qubit basis, written to the RB cache key and payload. XY: analog Y
+# (opcodes 2-4 are y90 / y180 / -y90). XZ: virtual Z (opcodes 2-4 are frame_rotation pi/2, pi, 3pi/2).
+# Files of any other version (v2 ZX, unversioned, v1 marker-terminated) are acquisition misses.
+SingleQubitBasis = Literal["XZ", "XY"]
+RB_ENCODING_VERSIONS: dict[str, int] = {"XY": 3, "XZ": 4}
+RB_ENCODING_VERSION = RB_ENCODING_VERSIONS["XY"]
 
 MIN_GATE_OPCODE = 0
 MAX_GATE_OPCODE = 37
@@ -216,8 +217,7 @@ def unpack_circuits(
             value = _require_int(word, what="padding word", context=f"index={cursor + offset}")
             if value != pad_value:
                 raise CircuitPackingError(
-                    f"Unused non-padding data at index {cursor + offset}: {value} "
-                    f"(expected pad_value={pad_value})."
+                    f"Unused non-padding data at index {cursor + offset}: {value} " f"(expected pad_value={pad_value})."
                 )
     return circuits
 
