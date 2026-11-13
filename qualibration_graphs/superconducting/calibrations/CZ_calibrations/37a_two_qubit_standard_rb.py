@@ -22,7 +22,6 @@ from calibration_utils.two_qubit_rb import (
     QuaProgramHandler,
     StandardRB,
     build_sweep_axes,
-    READOUT_OPCODE,
     cache_key,
     circuit_to_layer_ints,
     fit_raw_data,
@@ -31,14 +30,19 @@ from calibration_utils.two_qubit_rb import (
     plot_leakage,
     plot_raw_data_with_fit,
     process_raw_dataset,
+    rb_progress_total,
     RBMode,
     save,
+    stamp_execution_format,
     log_depth_summary,
     summarize_transpiled_depth,
     try_load,
     validate_leakage_run,
     leakage_reference_entry,
+    try_load_legacy_statistics,
+    try_load_statistics,
 )
+from calibration_utils.two_qubit_rb.rb_cache import RB_BASIS_GATES
 
 # %% {Initialisation}
 description = """
@@ -48,11 +52,15 @@ state of the resonators. Each random sequence is generated for the maximum depth
 input) and played for every depth requested by the user (the sequence is truncated to the desired
 depth). Each truncated sequence ends with the recovery gate that brings the qubits back to their
 ground state. The random circuits are generated offline as Clifford sequences and then transpiled to
-a basis gate set (default ['rz', 'sx', 'x', 'cz']); they are executed per two-qubit layer using a
-switch_case block for efficient execution. Each sequence is played multiple times for averaging, and
-multiple random sequences are generated per depth for statistical significance. Standard RB measures
-the average two-qubit Clifford fidelity by fitting the survival probability to an exponential decay
-as a function of circuit depth.
+the single-qubit basis chosen by ``single_qubit_basis``: XZ (default, ['cz', 'rz', 'sx', 'x'], virtual Z)
+or XY (['cz', 'sx', 'x', 'ry', 'y'], analog Y). They are executed per two-qubit layer using a gate-only
+switch_case (opcodes 0–37). Readout, state saving, reset, and frame cleanup run once per circuit outside
+that switch. Each sequence is played multiple times for averaging, and multiple random sequences are
+generated per depth for statistical significance.
+Standard RB measures the average two-qubit Clifford fidelity by fitting the survival probability to
+an exponential decay as a function of circuit depth. Error per Clifford (EPC) is the RB observable.
+Error per gate (EPG) divides by the physical-gate count, which excludes virtual rz; EPG is only comparable
+between runs of the same ``single_qubit_basis``.
 
 Key Features:
     - use_input_stream: When enabled, the circuit sequences are streamed to the OPX by using the
@@ -64,7 +72,8 @@ Key Features:
       (15_iq_blobs_gef) and reset_type="thermal" or "active_gef".
 
 Prerequisites:
-    - Having calibrated both qubits' single-qubit gates.
+    - Having calibrated both qubits' single-qubit gates (x90 / x180 and, for XZ, the virtual Z frames; for XY,
+      also y90 / y180 / -y90).
     - Having calibrated the two-qubit gate (cz) that will be used in the Clifford sequences.
     - Having calibrated the readout for both qubits (readout_frequency, amplitude, duration_optimization IQ_blobs).
     - Having set the appropriate flux bias points for the qubit pair.
@@ -75,6 +84,7 @@ State update:
     - qp.macros[operation].fidelity["StandardRB"] (fitted average Clifford fidelity).
     - qp.macros[operation].fidelity["StandardRB_alpha"] (fitted RB decay parameter).
     - qp.macros[operation].fidelity["StandardRB_load_id"] (snapshot index of this run).
+    - qp.macros[operation].fidelity["StandardRB_single_qubit_basis"] (XZ or XY; 37b checks it before using the run).
     - With measure_leakage, also qp.macros[operation].extras["leakage_per_2q_clifford"] (leakage L1 and
       seepage L2 per 2Q Clifford, for the pair and for each qubit), when the leakage fit succeeds.
 """
@@ -124,11 +134,15 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         use_input_stream=node.parameters.use_input_stream,
     )
 
+    single_qubit_basis = node.parameters.single_qubit_basis
     key = cache_key(
-        node.parameters.seed, circuit_depths, node.parameters.num_circuits_per_depth
-    )  # key to cache the RB circuits
+        node.parameters.seed,
+        circuit_depths,
+        node.parameters.num_circuits_per_depth,
+        single_qubit_basis=single_qubit_basis,
+    )
     cache_dir = Path(__file__).resolve().parents[2] / ".rb_cache"
-    cached = try_load(cache_dir, key)  # try to load the cached RB circuits
+    cached = try_load(cache_dir, key, single_qubit_basis=single_qubit_basis)  # try to load the cached RB circuits
 
     if cached is not None:  # if the cached RB circuits are found, load them
         circuits_as_ints = cached["circuits_as_ints"]
@@ -143,6 +157,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         standard_RB = StandardRB(  # if the cached RB circuits are not found, generate them
             amplification_lengths=circuit_depths,
             num_circuits_per_length=node.parameters.num_circuits_per_depth,
+            basis_gates=list(RB_BASIS_GATES[single_qubit_basis]),
             num_qubits=2,
             seed=node.parameters.seed,
         )
@@ -155,11 +170,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for l, circuits in transpiled_circuits.items():
                 encoded = []  # encode the circuits to integers
                 for qc in circuits:
-                    encoded.append(circuit_to_layer_ints(qc))
+                    encoded.append(circuit_to_layer_ints(qc, single_qubit_basis))
                     pbar.update(1)
                 transpiled_circuits_as_ints[l] = encoded  # save the encoded circuits to the dictionary
                 depth_summaries.append(
-                    summarize_transpiled_depth(l, circuits, log_callable=node.log)
+                    summarize_transpiled_depth(
+                        l, circuits, single_qubit_basis=single_qubit_basis, log_callable=node.log
+                    )
                 )  # save the depth summaries to the list
 
         total_cliffords = sum(s["total_cliffords"] for s in depth_summaries)
@@ -175,11 +192,10 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             sum(s["total_cz_gates"] for s in depth_summaries) / total_cliffords if total_cliffords else 0.0
         )
 
-        circuits_as_ints = []  # encode the circuits to integers
+        circuits_as_ints = []  # gate-only lists; readout is not an opcode
         for circuits_per_len in transpiled_circuits_as_ints.values():
             for circuit in circuits_per_len:
-                circuit_with_measurement = circuit + [READOUT_OPCODE]
-                circuits_as_ints.append(circuit_with_measurement)
+                circuits_as_ints.append(circuit)
 
         save(
             cache_dir,  # save the cached dictionary to the cache directory
@@ -191,6 +207,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 "avg_cz_per_clifford": float(node.namespace["avg_cz_per_clifford"]),
                 "depth_summaries": depth_summaries,  # save the depth summaries to the cached dictionary
             },
+            single_qubit_basis=single_qubit_basis,
         )  # save the cached dictionary to the cache directory
         node.log(f"Computed and cached {len(circuits_as_ints)} RB circuits")  # log the number of circuits and the key
 
@@ -235,16 +252,22 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             node.namespace["qua_program_handler"].push_all_chunks(job)  # push the chunks to the input-stream queue
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])  # create the data fetcher
+        progress_total = rb_progress_total(
+            node.parameters.num_shots,
+            node.parameters.num_circuits_per_depth,
+            len(node.namespace["circuit_depths"]),
+            use_input_stream=node.parameters.use_input_stream,
+        )
         for dataset in data_fetcher:
             progress_counter(
                 data_fetcher["n"],
-                node.parameters.num_shots,
+                progress_total,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset
-    node.results["ds_raw"] = dataset
+    node.results["ds_raw"] = stamp_execution_format(dataset, node)
 
 
 # %% {Load_data}
@@ -275,14 +298,16 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
             node.namespace["average_gates_per_clifford"] = float(avg)
 
     cache_dir = Path(__file__).resolve().parents[2] / ".rb_cache"
-    cached = try_load(
-        cache_dir,
-        cache_key(
-            node.parameters.seed,
-            node.namespace["circuit_depths"],
-            node.parameters.num_circuits_per_depth,
-        ),
+    seed = node.parameters.seed
+    depths = node.namespace["circuit_depths"]
+    n_per_depth = node.parameters.num_circuits_per_depth
+    cached = try_load_statistics(
+        cache_dir, cache_key(seed, depths, n_per_depth, single_qubit_basis=node.parameters.single_qubit_basis)
     )
+    if cached is None:
+        cached = try_load_legacy_statistics(
+            cache_dir, seed, depths, n_per_depth, single_qubit_basis=node.parameters.single_qubit_basis
+        )
     if cached is not None:
         for stat_key in ("average_gates_per_clifford", "avg_1q_per_clifford", "avg_cz_per_clifford"):
             if stat_key not in node.namespace and stat_key in cached:
@@ -301,6 +326,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.STANDARD)
     if node.parameters.measure_leakage:
         node.results["ds_fit"] = merge_leakage(node.results["ds_fit"], ds_leakage)
+    if "rb_execution_format_version" in node.results["ds_raw"].attrs:
+        stamp_execution_format(node.results["ds_proc"], node)
+        stamp_execution_format(node.results["ds_fit"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_srb_results(fit_results, log_callable=node.log)
     node.outcomes = {
@@ -342,9 +370,12 @@ with node.record_state_updates():
         node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity[
             "StandardRB_load_id"
         ] = node.snapshot_idx
+        node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].fidelity[
+            "StandardRB_single_qubit_basis"
+        ] = node.parameters.single_qubit_basis
         if node.parameters.measure_leakage and node.results["leakage_results"][qp.name]["success"]:
             node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].extras["leakage_per_2q_clifford"] = (
-                leakage_reference_entry(node.results["leakage_results"][qp.name])
+                leakage_reference_entry(node.results["leakage_results"][qp.name], node.parameters.single_qubit_basis)
             )
 
 

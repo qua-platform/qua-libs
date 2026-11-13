@@ -38,6 +38,9 @@ from calibration_utils.two_qubit_rb import fidelity
 # on ordinary shot noise.
 _MONOTONIC_DECAY_MIN_TOLERANCE = 0.03
 _SHALLOW_SURVIVAL_THRESHOLD = 0.35
+REFERENCE_BASIS_SKIPPED_ISSUE = (
+    "37a reference is unstamped (legacy) or in another single-qubit basis; interleaved fidelity not computed from it."
+)
 
 
 def _survival_over_sequences(ds_qp: xr.Dataset) -> tuple[xr.DataArray, xr.DataArray]:
@@ -176,16 +179,17 @@ def _fitted_curve_dataarray(circuit_depths, fit_params) -> xr.DataArray:
 
 
 def _standard_rb_reference(node: QualibrationNode, qp_name: str) -> dict:
-    """The 37a Standard RB reference 37b compares against: ``alpha``, ``fidelity``, ``load_id`` and ``source``.
+    """The 37a Standard RB reference 37b compares against: ``alpha``, ``fidelity``, ``load_id``, ``basis``.
 
     A leakage run (any readout or reset) writes the same ``StandardRB*`` as a normal one: the RB decay
-    does not depend on the readout.
+    does not depend on the readout. ``basis`` is ``None`` for a 37a run that predates the basis stamp.
     """
     fidelity_dict = node.machine.qubit_pairs[qp_name].macros[node.parameters.operation].fidelity
     return {
         "alpha": fidelity_dict.get("StandardRB_alpha"),
         "fidelity": fidelity_dict.get("StandardRB"),
         "load_id": fidelity_dict.get("StandardRB_load_id"),
+        "basis": fidelity_dict.get("StandardRB_single_qubit_basis"),
         "source": "StandardRB_alpha (run 37a_two_qubit_standard_rb first)",
     }
 
@@ -228,6 +232,7 @@ def _try_load_standard_rb_overlay(node: QualibrationNode, qp_name: str) -> dict 
     optional = lambda key: np.asarray(fr[key].values, dtype=float) if key in fr else None  # noqa: E731
 
     return {
+        "single_qubit_basis": ds_fit.attrs.get("rb_single_qubit_basis"),
         "circuit_depth": np.asarray(fr.circuit_depth.values, dtype=float),
         "survival": np.asarray(fr.survival_probability.values, dtype=float),
         "survival_stderr": optional("survival_stderr"),
@@ -359,10 +364,70 @@ def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr
     return da.assign(**assign_kwargs)
 
 
+def _reference_basis_usable(node: QualibrationNode, qp_name: str, reference_basis: str | None, what: str) -> bool:
+    """Whether a stored 37a reference may be used by this 37b run: its basis must be stamped and equal.
+
+    A missing stamp (a 37a run before the basis was recorded) and a different basis are both logged
+    and rejected, so the reference is not used.
+    """
+    mode = node.parameters.single_qubit_basis
+    if reference_basis is None:
+        node.log(
+            f"Qubit pair {qp_name}: {what} has no single_qubit_basis (legacy 37a run); rejected. "
+            f"Rerun 37a_two_qubit_standard_rb with single_qubit_basis={mode!r}."
+        )
+        return False
+    if reference_basis != mode:
+        node.log(
+            f"Qubit pair {qp_name}: {what} is {reference_basis} but this run is {mode}; rejected. "
+            f"Rerun 37a_two_qubit_standard_rb with single_qubit_basis={mode!r}."
+        )
+        return False
+    return True
+
+
+def require_standard_rb_basis(node: QualibrationNode, qubit_pairs) -> None:
+    """Before acquisition: refuse a 37a reference stored in another single-qubit basis.
+
+    A legacy reference with no basis stamp is logged here and rejected again after the fit.
+    """
+    mode = node.parameters.single_qubit_basis
+    for qp in qubit_pairs:
+        reference = _standard_rb_reference(node, qp.name)
+        if reference["alpha"] is None:
+            continue
+        basis = reference["basis"]
+        if basis is not None and basis != mode:
+            raise ValueError(
+                f"Qubit pair {qp.name}: the stored 37a Standard RB reference is in {basis!r}, but this run "
+                f"uses single_qubit_basis={mode!r}. Rerun 37a_two_qubit_standard_rb with "
+                f"single_qubit_basis={mode!r} before 37b."
+            )
+        if basis is None:
+            node.log(
+                f"Qubit pair {qp.name}: the stored 37a reference has no single_qubit_basis (legacy run); "
+                "the interleaved fidelity will be rejected. Rerun 37a to use it."
+            )
+
+
+def _standard_rb_basis_matches(node: QualibrationNode, qp_name: str, overlay: dict | None) -> bool:
+    """The 37a Standard RB reference basis check: the loaded ``ds_fit`` stamp, else the state key."""
+    reference = _standard_rb_reference(node, qp_name)
+    if overlay is None and reference["alpha"] is None:
+        return True  # no reference at all: _resolve_irb_reference raises the missing-reference error
+    reference_basis = (overlay or {}).get("single_qubit_basis") or reference["basis"]
+    return _reference_basis_usable(node, qp_name, reference_basis, "37a Standard RB reference")
+
+
 def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dataset:
     """Fit Interleaved RB survival probability vs circuit depth for one qubit pair."""
     overlay = _try_load_standard_rb_overlay(node, qp_name)
-    standard_rb_alpha, standard_rb_alpha_stderr, epc_reference = _resolve_irb_reference(node, qp_name, overlay)
+    reference_usable = _standard_rb_basis_matches(node, qp_name, overlay)
+    if reference_usable:
+        standard_rb_alpha, standard_rb_alpha_stderr, epc_reference = _resolve_irb_reference(node, qp_name, overlay)
+    else:
+        overlay = None
+        standard_rb_alpha, standard_rb_alpha_stderr, epc_reference = np.nan, None, None
 
     stats = _fit_survival_for_pair(da)
     circuit_depths, survival_vals, stderr_vals = stats["circuit_depths"], stats["survival_vals"], stats["stderr_vals"]
@@ -376,26 +441,32 @@ def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dat
         success, fit_issues = False, ("Exponential fit did not converge.",)
     else:
         fit_amplitude, alpha, fit_offset, alpha_stderr, amplitude_stderr, offset_stderr = fit_params
-        irb = fidelity.compute_irb_fidelity(
-            alpha,
-            alpha_stderr,
-            standard_rb_alpha,
-            n_qubits=2,
-            standard_rb_alpha_stderr=standard_rb_alpha_stderr,
-            epc_reference=epc_reference,
-        )
-        success, fit_issues = _validate_rb_fit(
-            circuit_depths,
-            survival_vals,
-            stderr_vals,
-            fit_amplitude,
-            alpha,
-            fit_offset,
-            interleaved=True,
-            fit_fidelity=irb.fidelity,
-            fit_fidelity_stderr=irb.fidelity_stderr,
-            standard_rb_alpha=standard_rb_alpha,
-        )
+        if reference_usable:
+            irb = fidelity.compute_irb_fidelity(
+                alpha,
+                alpha_stderr,
+                standard_rb_alpha,
+                n_qubits=2,
+                standard_rb_alpha_stderr=standard_rb_alpha_stderr,
+                epc_reference=epc_reference,
+            )
+            success, fit_issues = _validate_rb_fit(
+                circuit_depths,
+                survival_vals,
+                stderr_vals,
+                fit_amplitude,
+                alpha,
+                fit_offset,
+                interleaved=True,
+                fit_fidelity=irb.fidelity,
+                fit_fidelity_stderr=irb.fidelity_stderr,
+                standard_rb_alpha=standard_rb_alpha,
+            )
+        else:
+            irb = fidelity.IRBFidelity(
+                fidelity=np.nan, fidelity_stderr=None, epc=np.nan, epc_stderr=None, epg=np.nan, epg_stderr=None
+            )
+            success, fit_issues = False, (REFERENCE_BASIS_SKIPPED_ISSUE,)
 
     fitted_curve_da = _fitted_curve_dataarray(circuit_depths, fit_params)
 
@@ -541,14 +612,19 @@ def fit_leakage_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str, *, in
     }
     if interleaved:
         reference = _resolve_leakage_reference(node, qp_name)
+        if reference and not _reference_basis_usable(
+            node, qp_name, reference.get("single_qubit_basis"), "37a leakage reference"
+        ):
+            reference = {}
         per_cz = leakage_per_gate(fits, [reference.get(series) for series in _LEAKAGE_SERIES])
         assign_kwargs.update({_PER_CZ_VARIABLES[key]: per_series(values) for key, values in per_cz.items()})
         assign_kwargs["leakage_reference_updated_at"] = str(reference.get("updated_at") or "")
         assign_kwargs["leakage_per_cz_note"] = (
             ""
             if reference.get("pair")
-            else f"No extras['leakage_per_2q_clifford'] for {qp_name}: run 37a_two_qubit_standard_rb with "
-            "measure_leakage=True first. Only the leakage per interleaved Clifford is reported."
+            else f"No usable extras['leakage_per_2q_clifford'] for {qp_name} (missing, legacy, or another "
+            "single_qubit_basis): run 37a_two_qubit_standard_rb with measure_leakage=True in this basis first. "
+            "Only the leakage per interleaved Clifford is reported."
         )
     return da.drop_vars("state").assign(**assign_kwargs)
 

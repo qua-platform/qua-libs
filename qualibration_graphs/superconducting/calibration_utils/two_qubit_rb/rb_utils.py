@@ -17,6 +17,41 @@ from qiskit.circuit.library import *
 from qiskit.quantum_info import Clifford, Operator, random_clifford
 from tqdm.auto import tqdm
 
+# Analog-XY basis {cz, sx, x, ry, y} is universal for Cliffords, but Qiskit's
+# default SessionEquivalenceLibrary does not translate H / S / Sdg without rz.
+# H = RY(π/2)·X; S = RY(π/2)·SX·RY(-π/2).
+_XY_EQUIVALENCES_REGISTERED = False
+
+
+def _register_analog_xy_equivalences() -> None:
+    """Add H/S/Sdg → {sx, x, ry} rules to the session equivalence library."""
+    global _XY_EQUIVALENCES_REGISTERED  # pylint: disable=global-statement
+    if _XY_EQUIVALENCES_REGISTERED:
+        return
+
+    hadamard = QuantumCircuit(1)
+    hadamard.ry(np.pi / 2, 0)
+    hadamard.x(0)
+    sel.add_equivalence(HGate(), hadamard)
+
+    phase = QuantumCircuit(1)
+    phase.ry(np.pi / 2, 0)
+    phase.sx(0)
+    phase.ry(-np.pi / 2, 0)
+    sel.add_equivalence(SGate(), phase)
+
+    phase_dg = QuantumCircuit(1)
+    phase_dg.ry(np.pi / 2, 0)
+    phase_dg.x(0)
+    phase_dg.sx(0)
+    phase_dg.ry(-np.pi / 2, 0)
+    sel.add_equivalence(SdgGate(), phase_dg)
+
+    _XY_EQUIVALENCES_REGISTERED = True
+
+
+_register_analog_xy_equivalences()
+
 
 class RBBase:  # pylint: disable=too-many-instance-attributes
     """Base class for randomized benchmarking circuit generation."""
@@ -175,7 +210,7 @@ class RBBase:  # pylint: disable=too-many-instance-attributes
                 barriered.barrier()
             barriered_circuits.append(barriered)
 
-        # optimization_level=1: level > 1 can introduce unsupported fractional rz angles
+        # optimization_level=1: level > 1 can introduce leftover fractional ry
         return list(transpile(barriered_circuits, basis_gates=self.basis_gates, optimization_level=1))
 
 

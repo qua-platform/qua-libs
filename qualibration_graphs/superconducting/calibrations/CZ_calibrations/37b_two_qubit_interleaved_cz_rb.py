@@ -22,7 +22,6 @@ from calibration_utils.two_qubit_rb import (
     Parameters,
     QuaProgramHandler,
     build_sweep_axes,
-    READOUT_OPCODE,
     cache_key,
     circuit_to_layer_ints,
     fit_raw_data,
@@ -31,14 +30,18 @@ from calibration_utils.two_qubit_rb import (
     plot_leakage,
     plot_raw_data_with_fit,
     process_raw_dataset,
+    rb_progress_total,
     RBMode,
     save,
+    stamp_execution_format,
     log_depth_summary,
     summarize_transpiled_depth,
     try_load,
     validate_leakage_run,
     leakage_per_cz_entry,
 )
+from calibration_utils.two_qubit_rb.fit_utils import require_standard_rb_basis
+from calibration_utils.two_qubit_rb.rb_cache import RB_BASIS_GATES
 
 # %% {Initialisation}
 description = """
@@ -48,12 +51,15 @@ running two experiments: a reference RB sequence of random Cliffords, and an int
 which the target gate is inserted between every random Clifford. Fitting both survival-probability
 decays as a function of circuit depth and taking the ratio of the two decay rates yields the average
 error of the target gate, independent of the surrounding Clifford errors. Each random sequence is
-generated offline as a Clifford sequence, transpiled to a basis gate set (default ['rz', 'sx', 'x',
-'cz']), and executed per two-qubit layer using a switch_case block. Sequences are truncated to each
-requested depth and end with a recovery gate that returns the qubits to the ground state. Each
-sequence is played multiple times for averaging, and multiple random sequences are generated per
-depth for statistical significance. The data is post-processed to extract the CZ gate error and
-fidelity.
+generated offline as a Clifford sequence, transpiled to the single-qubit basis chosen by
+``single_qubit_basis`` (XZ, default ['cz', 'rz', 'sx', 'x'], or XY, ['cz', 'sx', 'x', 'ry', 'y']), and
+executed per two-qubit layer using a gate-only switch_case (opcodes 0–37). Readout, state saving, reset,
+and frame cleanup run once per circuit outside that switch. Sequences are truncated to each requested
+depth and end with a recovery gate that returns the qubits to the ground state. Each sequence is played multiple times for averaging, and multiple
+random sequences are generated per depth for statistical significance. The data is post-processed to
+extract the CZ gate error and fidelity. The reference 37a run must have the same ``single_qubit_basis``:
+a reference in another basis, or one with no basis stamp, is rejected (a mismatch raises before acquisition).
+EPG is not comparable across bases; EPC remains the RB observable.
 
 Key Features:
     - use_input_stream: When enabled, the circuit sequences are streamed to the OPX by using the
@@ -65,12 +71,15 @@ Key Features:
       each qubit. Needs a calibrated g/e/f readout (15_iq_blobs_gef) and reset_type="thermal" or "active_gef".
 
 Prerequisites:
-    - Having calibrated both qubits' single-qubit gates.
+    - Having calibrated both qubits' single-qubit gates (x90 / x180 and, for XZ, the virtual Z frames; for XY,
+      also y90 / y180 / -y90).
     - Having calibrated the two-qubit gate (cz) that will be used in the Clifford sequences.
     - Having calibrated the readout for both qubits (readout_frequency, amplitude, duration_optimization IQ_blobs).
     - Having set the appropriate flux bias points for the qubit pair.
     - Having calibrated the qubit frequencies and coupling strength.
-    - Having a recent reference Standard RB run (37_two_qubit_standard_rb) for the same operation.
+    - Having a recent reference Standard RB run (37a_two_qubit_standard_rb) for the same operation,
+      acquired with the same ``single_qubit_basis`` as this run (its ``StandardRB_single_qubit_basis`` is
+      checked before acquisition). Runs that predate the basis stamp are rejected: rerun 37a.
     - For measure_leakage: a 37a run with measure_leakage=True for the same operation (without it,
       only the leakage per interleaved Clifford is reported), and a calibrated g/e/f readout. Its
       survival fit is also the reference for this run's CZ fidelity, so both use the same readout.
@@ -117,6 +126,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.log(f"Circuit depths: {circuit_depths}")
 
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
+    require_standard_rb_basis(node, qubit_pairs)
     if node.parameters.measure_leakage:
         validate_leakage_run(node, qubit_pairs)
 
@@ -128,14 +138,16 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         use_input_stream=node.parameters.use_input_stream,
     )
 
+    single_qubit_basis = node.parameters.single_qubit_basis
     key = cache_key(
         node.parameters.seed,
         circuit_depths,
         node.parameters.num_circuits_per_depth,
         target_gate="cz",
+        single_qubit_basis=single_qubit_basis,
     )
     cache_dir = Path(__file__).resolve().parents[2] / ".rb_cache"
-    cached = try_load(cache_dir, key)
+    cached = try_load(cache_dir, key, single_qubit_basis=single_qubit_basis)
 
     if cached is not None:
         circuits_as_ints = cached["circuits_as_ints"]
@@ -148,6 +160,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             target_gate="cz",
             amplification_lengths=circuit_depths,
             num_circuits_per_length=node.parameters.num_circuits_per_depth,
+            basis_gates=list(RB_BASIS_GATES[single_qubit_basis]),
             num_qubits=2,
             seed=node.parameters.seed,
         )
@@ -160,18 +173,26 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             for l, circuits in transpiled_circuits.items():
                 encoded = []
                 for qc in circuits:
-                    encoded.append(circuit_to_layer_ints(qc))
+                    encoded.append(circuit_to_layer_ints(qc, single_qubit_basis))
                     pbar.update(1)
                 transpiled_circuits_as_ints[l] = encoded
-                depth_summaries.append(summarize_transpiled_depth(l, circuits, log_callable=node.log))
+                depth_summaries.append(
+                    summarize_transpiled_depth(
+                        l, circuits, single_qubit_basis=single_qubit_basis, log_callable=node.log
+                    )
+                )
 
         circuits_as_ints = []
         for circuits_per_len in transpiled_circuits_as_ints.values():
             for circuit in circuits_per_len:
-                circuit_with_measurement = circuit + [READOUT_OPCODE]
-                circuits_as_ints.append(circuit_with_measurement)
+                circuits_as_ints.append(circuit)
 
-        save(cache_dir, key, {"circuits_as_ints": circuits_as_ints, "depth_summaries": depth_summaries})
+        save(
+            cache_dir,
+            key,
+            {"circuits_as_ints": circuits_as_ints, "depth_summaries": depth_summaries},
+            single_qubit_basis=single_qubit_basis,
+        )
         node.log(f"Computed and cached {len(circuits_as_ints)} interleaved RB circuits")
 
     num_pairs = len(qubit_pairs)
@@ -213,16 +234,22 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
             node.namespace["qua_program_handler"].push_all_chunks(job)
         # Display the progress bar
         data_fetcher = XarrayDataFetcher(job, node.namespace["sweep_axes"])
+        progress_total = rb_progress_total(
+            node.parameters.num_shots,
+            node.parameters.num_circuits_per_depth,
+            len(node.namespace["circuit_depths"]),
+            use_input_stream=node.parameters.use_input_stream,
+        )
         for dataset in data_fetcher:
             progress_counter(
                 data_fetcher.get("n", 0),
-                node.parameters.num_shots,
+                progress_total,
                 start_time=data_fetcher.t_start,
             )
         # Display the execution report to expose possible runtime errors
         node.log(job.execution_report())
     # Register the raw dataset and the sweep/role data needed for reproducible re-analysis
-    node.results["ds_raw"] = dataset
+    node.results["ds_raw"] = stamp_execution_format(dataset, node)
 
 
 # %% {Load_data}
@@ -250,6 +277,9 @@ def analyse_data(node: QualibrationNode[Parameters, Quam]):
     node.results["ds_fit"], fit_results = fit_raw_data(node.results["ds_proc"], node, mode=RBMode.INTERLEAVED)
     if node.parameters.measure_leakage:
         node.results["ds_fit"] = merge_leakage(node.results["ds_fit"], ds_leakage)
+    if "rb_execution_format_version" in node.results["ds_raw"].attrs:
+        stamp_execution_format(node.results["ds_proc"], node)
+        stamp_execution_format(node.results["ds_fit"], node)
     node.results["fit_results"] = {k: asdict(v) for k, v in fit_results.items()}
     log_irb_results(fit_results, log_callable=node.log)
     threshold = node.parameters.fidelity_threshold
