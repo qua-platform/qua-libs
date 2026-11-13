@@ -557,9 +557,11 @@ def test_seed_stable_transpile_contains_only_analog_xy_ops():
     depths = [1, 2, 4]
     n_per = 3
     seed = 7
-    first = StandardRB(depths, n_per, seed=seed, show_progress=False)
-    second = StandardRB(depths, n_per, seed=seed, show_progress=False)
-    assert first.basis_gates == ["cz", "sx", "x", "ry", "y"]
+    xy_gates = ["cz", "sx", "x", "ry", "y"]
+    assert StandardRB(depths, n_per, seed=seed, show_progress=False).basis_gates == ["cz", "rz", "sx", "x"]
+    first = StandardRB(depths, n_per, seed=seed, basis_gates=xy_gates, show_progress=False)
+    second = StandardRB(depths, n_per, seed=seed, basis_gates=xy_gates, show_progress=False)
+    assert first.basis_gates == xy_gates
 
     for depth in depths:
         assert len(first.transpiled_circuits[depth]) == n_per
