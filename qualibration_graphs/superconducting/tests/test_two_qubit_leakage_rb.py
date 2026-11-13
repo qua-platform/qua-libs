@@ -88,8 +88,9 @@ def test_interleaved_run_subtracts_the_stored_reference():
     _, reference = fit_raw_data(
         _dataset(1e-3, 1e-4, np.random.default_rng(4)), reference_node, mode=RBMode.STANDARD, leakage=True
     )
-    entry = leakage_reference_entry(asdict(reference["qA2-qA1"]))
-    assert set(entry) == {"pair", "control", "target", "updated_at"}
+    entry = leakage_reference_entry(asdict(reference["qA2-qA1"]), "XZ")
+    assert set(entry) == {"pair", "control", "target", "single_qubit_basis", "updated_at"}
+    assert entry["single_qubit_basis"] == "XZ"
     assert set(entry["control"]) == {"l1", "l1_stderr", "l2", "l2_stderr"}
     node, _ = _node(extras={"leakage_per_2q_clifford": entry})
     _, results = fit_raw_data(
@@ -116,6 +117,26 @@ def test_interleaved_run_without_a_reference_reports_per_clifford_only():
     assert leakage_per_cz_entry(asdict(results["qA2-qA1"])) is None
 
 
+@pytest.mark.parametrize("stamp", [None, "XY"])
+def test_interleaved_run_rejects_a_leakage_reference_not_in_its_basis(stamp):
+    reference_node, _ = _node()
+    _, reference = fit_raw_data(
+        _dataset(1e-3, 1e-4, np.random.default_rng(4)), reference_node, mode=RBMode.STANDARD, leakage=True
+    )
+    entry = leakage_reference_entry(asdict(reference["qA2-qA1"]), "XZ")
+    if stamp is None:
+        del entry["single_qubit_basis"]
+    else:
+        entry["single_qubit_basis"] = stamp
+    node, logs = _node(extras={"leakage_per_2q_clifford": entry})
+    _, results = fit_raw_data(
+        _dataset(3e-3, 1e-4, np.random.default_rng(5)), node, mode=RBMode.INTERLEAVED, leakage=True
+    )
+    assert results["qA2-qA1"].per_cz is None
+    assert "37a" in results["qA2-qA1"].per_cz_note
+    assert any("rejected" in message for message in logs)
+
+
 def test_validation_needs_a_thermal_reset():
     node, _ = _node(reset_type="active")
     with pytest.raises(ValueError, match="thermal"):
@@ -135,7 +156,7 @@ def test_interleaved_survival_of_a_leakage_run_uses_standard_rb():
     from calibration_utils.two_qubit_rb import RBMode, analysis
 
     # The RB decay does not depend on readout or reset: a leakage 37b compares against StandardRB_alpha.
-    fidelity = {"StandardRB_alpha": 0.97, "StandardRB": 0.977}
+    fidelity = {"StandardRB_alpha": 0.97, "StandardRB": 0.977, "StandardRB_single_qubit_basis": "XZ"}
     node, _ = _node(fidelity)
     node.parameters.measure_leakage = True
     node.parameters.use_input_stream = False

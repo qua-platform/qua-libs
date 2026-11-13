@@ -40,6 +40,7 @@ from calibration_utils.two_qubit_rb import (
     validate_leakage_run,
     leakage_per_cz_entry,
 )
+from calibration_utils.two_qubit_rb.fit_utils import require_standard_rb_basis
 from calibration_utils.two_qubit_rb.rb_cache import RB_BASIS_GATES
 
 # %% {Initialisation}
@@ -56,9 +57,9 @@ executed per two-qubit layer using a gate-only switch_case (opcodes 0–37). Rea
 and frame cleanup run once per circuit outside that switch. Sequences are truncated to each requested
 depth and end with a recovery gate that returns the qubits to the ground state. Each sequence is played multiple times for averaging, and multiple
 random sequences are generated per depth for statistical significance. The data is post-processed to
-extract the CZ gate error and fidelity. The reference 37a run must have the same ``single_qubit_basis``;
-a reference in the other basis is skipped and no CZ fidelity is computed from it. EPG is not comparable
-across bases; EPC remains the RB observable.
+extract the CZ gate error and fidelity. The reference 37a run must have the same ``single_qubit_basis``:
+a reference in another basis, or one with no basis stamp, is rejected (a mismatch raises before acquisition).
+EPG is not comparable across bases; EPC remains the RB observable.
 
 Key Features:
     - use_input_stream: When enabled, the circuit sequences are streamed to the OPX by using the
@@ -78,7 +79,7 @@ Prerequisites:
     - Having calibrated the qubit frequencies and coupling strength.
     - Having a recent reference Standard RB run (37a_two_qubit_standard_rb) for the same operation,
       acquired with the same ``single_qubit_basis`` as this run (its ``StandardRB_single_qubit_basis`` is
-      checked). Runs that predate the basis stamp are used with a warning; rerun 37a if in doubt.
+      checked before acquisition). Runs that predate the basis stamp are rejected: rerun 37a.
     - For measure_leakage: a 37a run with measure_leakage=True for the same operation (without it,
       only the leakage per interleaved Clifford is reported), and a calibrated g/e/f readout. Its
       survival fit is also the reference for this run's CZ fidelity, so both use the same readout.
@@ -125,6 +126,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.log(f"Circuit depths: {circuit_depths}")
 
     node.namespace["qubit_pairs"] = qubit_pairs = get_qubit_pairs(node)
+    require_standard_rb_basis(node, qubit_pairs)
     if node.parameters.measure_leakage:
         validate_leakage_run(node, qubit_pairs)
 

@@ -305,7 +305,9 @@ def load_data(node: QualibrationNode[Parameters, Quam]):
         cache_dir, cache_key(seed, depths, n_per_depth, single_qubit_basis=node.parameters.single_qubit_basis)
     )
     if cached is None:
-        cached = try_load_legacy_statistics(cache_dir, seed, depths, n_per_depth)
+        cached = try_load_legacy_statistics(
+            cache_dir, seed, depths, n_per_depth, single_qubit_basis=node.parameters.single_qubit_basis
+        )
     if cached is not None:
         for stat_key in ("average_gates_per_clifford", "avg_1q_per_clifford", "avg_cz_per_clifford"):
             if stat_key not in node.namespace and stat_key in cached:
@@ -373,7 +375,7 @@ with node.record_state_updates():
         ] = node.parameters.single_qubit_basis
         if node.parameters.measure_leakage and node.results["leakage_results"][qp.name]["success"]:
             node.machine.qubit_pairs[qp.name].macros[node.parameters.operation].extras["leakage_per_2q_clifford"] = (
-                leakage_reference_entry(node.results["leakage_results"][qp.name])
+                leakage_reference_entry(node.results["leakage_results"][qp.name], node.parameters.single_qubit_basis)
             )
 
 

@@ -38,7 +38,6 @@ from calibration_utils.two_qubit_rb.fit_utils import REFERENCE_BASIS_SKIPPED_ISS
 from calibration_utils.two_qubit_rb.packing import (  # noqa: E402
     INPUT_STREAM_PAD_VALUE,
     MIN_CHUNK_CAPACITY,
-    RB_ENCODING_VERSION,
     RB_ENCODING_VERSIONS,
     READOUT_MARKER_OPCODE,
     CircuitPackingError,
@@ -61,7 +60,6 @@ from calibration_utils.two_qubit_rb.parameters import (  # noqa: E402
     rb_progress_total,
 )
 from calibration_utils.two_qubit_rb.rb_cache import (  # noqa: E402
-    DEFAULT_RB_BASIS_GATES,
     RB_BASIS_GATES,
     cache_key,
     legacy_cache_key,
@@ -403,7 +401,7 @@ def test_declared_and_streamed_synthetic_identity_two_chunks_partial_batch():
     assert tuple(ds_stream["state"].dims) == STREAMED_RAW_DIMS
     assert tuple(ds_decl["state"].dims) == DECLARED_RAW_DIMS
     assert ds_stream.attrs["rb_execution_format_version"] == RB_EXECUTION_FORMAT_VERSION
-    assert ds_stream.attrs["rb_encoding_version"] == RB_ENCODING_VERSION
+    assert ds_stream.attrs["rb_encoding_version"] == RB_ENCODING_VERSIONS["XY"]
     assert ds_stream.attrs["rb_raw_acquisition_order"] == list(STREAMED_RAW_DIMS)
     assert ds_decl.attrs["rb_raw_acquisition_order"] == list(DECLARED_RAW_DIMS)
 
@@ -438,11 +436,11 @@ def test_cache_v2_hit_old_format_miss_and_statistics_only(tmp_path: Path):
         "avg_1q_per_clifford": 1.0,
         "avg_cz_per_clifford": 0.5,
     }
-    key_v2 = cache_key(seed, depths, n_per)
-    save(tmp_path, key_v2, {"circuits_as_ints": circuits, **stats})
-    loaded = try_load(tmp_path, key_v2)
+    key_v2 = cache_key(seed, depths, n_per, single_qubit_basis="XY")
+    save(tmp_path, key_v2, {"circuits_as_ints": circuits, **stats}, single_qubit_basis="XY")
+    loaded = try_load(tmp_path, key_v2, single_qubit_basis="XY")
     assert loaded is not None
-    assert loaded["encoding_version"] == RB_ENCODING_VERSION
+    assert loaded["encoding_version"] == RB_ENCODING_VERSIONS["XY"]
     assert loaded["circuits_as_ints"] == circuits
     # Repack after load with a different capacity (cache stores lists, not packets).
     chunks_a, _ = build_packed_depth_chunks(loaded["circuits_as_ints"], depths, n_per, 50)
@@ -458,22 +456,27 @@ def test_cache_v2_hit_old_format_miss_and_statistics_only(tmp_path: Path):
         **stats,
     }
     (tmp_path / f"{legacy_key}.json").write_text(json.dumps(legacy_payload), encoding="utf-8")
-    assert try_load(tmp_path, legacy_key) is None
+    assert try_load(tmp_path, legacy_key, single_qubit_basis="XY") is None
     assert (tmp_path / f"{legacy_key}.json").exists()
-    legacy_stats = try_load_legacy_statistics(tmp_path, seed, depths, n_per)
+    assert try_load_legacy_statistics(tmp_path, seed, depths, n_per, single_qubit_basis="XY") is None
+
+    stamped_legacy = {**legacy_payload, "single_qubit_basis": "XY"}
+    (tmp_path / f"{legacy_key}.json").write_text(json.dumps(stamped_legacy), encoding="utf-8")
+    legacy_stats = try_load_legacy_statistics(tmp_path, seed, depths, n_per, single_qubit_basis="XY")
     assert legacy_stats is not None
     assert "circuits_as_ints" not in legacy_stats
     assert legacy_stats["average_gates_per_clifford"] == 1.5
+    assert try_load_legacy_statistics(tmp_path, seed, depths, n_per, single_qubit_basis="XZ") is None
     assert try_load_statistics(tmp_path, key_v2)["avg_cz_per_clifford"] == 0.5
 
-    bad_key = cache_key(1, depths, n_per)
+    bad_key = cache_key(1, depths, n_per, single_qubit_basis="XY")
     (tmp_path / f"{bad_key}.json").write_text(
-        json.dumps({"encoding_version": RB_ENCODING_VERSION, "circuits_as_ints": [[READOUT_MARKER_OPCODE]]}),
+        json.dumps({"encoding_version": RB_ENCODING_VERSIONS["XY"], "circuits_as_ints": [[READOUT_MARKER_OPCODE]]}),
         encoding="utf-8",
     )
-    assert try_load(tmp_path, bad_key) is None
+    assert try_load(tmp_path, bad_key, single_qubit_basis="XY") is None
     (tmp_path / f"{bad_key}.json").write_text("{not-json", encoding="utf-8")
-    assert try_load(tmp_path, bad_key) is None
+    assert try_load(tmp_path, bad_key, single_qubit_basis="XY") is None
 
 
 # ------------------------------------------------ analog XY encoding (task-m)
@@ -591,21 +594,21 @@ def test_cache_v2_payload_is_acquisition_miss_and_stats_survive(tmp_path: Path):
     circuits = [[], [36, 14, 0], [1], [17, 36]]
     stats = {"average_gates_per_clifford": 1.5, "avg_1q_per_clifford": 1.0, "avg_cz_per_clifford": 0.5}
 
-    key_xy = cache_key(seed, depths, n_per)
-    assert "ry" in DEFAULT_RB_BASIS_GATES and "rz" not in DEFAULT_RB_BASIS_GATES
+    key_xy = cache_key(seed, depths, n_per, single_qubit_basis="XY")
+    assert "ry" in RB_BASIS_GATES["XY"] and "rz" not in RB_BASIS_GATES["XY"]
 
     v2_payload = {"encoding_version": 2, "circuits_as_ints": circuits, **stats}
     (tmp_path / f"{key_xy}.json").write_text(json.dumps(v2_payload), encoding="utf-8")
-    assert try_load(tmp_path, key_xy) is None
+    assert try_load(tmp_path, key_xy, single_qubit_basis="XY") is None
     v2_stats = try_load_statistics(tmp_path, key_xy)
     assert v2_stats is not None
     assert "circuits_as_ints" not in v2_stats
     assert v2_stats["average_gates_per_clifford"] == 1.5
 
-    save(tmp_path, key_xy, {"circuits_as_ints": circuits, **stats})
-    loaded = try_load(tmp_path, key_xy)
+    save(tmp_path, key_xy, {"circuits_as_ints": circuits, **stats}, single_qubit_basis="XY")
+    loaded = try_load(tmp_path, key_xy, single_qubit_basis="XY")
     assert loaded is not None
-    assert loaded["encoding_version"] == RB_ENCODING_VERSION == 3
+    assert loaded["encoding_version"] == RB_ENCODING_VERSIONS["XY"] == 3
     assert loaded["circuits_as_ints"] == circuits
 
 
@@ -613,7 +616,6 @@ def test_cache_keys_and_payloads_split_by_basis(tmp_path: Path):
     seed, depths, n_per = 0, [0, 4], 2
     key_xy = cache_key(seed, depths, n_per, single_qubit_basis="XY")
     key_xz = cache_key(seed, depths, n_per, single_qubit_basis="XZ")
-    assert key_xy == cache_key(seed, depths, n_per)
     assert key_xz != key_xy
     assert cache_key(seed, depths, n_per, single_qubit_basis="XZ", target_gate="cz") != key_xz
     assert RB_ENCODING_VERSIONS == {"XY": 3, "XZ": 4}
@@ -629,6 +631,10 @@ def test_cache_keys_and_payloads_split_by_basis(tmp_path: Path):
 
     xz_payload_text = (tmp_path / f"{key_xz}.json").read_text(encoding="utf-8")
     (tmp_path / f"{key_xy}.json").write_text(xz_payload_text, encoding="utf-8")
+    assert try_load(tmp_path, key_xy, single_qubit_basis="XY") is None
+
+    unstamped = {"encoding_version": RB_ENCODING_VERSIONS["XY"], "circuits_as_ints": circuits}
+    (tmp_path / f"{key_xy}.json").write_text(json.dumps(unstamped), encoding="utf-8")
     assert try_load(tmp_path, key_xy, single_qubit_basis="XY") is None
 
 
@@ -801,7 +807,7 @@ def test_irb_skips_a_reference_in_the_other_basis():
     assert np.isnan(float(ds_fit.standard_rb_alpha))
     assert not bool(ds_fit.success)
     assert REFERENCE_BASIS_SKIPPED_ISSUE in str(ds_fit.fit_issues.values)
-    assert len(logs) == 1 and "XZ" in logs[0] and "skipping" in logs[0]
+    assert len(logs) == 1 and "XZ" in logs[0] and "rejected" in logs[0]
 
 
 def test_irb_uses_a_reference_in_the_same_basis_silently():
@@ -813,11 +819,39 @@ def test_irb_uses_a_reference_in_the_same_basis_silently():
     assert logs == []
 
 
-def test_irb_warns_but_uses_a_legacy_reference_without_basis():
+def test_irb_rejects_a_legacy_reference_without_basis():
     node, logs = _irb_node({"StandardRB_alpha": 0.97, "StandardRB": 0.977}, "XZ")
     ds_fit = fit_irb_pair(_survival_dataset(), node, "qA2-qA1")
-    assert np.isfinite(float(ds_fit.fidelity))
+    assert np.isnan(float(ds_fit.fidelity))
+    assert not bool(ds_fit.success)
+    assert len(logs) == 1 and "legacy" in logs[0] and "rejected" in logs[0]
+
+
+def _pairs_node(fidelity: dict, single_qubit_basis: str):
+    node, logs = _irb_node(fidelity, single_qubit_basis)
+    return node, logs, [SimpleNamespace(name="qA2-qA1")]
+
+
+def test_require_standard_rb_basis_raises_before_acquisition_on_mismatch():
+    node, _, pairs = _pairs_node({"StandardRB_alpha": 0.97, "StandardRB_single_qubit_basis": "XZ"}, "XY")
+    with pytest.raises(ValueError, match="single_qubit_basis='XY'") as exc:
+        fit_utils.require_standard_rb_basis(node, pairs)
+    assert "'XZ'" in str(exc.value) and "Rerun 37a" in str(exc.value)
+
+
+def test_require_standard_rb_basis_passes_on_match_and_warns_on_legacy():
+    node, logs, pairs = _pairs_node({"StandardRB_alpha": 0.97, "StandardRB_single_qubit_basis": "XY"}, "XY")
+    fit_utils.require_standard_rb_basis(node, pairs)
+    assert logs == []
+    node, logs, pairs = _pairs_node({"StandardRB_alpha": 0.97}, "XY")
+    fit_utils.require_standard_rb_basis(node, pairs)
     assert len(logs) == 1 and "legacy" in logs[0]
+
+
+def test_require_standard_rb_basis_ignores_pairs_without_a_reference():
+    node, logs, pairs = _pairs_node({}, "XY")
+    fit_utils.require_standard_rb_basis(node, pairs)
+    assert logs == []
 
 
 def test_irb_overlay_basis_from_saved_ds_fit_takes_precedence(monkeypatch):
@@ -836,4 +870,4 @@ def test_irb_overlay_basis_from_saved_ds_fit_takes_precedence(monkeypatch):
     node, logs = _irb_node(reference, "XY")
     ds_fit = fit_irb_pair(_survival_dataset(), node, "qA2-qA1")
     assert np.isnan(float(ds_fit.fidelity))
-    assert len(logs) == 1 and "XZ" in logs[0] and "skipping" in logs[0]
+    assert len(logs) == 1 and "XZ" in logs[0] and "rejected" in logs[0]

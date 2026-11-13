@@ -76,9 +76,9 @@ class LeakagePairResult:
     per_cz_note: str = ""
 
 
-def leakage_reference_entry(leakage_result: dict) -> dict:
+def leakage_reference_entry(leakage_result: dict, single_qubit_basis: str) -> dict:
     """37a's ``macros[operation].extras["leakage_per_2q_clifford"]``: L1 and L2 per 2Q Clifford for each
-    series, and when they were stored (``updated_at``, so 37b can tell how old its reference is).
+    series, the ``single_qubit_basis`` it was acquired in, and when it was stored (``updated_at``).
 
     ``leakage_result`` is this pair's ``node.results["leakage_results"]`` entry; the fit details stay
     in the run's saved results.
@@ -87,6 +87,7 @@ def leakage_reference_entry(leakage_result: dict) -> dict:
         series: {key: rates[key] for key in ("l1", "l1_stderr", "l2", "l2_stderr")}
         for series, rates in leakage_result["per_clifford"].items()
     }
+    entry["single_qubit_basis"] = single_qubit_basis
     entry["updated_at"] = _now()
     return entry
 

@@ -6,10 +6,11 @@ a small JSON file stored under a configurable directory.
 
 Versioned payloads hold gate-only opcode lists (0–37) per basis: XY is version 3
 and XZ is version 4 (:data:`~calibration_utils.two_qubit_rb.packing.RB_ENCODING_VERSIONS`).
-Packed packets are built after load so a later change in chunk capacity does not
-retranspile. Unversioned, v1 (marker-terminated), and v2 ZX files are acquisition
-misses and are left on disk; they must not be fed to the executor. Reanalysis may
-still read statistics via :func:`try_load_statistics`.
+A payload is a hit only if its version and its ``single_qubit_basis`` stamp both match
+the request. Packed packets are built after load so a later change in chunk capacity does
+not retranspile. Unversioned, v1 (marker-terminated), and v2 ZX files are acquisition
+misses and are left on disk; they must not be fed to the executor. Reanalysis may still
+read statistics via :func:`try_load_statistics`.
 """
 
 from __future__ import annotations
@@ -40,7 +41,6 @@ RB_BASIS_GATES: dict[str, tuple[str, ...]] = {
     "XZ": ("cz", "rz", "sx", "x"),
     "XY": ("cz", "sx", "x", "ry", "y"),
 }
-DEFAULT_RB_BASIS_GATES: tuple[str, ...] = RB_BASIS_GATES["XY"]
 
 
 def _key_blob(
@@ -69,8 +69,8 @@ def cache_key(
     circuit_depths: list[int],
     num_circuits_per_depth: int,
     *,
+    single_qubit_basis: SingleQubitBasis,
     target_gate: str | None = None,
-    single_qubit_basis: SingleQubitBasis = "XY",
 ) -> str:
     """Return a hex SHA-256 digest that uniquely identifies an RB config and single-qubit basis.
 
@@ -123,18 +123,21 @@ def try_load(
     cache_dir: Path,
     key: str,
     *,
-    single_qubit_basis: SingleQubitBasis = "XY",
+    single_qubit_basis: SingleQubitBasis,
 ) -> dict[str, Any] | None:
     """Return cached gate-only data for *single_qubit_basis*, or *None* on a cache miss.
 
-    Missing files, JSON errors, payloads of another encoding version (including unversioned,
-    v1, and v2 ZX), and malformed payloads are misses. Old files are not deleted and are not
-    reinterpreted as gate sequences.
+    A hit needs the encoding version of *single_qubit_basis* and a ``single_qubit_basis`` stamp equal
+    to it. Missing files, JSON errors, other versions (including unversioned, v1, and v2 ZX),
+    unstamped or other-basis payloads, and malformed payloads are misses. Old files are not deleted
+    and are not reinterpreted as gate sequences.
     """
     data = _read_json(cache_dir, key)
     if data is None:
         return None
     if _payload_encoding_version(data) != RB_ENCODING_VERSIONS[single_qubit_basis]:
+        return None
+    if data.get("single_qubit_basis") != single_qubit_basis:
         return None
     circuits = data.get("circuits_as_ints")
     if not isinstance(circuits, list):
@@ -168,10 +171,18 @@ def try_load_legacy_statistics(
     circuit_depths: list[int],
     num_circuits_per_depth: int,
     *,
+    single_qubit_basis: SingleQubitBasis,
     target_gate: str | None = None,
 ) -> dict[str, Any] | None:
-    """Statistics-only lookup using the unversioned cache key (pre-v2 files)."""
+    """Statistics-only lookup under the unversioned key, used only when the basis is known to match.
+
+    Unversioned files carry no ``single_qubit_basis`` stamp, so their basis-dependent statistics
+    (gates and 1Q/CZ counts per Clifford) are skipped and this returns *None*.
+    """
     key = legacy_cache_key(seed, circuit_depths, num_circuits_per_depth, target_gate=target_gate)
+    data = _read_json(cache_dir, key)
+    if data is None or data.get("single_qubit_basis") != single_qubit_basis:
+        return None
     return try_load_statistics(cache_dir, key)
 
 
@@ -180,7 +191,7 @@ def save(
     key: str,
     data: dict[str, Any],
     *,
-    single_qubit_basis: SingleQubitBasis = "XY",
+    single_qubit_basis: SingleQubitBasis,
 ) -> None:
     """Atomically write *data* as JSON (write to tmp then rename).
 

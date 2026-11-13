@@ -39,7 +39,7 @@ from calibration_utils.two_qubit_rb import fidelity
 _MONOTONIC_DECAY_MIN_TOLERANCE = 0.03
 _SHALLOW_SURVIVAL_THRESHOLD = 0.35
 REFERENCE_BASIS_SKIPPED_ISSUE = (
-    "37a reference is in another single-qubit basis; interleaved fidelity not computed from it."
+    "37a reference is unstamped (legacy) or in another single-qubit basis; interleaved fidelity not computed from it."
 )
 
 
@@ -364,28 +364,59 @@ def fit_srb_pair(da: xr.Dataset, average_gates_per_clifford: float | None) -> xr
     return da.assign(**assign_kwargs)
 
 
-def _standard_rb_basis_matches(node: QualibrationNode, qp_name: str, overlay: dict | None) -> bool:
-    """Whether the 37a reference was acquired in this run's single-qubit basis (XZ or XY).
+def _reference_basis_usable(node: QualibrationNode, qp_name: str, reference_basis: str | None, what: str) -> bool:
+    """Whether a stored 37a reference may be used by this 37b run: its basis must be stamped and equal.
 
-    The basis is read from the loaded 37a ``ds_fit`` when available, else from the state key. A missing
-    basis (a 37a run before the basis stamp) is logged as legacy and accepted. A different basis is
-    logged and rejected, so the reference is skipped.
+    A missing stamp (a 37a run before the basis was recorded) and a different basis are both logged
+    and rejected, so the reference is not used.
     """
     mode = node.parameters.single_qubit_basis
-    reference_basis = (overlay or {}).get("single_qubit_basis") or _standard_rb_reference(node, qp_name)["basis"]
     if reference_basis is None:
         node.log(
-            f"Qubit pair {qp_name}: 37a reference has no single_qubit_basis (legacy or unknown); "
-            f"using it for this {mode} run without verifying the basis."
+            f"Qubit pair {qp_name}: {what} has no single_qubit_basis (legacy 37a run); rejected. "
+            f"Rerun 37a_two_qubit_standard_rb with single_qubit_basis={mode!r}."
         )
-        return True
+        return False
     if reference_basis != mode:
         node.log(
-            f"Qubit pair {qp_name}: 37a reference is {reference_basis} but this run is {mode}; "
-            "skipping the reference, so no interleaved fidelity is computed. Rerun 37a in the same basis."
+            f"Qubit pair {qp_name}: {what} is {reference_basis} but this run is {mode}; rejected. "
+            f"Rerun 37a_two_qubit_standard_rb with single_qubit_basis={mode!r}."
         )
         return False
     return True
+
+
+def require_standard_rb_basis(node: QualibrationNode, qubit_pairs) -> None:
+    """Before acquisition: refuse a 37a reference stored in another single-qubit basis.
+
+    A legacy reference with no basis stamp is logged here and rejected again after the fit.
+    """
+    mode = node.parameters.single_qubit_basis
+    for qp in qubit_pairs:
+        reference = _standard_rb_reference(node, qp.name)
+        if reference["alpha"] is None:
+            continue
+        basis = reference["basis"]
+        if basis is not None and basis != mode:
+            raise ValueError(
+                f"Qubit pair {qp.name}: the stored 37a Standard RB reference is in {basis!r}, but this run "
+                f"uses single_qubit_basis={mode!r}. Rerun 37a_two_qubit_standard_rb with "
+                f"single_qubit_basis={mode!r} before 37b."
+            )
+        if basis is None:
+            node.log(
+                f"Qubit pair {qp.name}: the stored 37a reference has no single_qubit_basis (legacy run); "
+                "the interleaved fidelity will be rejected. Rerun 37a to use it."
+            )
+
+
+def _standard_rb_basis_matches(node: QualibrationNode, qp_name: str, overlay: dict | None) -> bool:
+    """The 37a Standard RB reference basis check: the loaded ``ds_fit`` stamp, else the state key."""
+    reference = _standard_rb_reference(node, qp_name)
+    if overlay is None and reference["alpha"] is None:
+        return True  # no reference at all: _resolve_irb_reference raises the missing-reference error
+    reference_basis = (overlay or {}).get("single_qubit_basis") or reference["basis"]
+    return _reference_basis_usable(node, qp_name, reference_basis, "37a Standard RB reference")
 
 
 def fit_irb_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str) -> xr.Dataset:
@@ -581,14 +612,19 @@ def fit_leakage_pair(da: xr.Dataset, node: QualibrationNode, qp_name: str, *, in
     }
     if interleaved:
         reference = _resolve_leakage_reference(node, qp_name)
+        if reference and not _reference_basis_usable(
+            node, qp_name, reference.get("single_qubit_basis"), "37a leakage reference"
+        ):
+            reference = {}
         per_cz = leakage_per_gate(fits, [reference.get(series) for series in _LEAKAGE_SERIES])
         assign_kwargs.update({_PER_CZ_VARIABLES[key]: per_series(values) for key, values in per_cz.items()})
         assign_kwargs["leakage_reference_updated_at"] = str(reference.get("updated_at") or "")
         assign_kwargs["leakage_per_cz_note"] = (
             ""
             if reference.get("pair")
-            else f"No extras['leakage_per_2q_clifford'] for {qp_name}: run 37a_two_qubit_standard_rb with "
-            "measure_leakage=True first. Only the leakage per interleaved Clifford is reported."
+            else f"No usable extras['leakage_per_2q_clifford'] for {qp_name} (missing, legacy, or another "
+            "single_qubit_basis): run 37a_two_qubit_standard_rb with measure_leakage=True in this basis first. "
+            "Only the leakage per interleaved Clifford is reported."
         )
     return da.drop_vars("state").assign(**assign_kwargs)
 

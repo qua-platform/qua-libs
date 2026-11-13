@@ -23,7 +23,6 @@ from typing import Iterable, Literal, Sequence
 # Files of any other version (v2 ZX, unversioned, v1 marker-terminated) are acquisition misses.
 SingleQubitBasis = Literal["XZ", "XY"]
 RB_ENCODING_VERSIONS: dict[str, int] = {"XY": 3, "XZ": 4}
-RB_ENCODING_VERSION = RB_ENCODING_VERSIONS["XY"]
 
 MIN_GATE_OPCODE = 0
 MAX_GATE_OPCODE = 37
