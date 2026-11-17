@@ -402,7 +402,7 @@ def _plot_stark_pair(ax, ds_fit: xr.Dataset, qubit_name: str, driven: str, label
         return colour
     order = np.argsort(xi_squared)
     xi_squared = xi_squared[order]
-    phase, _ = _progressive_unwrap(xi_squared, pair.oscillation_phase.values[usable][order])
+    phase, _ = _progressive_unwrap(xi_squared, pair.stark_phase.values[usable][order])
     line = ax.plot(xi_squared, phase, "o", ms=4, label=label, color=colour)[0]
 
     shift = float(pair.stark_shift)

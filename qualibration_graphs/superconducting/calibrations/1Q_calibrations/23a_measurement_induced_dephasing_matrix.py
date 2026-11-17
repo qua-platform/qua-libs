@@ -58,6 +58,12 @@ only. The x180 pulse then refocuses the Stark phase, so the oscillation only los
 decay becomes well conditioned and is sensitive to twice the probe time, at the price of losing the
 Stark channel. Only the dephasing matrix is computed and plotted in that mode.
 
+Setting sequence='ramsey' replaces the echo by a Ramsey sequence (x90 - tau - phase - x90): the x180
+is dropped and the probe pulse and its depletion time fill tau, so that the final pi/2 pulse is only
+played once the probe photons have rung down. The contrast and phase models are unchanged. The
+Ramsey sequence is shorter but not protected against low-frequency noise, so the idle time is
+checked against T2ramsey instead of T2echo.
+
 Because the two scales differ by orders of magnitude, the diagonal is swept logarithmically over a
 much smaller amplitude range than the off-diagonal. The amplitude axis therefore differs per pair
 and is stored as a two-dimensional 'xi' coordinate rather than as a dimension.
@@ -76,7 +82,8 @@ exp(-2*idle_time/T2echo); the T2 echo check below refuses idle times beyond half
 Prerequisites:
     - Having calibrated the qubit x90 and x180 pulses (nodes 04b and 10b).
     - Having calibrated the readout: frequency, power and discrimination threshold (nodes 07, 08a and 08b).
-    - Having measured T2 echo, used to check that the fixed idle time is not lossy (node 06b).
+    - Having measured T2 echo (node 06b), or T2 Ramsey (node 06a) for sequence='ramsey', used to check
+      that the fixed idle time is not lossy.
 
 Next steps before going to the next node:
     - This node does not update the QUAM state; it reports the matrices. If the off-diagonal
@@ -102,6 +109,8 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2", "q3", "q4"]
+    # Pulse sequence around the probe: "echo" (Hahn echo, default) or "ramsey" (no x180, checked against T2ramsey).
+    # node.parameters.sequence = "ramsey"
     pass
 
 
@@ -154,11 +163,13 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                 f"time of {q.name} ({probe_and_depletion} ns): the readout photons would leak into "
                 f"the second half of the echo."
             )
-        t2_echo = getattr(q, "T2echo", None)
-        if t2_echo and idle_time_ns > 0.5 * t2_echo * 1e9:
+        # The Ramsey sequence is not protected against low-frequency noise: compare with T2ramsey.
+        t2_name = "T2ramsey" if node.parameters.sequence == "ramsey" else "T2echo"
+        t2 = getattr(q, t2_name, None)
+        if t2 and idle_time_ns > 0.5 * t2 * 1e9:
             raise ValueError(
-                f"The idle time ({idle_time_ns} ns) exceeds half of the T2 echo of {q.name} "
-                f"({t2_echo * 1e9:.0f} ns): the echo contrast would be dominated by intrinsic "
+                f"The idle time ({idle_time_ns} ns) exceeds half of the {t2_name} of {q.name} "
+                f"({t2 * 1e9:.0f} ns): the contrast would be dominated by intrinsic "
                 f"decoherence rather than by measurement-induced dephasing."
             )
 
@@ -243,14 +254,17 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                             qubit.xy.play("x90")
                             qubit.xy.wait(idle_time_cycles)
 
-                            # Probe pulse inserted in the first half of the echo, followed by the
-                            # resonator ring-down.
+                            # Probe pulse inserted in the first half of the echo (or in the Ramsey
+                            # free evolution), followed by the resonator ring-down. The idle time holds
+                            # the probe and the depletion time, so the next pulse on the qubit only
+                            # starts once the photons have left the resonator.
                             driven_qubit.resonator.wait(x90_cycles)
                             driven_qubit.resonator.play("readout", amplitude_scale=xi, duration=probe_duration_cycles)
                             driven_qubit.resonator.wait(depletion_cycles)
 
-                            qubit.xy.play("x180")
-                            qubit.xy.wait(idle_time_cycles)
+                            if node.parameters.sequence == "echo":
+                                qubit.xy.play("x180")
+                                qubit.xy.wait(idle_time_cycles)
 
                             # Optional second probe, mirrored into the second half of the echo. The
                             # x180 above inverts the sign of the Stark phase accumulated in the first

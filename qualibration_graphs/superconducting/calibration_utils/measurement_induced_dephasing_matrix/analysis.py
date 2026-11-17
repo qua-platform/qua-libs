@@ -459,8 +459,12 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     # Stark matrix to report in that case and it is left out of the dataset entirely.
     ds_fit.attrs["has_stark_matrix"] = int(not node.parameters.probe_in_both_halves)
     if not node.parameters.probe_in_both_halves:
+        # The x180 of the echo inverts the Stark phase picked up in the first half, and the model is
+        # written for that sign. The Ramsey sequence has no x180, so its phase is flipped back here to
+        # report the same Stark shift with either sequence.
+        stark_phase = -phase if node.parameters.sequence == "ramsey" else phase
         stark, stark_error, stark_chi2, stark_residual, stark_rejected = _fit_stark_shifts(
-            phase,
+            stark_phase,
             phase_error,
             contrast,
             contrast_error,
@@ -471,6 +475,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             node.parameters.max_phase_residual_in_rad,
         )
         ds_fit = ds_fit.assign(
+            stark_phase=pair_array(stark_phase),
             stark_shift=matrix_array(stark),
             stark_shift_error=matrix_array(stark_error),
             stark_shift_chi2=matrix_array(stark_chi2),
@@ -478,6 +483,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             stark_shift_rejected=matrix_array(stark_rejected),
             stark_shift_resolved=matrix_array(np.abs(stark) > RESOLVED_SIGMA * stark_error),
         )
+        ds_fit["stark_phase"].attrs = {"long_name": "oscillation phase in the echo sign convention", "units": "rad"}
         ds_fit["stark_shift"].attrs = {"long_name": "AC-Stark shift at xi = 1", "units": "Hz"}
         ds_fit["stark_shift_error"].attrs = {"long_name": "AC-Stark shift error", "units": "Hz"}
 
