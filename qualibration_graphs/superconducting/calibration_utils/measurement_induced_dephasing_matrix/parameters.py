@@ -1,6 +1,6 @@
 """Parameter definitions for the measurement-induced dephasing matrix experiment."""
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 import numpy as np
 
@@ -46,6 +46,15 @@ class NodeSpecificParameters(RunnableParameters):
     it is derived as max_j(probe_length_j + depletion_time_j), rounded up to a multiple of 4 ns,
     so that the probe pulse and the subsequent resonator ring-down fit exactly inside the first half
     of the echo. Default is None."""
+    sequence: Literal["echo", "ramsey"] = "echo"
+    """Pulse sequence played on the measured qubit around the probe.
+
+    'echo' (default) is the Hahn echo x90 - tau - x180 - tau - phase - -x90 of the reference protocol.
+    'ramsey' drops the x180: x90 - tau - phase - x90, with the probe pulse and the resonator depletion
+    time inside tau, so that the final pi/2 pulse comes only after the probe photons have rung down.
+    The contrast and AC-Stark phase models, and therefore the analysis, are the same. The Ramsey
+    sequence is shorter but not protected against low-frequency noise, so the idle time is checked
+    against T2ramsey instead of T2echo. Not compatible with probe_in_both_halves. Default is 'echo'."""
     probe_in_both_halves: bool = False
     """Whether to play the probe pulse in both halves of the echo instead of only the first.
 
@@ -147,8 +156,11 @@ def validate_readout_len(parameters: NodeSpecificParameters) -> None:
     """Raise if the requested probe duration cannot be played.
 
     QUA takes the duration in clock cycles and needs at least four of them, so the value has to be a
-    multiple of 4 ns and no shorter than 16 ns.
+    multiple of 4 ns and no shorter than 16 ns. The Ramsey sequence has a single free evolution, so it
+    cannot hold a probe in a second half.
     """
+    if parameters.sequence == "ramsey" and parameters.probe_in_both_halves:
+        raise ValueError("probe_in_both_halves requires sequence='echo': the Ramsey sequence has a single half.")
     requested = parameters.readout_len_in_ns
     if requested is None:
         return
