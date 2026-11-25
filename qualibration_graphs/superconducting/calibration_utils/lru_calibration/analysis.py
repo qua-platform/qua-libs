@@ -9,8 +9,7 @@ The resonance is located per amplitude from the minimum of P(f) along frequency,
 line is fitted through these points, and P(f) is read off along the fitted line. The optimum is
 the amplitude of lowest P(f) on the line; across durations the one reaching the lowest P(f) wins.
 
-The raw dataset carries its transition in ``attrs["lru_transition"]``; for |f0> -> |g1> (node 26a)
-P(g) rises at the resonance. The fit uses P(f) only.
+The pump drives |f0> -> |g1> (node 26a), so P(g) rises at the resonance. The fit uses P(f) only.
 """
 
 import logging
@@ -20,7 +19,6 @@ from typing import Dict, Tuple
 import numpy as np
 import xarray as xr
 from qualibrate import QualibrationNode
-from quam_config.lru_components import LEGACY_LRU_TRANSITION, LRU_TRANSITIONS, LruTransition
 
 #: Smallest number of amplitudes with a visible dip needed to fit the resonance line.
 MIN_RIDGE_POINTS = 3
@@ -42,13 +40,6 @@ class FitParameters:
     pf_min: float
     pf_prepared: float
     failure_reason: str = ""
-    transition: str = ""
-
-
-def lru_transition(ds: xr.Dataset) -> LruTransition:
-    """Transition stored with the dataset; ``LEGACY_LRU_TRANSITION`` when the tag is missing or unknown."""
-    tag = ds.attrs.get("lru_transition")
-    return tag if tag in LRU_TRANSITIONS else LEGACY_LRU_TRANSITION
 
 
 def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
@@ -61,7 +52,7 @@ def process_raw_dataset(ds: xr.Dataset, node: QualibrationNode) -> xr.Dataset:
 
 
 def assign_lru_coords(ds: xr.Dataset, qubits, operation: str) -> xr.Dataset:
-    """Add the absolute LRU amplitude and drive frequency, and the |f0> -> |g1> tag, stored with the raw data.
+    """Add the absolute LRU amplitude and drive frequency, stored with the raw data.
 
     They are taken from the LRU elements at acquisition time, since an element added for the run only
     is gone from the saved QUAM state when the data is reloaded.
@@ -80,7 +71,6 @@ def assign_lru_coords(ds: xr.Dataset, qubits, operation: str) -> xr.Dataset:
             {"long_name": "LRU drive frequency", "units": "Hz"},
         ),
     )
-    ds.attrs["lru_transition"] = "f0g1"
     return ds
 
 
@@ -243,7 +233,6 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
     opt_index = np.full(shape[:2], -1)
     reasons = [["" for _ in range(shape[1])] for _ in range(shape[0])]
 
-    transition = lru_transition(ds)
     fit_results = {}
     for iq, qubit in enumerate(ds.qubit.values):
         amplitude = ds.amplitude.sel(qubit=qubit).values
@@ -272,7 +261,7 @@ def fit_raw_data(ds: xr.Dataset, node: QualibrationNode) -> Tuple[xr.Dataset, Di
             opt_index[iq, it] = fit["opt_index"]
             reasons[iq][it] = fit["failure_reason"]
 
-        fit_results[str(qubit)] = _best_duration(ds, iq, per_duration, success, opt_index, reasons[iq], transition)
+        fit_results[str(qubit)] = _best_duration(ds, iq, per_duration, success, opt_index, reasons[iq])
     # P(g) on the line from the two measured populations; the raw dataset need not hold pg
     per_amp["pg_line"] = 1 - per_amp["pe_line"] - per_amp["pf_line"]
 
@@ -301,7 +290,6 @@ def _best_duration(
     success: np.ndarray,
     opt_index: np.ndarray,
     reasons: list,
-    transition: str,
 ):
     """FitParameters of the successful duration with the lowest P(f) on the line for qubit ``iq``.
 
@@ -321,7 +309,6 @@ def _best_duration(
             pf_min=float(per_duration["pf_min"][iq, it]),
             pf_prepared=float(per_duration["pf_prepared"][iq, it]),
             failure_reason=f"{ds.duration.values[it]:.0f} ns: {reasons[it]}",
-            transition=transition,
         )
     it = int(np.argmin(pf_min))
     ia = int(opt_index[iq, it])
@@ -338,7 +325,6 @@ def _best_duration(
         stark_coefficient=float(c2),
         pf_min=float(per_duration["pf_min"][iq, it]),
         pf_prepared=float(per_duration["pf_prepared"][iq, it]),
-        transition=transition,
     )
 
 
@@ -350,12 +336,10 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         if not fit["success"]:
             log_callable(f"{qubit}: FAIL -- {fit['failure_reason']}")
             continue
-        transition = fit.get("transition")
-        zero_amp = LRU_TRANSITIONS[transition].label if transition in LRU_TRANSITIONS else "resonance"
         log_callable(
             f"{qubit}: SUCCESS -- tau = {fit['duration_ns']:.0f} ns, amplitude = {fit['amplitude']:.4f} "
             f"(pre-factor {fit['amp_prefactor']:.3f}), f_LRU = {fit['frequency'] / 1e9:.5f} GHz "
-            f"({zero_amp} at zero amplitude {fit['frequency_zero_amplitude'] / 1e9:.5f} GHz, "
+            f"(|f0> -> |g1> at zero amplitude {fit['frequency_zero_amplitude'] / 1e9:.5f} GHz, "
             f"Stark coefficient {fit['stark_coefficient'] / 1e6:+.1f} MHz/amp^2), "
             f"P(f) {fit['pf_prepared']:.3f} -> {fit['pf_min']:.3g}."
         )

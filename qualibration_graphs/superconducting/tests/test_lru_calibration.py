@@ -29,7 +29,6 @@ from calibration_utils.lru_calibration.analysis import (  # noqa: E402
     fit_lru_map,
     fit_raw_data,
     log_fitted_results,
-    lru_transition,
     process_raw_dataset,
 )
 from calibration_utils.lru_calibration.parameters import NodeSpecificParameters, get_detunings  # noqa: E402
@@ -97,7 +96,7 @@ def test_dip_within_shot_noise_is_rejected():
     assert "shot noise" in fit["failure_reason"]
 
 
-def _two_duration_dataset(transition=None):
+def _two_duration_dataset():
     """One qubit, two durations; the longer pulse needs less amplitude for a full transfer."""
     params = NodeSpecificParameters(frequency_span_in_mhz=200, frequency_step_in_mhz=2)
     detuning = get_detunings(params)
@@ -117,8 +116,6 @@ def _two_duration_dataset(transition=None):
         amplitude=(("qubit", "amp_prefactor"), amplitude[None]),
         frequency=(("qubit", "detuning"), RF + detuning[None], {"long_name": "LRU drive frequency", "units": "Hz"}),
     )
-    if transition is not None:
-        ds.attrs["lru_transition"] = transition
     return ds
 
 
@@ -138,50 +135,23 @@ def test_fit_raw_data_selects_best_duration():
     assert result.frequency == pytest.approx(RF + D0 + C2 * result.amplitude**2, abs=1e6)
     assert ds_fit.pf_line.dims == ("qubit", "duration", "amp_prefactor")
     np.testing.assert_allclose(ds_fit.pg_line.values, 1 - ds_fit.pe_line.values - ds_fit.pf_line.values)
-    assert result.transition == "f0g1"  # untagged data is read as the legacy transition
 
 
-def test_tagged_dataset_carries_its_transition_to_the_fit_and_the_log():
-    _, fit_results = fit_raw_data(_two_duration_dataset("f0g1"), NODE)
-    assert fit_results["q1"].transition == "f0g1"
-
+def test_log_names_the_transition():
+    _, fit_results = fit_raw_data(_two_duration_dataset(), NODE)
     lines = []
     log_fitted_results({k: asdict(v) for k, v in fit_results.items()}, log_callable=lines.append)
     assert "|f0> -> |g1> at zero amplitude" in lines[0]
 
 
-def test_lru_transition_falls_back_to_f0g1():
-    assert lru_transition(xr.Dataset()) == "f0g1"
-    assert lru_transition(xr.Dataset(attrs={"lru_transition": "f1g2"})) == "f0g1"
-    assert lru_transition(xr.Dataset(attrs={"lru_transition": "f0g1"})) == "f0g1"
-
-
-def test_process_raw_dataset_keeps_the_transition_tag():
-    ds = process_raw_dataset(_two_duration_dataset("f0g1"), NODE)
-    assert ds.attrs["lru_transition"] == "f0g1"
-
-
-def test_transition_tag_survives_qualibrate_save_and_load(tmp_path):
-    # Private QUAlibrate paths: these are the saver and loader node.save() and load_from_id use.
-    from qualibrate.core.storage._data_handler.data_processors import XarraySaver
-    from qualibrate.core.utils.node.loaders import XarrayLoader
-
-    saver = XarraySaver()
-    saver.process({"ds_raw": _two_duration_dataset("f0g1")})
-    saver.post_process(tmp_path)
-    loaded = XarrayLoader().load(tmp_path / "ds_raw.h5")
-    assert loaded.attrs["lru_transition"] == "f0g1"
-
-
-@pytest.mark.parametrize("transition, title", [("f0g1", "|f0> -> |g1>: P(g)"), (None, "|f0> -> |g1>: P(g)")])
-def test_lru_map_shows_the_population_of_the_transition(transition, title):
+def test_lru_map_shows_the_population_the_pump_fills():
     from calibration_utils.lru_calibration.plotting import plot_lru_maps
 
-    ds = process_raw_dataset(_two_duration_dataset(transition), NODE)
+    ds = process_raw_dataset(_two_duration_dataset(), NODE)
     ds_fit, _ = fit_raw_data(ds, NODE)
     qubits = [SimpleNamespace(grid_location="0,0")]
     fig = plot_lru_maps(ds, qubits, ds_fit, 200)
-    assert title in fig._suptitle.get_text()
+    assert "|f0> -> |g1>: P(g)" in fig._suptitle.get_text()
     plt.close(fig)
 
 
@@ -189,7 +159,7 @@ def test_lru_map_shows_the_population_of_the_transition(transition, title):
 def test_lru_map_can_show_the_other_populations(population, label):
     from calibration_utils.lru_calibration.plotting import plot_lru_maps
 
-    ds = process_raw_dataset(_two_duration_dataset("f0g1"), NODE)
+    ds = process_raw_dataset(_two_duration_dataset(), NODE)
     ds_fit, _ = fit_raw_data(ds, NODE)
     qubits = [SimpleNamespace(grid_location="0,0")]
     fig = plot_lru_maps(ds, qubits, ds_fit, 200, population)
@@ -225,3 +195,4 @@ def test_iq_classification_recovers_populations_and_keeps_sparse_centers():
     assert info["q1"]["centers_refit"][1] == stored[1].tolist()  # too few e shots: the e center stays stored
     assert float((ds.state == state[0]).mean()) > 0.99
     assert ds.pf.dims == ("qubit", "duration", "amp_prefactor", "detuning")
+

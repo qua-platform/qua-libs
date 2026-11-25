@@ -7,9 +7,6 @@ import xarray as xr
 from matplotlib.figure import Figure
 from qualibration_libs.plotting import QubitGrid, grid_iter
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
-from quam_config.lru_components import LRU_TRANSITIONS
-
-from .analysis import lru_transition
 
 #: Floor of the log-scale P(f) axis, so empty bins (P = 0) stay on the plot.
 PF_FLOOR = 1e-4
@@ -27,13 +24,11 @@ def plot_lru_maps(
 ) -> Figure:
     """One population versus LRU amplitude and drive frequency for one LRU duration, with the fitted line.
 
-    By default the population is the one the dataset's transition fills: P(g) for |f0> -> |g1>
-    (see ``lru_transition``). ``population`` ("pg", "pe" or "pf") plots another one instead,
-    for display only. White dots are the per-amplitude P(f) minima used in the fit, the orange curve the fitted
+    By default the population is P(g), which the |f0> -> |g1> pump fills. ``population`` ("pg", "pe" or "pf")
+    plots another one instead, for display only. White dots are the per-amplitude P(f) minima used in the fit, the orange curve the fitted
     ``d0 + c2 * A**2`` line and the star the optimum on that line.
     """
-    info = LRU_TRANSITIONS[lru_transition(ds)]
-    population = population or info.population
+    population = population or "pg"
     population_label = f"P({population[1]})"
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
@@ -65,7 +60,7 @@ def plot_lru_maps(
         ax.set_ylabel(f"{data.frequency.attrs.get('long_name', 'Drive frequency')} (GHz)")
         grid.fig.colorbar(mesh, ax=ax, label=population_label)
 
-    grid.fig.suptitle(f"f-LRU {info.label}: {population_label} for a {duration:.0f} ns pulse")
+    grid.fig.suptitle(f"f-LRU |f0> -> |g1>: {population_label} for a {duration:.0f} ns pulse")
     grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig
@@ -100,7 +95,7 @@ def plot_pf_along_line(ds: xr.Dataset, qubits: List[AnyTransmon], ds_fit: xr.Dat
         ax.set_ylabel("Population |f>")
         ax.legend(fontsize=7)
 
-    grid.fig.suptitle(f"f-LRU {LRU_TRANSITIONS[lru_transition(ds)].label}: P(f) along the fitted resonance line")
+    grid.fig.suptitle(f"f-LRU |f0> -> |g1>: P(f) along the fitted resonance line")
     grid.fig.set_size_inches(15, 9)
     grid.fig.tight_layout()
     return grid.fig

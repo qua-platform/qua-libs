@@ -33,8 +33,7 @@ each on its own digital upconverter: upconverter 1 for the qubit XY drive, upcon
 
 import dataclasses
 import logging
-from dataclasses import dataclass
-from typing import Dict, Literal, NamedTuple
+from typing import NamedTuple
 
 from quam.components.channels import MWChannel
 from quam.components.macro import QubitMacro
@@ -43,16 +42,12 @@ from quam_builder.architecture.superconducting.components.xy_drive import XYDriv
 from quam_builder.architecture.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 
 __all__ = [
-    "LEGACY_LRU_TRANSITION",
     "LRU_OPERATION",
-    "LRU_TRANSITIONS",
     "LRU_UPCONVERTER",
     "LruFixedFrequencyTransmon",
     "LruFluxTunableTransmon",
     "LruMacro",
     "LruReferenceFrequencies",
-    "LruTransition",
-    "LruTransitionInfo",
     "MultiUpconverterXYDriveMW",
     "f0g1_frequency",
     "lru_reference_frequencies",
@@ -68,26 +63,6 @@ LRU_UPCONVERTER = 2
 
 #: Name of the LRU pulse on ``qubit.lru``.
 LRU_OPERATION = "lru"
-
-#: Transition an f-LRU drives: |f0> -> |g1> (charge drive, node 26a).
-LruTransition = Literal["f0g1"]
-
-
-@dataclass(frozen=True)
-class LruTransitionInfo:
-    """Display label of a transition and the population that rises when it is driven."""
-
-    label: str
-    population: str
-    population_label: str
-
-
-LRU_TRANSITIONS: Dict[LruTransition, LruTransitionInfo] = {
-    "f0g1": LruTransitionInfo(label="|f0> -> |g1>", population="pg", population_label="P(g)"),
-}
-
-#: Transition assumed for a dataset that carries no ``lru_transition`` tag.
-LEGACY_LRU_TRANSITION: LruTransition = "f0g1"
 
 
 @quam_dataclass
