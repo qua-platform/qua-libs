@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from quam_config.lru_components import (  # noqa: E402
+from calibration_utils.lru_calibration.frequencies import (  # noqa: E402
     f0g1_frequency,
 )
 
@@ -53,6 +53,6 @@ def test_missing_input_names_the_qubit_and_the_calibrating_node(kwargs, node):
 
 def test_resonator_above_f02_returns_the_absolute_value_and_warns(caplog):
     qubit = _qubit(f_r=10e9)  # above f_02 = 8.9865 GHz
-    with caplog.at_level(logging.WARNING, logger="quam_config.lru_components"):
+    with caplog.at_level(logging.WARNING, logger="calibration_utils.lru_calibration.frequencies"):
         assert f0g1_frequency(qubit) == pytest.approx(1.0135e9, abs=1e3)
     assert "qtest" in caplog.text

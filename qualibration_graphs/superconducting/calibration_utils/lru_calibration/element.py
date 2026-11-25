@@ -1,13 +1,12 @@
 """In-memory f-LRU element for the calibration node, kept in the QUAM state only on request.
 
 ``add_lru_element`` gives a qubit without one an ``lru`` channel on its XY port's second
-upconverter. That takes three changes, none of which ``record_state_updates`` can offer as a
+upconverter. That takes two changes, none of which ``record_state_updates`` can offer as a
 proposal, since it only records simple values:
 
 * the XY port's single ``upconverter_frequency`` becomes an ``upconverters`` mapping: upconverter 1
   keeps the qubit drive LO, upconverter 2 is set ``LRU_NOMINAL_IF`` below the expected pump, or at
   the nearest edge of the port's band when that falls outside it (``lru_upconverter_frequency``);
-* ``qubit.xy`` becomes ``MultiUpconverterXYDriveMW``, so it keeps reading upconverter 1;
 * a qubit loaded from a state saved before the LRU classes became the default becomes
   ``LruFluxTunableTransmon`` or ``LruFixedFrequencyTransmon``, which have the ``lru`` field
   (``upgrade_to_lru_class``).
@@ -25,11 +24,10 @@ from calibration_utils.common_utils.if_limits import IF_MAX_HZ, MW_FEM_BANDS
 from quam_config.lru_components import (
     LRU_OPERATION,
     LRU_UPCONVERTER,
-    MultiUpconverterXYDriveMW,
-    f0g1_frequency,
-    lru_reference_frequencies,
     upgrade_to_lru_class,
 )
+
+from .frequencies import f0g1_frequency, lru_reference_frequencies
 
 #: LRU intermediate frequency at the expected pump frequency; keeps the default 200 MHz span around it
 #: within the MW-FEM's +-400 MHz IF specification. A wider span set by the user gets the IF-reach warning.
@@ -48,17 +46,15 @@ class LruAddition:
     qubit: Any
     upconverter_frequency: Optional[float]
     upconverters: Optional[dict]
-    xy_class: type
     qubit_class: type
     band_note: Optional[str] = None
     """Set when upconverter 2 was moved to the edge of the port's band, away from ``LRU_NOMINAL_IF``."""
 
     def remove(self) -> None:
-        """Restore the qubit, its XY drive and its XY port as they were before ``add_lru_element``."""
+        """Restore the qubit and its XY port as they were before ``add_lru_element``."""
         port = self.qubit.xy.opx_output
         self.qubit.lru = None
         self.qubit.__class__ = self.qubit_class
-        self.qubit.xy.__class__ = self.xy_class
         port.upconverters = self.upconverters
         port.upconverter_frequency = self.upconverter_frequency
 
@@ -91,7 +87,7 @@ def add_lru_element(qubit, operation: str = LRU_OPERATION) -> Optional[LruAdditi
     """
     if getattr(qubit, "lru", None) is not None:
         return None
-    if type(qubit.xy) not in (XYDriveMW, MultiUpconverterXYDriveMW):
+    if not isinstance(qubit.xy, XYDriveMW):
         raise TypeError(f"{qubit.name}: the LRU element needs an MW-FEM XY drive, got {type(qubit.xy).__name__}.")
 
     port = qubit.xy.opx_output
@@ -111,7 +107,6 @@ def add_lru_element(qubit, operation: str = LRU_OPERATION) -> Optional[LruAdditi
         qubit=qubit,
         upconverter_frequency=port.upconverter_frequency,
         upconverters=None if port.upconverters is None else {k: dict(v) for k, v in port.upconverters.items()},
-        xy_class=type(qubit.xy),
         qubit_class=qubit_class,
     )
 
@@ -129,8 +124,7 @@ def add_lru_element(qubit, operation: str = LRU_OPERATION) -> Optional[LruAdditi
     port.upconverter_frequency = None
     port.upconverters = upconverters
 
-    qubit.xy.__class__ = MultiUpconverterXYDriveMW
-    qubit.lru = MultiUpconverterXYDriveMW(
+    qubit.lru = XYDriveMW(
         opx_output=qubit.xy.get_raw_value("opx_output"),
         upconverter=LRU_UPCONVERTER,
         RF_frequency=f_lru,
