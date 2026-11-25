@@ -122,7 +122,7 @@ def check_channel_if_reach(channel: Any, label: str = "", rf_hz: Any = None) -> 
 
 
 def warn_if_reach(node: Any, channel: Any, label: str = "", rf_hz: Any = None) -> Optional[str]:
-    """Log an out-of-reach IF through ``node`` and return the message (``None`` when in reach).
+    """Log an out-of-reach IF through ``node`` as a warning and return the message (``None`` when in reach).
 
     Purely advisory: the caller keeps whatever it just wrote, ``node.outcomes`` is untouched,
     and nothing raises. A calibration that has measured a frequency must never be brought
@@ -132,7 +132,7 @@ def warn_if_reach(node: Any, channel: Any, label: str = "", rf_hz: Any = None) -
     try:
         message = check_channel_if_reach(channel, label, rf_hz)
         if message is not None:
-            node.log(message)
+            node.log(message, level="warning")
         return message
     except Exception:
         return None
