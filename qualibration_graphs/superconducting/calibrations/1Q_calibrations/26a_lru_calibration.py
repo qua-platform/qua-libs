@@ -40,6 +40,7 @@ from qualibration_libs.data import XarrayDataFetcher
 from qualibration_libs.parameters import get_qubits
 from qualibration_libs.runtime import simulate_and_plot
 from quam_config import Quam
+from quam_config.lru_components import MIN_WAIT_NS, lru_wait_ns
 
 # %% {Description}
 description = """
@@ -138,6 +139,14 @@ def _check_qubits(node: QualibrationNode[Parameters, Quam], qubits, amp_factors,
             message = prediction_outside_window(qubit, f_min, f_max)
             if message is not None:
                 node.log(message, level="warning")
+        if node.parameters.wait_after_lru_ns is None:
+            depletion = qubit.resonator.depletion_time
+            if lru_wait_ns(qubit) != depletion:
+                node.log(
+                    f"{qubit.name}: the wait after the LRU is the resonator depletion_time, {depletion} ns, which "
+                    f"QUA plays as {lru_wait_ns(qubit)} ns (a wait is a multiple of 4 ns from {MIN_WAIT_NS} ns).",
+                    level="warning",
+                )
         for name, frequency in spurious_lines(qubit, f_min, f_max):
             node.log(
                 f"{qubit.name}: {name} at {frequency / 1e9:.4f} GHz is near the swept window "
@@ -242,11 +251,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                                     qubit.lru.wait(t)  # clock cycles
                                 else:
                                     qubit.lru.play(operation, amplitude_scale=a, duration=t)
-                                wait_ns = node.parameters.wait_after_lru_ns
-                                if wait_ns is None:
-                                    wait_ns = qubit.resonator.depletion_time
-                                if wait_ns >= 16:
-                                    qubit.lru.wait(int(wait_ns) // 4)  # clock cycles
+                                wait_ns = lru_wait_ns(qubit, node.parameters.wait_after_lru_ns)
+                                if wait_ns:
+                                    qubit.lru.wait(wait_ns // 4)  # clock cycles
                                 align(qubit.xy.name, qubit.lru.name)
                             align()
 

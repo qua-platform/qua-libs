@@ -196,3 +196,13 @@ def test_iq_classification_recovers_populations_and_keeps_sparse_centers():
     assert float((ds.state == state[0]).mean()) > 0.99
     assert ds.pf.dims == ("qubit", "duration", "amp_prefactor", "detuning")
 
+
+@pytest.mark.parametrize("wait", [4, 12, 18, 102])
+def test_wait_after_lru_must_be_playable(wait):
+    with pytest.raises(ValueError, match="wait_after_lru_ns"):
+        NodeSpecificParameters(wait_after_lru_ns=wait)
+
+
+@pytest.mark.parametrize("wait", [None, 0, 16, 400])
+def test_playable_waits_after_lru_are_accepted(wait):
+    assert NodeSpecificParameters(wait_after_lru_ns=wait).wait_after_lru_ns == wait

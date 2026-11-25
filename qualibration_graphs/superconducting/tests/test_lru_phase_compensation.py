@@ -88,6 +88,16 @@ def test_lru_macro_round_trips_and_plays_pump_then_virtual_z(tmp_path, monkeypat
     assert pump < rotation
 
 
+@pytest.mark.parametrize("wait_ns, played", [(None, 1000), (0, 0), (12, 0), (16, 16), (402, 400)])
+def test_lru_wait_ns(wait_ns, played):
+    from types import SimpleNamespace
+
+    from quam_config.lru_components import lru_wait_ns
+
+    qubit = SimpleNamespace(resonator=SimpleNamespace(depletion_time=1000))
+    assert lru_wait_ns(qubit, wait_ns) == played
+
+
 def test_zero_phase_shift_plays_no_frame_rotation(tmp_path, monkeypatch):
     from qm import generate_qua_script
     from qm.qua import program

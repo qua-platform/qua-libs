@@ -31,8 +31,8 @@ class NodeSpecificParameters(RunnableParameters):
     frequency_detuning_in_mhz: float = 0.0
     """Offset of the frequency sweep centre from ``qubit.lru.RF_frequency``, in MHz. Default is 0."""
     wait_after_lru_ns: Optional[int] = None
-    """Wait between the LRU pulse and the readout, letting the photon left in the resonator decay.
-    If None, the resonator ``depletion_time``. Default is None."""
+    """Wait between the LRU pulse and the readout, letting the photon left in the resonator decay, in ns:
+    0 or a multiple of 4 ns from 16 ns. If None, the resonator ``depletion_time``. Default is None."""
     readout_operation: str = "readout_GEF"
     """Resonator pulse used for the g/e/f readout (nodes 14a/14b/15). Default is "readout_GEF"."""
     skip_lru_pulse: bool = False
@@ -59,10 +59,13 @@ class NodeSpecificParameters(RunnableParameters):
 
     @model_validator(mode="after")
     def _validate_sweep(self):
-        """Check durations fit the 4 ns clock and the amplitude pre-factor stays within QUA's [-2, 2)."""
+        """Check durations and the wait fit the 4 ns clock and the amplitude pre-factor stays within QUA's [-2, 2)."""
         bad = [d for d in self.pulse_durations_ns if d < 16 or d % 4]
         if bad:
             raise ValueError(f"pulse_durations_ns must be multiples of 4 ns and >= 16 ns, got {bad}.")
+        wait = self.wait_after_lru_ns
+        if wait is not None and wait != 0 and (wait < 16 or wait % 4):
+            raise ValueError(f"wait_after_lru_ns must be 0 or a multiple of 4 ns >= 16 ns, got {wait}.")
         if not -2 <= self.min_amp_factor < self.max_amp_factor <= 2:
             raise ValueError("Amplitude pre-factors must satisfy -2 <= min_amp_factor < max_amp_factor <= 2.")
         return self

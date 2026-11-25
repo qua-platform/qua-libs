@@ -51,6 +51,7 @@ __all__ = [
     "MultiUpconverterXYDriveMW",
     "f0g1_frequency",
     "lru_reference_frequencies",
+    "lru_wait_ns",
     "play_lru",
     "upgrade_to_lru_class",
     "validate_lru_qubits",
@@ -63,6 +64,21 @@ LRU_UPCONVERTER = 2
 
 #: Name of the LRU pulse on ``qubit.lru``.
 LRU_OPERATION = "lru"
+
+#: Shortest wait QUA plays, in ns (4 clock cycles).
+MIN_WAIT_NS = 16
+
+
+def lru_wait_ns(qubit, wait_ns=None) -> int:
+    """Wait after the pump as it is played, in ns: ``wait_ns``, or the resonator ``depletion_time`` when None.
+
+    The wait lets the photon the pump leaves in the resonator decay before the next gate or the readout. It is
+    rounded down to the 4 ns clock, and a wait under ``MIN_WAIT_NS`` is not played (0 is returned).
+    """
+    if wait_ns is None:
+        wait_ns = qubit.resonator.depletion_time
+    wait_ns = int(wait_ns) // 4 * 4
+    return wait_ns if wait_ns >= MIN_WAIT_NS else 0
 
 
 @quam_dataclass
