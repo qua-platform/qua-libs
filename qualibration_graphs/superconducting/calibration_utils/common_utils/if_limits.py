@@ -12,9 +12,9 @@ That is the whole policy encoded here:
 * ``IF_WARN_HZ < |IF| <= IF_MAX_HZ`` -- outside specification but usable; say so and carry on.
 * ``|IF| > IF_MAX_HZ``    -- say so more loudly, and *still* carry on.
 
-Nothing in this module raises. A calibration that has just fitted a frequency should always
-be able to write it and offer the state update; whether the resulting IF is comfortable is
-information for the operator, not a gate. Refusing the write would only hide a real chip
+Nothing in this module refuses a frequency. A calibration that has just fitted a frequency
+should always be able to write it and offer the state update; whether the resulting IF is
+comfortable is information for the operator, not a gate. Refusing the write would only hide a real chip
 frequency behind a hardware-reach complaint, leaving the state pointing at the stale value.
 
 The readout side is the reason this matters in practice. An analog *input* port defines a
@@ -47,9 +47,9 @@ def upconverter_frequency(channel: Any) -> Optional[float]:
     A port carries either a single ``upconverter_frequency`` or an ``upconverters`` mapping
     that the channel indexes through its ``upconverter`` field (defaulting to 1).
 
-    Returns ``None`` rather than propagating anything: quam attribute access can raise
-    ``KeyError`` as readily as ``AttributeError`` (references, ``QuamDict``), and callers use
-    this to decide whether to *report* something, never to decide whether to run.
+    Returns ``None`` when the port or its frequency is missing: quam attribute access can raise
+    ``KeyError`` as readily as ``AttributeError`` (references, ``QuamDict``), and a frequency that
+    is not a number fails the ``float`` conversion. Any other error propagates.
     """
     try:
         port = getattr(channel, "opx_output", None)
@@ -68,7 +68,7 @@ def upconverter_frequency(channel: Any) -> Optional[float]:
             return None
         frequency = entry.get("frequency") if hasattr(entry, "get") else getattr(entry, "frequency", None)
         return None if frequency is None else float(frequency)
-    except Exception:
+    except (AttributeError, KeyError, TypeError, ValueError):
         return None
 
 
@@ -113,26 +113,17 @@ def check_channel_if_reach(channel: Any, label: str = "", rf_hz: Any = None) -> 
     ``rf_hz`` overrides the channel's own ``RF_frequency`` -- used where the tone that is
     actually emitted sits somewhere else, as with the GEF readout's shifted frequency.
     """
-    try:
-        if rf_hz is None:
-            rf_hz = getattr(channel, "RF_frequency", None)
-        return check_if_reach(rf_hz, upconverter_frequency(channel), label)
-    except Exception:
-        return None
+    if rf_hz is None:
+        rf_hz = getattr(channel, "RF_frequency", None)
+    return check_if_reach(rf_hz, upconverter_frequency(channel), label)
 
 
 def warn_if_reach(node: Any, channel: Any, label: str = "", rf_hz: Any = None) -> Optional[str]:
     """Log an out-of-reach IF through ``node`` as a warning and return the message (``None`` when in reach).
 
-    Purely advisory: the caller keeps whatever it just wrote, ``node.outcomes`` is untouched,
-    and nothing raises. A calibration that has measured a frequency must never be brought
-    down by the commentary about it -- so if the check or the logging itself fails, that is
-    swallowed too, and the run continues with one fewer log line.
+    Purely advisory: the caller keeps whatever it just wrote and ``node.outcomes`` is untouched.
     """
-    try:
-        message = check_channel_if_reach(channel, label, rf_hz)
-        if message is not None:
-            node.log(message, level="warning")
-        return message
-    except Exception:
-        return None
+    message = check_channel_if_reach(channel, label, rf_hz)
+    if message is not None:
+        node.log(message, level="warning")
+    return message
