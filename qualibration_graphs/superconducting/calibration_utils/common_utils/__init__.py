@@ -12,7 +12,7 @@ from .gef_readout_pulse import (
     reset_for_gef,
     set_gef_readout_frequency,
 )
-from .if_limits import check_if_reach, upconverter_frequency, warn_if_reach
+from .if_limits import check_if_reach, warn_if_reach
 
 __all__ = [
     "ArgmaxQuality",
@@ -25,6 +25,5 @@ __all__ = [
     "preflight_accumulated_demod",
     "reset_for_gef",
     "set_gef_readout_frequency",
-    "upconverter_frequency",
     "warn_if_reach",
 ]

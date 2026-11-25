@@ -11,7 +11,6 @@ from calibration_utils.common_utils import (
     ensure_gef_readout_pulse,
     reset_for_gef,
     set_gef_readout_frequency,
-    upconverter_frequency,
     warn_if_reach,
 )
 from calibration_utils.lru_calibration import (
@@ -128,7 +127,7 @@ def _check_qubits(node: QualibrationNode[Parameters, Quam], qubits, amp_factors,
                 f"{qubit.name}: the LRU amplitude reaches {max_amplitude:.3f} of full scale; "
                 f"lower max_amp_factor below {1 / abs(qubit.lru.operations[operation].amplitude):.3f}."
             )
-        lo = upconverter_frequency(qubit.lru)
+        lo = qubit.lru.upconverter_frequency
         f_min = qubit.lru.RF_frequency + detunings.min()
         f_max = qubit.lru.RF_frequency + detunings.max()
         for frequency in (f_min, f_max):
@@ -174,7 +173,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
             node.namespace["lru_additions"][qubit.name] = addition
             node.log(
                 f"{qubit.name}: added an lru element for this run at {qubit.lru.RF_frequency / 1e9:.4f} GHz, "
-                f"upconverter {qubit.lru.upconverter} at {upconverter_frequency(qubit.lru) / 1e9:.4f} GHz."
+                f"upconverter {qubit.lru.upconverter} at {qubit.lru.upconverter_frequency / 1e9:.4f} GHz."
             )
             if addition.band_note is not None:
                 node.log(addition.band_note, level="warning")

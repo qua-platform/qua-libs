@@ -41,37 +41,6 @@ IF_MAX_HZ = 500e6
 MW_FEM_BANDS = {1: (50e6, 5.5e9), 2: (4.5e9, 7.5e9), 3: (6.5e9, 10.5e9)}
 
 
-def upconverter_frequency(channel: Any) -> Optional[float]:
-    """The LO an MW channel plays against, or ``None`` if it cannot be determined.
-
-    A port carries either a single ``upconverter_frequency`` or an ``upconverters`` mapping
-    that the channel indexes through its ``upconverter`` field (defaulting to 1).
-
-    Returns ``None`` when the port or its frequency is missing: quam attribute access can raise
-    ``KeyError`` as readily as ``AttributeError`` (references, ``QuamDict``), and a frequency that
-    is not a number fails the ``float`` conversion. Any other error propagates.
-    """
-    try:
-        port = getattr(channel, "opx_output", None)
-        if port is None:
-            return None
-
-        lo = getattr(port, "upconverter_frequency", None)
-        if lo is not None:
-            return float(lo)
-
-        upconverters = getattr(port, "upconverters", None)
-        if not upconverters:
-            return None
-        entry = upconverters.get(getattr(channel, "upconverter", None) or 1)
-        if entry is None:
-            return None
-        frequency = entry.get("frequency") if hasattr(entry, "get") else getattr(entry, "frequency", None)
-        return None if frequency is None else float(frequency)
-    except (AttributeError, KeyError, TypeError, ValueError):
-        return None
-
-
 def check_if_reach(rf_hz: Any, lo_hz: Any, label: str = "") -> Optional[str]:
     """Message describing an out-of-reach intermediate frequency, or ``None`` when it is fine.
 
@@ -112,10 +81,18 @@ def check_channel_if_reach(channel: Any, label: str = "", rf_hz: Any = None) -> 
 
     ``rf_hz`` overrides the channel's own ``RF_frequency`` -- used where the tone that is
     actually emitted sits somewhere else, as with the GEF readout's shifted frequency.
+
+    Returns ``None`` when the channel has no output port or upconverter frequency to compare
+    against: ``MWChannel.upconverter_frequency`` raises ``ValueError`` when neither is set, and a
+    quam reference can fail with ``AttributeError`` or ``KeyError``. Any other error propagates.
     """
     if rf_hz is None:
         rf_hz = getattr(channel, "RF_frequency", None)
-    return check_if_reach(rf_hz, upconverter_frequency(channel), label)
+    try:
+        lo_hz = channel.upconverter_frequency
+    except (AttributeError, KeyError, ValueError):
+        return None
+    return check_if_reach(rf_hz, lo_hz, label)
 
 
 def warn_if_reach(node: Any, channel: Any, label: str = "", rf_hz: Any = None) -> Optional[str]:

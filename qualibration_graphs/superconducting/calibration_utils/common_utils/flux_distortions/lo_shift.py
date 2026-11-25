@@ -18,7 +18,7 @@ from numpy.typing import NDArray
 from qualibration_libs.core import tracked_updates
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
-from calibration_utils.common_utils.if_limits import IF_MAX_HZ, IF_WARN_HZ, MW_FEM_BANDS, upconverter_frequency
+from calibration_utils.common_utils.if_limits import IF_MAX_HZ, IF_WARN_HZ, MW_FEM_BANDS
 
 LogCallable = Callable[[str], None]
 
@@ -92,7 +92,10 @@ def plan_lo_shift_for_frequency_window(
         if_high = if_lo + int(dfs.max())
 
         if if_low < -IF_MAX_HZ or if_high > IF_MAX_HZ:
-            lo_now = upconverter_frequency(q.xy)
+            try:
+                lo_now = q.xy.upconverter_frequency
+            except ValueError:  # MWChannel: neither upconverter_frequency nor upconverters set
+                lo_now = None
             band = getattr(q.xy.opx_output, "band", None)
             band_floor = MW_FEM_BANDS[band][0] if band in MW_FEM_BANDS else None
             # Move the LO to the sweep centre so residual IF is ``dfs - dfs_mid`` (near 0).
