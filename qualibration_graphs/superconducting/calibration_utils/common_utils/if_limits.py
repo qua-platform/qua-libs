@@ -36,6 +36,10 @@ IF_WARN_HZ = 400e6
 #: than the code's behaviour: nothing here refuses an IF above it.
 IF_MAX_HZ = 500e6
 
+#: Upconverter frequency range of each MW-FEM band, in Hz. Every upconverter of a port must lie
+#: inside the port's band, or the QOP refuses the config.
+MW_FEM_BANDS = {1: (50e6, 5.5e9), 2: (4.5e9, 7.5e9), 3: (6.5e9, 10.5e9)}
+
 
 def upconverter_frequency(channel: Any) -> Optional[float]:
     """The LO an MW channel plays against, or ``None`` if it cannot be determined.

@@ -21,7 +21,7 @@ from typing import Any, List, Optional, Tuple
 
 from quam.components.pulses import SquarePulse
 from quam_builder.architecture.superconducting.components.xy_drive import XYDriveMW
-from calibration_utils.common_utils.if_limits import IF_MAX_HZ
+from calibration_utils.common_utils.if_limits import IF_MAX_HZ, MW_FEM_BANDS
 from quam_config.lru_components import (
     LRU_OPERATION,
     LRU_UPCONVERTER,
@@ -34,10 +34,6 @@ from quam_config.lru_components import (
 #: LRU intermediate frequency at the expected pump frequency; keeps the default 200 MHz span around it
 #: within the MW-FEM's +-400 MHz IF specification. A wider span set by the user gets the IF-reach warning.
 LRU_NOMINAL_IF = 100e6
-#: Upconverter frequency range of each MW-FEM band, in Hz. Every upconverter of a port must lie inside
-#: the port's band, or the QOP refuses the config: a qubit drive at 6 GHz keeps its port in band 2, so the
-#: pump's upconverter cannot sit below 4.5 GHz even when the pump itself does.
-MW_FEM_BANDS = {1: (50e6, 5.5e9), 2: (4.5e9, 7.5e9), 3: (6.5e9, 10.5e9)}
 #: f_12 and f_01 count as spurious lines when they lie within this margin of the swept window, in Hz.
 SPURIOUS_LINE_MARGIN = 150e6
 #: Initial LRU pulse: a square pulse whose duration the calibration node sweeps in real time.
