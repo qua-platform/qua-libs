@@ -59,7 +59,7 @@ node 26a). It counts as the identity in the Clifford sequence, so the fidelity m
 the qubit (decay and dephasing during the pulse, phase from the pump's Stark shift). It is played through
 qubit.macros["lru"] when the qubit has one, so the virtual Z calibrated by node 26c follows each pump; without the
 macro the pump plays with no correction. interleaved_gate_operation="lru_idle" is a control: the same slot with the
-pump off, so its error is the cost of the time the LRU takes, and nothing is written to the state for it. The pump
+pump off, so its error is the cost of the time the LRU takes (the pump and the resonator depletion wait after it), and nothing is written to the state for it. The pump
 plays on its own element, so it is aligned with the qubit drive before and after each LRU. With measure_leakage, the
 leaked population shows how well the LRU keeps the qubit out of f.
 
@@ -259,8 +259,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         elif gate == LRU_GATE:
             play_lru(qubit)
         elif gate == LRU_IDLE_GATE:
-            # The LRU pulse at zero amplitude: same code path and timing, no pump
-            play_lru(qubit, LRU_GATE, amplitude_scale=0.0)
+            # The LRU pulse at zero amplitude: same code path and timing, including the macro's wait, no pump
+            macro = qubit.macros.get(LRU_GATE)
+            play_lru(qubit, LRU_GATE, amplitude_scale=0.0, wait_ns=None if macro is None else macro.wait_after_ns)
 
     def play_sequence(sequence_list, depth, qubit):
         i = declare(int)

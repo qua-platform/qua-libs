@@ -79,13 +79,40 @@ def test_lru_macro_round_trips_and_plays_pump_then_virtual_z(tmp_path, monkeypat
     macro = loaded.qubits["q1"].macros[LRU_OPERATION]
     assert isinstance(macro, LruMacro)
     assert macro.phase_shift == 0.125
-    assert macro.inferred_duration == pytest.approx(loaded.qubits["q1"].lru.operations[LRU_OPERATION].length * 1e-9)
+    pump_ns = loaded.qubits["q1"].lru.operations[LRU_OPERATION].length
+    depletion_ns = loaded.qubits["q1"].resonator.depletion_time
+    assert depletion_ns >= 16
+    assert macro.inferred_duration == pytest.approx((pump_ns + depletion_ns // 4 * 4) * 1e-9)
 
     with program() as prog:
         macro.apply()
     script = generate_qua_script(prog)
-    pump, rotation = script.index("play('lru', 'q1.lru')"), script.index("frame_rotation_2pi(0.125, 'q1.xy')")
-    assert pump < rotation
+    pump = script.index("play('lru', 'q1.lru')")
+    wait = script.index(f"wait({depletion_ns // 4}, 'q1.lru')")
+    rotation = script.index("frame_rotation_2pi(0.125, 'q1.xy')")
+    assert pump < wait < rotation
+
+
+def test_lru_macro_wait_can_be_set_or_turned_off(tmp_path, monkeypatch):
+    from qm import generate_qua_script
+    from qm.qua import program
+
+    machine = build_machine(Quam, tmp_path, monkeypatch)
+    qubit = machine.qubits["q1"]
+    add_lru_element(qubit)
+    pump_ns = qubit.lru.operations[LRU_OPERATION].length
+
+    qubit.macros[LRU_OPERATION] = LruMacro(wait_after_ns=0)
+    with program() as prog:
+        qubit.macros[LRU_OPERATION].apply()
+    assert "wait(" not in generate_qua_script(prog)
+    assert qubit.macros[LRU_OPERATION].inferred_duration == pytest.approx(pump_ns * 1e-9)
+
+    qubit.macros[LRU_OPERATION] = LruMacro(wait_after_ns=402)  # rounded down to the 4 ns clock
+    with program() as prog:
+        qubit.macros[LRU_OPERATION].apply()
+    assert "wait(100, 'q1.lru')" in generate_qua_script(prog)
+    assert qubit.macros[LRU_OPERATION].inferred_duration == pytest.approx((pump_ns + 400) * 1e-9)
 
 
 @pytest.mark.parametrize("wait_ns, played", [(None, 1000), (0, 0), (12, 0), (16, 16), (402, 400)])

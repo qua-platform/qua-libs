@@ -96,10 +96,11 @@ class MultiUpconverterXYDriveMW(XYDriveMW):
         return MWChannel.upconverter_frequency.fget(self)
 
 
-def play_lru(qubit, operation: str = LRU_OPERATION, phase_shift=None, amplitude_scale=None) -> None:
-    """Play the microwave f-LRU pump of ``qubit``, then rotate the qubit drive frame by ``phase_shift``.
+def play_lru(qubit, operation: str = LRU_OPERATION, phase_shift=None, amplitude_scale=None, wait_ns=None) -> None:
+    """Play the microwave f-LRU pump of ``qubit``, wait for the resonator to empty, then rotate the qubit drive
+    frame by ``phase_shift``.
 
-    The pump is its own element, so it is aligned with the qubit drive before and after the pulse;
+    The pump is its own element, so it is aligned with the qubit drive before the pulse and after the wait;
     pulses on ``qubit.xy`` then never overlap it.
 
     Args:
@@ -108,11 +109,15 @@ def play_lru(qubit, operation: str = LRU_OPERATION, phase_shift=None, amplitude_
         phase_shift: Virtual Z on ``qubit.xy`` after the pump, in units of 2 pi; a float or a QUA
             expression. None or 0 plays no frame rotation.
         amplitude_scale: Optional factor on the pump amplitude; 0 plays the slot with no pump (a control).
+        wait_ns: Wait after the pump, in ns; None waits the resonator ``depletion_time`` (see ``lru_wait_ns``).
     """
     from qm.qua import align
 
     align(qubit.xy.name, qubit.lru.name)
     qubit.lru.play(operation, amplitude_scale=amplitude_scale)
+    wait = lru_wait_ns(qubit, wait_ns)
+    if wait:
+        qubit.lru.wait(wait // 4)  # clock cycles
     align(qubit.xy.name, qubit.lru.name)
     _virtual_z(qubit, phase_shift)
 
@@ -125,7 +130,8 @@ def _virtual_z(qubit, phase_shift) -> None:
 
 @quam_dataclass
 class LruMacro(QubitMacro):
-    """The f-LRU as a gate: the microwave pump on ``qubit.lru`` followed by a virtual Z on ``qubit.xy``.
+    """The f-LRU as a gate: the microwave pump on ``qubit.lru``, a wait for the resonator to empty, then a
+    virtual Z on ``qubit.xy``.
 
     Stored as ``qubit.macros["lru"]``. Node 26c calibrates ``phase_shift`` the way node 34a calibrates
     the CZ ``phase_shift_control``: a Ramsey sequence around the LRU with a swept frame rotation. Node 11b
@@ -137,15 +143,25 @@ class LruMacro(QubitMacro):
     phase_shift: float = 0.0
     """Virtual Z applied to the qubit drive after the pump, in units of 2 pi; cancels the qubit phase the
     pump leaves (mostly its AC Stark shift)."""
+    wait_after_ns: int = None
+    """Wait after the pump, in ns, so the photon a removed leakage leaves in the resonator does not dephase
+    the next gates. None waits the resonator ``depletion_time``; 0 plays no wait."""
 
     def apply(self, phase_shift=None, **kwargs) -> None:
-        """Play the pump, then the virtual Z: ``phase_shift`` if given (float or QUA expression), else the stored one."""
-        play_lru(self.qubit, self.operation, self.phase_shift if phase_shift is None else phase_shift)
+        """Play the pump and the wait, then the virtual Z: ``phase_shift`` if given (float or QUA expression),
+        else the stored one."""
+        play_lru(
+            self.qubit,
+            self.operation,
+            self.phase_shift if phase_shift is None else phase_shift,
+            wait_ns=self.wait_after_ns,
+        )
 
     @property
     def inferred_duration(self) -> float:
-        """Pump duration in seconds."""
-        return self.qubit.lru.operations[self.operation].length * 1e-9
+        """Pump duration plus the wait after it, in seconds."""
+        pump_ns = self.qubit.lru.operations[self.operation].length
+        return (pump_ns + lru_wait_ns(self.qubit, self.wait_after_ns)) * 1e-9
 
 
 @quam_dataclass
