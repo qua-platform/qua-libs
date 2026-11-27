@@ -76,9 +76,7 @@ def analyse_ramp_rate(
             success_list.append(False)
             continue
 
-        avg_state = (
-            ds_raw.state.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration").values.astype(float)
-        )
+        avg_state = ds_raw.state.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration").values.astype(float)
 
         finite = np.isfinite(avg_state)
         if not np.any(finite):

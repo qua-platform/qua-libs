@@ -10,7 +10,7 @@ import xarray as xr
 from matplotlib.figure import Figure
 
 from calibration_utils.common_utils.plot_style import (
-    apply_qubit_outcome_style, 
+    apply_qubit_outcome_style,
     qubit_success,
 )
 

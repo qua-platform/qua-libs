@@ -128,7 +128,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # ── QUA program (runs on the OPX in real time) ───────────────────────
     with program() as node.namespace["qua_program"]:
-    
+
         # Allocate real-time variables on the OPX:
         #   adc_st       : stream collecting raw, real-time inputs of the OPX, per sensor
         #   n            : shot counter
@@ -136,7 +136,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Streams keyed by sensor index
         n = declare(int)
         n_st = declare_output_stream()
-        adc_st = [declare_output_stream(adc_trace = True) for _ in sensors]
+        adc_st = [declare_output_stream(adc_trace=True) for _ in sensors]
 
         # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():
@@ -159,7 +159,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
-            n_st.save("n") # expose shot counter as "n" in the fetched dataset
+            n_st.save("n")  # expose shot counter as "n" in the fetched dataset
             for i, s in enumerate(sensors):
                 # Specify the ADC input to save based on which input the sensor is actually connected to
                 inp = adc_st[i].input1() if sensor_input[i] == 1 else adc_st[i].input2()

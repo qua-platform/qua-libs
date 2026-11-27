@@ -381,8 +381,9 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
     """Persist the node results and any recorded state updates."""
     node.save()
 
+
 # %% {Close DAC connections}
 @node.run_action()
-def close_all_dacs(node: QualibrationNode[Parameters, Quam]): 
+def close_all_dacs(node: QualibrationNode[Parameters, Quam]):
     """Close all the dac connections, so that you can re-run DAC related nodes straight away."""
     node.machine.disconnect_from_external_source()

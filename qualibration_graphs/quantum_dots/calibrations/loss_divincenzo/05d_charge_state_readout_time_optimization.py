@@ -94,7 +94,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["quantum_dot_pairs"], _ = quantum_dot_pairs, vgs_id = get_dot_pairs(node)
     node.namespace["all_sensors"] = all_sensors = get_dot_pair_sensors(node)
 
-    change_macro_tracked(node, quantum_dot_pairs) # Applies any node parameter updates to custom macros
+    change_macro_tracked(node, quantum_dot_pairs)  # Applies any node parameter updates to custom macros
 
     # Ensure that the machine is set up to track the integrated voltage
     node.machine.reset_voltage_sequence(vgs_id, track_integrated_voltage=True)

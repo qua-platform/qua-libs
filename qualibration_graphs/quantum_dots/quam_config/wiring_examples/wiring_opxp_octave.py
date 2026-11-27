@@ -76,7 +76,7 @@ if user_input.lower() == "y":
     build_quam(
         machine,
         qubit_pair_sensor_map=qubit_pair_sensor_map,
-        target_quam_class = Quam,
+        target_quam_class=Quam,
         catalogs=[VoltageBalancedMacroCatalog()],
     )
     machine.save()

@@ -9,11 +9,12 @@ from quam_builder.architecture.quantum_dots.operations.default_macros.single_qub
 )
 
 __all__ = [
-    "change_macro_tracked", 
+    "change_macro_tracked",
     "revert_tracked_macros",
 ]
 
 DEFAULT_TRACKED_STATE_MACROS = ("initialize", "measure")
+
 
 def _resolve_quantum_dot_pair(element: Any):
     if hasattr(element, "preferred_readout_quantum_dot"):
@@ -23,6 +24,7 @@ def _resolve_quantum_dot_pair(element: Any):
     if quantum_dot_pair is not None:
         return quantum_dot_pair
     return element
+
 
 def _node_parameter_overrides(node: QualibrationNode, macro: Any) -> dict[str, Any]:
     if hasattr(node.parameters, "model_dump"):
@@ -35,11 +37,8 @@ def _node_parameter_overrides(node: QualibrationNode, macro: Any) -> dict[str, A
         }
 
     macro_field_names = _state_macro_field_names(type(macro))
-    return {
-        name: value
-        for name, value in parameter_values.items()
-        if name in macro_field_names
-    }
+    return {name: value for name, value in parameter_values.items() if name in macro_field_names}
+
 
 def change_macro_tracked(
     node: QualibrationNode,

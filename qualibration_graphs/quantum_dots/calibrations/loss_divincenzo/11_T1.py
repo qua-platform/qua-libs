@@ -100,7 +100,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
+    change_macro_tracked(node, qubits)  # Applies any node parameter updates to custom macros
 
     n_avg = node.parameters.num_shots  # repetitions averaged at each idle-time point
 

@@ -33,7 +33,7 @@ from quam_builder.architecture.quantum_dots.operations.names import SingleQubitM
 from qualibrate.core.parameters import RunnableParameters
 from quam_config import Quam
 from quam_config.state_macros import (
-    HeraldedInitializeMacro, 
+    HeraldedInitializeMacro,
     MeasureMacro,
 )
 
@@ -41,7 +41,7 @@ from quam_config.state_macros import (
 initialize_macro_name = SingleQubitMacroName.INITIALIZE
 measure_macro_name = SingleQubitMacroName.MEASURE
 
-# If you want to wire the macros in, un-comment the dictionary entries here. 
+# If you want to wire the macros in, un-comment the dictionary entries here.
 selected_macros = {
     # initialize_macro_name : HeraldedInitializeMacro,
     # measure_macro_name : MeasureMacro,
@@ -49,11 +49,13 @@ selected_macros = {
 
 __all__ = ["MacroParameters"]
 
+
 class MacroParameters(
-    RunnableParameters, 
+    RunnableParameters,
     *(macro.Parameters for macro in selected_macros.values()),
 ):
     """Expose the active macro fields to Qualibrate nodes."""
+
     pass
 
 
@@ -78,10 +80,7 @@ def main():
 
     wire_machine_macros(
         machine=machine,
-        instance_overrides={
-            f"quantum_dot_pairs.{qdp}": selected_macros
-            for qdp in dot_pairs
-        },
+        instance_overrides={f"quantum_dot_pairs.{qdp}": selected_macros for qdp in dot_pairs},
     )
 
     ######################################
@@ -101,9 +100,10 @@ def main():
         for macro_name, macro_cls in selected_macros.items():
             macro_object = qdp.macros[macro_name]
             print(f"Dot pair {dot_pair_name}'s {macro_name} is mapped to {type(macro_object)}.")
-            assert isinstance(macro_object, macro_cls), (
-                f"Dot pair {dot_pair_name}'s {macro_name} is mapped to {type(macro_object)} and not {macro_cls}"
-            )
+            assert isinstance(
+                macro_object, macro_cls
+            ), f"Dot pair {dot_pair_name}'s {macro_name} is mapped to {type(macro_object)} and not {macro_cls}"
+
 
 if __name__ == "__main__":
     main()

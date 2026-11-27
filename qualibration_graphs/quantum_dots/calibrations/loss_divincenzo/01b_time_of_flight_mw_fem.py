@@ -133,7 +133,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # Streams keyed by sensor index
         n = declare(int)
         n_st = declare_output_stream()
-        adc_st = [declare_output_stream(adc_trace = True) for _ in sensors]
+        adc_st = [declare_output_stream(adc_trace=True) for _ in sensors]
 
         # If several sensors share the same AWG resources, they are grouped into batches
         for multiplexed_sensors in sensors.batch():

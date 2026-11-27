@@ -235,9 +235,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
 
 # %% {Simulate}
-@node.run_action(
-    skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate
-)
+@node.run_action(skip_if=node.parameters.load_data_id is not None or not node.parameters.simulate)
 def simulate_qua_program(node: QualibrationNode[Parameters, Quam]):
     """Connect to the OPX and simulate the QUA program."""
     qmm = node.machine.connect()
@@ -364,8 +362,9 @@ def save_results(node: QualibrationNode[Parameters, Quam]):
     """Persist the node results and any recorded state updates."""
     node.save()
 
+
 # %% {Close DAC connections}
 @node.run_action()
-def close_all_dacs(node: QualibrationNode[Parameters, Quam]): 
+def close_all_dacs(node: QualibrationNode[Parameters, Quam]):
     """Close all the dac connections, so that you can re-run DAC related nodes straight away."""
     node.machine.disconnect_from_external_source()

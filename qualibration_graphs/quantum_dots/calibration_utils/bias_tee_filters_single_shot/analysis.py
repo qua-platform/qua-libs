@@ -126,7 +126,9 @@ def _fit_individual(
     )
 
 
-def _aggregate_element_fit_results(element_name: str, sensor_names: list[str], fit_results: Dict[str, FitParameters]) -> FitParameters:
+def _aggregate_element_fit_results(
+    element_name: str, sensor_names: list[str], fit_results: Dict[str, FitParameters]
+) -> FitParameters:
     """Aggregate successful per-sensor fits into one per-element fit result."""
     successful_results = []
     for sensor_name in sensor_names:
@@ -223,12 +225,26 @@ def log_fitted_results(fit_results: Dict, log_callable=None):
         tau_us = tau_ns / 1e3 if np.isfinite(tau_ns) else float("nan")
         lines = [
             f"Results for {key}: {status}!",
-            f"\tTime constant:    {tau_ns:.1f} ns ({tau_us:.2f} µs)" if np.isfinite(tau_ns) else "\tTime constant:    n/a",
-            f"\tCutoff frequency: {result['cutoff_frequency_Hz']:.1f} Hz"
-            if np.isfinite(result["cutoff_frequency_Hz"])
-            else "\tCutoff frequency: n/a",
-            f"\tAmplitude:        {result['amplitude']:.6f}" if np.isfinite(result["amplitude"]) else "\tAmplitude:        n/a",
-            f"\tOffset:           {result['offset']:.6f}" if np.isfinite(result["offset"]) else "\tOffset:           n/a",
+            (
+                f"\tTime constant:    {tau_ns:.1f} ns ({tau_us:.2f} µs)"
+                if np.isfinite(tau_ns)
+                else "\tTime constant:    n/a"
+            ),
+            (
+                f"\tCutoff frequency: {result['cutoff_frequency_Hz']:.1f} Hz"
+                if np.isfinite(result["cutoff_frequency_Hz"])
+                else "\tCutoff frequency: n/a"
+            ),
+            (
+                f"\tAmplitude:        {result['amplitude']:.6f}"
+                if np.isfinite(result["amplitude"])
+                else "\tAmplitude:        n/a"
+            ),
+            (
+                f"\tOffset:           {result['offset']:.6f}"
+                if np.isfinite(result["offset"])
+                else "\tOffset:           n/a"
+            ),
         ]
         if "n_sensors_used" in result and result["n_sensors_used"] != 1:
             lines.append(f"\tSensors used:     {result['n_sensors_used']}")

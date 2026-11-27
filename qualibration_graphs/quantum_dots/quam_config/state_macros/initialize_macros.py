@@ -39,7 +39,8 @@ __all__ = [
 ##############################
 ##### Example Initialize #####
 ##############################
-    
+
+
 @quam_dataclass
 class InitializeMacro(CustomMacro):
     """Minimal example initialize macro.
@@ -48,16 +49,16 @@ class InitializeMacro(CustomMacro):
     want to replace the provided balanced or heralded examples with your
     own initialize behaviour.
     """
+
     initialize_macro_point_duration: int = 1000
     """Hold duration of the Initialize voltage point."""
-
 
     @property
     def inferred_duration(self) -> float | None:
         return 0
 
     def apply(
-        self, 
+        self,
         **kwargs,
     ):
         owner = self.owner
@@ -65,9 +66,11 @@ class InitializeMacro(CustomMacro):
         initialize_macro_point_duration = params["initialize_macro_point_duration"]
         pass
 
+
 ##########################################
 ##### Balanced Round Trip Initialize #####
 ##########################################
+
 
 @quam_dataclass
 class BalancedRoundTripInitializeMacro(CustomMacro):
@@ -85,6 +88,7 @@ class BalancedRoundTripInitializeMacro(CustomMacro):
     Ramp 2 covers twice the voltage of ramps 1 and 3, so its duration is
     ``2 * ramp_duration`` to preserve the same slope (consistent dV/dt).
     """
+
     initialize_macro_zero_duration: int = 100
     """The amount of time to idle at zero voltage after the round trip."""
     initialize_macro_ramp_duration: int = 500
@@ -142,11 +146,12 @@ class BalancedRoundTripInitializeMacro(CustomMacro):
                 ramp_duration=ramp,
                 ensure_align=False,
             )
-            
+
 
 ###############################
 ##### Heralded Initialize #####
 ###############################
+
 
 @quam_dataclass
 class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro):
@@ -161,6 +166,7 @@ class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro):
 
     This class also optionally allows one to extract the number of loops performed as a stream
     """
+
     heralded_max_loops: int = 2
     """The maximum number of active reset loops to perform before exiting the loop and continuing with the program."""
     heralded_return_n_loops: bool = False
@@ -250,4 +256,3 @@ class HeraldedInitializeMacro(BalancedRoundTripInitializeMacro):
         if return_n_loops:
             return n_count
         return None
-

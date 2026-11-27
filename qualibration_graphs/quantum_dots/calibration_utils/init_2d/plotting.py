@@ -91,7 +91,9 @@ def plot_2d_summary(
 
         # ── Avg state heatmap ──────────────────────────────────────────
         if "state" in ds_raw:
-            state_2d = ds_raw.state.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration", "wait_duration").values
+            state_2d = (
+                ds_raw.state.sel(qubit_pair=qp_name, drop=True).transpose("ramp_duration", "wait_duration").values
+            )
             im = ax_state.pcolormesh(
                 wait,
                 ramp,

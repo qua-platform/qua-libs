@@ -27,9 +27,7 @@ def plot_all(
     )
     figures["iq_vs_ramp_duration"] = plot_iq_vs_ramp_duration(ds_fit, qubit_pair_names, fit_results=fit_results)
     if plot_fft:
-        figures["fft_vs_ramp_duration"] = plot_fft_vs_ramp_duration(
-            ds_fit, qubit_pair_names, fit_results=fit_results
-        )
+        figures["fft_vs_ramp_duration"] = plot_fft_vs_ramp_duration(ds_fit, qubit_pair_names, fit_results=fit_results)
     return figures
 
 

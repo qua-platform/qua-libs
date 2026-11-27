@@ -114,7 +114,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
+    change_macro_tracked(node, qubits)  # Applies any node parameter updates to custom macros
 
     # Build the Clifford lookup tables once on the host, before any QUA is generated.
     node.log("Building single-qubit Clifford tables...")
@@ -325,7 +325,9 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         with stream_processing():
             n_st.save("n")
             for j in range(num_qubits):
-                state_st[j].buffer(num_shots).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_circuits).save(f"state{j + 1}")
+                state_st[j].buffer(num_shots).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_circuits).save(
+                    f"state{j + 1}"
+                )
                 # i_st[j].buffer(num_shots).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_circuits).save(f"i{j + 1}")
                 # q_st[j].buffer(num_shots).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_circuits).save(f"q{j + 1}")
 

@@ -61,7 +61,7 @@ def _ramsey_chevron(
     tau = np.asarray(tau_ns, dtype=float)[None, :]
     phase = 2.0 * np.pi * (detuning - resonance_hz) * (_PHASE_SCALE * tau) * 1e-9
     envelope = np.exp(-gamma * tau - (sigma_g * tau) ** 2)
-    detuning_envelope = np.exp(-((detuning - resonance_hz) / detuning_width_hz) ** 2)
+    detuning_envelope = np.exp(-(((detuning - resonance_hz) / detuning_width_hz) ** 2))
     return baseline + amplitude * envelope * detuning_envelope * np.cos(phase)
 
 

@@ -97,7 +97,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits
     node.namespace["qubit_dot_pairs"] = qubit_dot_pairs
 
-    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
+    change_macro_tracked(node, qubits)  # Applies any node parameter updates to custom macros
 
     # Number of shots at the fixed measurement point
     n_avg = node.parameters.num_shots
@@ -226,7 +226,6 @@ def execute_qua_program(node: QualibrationNode[Parameters, Quam]):
 
     # Register the raw dataset
     node.results["ds_raw"] = assemble_labeled_ds_raw(dataset, qubits)
-
 
 
 # %% {Generate_simulated_data}

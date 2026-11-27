@@ -314,7 +314,7 @@ def plot_data(node: QualibrationNode[Parameters, Quam]):
         node.namespace["sensors"],
         node.results["fit_results"],
     )
-    if not node.modes.external: 
+    if not node.modes.external:
         plt.show()
 
 

@@ -2,8 +2,8 @@ import numpy as np
 from qualang_tools.units import unit
 from quam_config import Quam
 from quam_builder.architecture.quantum_dots.operations.names import (
-    DrivePulseName, 
-    VoltagePointName, # For adding state points
+    DrivePulseName,
+    VoltagePointName,  # For adding state points
 )
 
 ########################################################################################################################

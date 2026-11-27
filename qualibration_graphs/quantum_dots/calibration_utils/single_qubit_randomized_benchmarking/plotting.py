@@ -94,7 +94,9 @@ def plot_raw_data_with_fit(
             continue
 
         if ds_fit is not None and "survival_probability" in ds_fit.data_vars:
-            survival_prob = ds_fit.survival_probability.sel(qubit=qname, drop=True).transpose("depth").values.astype(float)
+            survival_prob = (
+                ds_fit.survival_probability.sel(qubit=qname, drop=True).transpose("depth").values.astype(float)
+            )
         else:
             survival_prob = np.mean(state_data, axis=0)
         n_circuits = state_data.shape[0]

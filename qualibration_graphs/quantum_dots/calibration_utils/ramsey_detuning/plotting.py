@@ -132,7 +132,7 @@ def plot_raw_data_with_fit(
                 title += f", f={f_i:.2e} Hz⁻¹ (τ_eff≈{tau_eff:.0f} ns)"
             if np.isfinite(d0_i):
                 title += f", δ₀_i={d0_i * 1e-6:.3f} MHz"
-            apply_qubit_outcome_style(ax, qname, success, subtitle=title[len(qname):].strip(" |"))
+            apply_qubit_outcome_style(ax, qname, success, subtitle=title[len(qname) :].strip(" |"))
             ax.title.set_fontsize(9)
             ax.legend(loc="upper right", fontsize=7)
 

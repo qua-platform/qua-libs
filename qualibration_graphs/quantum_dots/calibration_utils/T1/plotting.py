@@ -114,7 +114,7 @@ def plot_raw_data_with_fit(
                 title += f",  offset = {offset:.3f}"
         elif not success:
             title += "  |  fit failed"
-        apply_qubit_outcome_style(ax, qname, success, subtitle=title[len(qname):].strip(" |"))
+        apply_qubit_outcome_style(ax, qname, success, subtitle=title[len(qname) :].strip(" |"))
         ax.title.set_fontsize(10)
         ax.legend(loc="upper right", fontsize=8)
 

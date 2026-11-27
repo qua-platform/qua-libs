@@ -36,9 +36,7 @@ def validate_and_build_ramp_sweep(node: "QualibrationNode") -> np.ndarray:
     ramp_step = int(node.parameters.ramp_duration_step)
 
     if ramp_min % 4 != 0 or ramp_max % 4 != 0 or ramp_step % 4 != 0:
-        raise ValueError(
-            f"Ramp settings must be divisible by 4. Got min={ramp_min}, max={ramp_max}, step={ramp_step}"
-        )
+        raise ValueError(f"Ramp settings must be divisible by 4. Got min={ramp_min}, max={ramp_max}, step={ramp_step}")
 
     return build_ramp_duration_sweep(
         ramp_min,

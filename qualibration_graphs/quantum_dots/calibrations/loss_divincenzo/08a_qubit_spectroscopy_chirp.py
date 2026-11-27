@@ -94,7 +94,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
+    change_macro_tracked(node, qubits)  # Applies any node parameter updates to custom macros
 
     # Resolve the spectroscopy pulse from the pulse family stored in the Quam state.
     operation_name = resolve_operation_name(node, node.parameters.operation)

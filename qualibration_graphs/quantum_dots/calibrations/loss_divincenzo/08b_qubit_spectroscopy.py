@@ -97,7 +97,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
     node.namespace["qubits"] = qubits = get_qubits(node)
     num_qubits = len(qubits)
 
-    change_macro_tracked(node, qubits) # Applies any node parameter updates to custom macros
+    change_macro_tracked(node, qubits)  # Applies any node parameter updates to custom macros
 
     n_avg = node.parameters.num_shots  # repetitions averaged at each detuning point
 
@@ -193,7 +193,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         # ── Post-processing on the OPX before data reaches the PC ─────────
         with stream_processing():
             n_st.save("n")
-            for i in range(num_qubits): 
+            for i in range(num_qubits):
                 # Each save() is one frequency point.
                 # .buffer(len(dfs)) : group points along the frequency axis
                 # .average()      : average over all shots (n_avg repetitions)
