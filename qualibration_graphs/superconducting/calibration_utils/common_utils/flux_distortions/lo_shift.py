@@ -18,35 +18,27 @@ from numpy.typing import NDArray
 from qualibration_libs.core import tracked_updates
 from quam_builder.architecture.superconducting.qubit import AnyTransmon
 
+from calibration_utils.common_utils.if_limits import IF_MAX_HZ, IF_WARN_HZ, MW_FEM_BANDS
+
 LogCallable = Callable[[str], None]
 
-# Spec edge (±400 MHz) and practical usable ceiling (±500 MHz) for MW-FEM IF.
-IF_WARN_HZ = 400e6
-IF_MAX_HZ = 500e6
 
-# MW-FEM band lower edges for upconverter frequency (Hz).
-_BAND_FLOOR_HZ = {1: 0.05e9, 2: 4.5e9, 3: 6.5e9}
+def _set_upconverter_frequency(qubit: AnyTransmon, tracked_qubit: Any, lo_frequency: float) -> None:
+    """Move the LO of ``qubit.xy`` to ``lo_frequency`` through ``tracked_qubit``, so the change can be reverted.
 
-
-def _upconverter_frequency(channel: Any) -> Optional[float]:
-    """LO for an MW channel, or ``None`` if it cannot be resolved."""
-    try:
-        port = getattr(channel, "opx_output", None)
-        if port is None:
-            return None
-        lo = getattr(port, "upconverter_frequency", None)
-        if lo is not None:
-            return float(lo)
-        upconverters = getattr(port, "upconverters", None)
-        if not upconverters:
-            return None
-        entry = upconverters.get(getattr(channel, "upconverter", None) or 1)
-        if entry is None:
-            return None
-        frequency = entry.get("frequency") if hasattr(entry, "get") else getattr(entry, "frequency", None)
-        return None if frequency is None else float(frequency)
-    except Exception:
-        return None
+    A port with a single ``upconverter_frequency`` gets the new value there. A port with an ``upconverters``
+    mapping (an f-LRU pump on upconverter 2, for instance) gets the new value in the drive's own entry only:
+    writing ``upconverter_frequency`` there would put both keys in the port config and drag the other
+    channel along. Only the ``frequency`` entry is written, since ``tracked_updates`` cannot snapshot the
+    whole mapping (deep-copying a ``QuamDict`` recurses) and reverts through ``setattr``, which a
+    ``QuamDict`` maps to its string keys but not to the integer upconverter keys.
+    """
+    port = qubit.xy.opx_output
+    if port.upconverter_frequency is not None or not port.upconverters:
+        tracked_qubit.xy.opx_output.upconverter_frequency = lo_frequency
+        return
+    upconverter = getattr(qubit.xy, "upconverter", None) or 1
+    tracked_qubit.xy.opx_output.upconverters[upconverter]["frequency"] = lo_frequency
 
 
 @dataclass
@@ -100,9 +92,12 @@ def plan_lo_shift_for_frequency_window(
         if_high = if_lo + int(dfs.max())
 
         if if_low < -IF_MAX_HZ or if_high > IF_MAX_HZ:
-            lo_now = _upconverter_frequency(q.xy)
+            try:
+                lo_now = q.xy.upconverter_frequency
+            except ValueError:  # MWChannel: neither upconverter_frequency nor upconverters set
+                lo_now = None
             band = getattr(q.xy.opx_output, "band", None)
-            band_floor = _BAND_FLOOR_HZ.get(band)
+            band_floor = MW_FEM_BANDS[band][0] if band in MW_FEM_BANDS else None
             # Move the LO to the sweep centre so residual IF is ``dfs - dfs_mid`` (near 0).
             shift = int(if_lo) + dfs_mid
             lo_frequency = None if lo_now is None else lo_now + shift
@@ -132,7 +127,7 @@ def plan_lo_shift_for_frequency_window(
                 with tracked_updates(q, auto_revert=False, dont_assign_to_none=False) as q_upd:
                     if log_callable is not None:
                         log_callable(f"Updating {q_upd.name} LO to {lo_frequency}")
-                    q_upd.xy.opx_output.upconverter_frequency = lo_frequency
+                    _set_upconverter_frequency(q, q_upd, lo_frequency)
                     q_upd.xy.RF_frequency += shift
                     plan.tracked_qubits.append(q_upd)
         else:

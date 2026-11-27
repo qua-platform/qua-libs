@@ -93,10 +93,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
         log_callable=node.log,
     )
     node.namespace["coupler_rf_centers"] = coupler_rf_centers
-    coupler_ifs = {
-        qp.name: int(coupler_rf_centers[qp.name] - qp.qubit_control.xy.opx_output.upconverter_frequency)
-        for qp in qubit_pairs
-    }
+    drive_los = {qp.name: qp.qubit_control.xy.upconverter_frequency for qp in qubit_pairs}
+    coupler_ifs = {qp.name: int(coupler_rf_centers[qp.name] - drive_los[qp.name]) for qp in qubit_pairs}
 
     control_qubits = [qp.qubit_control for qp in qubit_pairs]
     lo_plan = plan_lo_shift_for_frequency_window(

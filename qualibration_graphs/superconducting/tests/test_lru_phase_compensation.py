@@ -1,0 +1,138 @@
+"""LRU macro (pump + virtual Z) and the node 26c phase fit."""
+
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
+import xarray as xr
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from calibration_utils.lru_phase_compensation import fit_frame_oscillation, fit_raw_data, wrap_turns  # noqa: E402
+from calibration_utils.lru_calibration import add_lru_element  # noqa: E402
+from quam_config import Quam  # noqa: E402
+from quam_config.lru_components import LRU_OPERATION, LruMacro  # noqa: E402
+from tests.lru_machine import build_machine  # noqa: E402
+
+FRAMES = np.arange(25) / 25
+
+
+def _ramsey(psi, repetitions=1, contrast=0.4, noise=0.0, seed=0):
+    """P(e) of x90 - N LRUs - Z(frame) - x90 with a residual psi per LRU, as the analysis models it."""
+    rng = np.random.default_rng(seed)
+    return 0.5 + contrast * np.cos(2 * np.pi * (FRAMES + repetitions * psi)) + noise * rng.standard_normal(FRAMES.size)
+
+
+@pytest.mark.parametrize("psi", [-0.4, -0.11, 0.0, 0.07, 0.31])
+def test_fit_recovers_the_phase(psi):
+    fitted, stderr, contrast, offset, _ = fit_frame_oscillation(FRAMES, _ramsey(psi, noise=0.02))
+    assert fitted == pytest.approx(psi, abs=0.01)
+    assert 0 < stderr < 0.01
+    assert contrast == pytest.approx(0.4, abs=0.03)
+    assert offset == pytest.approx(0.5, abs=0.02)
+
+
+def _node(previous, repetitions=1):
+    return SimpleNamespace(
+        namespace={"qubits": [SimpleNamespace(name="q1")], "previous_phase_shifts": {"q1": previous}},
+        parameters=SimpleNamespace(num_lru_repetitions=repetitions),
+    )
+
+
+def _ds(pe):
+    return xr.Dataset({"state": (["qubit", "frame"], [pe])}, coords={"qubit": ["q1"], "frame": FRAMES})
+
+
+@pytest.mark.parametrize("repetitions", [1, 3])
+def test_new_correction_cancels_the_residual(repetitions):
+    # The LRU leaves +0.1 turn; 0.03 is already corrected, so 0.07 remains per LRU
+    stored = 0.97  # -0.03 turn
+    residual = 0.1 + wrap_turns(stored)
+    ds_fit, results = fit_raw_data(_ds(_ramsey(residual, repetitions)), _node(stored, repetitions))
+    result = results["q1"]
+    assert result.success
+    assert result.residual_phase == pytest.approx(residual, abs=1e-6)
+    # With the new correction the LRU and its virtual Z add up to zero
+    assert wrap_turns(0.1 + result.phase_shift) == pytest.approx(0.0, abs=1e-6)
+    assert float(ds_fit.phase_shift.sel(qubit="q1")) == pytest.approx(result.phase_shift)
+
+
+def test_flat_data_fails():
+    _, results = fit_raw_data(_ds(_ramsey(0.2, contrast=0.02, noise=0.01)), _node(0.0))
+    assert not results["q1"].success
+    assert any("contrast" in issue for issue in results["q1"].fit_issues)
+
+
+def test_lru_macro_round_trips_and_plays_pump_then_virtual_z(tmp_path, monkeypatch):
+    from qm import generate_qua_script
+    from qm.qua import program
+
+    machine = build_machine(Quam, tmp_path, monkeypatch)
+    qubit = machine.qubits["q1"]
+    add_lru_element(qubit)
+    qubit.macros[LRU_OPERATION] = LruMacro(phase_shift=0.125)
+    machine.save()
+
+    loaded = Quam.load()
+    macro = loaded.qubits["q1"].macros[LRU_OPERATION]
+    assert isinstance(macro, LruMacro)
+    assert macro.phase_shift == 0.125
+    pump_ns = loaded.qubits["q1"].lru.operations[LRU_OPERATION].length
+    depletion_ns = loaded.qubits["q1"].resonator.depletion_time
+    assert depletion_ns >= 16
+    assert macro.inferred_duration == pytest.approx((pump_ns + depletion_ns // 4 * 4) * 1e-9)
+
+    with program() as prog:
+        macro.apply()
+    script = generate_qua_script(prog)
+    pump = script.index("play('lru', 'q1.lru')")
+    wait = script.index(f"wait({depletion_ns // 4}, 'q1.lru')")
+    rotation = script.index("frame_rotation_2pi(0.125, 'q1.xy')")
+    assert pump < wait < rotation
+
+
+def test_lru_macro_wait_can_be_set_or_turned_off(tmp_path, monkeypatch):
+    from qm import generate_qua_script
+    from qm.qua import program
+
+    machine = build_machine(Quam, tmp_path, monkeypatch)
+    qubit = machine.qubits["q1"]
+    add_lru_element(qubit)
+    pump_ns = qubit.lru.operations[LRU_OPERATION].length
+
+    qubit.macros[LRU_OPERATION] = LruMacro(wait_after_ns=0)
+    with program() as prog:
+        qubit.macros[LRU_OPERATION].apply()
+    assert "wait(" not in generate_qua_script(prog)
+    assert qubit.macros[LRU_OPERATION].inferred_duration == pytest.approx(pump_ns * 1e-9)
+
+    qubit.macros[LRU_OPERATION] = LruMacro(wait_after_ns=402)  # rounded down to the 4 ns clock
+    with program() as prog:
+        qubit.macros[LRU_OPERATION].apply()
+    assert "wait(100, 'q1.lru')" in generate_qua_script(prog)
+    assert qubit.macros[LRU_OPERATION].inferred_duration == pytest.approx((pump_ns + 400) * 1e-9)
+
+
+@pytest.mark.parametrize("wait_ns, played", [(None, 1000), (0, 0), (12, 0), (16, 16), (402, 400)])
+def test_lru_wait_ns(wait_ns, played):
+    from types import SimpleNamespace
+
+    from quam_config.lru_components import lru_wait_ns
+
+    qubit = SimpleNamespace(resonator=SimpleNamespace(depletion_time=1000))
+    assert lru_wait_ns(qubit, wait_ns) == played
+
+
+def test_zero_phase_shift_plays_no_frame_rotation(tmp_path, monkeypatch):
+    from qm import generate_qua_script
+    from qm.qua import program
+
+    machine = build_machine(Quam, tmp_path, monkeypatch)
+    qubit = machine.qubits["q1"]
+    add_lru_element(qubit)
+    qubit.macros[LRU_OPERATION] = LruMacro()
+    with program() as prog:
+        qubit.macros[LRU_OPERATION].apply()
+    assert "frame_rotation" not in generate_qua_script(prog)
